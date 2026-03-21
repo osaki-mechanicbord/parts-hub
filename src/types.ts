@@ -94,6 +94,102 @@ export type ProductImage = {
   created_at: string
 }
 
+// 適合情報型
+export type ProductCompatibility = {
+  id: number
+  product_id: number
+  maker_id?: number
+  model_id?: number
+  year_from?: number
+  year_to?: number
+  model_code?: string
+  grade?: string
+  engine_type?: string
+  drive_type?: string
+  transmission_type?: string
+  body_type?: string
+  oem_part_number?: string
+  aftermarket_part_number?: string
+  alternative_numbers?: string
+  verification_method?: 'actual_vehicle' | 'part_number' | 'catalog' | 'manual'
+  fitment_notes?: string
+  special_requirements?: string
+  confidence_level: number
+  verified_by_admin: boolean
+  created_at: string
+  updated_at: string
+}
+
+// ユーザー車両型
+export type UserVehicle = {
+  id: number
+  user_id: number
+  nickname: string
+  maker_id: number
+  model_id: number
+  year: number
+  model_code?: string
+  grade?: string
+  engine_type?: string
+  drive_type?: string
+  transmission_type?: string
+  body_type?: string
+  chassis_number_last4?: string
+  registration_date?: string
+  registration_image_url?: string
+  is_primary: boolean
+  is_active: boolean
+  created_at: string
+  updated_at: string
+  // JOIN用
+  maker_name?: string
+  model_name?: string
+}
+
+// 適合確認型
+export type FitmentConfirmation = {
+  id: number
+  product_id: number
+  user_id: number
+  user_vehicle_id?: number
+  fits: boolean
+  fit_quality?: number
+  installation_difficulty?: number
+  notes?: string
+  images?: string
+  verified_by_admin: boolean
+  helpful_count: number
+  created_at: string
+  // JOIN用
+  user_name?: string
+  vehicle_info?: string
+}
+
+// 汎用部品型
+export type UniversalPart = {
+  id: number
+  product_id: number
+  part_type?: string
+  universal_category?: string
+  thread_size?: string
+  dimensions?: string
+  specifications?: string
+  compatible_makers?: string
+  compatible_years?: string
+  notes?: string
+  created_at: string
+}
+
+// 適合マッチング結果型
+export type FitmentMatch = {
+  product_id: number
+  confidence: number // 0-100
+  match_type: 'exact' | 'high' | 'medium' | 'low'
+  match_reasons: string[]
+  compatibility_info?: ProductCompatibility
+  user_confirmations?: number
+}
+
 // APIレスポンス型
 export type ApiResponse<T> = {
   success: boolean
