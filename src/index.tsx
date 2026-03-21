@@ -19,6 +19,9 @@ app.use('/api/*', cors())
 
 // 静的ファイル配信
 app.use('/static/*', serveStatic({ root: './public' }))
+app.use('/icons/*', serveStatic({ root: './public' }))
+app.use('/manifest.json', serveStatic({ root: './public' }))
+app.use('/sw.js', serveStatic({ root: './public' }))
 
 // APIルート
 app.route('/api', apiRoutes)
@@ -177,7 +180,42 @@ app.get('/', (c) => {
                     <!-- ロゴ -->
                     <div class="flex items-center">
                         <a href="/" class="flex items-center space-x-3">
-                            <img src="/icons/logo.svg" alt="PARTS HUB" class="w-10 h-10">
+                            <div class="w-10 h-10 flex-shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="40" height="40">
+                                  <defs>
+                                    <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                      <stop offset="0%" style="stop-color:#ff4757;stop-opacity:1" />
+                                      <stop offset="100%" style="stop-color:#ff6b95;stop-opacity:1" />
+                                    </linearGradient>
+                                  </defs>
+                                  <circle cx="50" cy="50" r="48" fill="url(#logoGrad)"/>
+                                  <g fill="#ffffff">
+                                    <rect x="47" y="5" width="6" height="15" rx="1"/>
+                                    <rect x="47" y="80" width="6" height="15" rx="1"/>
+                                    <rect x="5" y="47" width="15" height="6" rx="1"/>
+                                    <rect x="80" y="47" width="15" height="6" rx="1"/>
+                                    <rect x="72" y="18" width="15" height="6" rx="1" transform="rotate(45 79.5 21)"/>
+                                    <rect x="13" y="18" width="15" height="6" rx="1" transform="rotate(-45 20.5 21)"/>
+                                    <rect x="72" y="76" width="15" height="6" rx="1" transform="rotate(-45 79.5 79)"/>
+                                    <rect x="13" y="76" width="15" height="6" rx="1" transform="rotate(45 20.5 79)"/>
+                                  </g>
+                                  <circle cx="50" cy="50" r="22" fill="#ffffff"/>
+                                  <g stroke="#ff4757" stroke-width="2" fill="none">
+                                    <line x1="50" y1="50" x2="50" y2="32"/>
+                                    <line x1="50" y1="50" x2="50" y2="68"/>
+                                    <line x1="50" y1="50" x2="32" y2="50"/>
+                                    <line x1="50" y1="50" x2="68" y2="50"/>
+                                  </g>
+                                  <g fill="#ff4757">
+                                    <circle cx="50" cy="32" r="3"/>
+                                    <circle cx="50" cy="68" r="3"/>
+                                    <circle cx="32" cy="50" r="3"/>
+                                    <circle cx="68" cy="50" r="3"/>
+                                  </g>
+                                  <circle cx="50" cy="50" r="8" fill="#ff4757"/>
+                                  <circle cx="50" cy="50" r="4" fill="#ffffff"/>
+                                </svg>
+                            </div>
                             <div class="hidden sm:block">
                                 <div class="text-xl font-bold text-gray-900">PARTS HUB</div>
                                 <div class="text-xs text-gray-500">パーツハブ</div>
@@ -220,7 +258,41 @@ app.get('/', (c) => {
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="text-center mb-8">
                     <div class="flex items-center justify-center mb-4">
-                        <img src="/icons/logo.svg" alt="PARTS HUB" class="w-16 h-16 mr-4">
+                        <div class="w-16 h-16 mr-4 flex-shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="64" height="64">
+                              <defs>
+                                <linearGradient id="heroLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                  <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+                                  <stop offset="100%" style="stop-color:#ffffff;stop-opacity:0.9" />
+                                </linearGradient>
+                              </defs>
+                              <circle cx="50" cy="50" r="48" fill="none" stroke="url(#heroLogoGrad)" stroke-width="2"/>
+                              <g fill="url(#heroLogoGrad)">
+                                <rect x="47" y="5" width="6" height="15" rx="1"/>
+                                <rect x="47" y="80" width="6" height="15" rx="1"/>
+                                <rect x="5" y="47" width="15" height="6" rx="1"/>
+                                <rect x="80" y="47" width="15" height="6" rx="1"/>
+                                <rect x="72" y="18" width="15" height="6" rx="1" transform="rotate(45 79.5 21)"/>
+                                <rect x="13" y="18" width="15" height="6" rx="1" transform="rotate(-45 20.5 21)"/>
+                                <rect x="72" y="76" width="15" height="6" rx="1" transform="rotate(-45 79.5 79)"/>
+                                <rect x="13" y="76" width="15" height="6" rx="1" transform="rotate(45 20.5 79)"/>
+                              </g>
+                              <circle cx="50" cy="50" r="22" fill="url(#heroLogoGrad)"/>
+                              <g stroke="rgba(255,255,255,0.5)" stroke-width="2" fill="none">
+                                <line x1="50" y1="50" x2="50" y2="32"/>
+                                <line x1="50" y1="50" x2="50" y2="68"/>
+                                <line x1="50" y1="50" x2="32" y2="50"/>
+                                <line x1="50" y1="50" x2="68" y2="50"/>
+                              </g>
+                              <g fill="rgba(255,255,255,0.8)">
+                                <circle cx="50" cy="32" r="3"/>
+                                <circle cx="50" cy="68" r="3"/>
+                                <circle cx="32" cy="50" r="3"/>
+                                <circle cx="68" cy="50" r="3"/>
+                              </g>
+                              <circle cx="50" cy="50" r="8" fill="rgba(255,255,255,0.3)"/>
+                            </svg>
+                        </div>
                         <h1 class="text-3xl sm:text-4xl font-bold">
                             PARTS HUB
                         </h1>
