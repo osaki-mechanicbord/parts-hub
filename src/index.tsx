@@ -411,7 +411,7 @@ app.get('/', (c) => {
                 
                 <!-- 商品グリッド -->
                 <div id="products-container" class="mb-8">
-                    <div id="products" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                    <div id="products" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
                         <!-- 商品カードはJSで動的に読み込み -->
                     </div>
                     
@@ -513,35 +513,103 @@ app.get('/', (c) => {
                 }
             }
             
-            // 商品カード生成
+            // 商品カード生成（メルカリ風）
             function createProductCard(product) {
-                const conditionText = {
+                const conditionLabels = {
                     'new': '新品',
                     'like_new': '未使用に近い',
+                    'excellent': '非常に良い',
                     'good': '良い',
-                    'acceptable': '可'
+                    'acceptable': '可',
+                    'junk': 'ジャンク品'
                 };
                 
+                const conditionColors = {
+                    'new': 'bg-blue-500',
+                    'like_new': 'bg-green-500',
+                    'excellent': 'bg-teal-500',
+                    'good': 'bg-gray-500',
+                    'acceptable': 'bg-orange-500',
+                    'junk': 'bg-red-500'
+                };
+                
+                // 適合車種表示
+                let compatibilityInfo = '';
+                if (product.maker_name) {
+                    compatibilityInfo = product.maker_name;
+                    if (product.model_name) {
+                        compatibilityInfo += ' ' + product.model_name;
+                    }
+                } else if (product.compatibility_count > 0) {
+                    compatibilityInfo = \`\${product.compatibility_count}車種対応\`;
+                }
+                
                 return \`
-                    <div class="product-card bg-white rounded-xl overflow-hidden shadow-sm" onclick="window.location.href='/products/\${product.id}'">
-                        <div class="relative aspect-square">
-                            <img src="\${product.main_image || 'https://via.placeholder.com/300x300?text=No+Image'}" 
+                    <div class="product-card bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:-translate-y-1" 
+                         onclick="window.location.href='/products/\${product.id}'">
+                        <!-- 商品画像 -->
+                        <div class="relative aspect-square bg-gray-100">
+                            <img src="\${product.main_image || 'https://placehold.co/400x400/e2e8f0/64748b?text=No+Image'}" 
                                  alt="\${product.title}" 
-                                 class="w-full h-full object-cover">
+                                 class="w-full h-full object-cover"
+                                 loading="lazy"
+                                 onerror="this.src='https://placehold.co/400x400/e2e8f0/64748b?text=No+Image'">
+                            
+                            <!-- 状態バッジ -->
                             <div class="absolute top-2 left-2">
-                                <span class="badge badge-new">NEW</span>
+                                <span class="px-2 py-1 \${conditionColors[product.condition] || 'bg-gray-500'} text-white text-xs font-bold rounded shadow-md">
+                                    \${conditionLabels[product.condition] || product.condition}
+                                </span>
                             </div>
-                            \${product.is_verified ? '<div class="absolute top-2 right-2"><span class="badge badge-verified"><i class="fas fa-check mr-1"></i>確認済み</span></div>' : ''}
+                            
+                            <!-- 適合確認バッジ（右上） -->
+                            \${product.compatibility_count > 0 ? \`
+                                <div class="absolute top-2 right-2">
+                                    <span class="px-2 py-1 bg-white/90 backdrop-blur-sm text-gray-700 text-xs font-medium rounded shadow-md">
+                                        <i class="fas fa-car text-primary mr-1"></i>適合
+                                    </span>
+                                </div>
+                            \` : ''}
                         </div>
+                        
+                        <!-- 商品情報 -->
                         <div class="p-3">
-                            <h3 class="text-sm font-semibold text-gray-900 line-clamp-2 mb-2">\${product.title}</h3>
+                            <!-- 商品名 -->
+                            <h3 class="text-sm font-semibold text-gray-900 line-clamp-2 mb-2 min-h-[2.5rem]">
+                                \${product.title}
+                            </h3>
+                            
+                            <!-- メーカー・適合車種 -->
+                            \${compatibilityInfo ? \`
+                                <div class="flex items-center text-xs text-gray-600 mb-2">
+                                    <i class="fas fa-car mr-1 text-gray-400"></i>
+                                    <span class="truncate">\${compatibilityInfo}</span>
+                                </div>
+                            \` : ''}
+                            
+                            <!-- 価格 -->
                             <div class="flex items-center justify-between mb-2">
-                                <span class="text-lg font-bold text-primary">¥\${product.price.toLocaleString()}</span>
-                                <span class="text-xs text-gray-500">\${conditionText[product.condition] || ''}</span>
+                                <div class="flex items-baseline">
+                                    <span class="text-xl font-bold text-gray-900">¥\${Number(product.price).toLocaleString()}</span>
+                                    <span class="text-xs text-gray-500 ml-1">税込</span>
+                                </div>
                             </div>
-                            <div class="flex items-center justify-between text-xs text-gray-500">
-                                <span><i class="fas fa-eye mr-1"></i>\${product.view_count}</span>
-                                <span><i class="far fa-heart mr-1"></i>\${product.favorite_count || 0}</span>
+                            
+                            <!-- 統計情報 -->
+                            <div class="flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-100">
+                                <div class="flex items-center space-x-3">
+                                    <span class="flex items-center">
+                                        <i class="fas fa-eye mr-1"></i>\${product.view_count || 0}
+                                    </span>
+                                    <span class="flex items-center">
+                                        <i class="far fa-heart mr-1"></i>\${product.favorite_count || 0}
+                                    </span>
+                                </div>
+                                \${product.seller_name ? \`
+                                    <span class="text-xs text-gray-400 truncate max-w-[100px]">
+                                        \${product.seller_name}
+                                    </span>
+                                \` : ''}
                             </div>
                         </div>
                     </div>

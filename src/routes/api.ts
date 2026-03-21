@@ -167,6 +167,7 @@ api.get('/products', async (c) => {
         p.created_at,
         c.name as category_name,
         m.name as maker_name,
+        mo.name as model_name,
         u.shop_name as seller_name,
         u.rating as seller_rating,
         (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as main_image,
@@ -175,6 +176,7 @@ api.get('/products', async (c) => {
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       LEFT JOIN car_makers m ON p.maker_id = m.id
+      LEFT JOIN car_models mo ON p.model_id = mo.id
       LEFT JOIN users u ON p.seller_id = u.id
       WHERE ${whereClause}
       ORDER BY ${orderBy}
