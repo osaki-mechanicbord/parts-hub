@@ -555,4 +555,288 @@ app.get('/', (c) => {
   `)
 })
 
+// ログインページ
+app.get('/login', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>ログイン - パーツマーケット</title>
+        <meta name="theme-color" content="#ff4757">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>
+            .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        </style>
+    </head>
+    <body class="bg-gray-50">
+        <div class="min-h-screen flex items-center justify-center px-4 py-12">
+            <div class="max-w-md w-full">
+                <!-- ロゴ -->
+                <div class="text-center mb-8">
+                    <a href="/" class="inline-flex items-center space-x-2 mb-6">
+                        <div class="w-12 h-12 bg-gradient-to-br from-red-500 to-pink-500 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-car text-white text-2xl"></i>
+                        </div>
+                        <span class="text-2xl font-bold text-gray-900">パーツマーケット</span>
+                    </a>
+                    <h1 class="text-3xl font-bold text-gray-900 mb-2">ログイン</h1>
+                    <p class="text-gray-600">アカウントにログインしてください</p>
+                </div>
+
+                <!-- ログインフォーム -->
+                <div class="bg-white rounded-2xl shadow-xl p-8">
+                    <form id="login-form" class="space-y-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">メールアドレス</label>
+                            <div class="relative">
+                                <i class="fas fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                <input type="email" id="email" required
+                                       class="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                       placeholder="example@email.com">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">パスワード</label>
+                            <div class="relative">
+                                <i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                <input type="password" id="password" required
+                                       class="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                       placeholder="8文字以上">
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between">
+                            <label class="flex items-center">
+                                <input type="checkbox" class="rounded border-gray-300 text-red-500 focus:ring-red-500">
+                                <span class="ml-2 text-sm text-gray-600">ログイン状態を保持</span>
+                            </label>
+                            <a href="/password-reset" class="text-sm text-red-500 hover:text-red-600 font-medium">
+                                パスワードを忘れた？
+                            </a>
+                        </div>
+
+                        <button type="submit"
+                                class="w-full bg-gradient-to-r from-red-500 to-pink-500 text-white py-3 rounded-lg font-bold hover:from-red-600 hover:to-pink-600 transition-all shadow-lg">
+                            <i class="fas fa-sign-in-alt mr-2"></i>ログイン
+                        </button>
+                    </form>
+
+                    <div class="mt-6 text-center">
+                        <p class="text-gray-600">
+                            アカウントをお持ちでない方は
+                            <a href="/register" class="text-red-500 hover:text-red-600 font-semibold">新規登録</a>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 戻るリンク -->
+                <div class="text-center mt-6">
+                    <a href="/" class="text-gray-600 hover:text-gray-900">
+                        <i class="fas fa-arrow-left mr-2"></i>トップページに戻る
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script>
+            document.getElementById('login-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                
+                try {
+                    const response = await axios.post('/api/auth/login', { email, password });
+                    
+                    if (response.data.success) {
+                        localStorage.setItem('token', response.data.data.token);
+                        localStorage.setItem('user', JSON.stringify(response.data.data.user));
+                        alert('ログインしました！');
+                        window.location.href = '/';
+                    }
+                } catch (error) {
+                    alert(error.response?.data?.error || 'ログインに失敗しました');
+                }
+            });
+        </script>
+    </body>
+    </html>
+  `)
+})
+
+// 登録ページ
+app.get('/register', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>新規登録 - パーツマーケット</title>
+        <meta name="theme-color" content="#ff4757">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    </head>
+    <body class="bg-gray-50">
+        <div class="min-h-screen flex items-center justify-center px-4 py-12">
+            <div class="max-w-2xl w-full">
+                <!-- ロゴ -->
+                <div class="text-center mb-8">
+                    <a href="/" class="inline-flex items-center space-x-2 mb-6">
+                        <div class="w-12 h-12 bg-gradient-to-br from-red-500 to-pink-500 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-car text-white text-2xl"></i>
+                        </div>
+                        <span class="text-2xl font-bold text-gray-900">パーツマーケット</span>
+                    </a>
+                    <h1 class="text-3xl font-bold text-gray-900 mb-2">新規登録</h1>
+                    <p class="text-gray-600">アカウントを作成してパーツの売買を始めましょう</p>
+                </div>
+
+                <!-- 登録フォーム -->
+                <div class="bg-white rounded-2xl shadow-xl p-8">
+                    <form id="register-form" class="space-y-6">
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">メールアドレス *</label>
+                                <input type="email" id="email" required
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                       placeholder="example@email.com">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">パスワード *</label>
+                                <input type="password" id="password" required minlength="8"
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                       placeholder="8文字以上">
+                            </div>
+                        </div>
+
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">店舗名 *</label>
+                                <input type="text" id="shop-name" required
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                       placeholder="例: 山田自動車整備工場">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">店舗種別 *</label>
+                                <select id="shop-type" required
+                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                                    <option value="">選択してください</option>
+                                    <option value="factory">整備工場</option>
+                                    <option value="individual">個人</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">電話番号</label>
+                                <input type="tel" id="phone"
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                       placeholder="03-1234-5678">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">郵便番号</label>
+                                <input type="text" id="postal-code"
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                       placeholder="123-4567">
+                            </div>
+                        </div>
+
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">都道府県</label>
+                                <input type="text" id="prefecture"
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                       placeholder="東京都">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">市区町村</label>
+                                <input type="text" id="city"
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                       placeholder="渋谷区">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">住所</label>
+                            <input type="text" id="address"
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                   placeholder="1-2-3 マンション名 101号室">
+                        </div>
+
+                        <div class="flex items-start">
+                            <input type="checkbox" id="terms" required class="mt-1 mr-3">
+                            <label for="terms" class="text-sm text-gray-600">
+                                <a href="/terms" class="text-red-500 hover:text-red-600 font-medium">利用規約</a>と
+                                <a href="/privacy" class="text-red-500 hover:text-red-600 font-medium">プライバシーポリシー</a>に同意します
+                            </label>
+                        </div>
+
+                        <button type="submit"
+                                class="w-full bg-gradient-to-r from-red-500 to-pink-500 text-white py-4 rounded-lg font-bold hover:from-red-600 hover:to-pink-600 transition-all shadow-lg text-lg">
+                            <i class="fas fa-user-plus mr-2"></i>アカウントを作成
+                        </button>
+                    </form>
+
+                    <div class="mt-6 text-center">
+                        <p class="text-gray-600">
+                            すでにアカウントをお持ちの方は
+                            <a href="/login" class="text-red-500 hover:text-red-600 font-semibold">ログイン</a>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 戻るリンク -->
+                <div class="text-center mt-6">
+                    <a href="/" class="text-gray-600 hover:text-gray-900">
+                        <i class="fas fa-arrow-left mr-2"></i>トップページに戻る
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script>
+            document.getElementById('register-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const data = {
+                    email: document.getElementById('email').value,
+                    password: document.getElementById('password').value,
+                    shop_name: document.getElementById('shop-name').value,
+                    shop_type: document.getElementById('shop-type').value,
+                    phone: document.getElementById('phone').value || null,
+                    postal_code: document.getElementById('postal-code').value || null,
+                    prefecture: document.getElementById('prefecture').value || null,
+                    city: document.getElementById('city').value || null,
+                    address: document.getElementById('address').value || null
+                };
+                
+                try {
+                    const response = await axios.post('/api/auth/register', data);
+                    
+                    if (response.data.success) {
+                        alert('アカウントが作成されました！ログインしてください。');
+                        window.location.href = '/login';
+                    }
+                } catch (error) {
+                    alert(error.response?.data?.error || '登録に失敗しました');
+                }
+            });
+        </script>
+    </body>
+    </html>
+  `)
+})
+
 export default app
