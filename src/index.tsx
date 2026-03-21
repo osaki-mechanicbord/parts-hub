@@ -39,7 +39,7 @@ app.get('/', (c) => {
         <meta name="description" content="整備工場専門の純正パーツ・工具売買マーケットプレイス。メルカリのように手軽に部品を売買できます。">
         
         <!-- PWA対応 -->
-        <meta name="theme-color" content="#2563eb">
+        <meta name="theme-color" content="#ff4757">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="default">
         <meta name="apple-mobile-web-app-title" content="パーツマーケット">
@@ -54,6 +54,99 @@ app.get('/', (c) => {
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         
         <style>
+            /* カスタムカラー */
+            :root {
+                --primary: #ff4757;
+                --primary-dark: #ee3f4d;
+                --secondary: #5f27cd;
+                --success: #1dd1a1;
+                --warning: #feca57;
+                --danger: #ee5a6f;
+            }
+            
+            /* グラデーション背景 */
+            .gradient-bg {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            }
+            
+            .gradient-red {
+                background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            }
+            
+            /* カード hover エフェクト */
+            .product-card {
+                transition: all 0.3s ease;
+                cursor: pointer;
+            }
+            
+            .product-card:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+            }
+            
+            /* カテゴリボタン */
+            .category-btn {
+                transition: all 0.2s ease;
+            }
+            
+            .category-btn:hover {
+                transform: scale(1.05);
+            }
+            
+            /* 検索バー */
+            .search-input:focus {
+                box-shadow: 0 0 0 3px rgba(255, 71, 87, 0.1);
+            }
+            
+            /* スクロールバー */
+            .custom-scrollbar::-webkit-scrollbar {
+                height: 6px;
+            }
+            
+            .custom-scrollbar::-webkit-scrollbar-track {
+                background: #f1f1f1;
+                border-radius: 10px;
+            }
+            
+            .custom-scrollbar::-webkit-scrollbar-thumb {
+                background: #ff4757;
+                border-radius: 10px;
+            }
+            
+            /* バッジ */
+            .badge {
+                display: inline-block;
+                padding: 2px 8px;
+                border-radius: 12px;
+                font-size: 0.75rem;
+                font-weight: 600;
+            }
+            
+            .badge-new {
+                background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+                color: white;
+            }
+            
+            .badge-verified {
+                background: linear-gradient(135deg, #1dd1a1 0%, #10ac84 100%);
+                color: white;
+            }
+            
+            /* ローディングスピナー */
+            .spinner {
+                border: 3px solid #f3f3f3;
+                border-top: 3px solid #ff4757;
+                border-radius: 50%;
+                width: 40px;
+                height: 40px;
+                animation: spin 1s linear infinite;
+            }
+            
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+            
             /* PWA用追加スタイル */
             @media (display-mode: standalone) {
                 body {
@@ -61,158 +154,400 @@ app.get('/', (c) => {
                     padding-bottom: env(safe-area-inset-bottom);
                 }
             }
-            
-            /* インストールバナー */
-            .install-banner {
-                position: fixed;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                background: linear-gradient(to right, #2563eb, #1e40af);
-                color: white;
-                padding: 16px;
-                display: none;
-                align-items: center;
-                justify-content: space-between;
-                box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-                z-index: 1000;
-            }
-            
-            .install-banner.show {
-                display: flex;
-            }
         </style>
+        
+        <script>
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        colors: {
+                            primary: '#ff4757',
+                            secondary: '#5f27cd',
+                        }
+                    }
+                }
+            }
+        </script>
     </head>
     <body class="bg-gray-50">
         <!-- ヘッダー -->
-        <header class="bg-white shadow-sm">
-            <div class="max-w-7xl mx-auto px-4 py-4">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-4">
-                        <h1 class="text-2xl font-bold text-blue-600">
-                            <i class="fas fa-car mr-2"></i>
-                            パーツマーケット
-                        </h1>
+        <header class="bg-white shadow-sm sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <!-- ロゴ -->
+                    <div class="flex items-center">
+                        <a href="/" class="flex items-center space-x-2">
+                            <div class="w-10 h-10 gradient-red rounded-xl flex items-center justify-center">
+                                <i class="fas fa-car text-white text-xl"></i>
+                            </div>
+                            <span class="text-xl font-bold text-gray-900 hidden sm:block">パーツマーケット</span>
+                        </a>
                     </div>
-                    <div class="flex items-center space-x-4">
-                        <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                            <i class="fas fa-plus mr-2"></i>出品する
+                    
+                    <!-- ナビゲーション -->
+                    <nav class="hidden md:flex items-center space-x-6">
+                        <a href="/" class="text-gray-700 hover:text-primary font-medium transition-colors">
+                            <i class="fas fa-home mr-1"></i>ホーム
+                        </a>
+                        <a href="/search" class="text-gray-700 hover:text-primary font-medium transition-colors">
+                            <i class="fas fa-search mr-1"></i>検索
+                        </a>
+                        <a href="/favorites" class="text-gray-700 hover:text-primary font-medium transition-colors">
+                            <i class="far fa-heart mr-1"></i>お気に入り
+                        </a>
+                    </nav>
+                    
+                    <!-- アクションボタン -->
+                    <div class="flex items-center space-x-3">
+                        <button onclick="window.location.href='/listing'" 
+                                class="px-4 py-2 bg-primary text-white rounded-lg font-semibold hover:bg-primary-dark transition-all shadow-sm hover:shadow-md">
+                            <i class="fas fa-plus mr-1"></i>
+                            <span class="hidden sm:inline">出品する</span>
                         </button>
-                        <button class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-                            ログイン
+                        <button onclick="window.location.href='/login'" 
+                                class="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:border-primary hover:text-primary transition-all">
+                            <i class="fas fa-user mr-1"></i>
+                            <span class="hidden sm:inline">ログイン</span>
                         </button>
                     </div>
                 </div>
             </div>
         </header>
 
-        <!-- 検索バー -->
-        <div class="bg-white border-b">
-            <div class="max-w-7xl mx-auto px-4 py-6">
-                <div class="flex gap-2">
-                    <input type="text" id="search" placeholder="商品名、メーカー、品番で検索" 
-                           class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    <button class="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                        <i class="fas fa-search mr-2"></i>検索
+        <!-- Hero セクション -->
+        <section class="gradient-bg text-white py-12">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center mb-8">
+                    <h1 class="text-3xl sm:text-4xl font-bold mb-4">
+                        🚗 自動車パーツの売買がもっと簡単に
+                    </h1>
+                    <p class="text-lg text-white/90 mb-8">
+                        整備工場専門のパーツマーケットプレイス。純正部品から工具まで、手軽に売買できます。
+                    </p>
+                    
+                    <!-- 検索バー -->
+                    <div class="max-w-3xl mx-auto">
+                        <div class="flex gap-2">
+                            <div class="flex-1 relative">
+                                <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                <input type="text" id="search-input" 
+                                       placeholder="商品名、メーカー、品番で検索..." 
+                                       class="search-input w-full pl-12 pr-4 py-4 rounded-xl border-0 text-gray-900 focus:outline-none focus:ring-2 focus:ring-white/50">
+                            </div>
+                            <button onclick="performSearch()" 
+                                    class="px-8 py-4 bg-white text-primary rounded-xl font-bold hover:bg-gray-100 transition-all shadow-lg">
+                                検索
+                            </button>
+                        </div>
+                        
+                        <!-- 人気キーワード -->
+                        <div class="mt-4 flex flex-wrap gap-2 justify-center">
+                            <span class="text-sm text-white/70">人気:</span>
+                            <button onclick="searchKeyword('トヨタ')" class="text-sm px-3 py-1 bg-white/20 hover:bg-white/30 rounded-full transition-colors">トヨタ</button>
+                            <button onclick="searchKeyword('エンジン')" class="text-sm px-3 py-1 bg-white/20 hover:bg-white/30 rounded-full transition-colors">エンジン</button>
+                            <button onclick="searchKeyword('ドア')" class="text-sm px-3 py-1 bg-white/20 hover:bg-white/30 rounded-full transition-colors">ドア</button>
+                            <button onclick="searchKeyword('ライト')" class="text-sm px-3 py-1 bg-white/20 hover:bg-white/30 rounded-full transition-colors">ライト</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- カテゴリセクション -->
+        <section class="bg-white py-8 border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900">
+                        <i class="fas fa-th-large text-primary mr-2"></i>
+                        カテゴリから探す
+                    </h2>
+                </div>
+                
+                <div id="categories" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-10 gap-4">
+                    <!-- カテゴリはJSで動的に読み込み -->
+                </div>
+            </div>
+        </section>
+
+        <!-- 商品一覧セクション -->
+        <section class="py-8">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <!-- タブ -->
+                <div class="flex items-center space-x-4 mb-6 border-b">
+                    <button class="tab-btn active px-4 py-3 font-semibold text-primary border-b-2 border-primary">
+                        <i class="fas fa-clock mr-2"></i>新着商品
+                    </button>
+                    <button class="tab-btn px-4 py-3 font-semibold text-gray-600 hover:text-primary transition-colors">
+                        <i class="fas fa-fire mr-2"></i>人気商品
+                    </button>
+                    <button class="tab-btn px-4 py-3 font-semibold text-gray-600 hover:text-primary transition-colors">
+                        <i class="fas fa-tags mr-2"></i>お買い得
+                    </button>
+                </div>
+                
+                <!-- フィルター -->
+                <div class="flex flex-wrap gap-3 mb-6">
+                    <select id="maker-filter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                        <option value="">すべてのメーカー</option>
+                    </select>
+                    <select id="condition-filter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                        <option value="">すべての状態</option>
+                        <option value="new">新品・未使用</option>
+                        <option value="like_new">未使用に近い</option>
+                        <option value="good">目立った傷や汚れなし</option>
+                        <option value="acceptable">やや傷や汚れあり</option>
+                    </select>
+                    <select id="sort-filter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                        <option value="created_desc">新着順</option>
+                        <option value="price_asc">価格が安い順</option>
+                        <option value="price_desc">価格が高い順</option>
+                        <option value="popular">人気順</option>
+                    </select>
+                </div>
+                
+                <!-- 商品グリッド -->
+                <div id="products-container" class="mb-8">
+                    <div id="products" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                        <!-- 商品カードはJSで動的に読み込み -->
+                    </div>
+                    
+                    <!-- ローディング -->
+                    <div id="loading" class="hidden flex justify-center items-center py-12">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+                
+                <!-- もっと見るボタン -->
+                <div class="text-center">
+                    <button id="load-more" class="px-8 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:border-primary hover:text-primary transition-all">
+                        もっと見る
                     </button>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <!-- カテゴリ -->
-        <div class="bg-white border-b">
-            <div class="max-w-7xl mx-auto px-4 py-4">
-                <div id="categories" class="flex gap-4 overflow-x-auto">
-                    <div class="text-center min-w-[100px] cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <div class="text-3xl mb-2">🔧</div>
-                        <div class="text-sm">エンジン</div>
+        <!-- ボトムナビゲーション（モバイル） -->
+        <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
+            <div class="grid grid-cols-5 h-16">
+                <a href="/" class="flex flex-col items-center justify-center text-primary">
+                    <i class="fas fa-home text-xl mb-1"></i>
+                    <span class="text-xs">ホーム</span>
+                </a>
+                <a href="/search" class="flex flex-col items-center justify-center text-gray-500">
+                    <i class="fas fa-search text-xl mb-1"></i>
+                    <span class="text-xs">検索</span>
+                </a>
+                <a href="/listing" class="flex flex-col items-center justify-center text-gray-500">
+                    <div class="w-12 h-12 -mt-6 gradient-red rounded-full flex items-center justify-center shadow-lg">
+                        <i class="fas fa-plus text-white text-xl"></i>
                     </div>
-                    <div class="text-center min-w-[100px] cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <div class="text-3xl mb-2">🚗</div>
-                        <div class="text-sm">ボディ</div>
-                    </div>
-                    <div class="text-center min-w-[100px] cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <div class="text-3xl mb-2">⚡</div>
-                        <div class="text-sm">電装</div>
-                    </div>
-                    <div class="text-center min-w-[100px] cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <div class="text-3xl mb-2">🛞</div>
-                        <div class="text-sm">足回り</div>
-                    </div>
-                    <div class="text-center min-w-[100px] cursor-pointer hover:bg-gray-50 p-3 rounded-lg">
-                        <div class="text-3xl mb-2">🔨</div>
-                        <div class="text-sm">工具</div>
-                    </div>
-                </div>
+                    <span class="text-xs mt-1">出品</span>
+                </a>
+                <a href="/favorites" class="flex flex-col items-center justify-center text-gray-500">
+                    <i class="far fa-heart text-xl mb-1"></i>
+                    <span class="text-xs">お気に入り</span>
+                </a>
+                <a href="/mypage" class="flex flex-col items-center justify-center text-gray-500">
+                    <i class="fas fa-user text-xl mb-1"></i>
+                    <span class="text-xs">マイページ</span>
+                </a>
             </div>
-        </div>
+        </nav>
 
-        <!-- メインコンテンツ -->
-        <div class="max-w-7xl mx-auto px-4 py-8">
-            <h2 class="text-2xl font-bold mb-6">新着商品</h2>
-            <div id="products" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <!-- 商品はJavaScriptで読み込み -->
-                <div class="text-center py-12 col-span-full text-gray-500">
-                    <i class="fas fa-spinner fa-spin text-4xl mb-4"></i>
-                    <p>商品を読み込み中...</p>
-                </div>
-            </div>
-        </div>
-
+        <!-- スクリプト -->
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script>
-            // 商品一覧取得
-            async function loadProducts() {
-                try {
-                    const response = await axios.get('/api/products?limit=8');
-                    const products = response.data.items || [];
-                    
-                    const container = document.getElementById('products');
-                    if (products.length === 0) {
-                        container.innerHTML = '<div class="col-span-full text-center py-12 text-gray-500">商品がありません</div>';
-                        return;
-                    }
-                    
-                    container.innerHTML = products.map(product => \`
-                        <div class="bg-white rounded-lg shadow hover:shadow-lg transition cursor-pointer">
-                            <div class="aspect-square bg-gray-200 rounded-t-lg flex items-center justify-center">
-                                <i class="fas fa-image text-4xl text-gray-400"></i>
-                            </div>
-                            <div class="p-4">
-                                <h3 class="font-semibold text-sm mb-2 line-clamp-2">\${product.title}</h3>
-                                <div class="text-2xl font-bold text-blue-600 mb-2">
-                                    ¥\${product.price.toLocaleString()}
-                                </div>
-                                <div class="flex items-center text-sm text-gray-600">
-                                    <i class="fas fa-star text-yellow-400 mr-1"></i>
-                                    <span>4.5</span>
-                                    <span class="mx-2">·</span>
-                                    <span>\${product.view_count} 閲覧</span>
-                                </div>
-                            </div>
-                        </div>
-                    \`).join('');
-                } catch (error) {
-                    console.error('商品読み込みエラー:', error);
-                    document.getElementById('products').innerHTML = 
-                        '<div class="col-span-full text-center py-12 text-red-500">商品の読み込みに失敗しました</div>';
+            let currentPage = 1;
+            let currentFilters = {};
+            
+            // 検索実行
+            function performSearch() {
+                const query = document.getElementById('search-input').value;
+                if (query.trim()) {
+                    currentFilters.query = query;
+                    loadProducts();
                 }
             }
-
-            // カテゴリ一覧取得
+            
+            // キーワード検索
+            function searchKeyword(keyword) {
+                document.getElementById('search-input').value = keyword;
+                performSearch();
+            }
+            
+            // 商品読み込み
+            async function loadProducts() {
+                const container = document.getElementById('products');
+                const loading = document.getElementById('loading');
+                
+                loading.classList.remove('hidden');
+                
+                try {
+                    const params = new URLSearchParams({
+                        page: currentPage,
+                        limit: 20,
+                        ...currentFilters
+                    });
+                    
+                    const response = await axios.get(\`/api/products?\${params}\`);
+                    const products = response.data.items || [];
+                    
+                    if (currentPage === 1) {
+                        container.innerHTML = '';
+                    }
+                    
+                    products.forEach(product => {
+                        const card = createProductCard(product);
+                        container.innerHTML += card;
+                    });
+                    
+                } catch (error) {
+                    console.error('商品読み込みエラー:', error);
+                    container.innerHTML = '<div class="col-span-full text-center py-12 text-red-500">商品の読み込みに失敗しました</div>';
+                } finally {
+                    loading.classList.add('hidden');
+                }
+            }
+            
+            // 商品カード生成
+            function createProductCard(product) {
+                const conditionText = {
+                    'new': '新品',
+                    'like_new': '未使用に近い',
+                    'good': '良い',
+                    'acceptable': '可'
+                };
+                
+                return \`
+                    <div class="product-card bg-white rounded-xl overflow-hidden shadow-sm" onclick="window.location.href='/products/\${product.id}'">
+                        <div class="relative aspect-square">
+                            <img src="\${product.main_image || 'https://via.placeholder.com/300x300?text=No+Image'}" 
+                                 alt="\${product.title}" 
+                                 class="w-full h-full object-cover">
+                            <div class="absolute top-2 left-2">
+                                <span class="badge badge-new">NEW</span>
+                            </div>
+                            \${product.is_verified ? '<div class="absolute top-2 right-2"><span class="badge badge-verified"><i class="fas fa-check mr-1"></i>確認済み</span></div>' : ''}
+                        </div>
+                        <div class="p-3">
+                            <h3 class="text-sm font-semibold text-gray-900 line-clamp-2 mb-2">\${product.title}</h3>
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-lg font-bold text-primary">¥\${product.price.toLocaleString()}</span>
+                                <span class="text-xs text-gray-500">\${conditionText[product.condition] || ''}</span>
+                            </div>
+                            <div class="flex items-center justify-between text-xs text-gray-500">
+                                <span><i class="fas fa-eye mr-1"></i>\${product.view_count}</span>
+                                <span><i class="far fa-heart mr-1"></i>\${product.favorite_count || 0}</span>
+                            </div>
+                        </div>
+                    </div>
+                \`;
+            }
+            
+            // カテゴリ読み込み
             async function loadCategories() {
                 try {
                     const response = await axios.get('/api/categories');
-                    // カテゴリ表示処理（後で実装）
+                    const categories = response.data.data || [];
+                    const container = document.getElementById('categories');
+                    
+                    const iconMap = {
+                        'engine': 'cog',
+                        'gear': 'gears',
+                        'car': 'car',
+                        'bolt': 'bolt',
+                        'seat': 'chair',
+                        'paint-brush': 'paint-brush',
+                        'wheel': 'circle',
+                        'wrench': 'wrench',
+                        'oil-can': 'oil-can',
+                        'box': 'box'
+                    };
+                    
+                    container.innerHTML = categories.slice(0, 10).map(cat => \`
+                        <button onclick="filterByCategory(\${cat.id})" 
+                                class="category-btn flex flex-col items-center p-4 bg-gradient-to-br from-gray-50 to-white rounded-xl hover:shadow-md border border-gray-100">
+                            <div class="w-12 h-12 bg-gradient-to-br from-primary/10 to-primary/5 rounded-full flex items-center justify-center mb-2">
+                                <i class="fas fa-\${iconMap[cat.icon] || 'box'} text-primary text-xl"></i>
+                            </div>
+                            <span class="text-xs font-medium text-gray-700 text-center">\${cat.name}</span>
+                        </button>
+                    \`).join('');
                 } catch (error) {
                     console.error('カテゴリ読み込みエラー:', error);
                 }
             }
-
+            
+            // カテゴリフィルター
+            function filterByCategory(categoryId) {
+                currentFilters.category_id = categoryId;
+                currentPage = 1;
+                loadProducts();
+            }
+            
+            // メーカー読み込み
+            async function loadMakers() {
+                try {
+                    const response = await axios.get('/api/makers');
+                    const makers = response.data.makers || [];
+                    const select = document.getElementById('maker-filter');
+                    
+                    makers.forEach(maker => {
+                        const option = document.createElement('option');
+                        option.value = maker.id;
+                        option.textContent = maker.name;
+                        select.appendChild(option);
+                    });
+                } catch (error) {
+                    console.error('メーカー読み込みエラー:', error);
+                }
+            }
+            
+            // フィルター変更
+            document.getElementById('maker-filter')?.addEventListener('change', (e) => {
+                if (e.target.value) {
+                    currentFilters.maker_id = e.target.value;
+                } else {
+                    delete currentFilters.maker_id;
+                }
+                currentPage = 1;
+                loadProducts();
+            });
+            
+            document.getElementById('condition-filter')?.addEventListener('change', (e) => {
+                if (e.target.value) {
+                    currentFilters.condition = e.target.value;
+                } else {
+                    delete currentFilters.condition;
+                }
+                currentPage = 1;
+                loadProducts();
+            });
+            
+            document.getElementById('sort-filter')?.addEventListener('change', (e) => {
+                currentFilters.sort = e.target.value;
+                currentPage = 1;
+                loadProducts();
+            });
+            
+            // もっと見る
+            document.getElementById('load-more')?.addEventListener('click', () => {
+                currentPage++;
+                loadProducts();
+            });
+            
+            // 検索キーボードイベント
+            document.getElementById('search-input')?.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    performSearch();
+                }
+            });
+            
             // ページ読み込み時に実行
             window.addEventListener('DOMContentLoaded', () => {
-                loadProducts();
                 loadCategories();
+                loadMakers();
+                loadProducts();
             });
         </script>
     </body>
@@ -220,312 +555,4 @@ app.get('/', (c) => {
   `)
 })
 
-// 出品ページ
-app.get('/listing', (c) => {
-  return c.html(`
-    <!DOCTYPE html>
-    <html lang="ja">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-        <title>商品を出品 - パーツマーケット</title>
-        <meta name="theme-color" content="#2563eb">
-        <link rel="manifest" href="/manifest.json">
-        <script src="https://cdn.tailwindcss.com"></script>
-        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-        <style>
-            body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
-        </style>
-    </head>
-    <body class="bg-gray-50">
-        <!-- ヘッダー -->
-        <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
-            <div class="max-w-4xl mx-auto px-4 py-3 flex items-center">
-                <button onclick="history.back()" class="mr-4">
-                    <i class="fas fa-times text-xl"></i>
-                </button>
-                <h1 class="text-lg font-bold flex-1">商品を出品</h1>
-            </div>
-        </header>
-
-        <!-- メインコンテンツ -->
-        <main class="max-w-4xl mx-auto px-4 py-6 mb-20">
-            <form id="listing-form" class="space-y-6">
-                <!-- 画像アップロード -->
-                <section class="bg-white rounded-lg p-6 shadow-sm">
-                    <h2 class="text-lg font-bold mb-4">
-                        <i class="fas fa-camera text-blue-600 mr-2"></i>
-                        商品画像（必須）
-                    </h2>
-                    <p class="text-sm text-gray-600 mb-4">最大10枚まで、1枚目がメイン画像になります</p>
-                    
-                    <!-- カメラ・ギャラリーボタン -->
-                    <div class="grid grid-cols-2 gap-3 mb-4">
-                        <button type="button" 
-                                onclick="productForm.openCamera()"
-                                class="flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                            <i class="fas fa-camera mr-2"></i>
-                            カメラで撮影
-                        </button>
-                        <button type="button" 
-                                onclick="productForm.openGallery()"
-                                class="flex items-center justify-center px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
-                            <i class="fas fa-images mr-2"></i>
-                            ギャラリーから選択
-                        </button>
-                    </div>
-                    
-                    <div id="drop-zone" 
-                         class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition-colors"
-                         onclick="productForm.openGallery()">
-                        <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-3"></i>
-                        <p class="text-gray-600">タップして画像を選択</p>
-                        <p class="text-sm text-gray-400 mt-2">またはドラッグ&ドロップ</p>
-                        <input type="file" id="image-input" accept="image/*" multiple class="hidden">
-                    </div>
-                    
-                    <div id="image-previews" class="grid grid-cols-3 gap-3 mt-4"></div>
-                </section>
-
-                <!-- 基本情報 -->
-                <section class="bg-white rounded-lg p-6 shadow-sm">
-                    <h2 class="text-lg font-bold mb-4">
-                        <i class="fas fa-info-circle text-blue-600 mr-2"></i>
-                        基本情報
-                    </h2>
-                    
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">商品名 *</label>
-                            <input type="text" id="product-title" 
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                   placeholder="例: トヨタ プリウス 30系 フロントドア 左側 純正"
-                                   required>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">商品説明 *</label>
-                            <textarea id="product-description" rows="5"
-                                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                      placeholder="商品の状態、特徴、注意事項などを詳しく記載してください"
-                                      required></textarea>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">価格 *</label>
-                            <div class="relative">
-                                <input type="number" id="product-price" min="1"
-                                       class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                       placeholder="10000"
-                                       required>
-                                <span class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500">円</span>
-                            </div>
-                            <p class="text-sm text-gray-500 mt-2">手数料5%が販売時に差し引かれます</p>
-                        </div>
-                        
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">カテゴリ *</label>
-                                <select id="category-select" 
-                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        required>
-                                    <option value="">選択してください</option>
-                                </select>
-                            </div>
-                            
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">サブカテゴリ</label>
-                                <select id="subcategory-select"
-                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                                    <option value="">選択してください</option>
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">商品の状態 *</label>
-                            <select id="condition-select"
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    required>
-                                <option value="">選択してください</option>
-                                <option value="new">新品・未使用</option>
-                                <option value="like_new">未使用に近い</option>
-                                <option value="good">目立った傷や汚れなし</option>
-                                <option value="acceptable">やや傷や汚れあり</option>
-                            </select>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">在庫数 *</label>
-                            <input type="number" id="stock-quantity" min="1" value="1"
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                   required>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- 車両適合情報 -->
-                <section class="bg-white rounded-lg p-6 shadow-sm">
-                    <h2 class="text-lg font-bold mb-4">
-                        <i class="fas fa-car text-blue-600 mr-2"></i>
-                        車両適合情報
-                    </h2>
-                    
-                    <div class="space-y-4">
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">メーカー</label>
-                                <select id="maker-select"
-                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                                    <option value="">選択してください</option>
-                                </select>
-                            </div>
-                            
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">車種</label>
-                                <select id="model-select"
-                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                                    <option value="">選択してください</option>
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">純正品番</label>
-                            <input type="text" id="part-number"
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                   placeholder="例: 67002-47130">
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">OEM品番</label>
-                            <input type="text" id="oem-part-number"
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                   placeholder="例: 67002-47130">
-                        </div>
-                        
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">年式（開始）</label>
-                                <input type="number" id="year-from" min="1900" max="2030"
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                       placeholder="2009">
-                            </div>
-                            
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">年式（終了）</label>
-                                <input type="number" id="year-to" min="1900" max="2030"
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                       placeholder="2015">
-                            </div>
-                        </div>
-                        
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">型式</label>
-                                <input type="text" id="model-code"
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                       placeholder="例: ZVW30">
-                            </div>
-                            
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">グレード</label>
-                                <input type="text" id="grade"
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                       placeholder="例: S, G, L">
-                            </div>
-                        </div>
-                        
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">エンジン型式</label>
-                                <input type="text" id="engine-type"
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                       placeholder="例: 2ZR-FXE">
-                            </div>
-                            
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">駆動方式</label>
-                                <select id="drive-type"
-                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                                    <option value="">選択してください</option>
-                                    <option value="FF">FF</option>
-                                    <option value="FR">FR</option>
-                                    <option value="4WD">4WD</option>
-                                    <option value="MR">MR</option>
-                                    <option value="RR">RR</option>
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">変速機</label>
-                            <select id="transmission-type"
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                                <option value="">選択してください</option>
-                                <option value="MT">MT</option>
-                                <option value="AT">AT</option>
-                                <option value="CVT">CVT</option>
-                                <option value="DCT">DCT</option>
-                            </select>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">適合車種（自由記入）</label>
-                            <textarea id="compatible-models" rows="3"
-                                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                      placeholder="例: プリウス 30系 2009-2015年式全グレード対応"></textarea>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">確認方法</label>
-                            <select id="verification-method"
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                                <option value="part_number">品番照合</option>
-                                <option value="actual_vehicle">実車確認済み</option>
-                                <option value="catalog">カタログ確認</option>
-                                <option value="manual">整備書確認</option>
-                            </select>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">適合に関する注意事項</label>
-                            <textarea id="fitment-notes" rows="3"
-                                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                      placeholder="取り付けに関する注意事項や、特定グレードでの制限事項などがあれば記載してください"></textarea>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- 出品代行オプション -->
-                <section class="bg-white rounded-lg p-6 shadow-sm">
-                    <div class="flex items-start">
-                        <input type="checkbox" id="is-proxy" class="mt-1 mr-3">
-                        <div>
-                            <label for="is-proxy" class="font-medium text-gray-900 cursor-pointer">出品代行を依頼する</label>
-                            <p class="text-sm text-gray-600 mt-1">
-                                弊社が撮影・出品作業を代行します（手数料: 販売価格の1.5%追加）
-                            </p>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- 出品ボタン -->
-                <button type="button" id="submit-btn"
-                        onclick="productForm.submitForm()"
-                        class="w-full bg-blue-600 text-white py-4 rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-lg">
-                    <i class="fas fa-check mr-2"></i>出品する
-                </button>
-            </form>
-        </main>
-
-        <!-- スクリプト -->
-        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-        <script src="/static/listing.js"></script>
-    </body>
-    </html>
-  `)
-})
-
 export default app
-
