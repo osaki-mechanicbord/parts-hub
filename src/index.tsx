@@ -2955,4 +2955,871 @@ app.get('/transactions/:id', (c) => {
   `)
 })
 
+// 商品編集ページ（出品ページを再利用し、編集モードで動作）
+app.get('/listing/edit/:id', (c) => {
+  const productId = c.req.param('id')
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>商品を編集 - PARTS HUB（パーツハブ）</title>
+        <meta name="theme-color" content="#ff4757">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>
+            .form-input {
+                border: 2px solid #e5e7eb;
+                transition: border-color 0.2s;
+            }
+            .form-input:focus {
+                border-color: #ef4444;
+                outline: none;
+            }
+            .image-upload-area {
+                border: 2px dashed #d1d5db;
+                background: #f9fafb;
+                transition: all 0.3s;
+            }
+            .image-upload-area:hover {
+                border-color: #ef4444;
+                background: #fef2f2;
+            }
+        </style>
+    </head>
+    <body class="bg-gray-50">
+        <!-- ヘッダー -->
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+            <div class="max-w-6xl mx-auto px-4 py-4">
+                <div class="flex items-center justify-between">
+                    <button onclick="window.history.back()" class="text-gray-600 hover:text-gray-800">
+                        <i class="fas fa-arrow-left mr-2"></i>戻る
+                    </button>
+                    <h1 class="text-red-500 font-bold text-lg">商品を編集</h1>
+                    <div class="w-16"></div>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-4xl mx-auto px-4 py-6">
+            <form id="listing-form" class="space-y-6">
+                <input type="hidden" id="product-id" value="${productId}">
+                
+                <!-- 読み込み中表示 -->
+                <div id="loading" class="text-center py-12">
+                    <i class="fas fa-spinner fa-spin text-4xl text-gray-400 mb-4"></i>
+                    <p class="text-gray-500">商品情報を読み込み中...</p>
+                </div>
+
+                <!-- フォーム本体（JavaScriptで動的生成） -->
+                <div id="form-content" class="hidden"></div>
+            </form>
+        </main>
+
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script>
+            // 商品編集モード
+            window.EDIT_MODE = true;
+            window.PRODUCT_ID = ${productId};
+        </script>
+        <script src="/static/listing.js"></script>
+    </body>
+    </html>
+  `)
+})
+
+// お問い合わせページ
+app.get('/contact', (c) => {
+  const type = c.req.query('type') || ''
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>お問い合わせ - PARTS HUB（パーツハブ）</title>
+        <meta name="theme-color" content="#ff4757">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    </head>
+    <body class="bg-gray-50 min-h-screen">
+        <!-- ヘッダー -->
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+            <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+                <button onclick="window.history.back()" class="text-gray-600 hover:text-gray-900 flex items-center">
+                    <i class="fas fa-arrow-left mr-2"></i>戻る
+                </button>
+                <h1 class="text-red-500 font-bold text-lg">お問い合わせ</h1>
+                <div class="w-16"></div>
+            </div>
+        </header>
+
+        <main class="max-w-4xl mx-auto px-4 py-6">
+            ${type === 'proxy_onsite' || type === 'proxy_shipping' ? `
+                <div class="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-6">
+                    <h2 class="text-lg font-bold text-blue-900 mb-2">
+                        <i class="fas fa-hands-helping mr-2"></i>代理出品サービスについて
+                    </h2>
+                    <p class="text-blue-800">
+                        ${type === 'proxy_onsite' ? '出張代理出品' : '郵送代理出品'}についてお問い合わせいただきありがとうございます。
+                    </p>
+                </div>
+            ` : ''}
+
+            <form id="contact-form" class="bg-white rounded-xl shadow-sm p-6 space-y-6">
+                <!-- お問い合わせ種別 -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">お問い合わせ種別<span class="text-red-500">*</span></label>
+                    <select id="inquiry-type" required class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none">
+                        <option value="">選択してください</option>
+                        <option value="proxy_onsite" ${type === 'proxy_onsite' ? 'selected' : ''}>代理出品（出張）</option>
+                        <option value="proxy_shipping" ${type === 'proxy_shipping' ? 'selected' : ''}>代理出品（郵送）</option>
+                        <option value="general">一般的なお問い合わせ</option>
+                        <option value="technical">技術的な問題</option>
+                        <option value="payment">決済について</option>
+                        <option value="other">その他</option>
+                    </select>
+                </div>
+
+                <!-- お名前 -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">お名前<span class="text-red-500">*</span></label>
+                    <input type="text" id="name" required class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none" placeholder="山田太郎">
+                </div>
+
+                <!-- メールアドレス -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">メールアドレス<span class="text-red-500">*</span></label>
+                    <input type="email" id="email" required class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none" placeholder="example@email.com">
+                </div>
+
+                <!-- 電話番号 -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">電話番号</label>
+                    <input type="tel" id="phone" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none" placeholder="090-1234-5678">
+                </div>
+
+                <!-- 件名 -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">件名<span class="text-red-500">*</span></label>
+                    <input type="text" id="subject" required class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none" placeholder="お問い合わせ内容を簡潔に">
+                </div>
+
+                <!-- お問い合わせ内容 -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">お問い合わせ内容<span class="text-red-500">*</span></label>
+                    <textarea id="message" required rows="8" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none resize-none" placeholder="詳しくお書きください"></textarea>
+                </div>
+
+                <!-- 送信ボタン -->
+                <button type="submit" id="submit-btn" class="w-full bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white py-4 px-6 rounded-lg font-bold text-lg shadow-lg transition-all">
+                    <i class="fas fa-paper-plane mr-2"></i>送信する
+                </button>
+            </form>
+
+            <!-- お問い合わせ先情報 -->
+            <div class="bg-white rounded-xl shadow-sm p-6 mt-6">
+                <h3 class="text-lg font-bold text-gray-900 mb-4">その他のお問い合わせ方法</h3>
+                <div class="space-y-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-phone text-blue-600"></i>
+                        </div>
+                        <div>
+                            <div class="text-sm text-gray-600">電話</div>
+                            <div class="font-semibold text-gray-900">03-1234-5678</div>
+                            <div class="text-xs text-gray-500">平日 9:00-18:00</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-envelope text-green-600"></i>
+                        </div>
+                        <div>
+                            <div class="text-sm text-gray-600">メール</div>
+                            <div class="font-semibold text-gray-900">support@partshub.jp</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script>
+            document.getElementById('contact-form').addEventListener('submit', async (e) => {
+                e.preventDefault()
+                
+                const submitBtn = document.getElementById('submit-btn')
+                const originalText = submitBtn.innerHTML
+                submitBtn.disabled = true
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>送信中...'
+                
+                try {
+                    const formData = {
+                        inquiry_type: document.getElementById('inquiry-type').value,
+                        name: document.getElementById('name').value,
+                        email: document.getElementById('email').value,
+                        phone: document.getElementById('phone').value,
+                        subject: document.getElementById('subject').value,
+                        message: document.getElementById('message').value
+                    }
+                    
+                    // TODO: お問い合わせAPI実装
+                    // const response = await axios.post('/api/contact', formData)
+                    
+                    // 仮の成功処理
+                    await new Promise(resolve => setTimeout(resolve, 1000))
+                    
+                    alert('お問い合わせを送信しました。\\n担当者より2営業日以内にご連絡いたします。')
+                    window.location.href = '/'
+                } catch (error) {
+                    console.error('Failed to send inquiry:', error)
+                    alert('送信に失敗しました。もう一度お試しください。')
+                    submitBtn.disabled = false
+                    submitBtn.innerHTML = originalText
+                }
+            })
+        </script>
+    </body>
+    </html>
+  `)
+})
+
+// お気に入り一覧ページ
+app.get('/favorites', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>お気に入り - PARTS HUB（パーツハブ）</title>
+        <meta name="theme-color" content="#ff4757">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    </head>
+    <body class="bg-gray-50 min-h-screen">
+        <!-- ヘッダー -->
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+            <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+                <button onclick="window.location.href='/'" class="text-gray-600 hover:text-gray-900 flex items-center">
+                    <i class="fas fa-arrow-left mr-2"></i>戻る
+                </button>
+                <h1 class="text-red-500 font-bold text-lg">お気に入り</h1>
+                <div class="w-16"></div>
+            </div>
+        </header>
+
+        <main class="max-w-6xl mx-auto px-4 py-6">
+            <!-- 商品グリッド -->
+            <div id="favorites-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <!-- JavaScriptで動的に生成 -->
+            </div>
+            
+            <!-- 空状態 -->
+            <div id="empty-state" class="hidden text-center py-12">
+                <div class="bg-white rounded-xl shadow-sm p-8">
+                    <i class="fas fa-heart text-gray-400 text-6xl mb-4"></i>
+                    <h2 class="text-xl font-bold text-gray-900 mb-2">お気に入りはまだありません</h2>
+                    <p class="text-gray-600 mb-6">気になる商品をお気に入りに追加しましょう</p>
+                    <a href="/" class="inline-block bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors">
+                        商品を探す
+                    </a>
+                </div>
+            </div>
+
+            <!-- ローディング -->
+            <div id="loading" class="text-center py-12">
+                <i class="fas fa-spinner fa-spin text-4xl text-gray-400 mb-4"></i>
+                <p class="text-gray-500">読み込み中...</p>
+            </div>
+        </main>
+
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script>
+            const currentUserId = 1; // TODO: 実際のログインユーザーID
+            
+            // お気に入り一覧を読み込み
+            async function loadFavorites() {
+                try {
+                    const response = await axios.get(\`/api/mypage/favorites/\${currentUserId}\`);
+                    
+                    document.getElementById('loading').classList.add('hidden');
+                    
+                    if (response.data.success && response.data.data.length > 0) {
+                        const grid = document.getElementById('favorites-grid');
+                        grid.innerHTML = response.data.data.map(item => \`
+                            <div class="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+                                <a href="/products/\${item.id}" class="block relative">
+                                    <img src="\${item.image_url}" alt="\${item.title}" class="w-full aspect-square object-cover">
+                                    \${item.status === 'sold' ? '<div class="absolute top-0 left-0 right-0 bottom-0 bg-black bg-opacity-50 flex items-center justify-center"><span class="bg-gray-800 text-white px-4 py-2 rounded-lg font-bold text-lg">SOLD</span></div>' : ''}
+                                </a>
+                                <div class="p-3">
+                                    <a href="/products/\${item.id}" class="block">
+                                        <h3 class="text-sm font-semibold text-gray-900 mb-2 line-clamp-2 hover:text-red-500">\${item.title}</h3>
+                                        <p class="text-lg font-bold text-red-500 mb-2">¥\${Number(item.price).toLocaleString()}</p>
+                                    </a>
+                                    <div class="flex items-center justify-between text-xs text-gray-500 mb-3">
+                                        <span><i class="fas fa-heart mr-1"></i>\${item.favorite_count}</span>
+                                        <span><i class="fas fa-comment mr-1"></i>\${item.comment_count}</span>
+                                    </div>
+                                    <button onclick="removeFavorite(\${item.id})" 
+                                            class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-3 rounded text-sm font-semibold transition-colors">
+                                        <i class="fas fa-heart-broken mr-1"></i>削除
+                                    </button>
+                                </div>
+                            </div>
+                        \`).join('');
+                    } else {
+                        document.getElementById('empty-state').classList.remove('hidden');
+                    }
+                } catch (error) {
+                    console.error('Failed to load favorites:', error);
+                    document.getElementById('loading').innerHTML = \`
+                        <div class="bg-white rounded-xl shadow-sm p-8">
+                            <i class="fas fa-exclamation-triangle text-red-500 text-4xl mb-4"></i>
+                            <p class="text-gray-900 font-semibold mb-2">読み込みに失敗しました</p>
+                            <button onclick="loadFavorites()" class="text-red-500 hover:text-red-600 font-semibold">
+                                <i class="fas fa-redo mr-1"></i>再試行
+                            </button>
+                        </div>
+                    \`;
+                }
+            }
+            
+            // お気に入りから削除
+            async function removeFavorite(productId) {
+                if (!confirm('このお気に入りを削除しますか？')) return;
+                
+                try {
+                    await axios.delete(\`/api/mypage/favorites/\${productId}\`, {
+                        data: { user_id: currentUserId }
+                    });
+                    
+                    // 再読み込み
+                    document.getElementById('favorites-grid').innerHTML = '';
+                    document.getElementById('loading').classList.remove('hidden');
+                    await loadFavorites();
+                } catch (error) {
+                    console.error('Failed to remove favorite:', error);
+                    alert('削除に失敗しました');
+                }
+            }
+            
+            // ページ読み込み時に実行
+            loadFavorites();
+        </script>
+    </body>
+    </html>
+  `)
+})
+
+// 検索ページ
+app.get('/search', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>商品検索 - PARTS HUB（パーツハブ）</title>
+        <meta name="theme-color" content="#ff4757">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    </head>
+    <body class="bg-gray-50 min-h-screen">
+        <!-- ヘッダー -->
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+            <div class="max-w-6xl mx-auto px-4 py-4">
+                <div class="flex items-center gap-3">
+                    <button onclick="window.location.href='/'" class="text-gray-600 hover:text-gray-900">
+                        <i class="fas fa-arrow-left text-xl"></i>
+                    </button>
+                    <div class="flex-1 relative">
+                        <input type="text" id="search-input" placeholder="商品名、メーカー、型番で検索" 
+                               class="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-500">
+                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                    </div>
+                </div>
+                
+                <!-- フィルター -->
+                <div class="mt-4 flex gap-2 overflow-x-auto pb-2">
+                    <button onclick="toggleFilter()" class="px-4 py-2 bg-white border-2 border-gray-300 rounded-lg text-sm font-semibold hover:border-red-500 whitespace-nowrap">
+                        <i class="fas fa-filter mr-1"></i>詳細フィルター
+                    </button>
+                    <select id="sort-select" class="px-4 py-2 bg-white border-2 border-gray-300 rounded-lg text-sm font-semibold">
+                        <option value="newest">新着順</option>
+                        <option value="price_asc">価格が安い順</option>
+                        <option value="price_desc">価格が高い順</option>
+                        <option value="popular">人気順</option>
+                    </select>
+                </div>
+            </div>
+        </header>
+
+        <!-- 詳細フィルターパネル -->
+        <div id="filter-panel" class="hidden bg-white border-b border-gray-200">
+            <div class="max-w-6xl mx-auto px-4 py-4 space-y-4">
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">価格帯</label>
+                        <div class="flex gap-2 items-center">
+                            <input type="number" id="price-min" placeholder="最小" class="flex-1 px-3 py-2 border rounded-lg">
+                            <span>〜</span>
+                            <input type="number" id="price-max" placeholder="最大" class="flex-1 px-3 py-2 border rounded-lg">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">商品状態</label>
+                        <select id="condition-select" class="w-full px-3 py-2 border rounded-lg">
+                            <option value="">すべて</option>
+                            <option value="new">新品</option>
+                            <option value="like_new">未使用に近い</option>
+                            <option value="good">良好</option>
+                            <option value="acceptable">可</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="applyFilters()" class="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg font-semibold">
+                        検索
+                    </button>
+                    <button onclick="clearFilters()" class="px-6 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 rounded-lg font-semibold">
+                        クリア
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <main class="max-w-6xl mx-auto px-4 py-6">
+            <!-- 検索結果ヘッダー -->
+            <div id="result-header" class="hidden mb-4">
+                <p class="text-gray-600"><span id="result-count" class="font-bold text-red-500">0</span> 件の商品が見つかりました</p>
+            </div>
+
+            <!-- 商品グリッド -->
+            <div id="products-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <!-- JavaScriptで動的に生成 -->
+            </div>
+            
+            <!-- 初期状態 -->
+            <div id="initial-state" class="text-center py-12">
+                <div class="bg-white rounded-xl shadow-sm p-8">
+                    <i class="fas fa-search text-gray-400 text-6xl mb-4"></i>
+                    <h2 class="text-xl font-bold text-gray-900 mb-2">商品を検索</h2>
+                    <p class="text-gray-600">キーワードを入力して商品を検索してください</p>
+                </div>
+            </div>
+            
+            <!-- ローディング -->
+            <div id="loading" class="hidden text-center py-12">
+                <i class="fas fa-spinner fa-spin text-4xl text-gray-400 mb-4"></i>
+                <p class="text-gray-500">検索中...</p>
+            </div>
+            
+            <!-- 空状態 -->
+            <div id="empty-state" class="hidden text-center py-12">
+                <div class="bg-white rounded-xl shadow-sm p-8">
+                    <i class="fas fa-inbox text-gray-400 text-6xl mb-4"></i>
+                    <h2 class="text-xl font-bold text-gray-900 mb-2">商品が見つかりませんでした</h2>
+                    <p class="text-gray-600">別のキーワードで検索してみてください</p>
+                </div>
+            </div>
+        </main>
+
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script>
+            let searchTimeout;
+            
+            // フィルターパネル切り替え
+            function toggleFilter() {
+                document.getElementById('filter-panel').classList.toggle('hidden');
+            }
+            
+            // 検索実行
+            async function performSearch() {
+                const keyword = document.getElementById('search-input').value.trim();
+                const sort = document.getElementById('sort-select').value;
+                const priceMin = document.getElementById('price-min').value;
+                const priceMax = document.getElementById('price-max').value;
+                const condition = document.getElementById('condition-select').value;
+                
+                if (!keyword && !priceMin && !priceMax && !condition) {
+                    document.getElementById('initial-state').classList.remove('hidden');
+                    document.getElementById('result-header').classList.add('hidden');
+                    document.getElementById('products-grid').innerHTML = '';
+                    return;
+                }
+                
+                // ローディング表示
+                document.getElementById('initial-state').classList.add('hidden');
+                document.getElementById('empty-state').classList.add('hidden');
+                document.getElementById('loading').classList.remove('hidden');
+                document.getElementById('result-header').classList.add('hidden');
+                
+                try {
+                    const params = new URLSearchParams();
+                    if (keyword) params.append('keyword', keyword);
+                    if (sort) params.append('sort', sort);
+                    if (priceMin) params.append('price_min', priceMin);
+                    if (priceMax) params.append('price_max', priceMax);
+                    if (condition) params.append('condition', condition);
+                    
+                    const response = await axios.get(\`/api/products/search?\${params.toString()}\`);
+                    
+                    document.getElementById('loading').classList.add('hidden');
+                    
+                    if (response.data.success && response.data.products.length > 0) {
+                        document.getElementById('result-count').textContent = response.data.products.length;
+                        document.getElementById('result-header').classList.remove('hidden');
+                        
+                        const grid = document.getElementById('products-grid');
+                        grid.innerHTML = response.data.products.map(product => \`
+                            <a href="/products/\${product.id}" class="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow block">
+                                <div class="relative">
+                                    <img src="\${product.image_url}" alt="\${product.title}" class="w-full aspect-square object-cover">
+                                    \${product.status === 'sold' ? '<div class="absolute top-0 left-0 right-0 bottom-0 bg-black bg-opacity-50 flex items-center justify-center"><span class="bg-gray-800 text-white px-4 py-2 rounded-lg font-bold text-lg">SOLD</span></div>' : ''}
+                                </div>
+                                <div class="p-3">
+                                    <h3 class="text-sm font-semibold text-gray-900 mb-2 line-clamp-2">\${product.title}</h3>
+                                    <p class="text-lg font-bold text-red-500 mb-2">¥\${Number(product.price).toLocaleString()}</p>
+                                    <div class="flex items-center justify-between text-xs text-gray-500">
+                                        <span><i class="fas fa-heart mr-1"></i>\${product.favorite_count || 0}</span>
+                                        <span><i class="fas fa-comment mr-1"></i>\${product.comment_count || 0}</span>
+                                    </div>
+                                </div>
+                            </a>
+                        \`).join('');
+                    } else {
+                        document.getElementById('empty-state').classList.remove('hidden');
+                    }
+                } catch (error) {
+                    console.error('Search failed:', error);
+                    document.getElementById('loading').classList.add('hidden');
+                    document.getElementById('empty-state').classList.remove('hidden');
+                }
+            }
+            
+            // フィルター適用
+            function applyFilters() {
+                performSearch();
+            }
+            
+            // フィルタークリア
+            function clearFilters() {
+                document.getElementById('price-min').value = '';
+                document.getElementById('price-max').value = '';
+                document.getElementById('condition-select').value = '';
+                performSearch();
+            }
+            
+            // 検索入力の監視（デバウンス）
+            document.getElementById('search-input').addEventListener('input', () => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(performSearch, 500);
+            });
+            
+            // ソート変更時
+            document.getElementById('sort-select').addEventListener('change', performSearch);
+            
+            // URLパラメータから検索キーワードを取得
+            const urlParams = new URLSearchParams(window.location.search);
+            const initialKeyword = urlParams.get('q');
+            if (initialKeyword) {
+                document.getElementById('search-input').value = initialKeyword;
+                performSearch();
+            }
+        </script>
+    </body>
+    </html>
+  `)
+})
+
+// プライバシーポリシー
+app.get('/privacy', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>プライバシーポリシー - PARTS HUB（パーツハブ）</title>
+        <meta name="theme-color" content="#ff4757">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    </head>
+    <body class="bg-gray-50 min-h-screen">
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+            <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+                <button onclick="window.history.back()" class="text-gray-600 hover:text-gray-900 flex items-center">
+                    <i class="fas fa-arrow-left mr-2"></i>戻る
+                </button>
+                <h1 class="text-red-500 font-bold text-lg">プライバシーポリシー</h1>
+                <div class="w-16"></div>
+            </div>
+        </header>
+
+        <main class="max-w-4xl mx-auto px-4 py-8">
+            <div class="bg-white rounded-xl shadow-sm p-8 space-y-6">
+                <div>
+                    <p class="text-sm text-gray-600 mb-4">最終更新日：2026年3月21日</p>
+                    <p class="text-gray-700 leading-relaxed">
+                        PARTS HUB（以下「当社」）は、ユーザーの皆様の個人情報保護の重要性を認識し、個人情報の保護に関する法律（以下「個人情報保護法」）を遵守し、適切に取り扱います。
+                    </p>
+                </div>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">1. 収集する情報</h2>
+                    <p class="text-gray-700 leading-relaxed mb-3">当社は、以下の情報を収集します：</p>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
+                        <li>氏名、メールアドレス、電話番号、住所などの登録情報</li>
+                        <li>取引履歴、出品・購入情報</li>
+                        <li>お問い合わせ内容</li>
+                        <li>アクセスログ、IPアドレス、Cookie情報</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">2. 情報の利用目的</h2>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
+                        <li>サービスの提供・運営</li>
+                        <li>ユーザーサポート対応</li>
+                        <li>取引の円滑化</li>
+                        <li>サービス改善のための分析</li>
+                        <li>重要なお知らせの通知</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">3. 第三者への提供</h2>
+                    <p class="text-gray-700 leading-relaxed">
+                        当社は、以下の場合を除き、ユーザーの個人情報を第三者に提供しません：
+                    </p>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4 mt-3">
+                        <li>ユーザーの同意がある場合</li>
+                        <li>法令に基づく場合</li>
+                        <li>人の生命、身体または財産の保護のために必要がある場合</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">4. セキュリティ</h2>
+                    <p class="text-gray-700 leading-relaxed">
+                        当社は、個人情報への不正アクセス、紛失、破壊、改ざん、漏洩などを防止するため、適切なセキュリティ対策を講じています。
+                    </p>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">5. お問い合わせ</h2>
+                    <p class="text-gray-700 leading-relaxed">
+                        個人情報の取り扱いに関するお問い合わせは、<a href="/contact" class="text-red-500 hover:underline">お問い合わせフォーム</a>よりご連絡ください。
+                    </p>
+                </section>
+            </div>
+        </main>
+    </body>
+    </html>
+  `)
+})
+
+// 利用規約
+app.get('/terms', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>利用規約 - PARTS HUB（パーツハブ）</title>
+        <meta name="theme-color" content="#ff4757">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    </head>
+    <body class="bg-gray-50 min-h-screen">
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+            <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+                <button onclick="window.history.back()" class="text-gray-600 hover:text-gray-900 flex items-center">
+                    <i class="fas fa-arrow-left mr-2"></i>戻る
+                </button>
+                <h1 class="text-red-500 font-bold text-lg">利用規約</h1>
+                <div class="w-16"></div>
+            </div>
+        </header>
+
+        <main class="max-w-4xl mx-auto px-4 py-8">
+            <div class="bg-white rounded-xl shadow-sm p-8 space-y-6">
+                <div>
+                    <p class="text-sm text-gray-600 mb-4">最終更新日：2026年3月21日</p>
+                    <p class="text-gray-700 leading-relaxed">
+                        この利用規約（以下「本規約」）は、PARTS HUB（以下「当社」）が提供するサービス（以下「本サービス」）の利用条件を定めるものです。
+                    </p>
+                </div>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">第1条（適用）</h2>
+                    <p class="text-gray-700 leading-relaxed">
+                        本規約は、ユーザーと当社との間の本サービスの利用に関わる一切の関係に適用されるものとします。
+                    </p>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">第2条（利用登録）</h2>
+                    <p class="text-gray-700 leading-relaxed mb-3">
+                        本サービスの利用を希望する者は、本規約に同意の上、当社の定める方法によって利用登録を申請し、当社がこれを承認することによって、利用登録が完了するものとします。
+                    </p>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">第3条（禁止事項）</h2>
+                    <p class="text-gray-700 leading-relaxed mb-3">ユーザーは、本サービスの利用にあたり、以下の行為をしてはなりません：</p>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
+                        <li>法令または公序良俗に違反する行為</li>
+                        <li>犯罪行為に関連する行為</li>
+                        <li>虚偽の情報を登録する行為</li>
+                        <li>他のユーザーまたは第三者の権利を侵害する行為</li>
+                        <li>当社のサーバーまたはネットワークの機能を破壊したり、妨害したりする行為</li>
+                        <li>不正アクセスをし、またはこれを試みる行為</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">第4条（本サービスの提供の停止等）</h2>
+                    <p class="text-gray-700 leading-relaxed">
+                        当社は、以下のいずれかの事由があると判断した場合、ユーザーに事前に通知することなく本サービスの全部または一部の提供を停止または中断することができるものとします。
+                    </p>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">第5条（免責事項）</h2>
+                    <p class="text-gray-700 leading-relaxed">
+                        当社は、本サービスに関して、ユーザーと他のユーザーまたは第三者との間において生じた取引、連絡または紛争等について一切責任を負いません。
+                    </p>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">第6条（サービス内容の変更等）</h2>
+                    <p class="text-gray-700 leading-relaxed">
+                        当社は、ユーザーに通知することなく、本サービスの内容を変更しまたは本サービスの提供を中止することができるものとし、これによってユーザーに生じた損害について一切の責任を負いません。
+                    </p>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">第7条（準拠法・管轄裁判所）</h2>
+                    <p class="text-gray-700 leading-relaxed">
+                        本規約の解釈にあたっては、日本法を準拠法とします。本サービスに関して紛争が生じた場合には、当社の本店所在地を管轄する裁判所を専属的合意管轄とします。
+                    </p>
+                </section>
+            </div>
+        </main>
+    </body>
+    </html>
+  `)
+})
+
+// パスワードリセット
+app.get('/password-reset', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>パスワード再設定 - PARTS HUB（パーツハブ）</title>
+        <meta name="theme-color" content="#ff4757">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    </head>
+    <body class="bg-gradient-to-br from-red-50 to-pink-50 min-h-screen flex items-center justify-center px-4">
+        <div class="max-w-md w-full">
+            <!-- ロゴ -->
+            <div class="text-center mb-8">
+                <h1 class="text-4xl font-bold text-red-500 mb-2">PARTS HUB</h1>
+                <p class="text-gray-600">パスワード再設定</p>
+            </div>
+
+            <!-- フォーム -->
+            <div class="bg-white rounded-2xl shadow-xl p-8">
+                <div id="step1">
+                    <div class="text-center mb-6">
+                        <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-key text-red-500 text-2xl"></i>
+                        </div>
+                        <h2 class="text-xl font-bold text-gray-900 mb-2">パスワードをお忘れですか？</h2>
+                        <p class="text-sm text-gray-600">登録済みのメールアドレスを入力してください。<br>パスワード再設定用のリンクをお送りします。</p>
+                    </div>
+
+                    <form id="reset-form" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">メールアドレス</label>
+                            <div class="relative">
+                                <input type="email" id="email" required
+                                       class="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-500"
+                                       placeholder="example@email.com">
+                                <i class="fas fa-envelope absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                            </div>
+                        </div>
+
+                        <button type="submit" id="submit-btn"
+                                class="w-full bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white py-3 px-6 rounded-lg font-bold transition-all shadow-lg">
+                            再設定リンクを送信
+                        </button>
+                    </form>
+
+                    <div class="mt-6 text-center">
+                        <a href="/login" class="text-red-500 hover:text-red-600 font-semibold text-sm">
+                            <i class="fas fa-arrow-left mr-1"></i>ログインに戻る
+                        </a>
+                    </div>
+                </div>
+
+                <div id="step2" class="hidden text-center">
+                    <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-check text-green-500 text-2xl"></i>
+                    </div>
+                    <h2 class="text-xl font-bold text-gray-900 mb-2">送信完了</h2>
+                    <p class="text-sm text-gray-600 mb-6">
+                        入力されたメールアドレス宛に、パスワード再設定用のリンクを送信しました。<br>
+                        メールをご確認ください。
+                    </p>
+                    <p class="text-xs text-gray-500 mb-6">
+                        ※メールが届かない場合は、迷惑メールフォルダをご確認ください。
+                    </p>
+                    <a href="/login" class="inline-block bg-red-500 hover:bg-red-600 text-white py-3 px-6 rounded-lg font-bold transition-colors">
+                        ログインページへ
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script>
+            document.getElementById('reset-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const submitBtn = document.getElementById('submit-btn');
+                const email = document.getElementById('email').value;
+                
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>送信中...';
+                
+                try {
+                    // TODO: 実際のAPI呼び出し
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                    
+                    // ステップ2を表示
+                    document.getElementById('step1').classList.add('hidden');
+                    document.getElementById('step2').classList.remove('hidden');
+                } catch (error) {
+                    alert('送信に失敗しました。もう一度お試しください。');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '再設定リンクを送信';
+                }
+            });
+        </script>
+    </body>
+    </html>
+  `)
+})
+
 export default app

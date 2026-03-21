@@ -351,4 +351,92 @@ document.addEventListener('DOMContentLoaded', async () => {
       productForm.loadModels(e.target.value)
     })
   }
+
+  // 編集モードの場合、商品データを読み込み
+  if (window.EDIT_MODE && window.PRODUCT_ID) {
+    loadProductForEdit(window.PRODUCT_ID)
+  }
 })
+
+// 編集モード：商品データを読み込んで表示
+async function loadProductForEdit(productId) {
+  try {
+    const response = await axios.get(`/api/products/${productId}`)
+    
+    if (response.data.success) {
+      const product = response.data.data
+      
+      // フォームに値を設定
+      document.getElementById('product-title').value = product.title || ''
+      document.getElementById('product-description').value = product.description || ''
+      document.getElementById('product-price').value = product.price || ''
+      document.getElementById('stock-quantity').value = product.stock_quantity || 1
+      document.getElementById('part-number').value = product.part_number || ''
+      
+      // カテゴリ
+      if (product.category_id) {
+        document.getElementById('category-select').value = product.category_id
+        if (product.subcategory_id) {
+          await productForm.loadSubcategories(product.category_id)
+          document.getElementById('subcategory-select').value = product.subcategory_id
+        }
+      }
+      
+      // 状態
+      if (product.condition) {
+        document.getElementById('condition-select').value = product.condition
+      }
+      
+      // メーカー・車種
+      if (product.maker_id) {
+        document.getElementById('maker-select').value = product.maker_id
+        if (product.model_id) {
+          await productForm.loadModels(product.maker_id)
+          document.getElementById('model-select').value = product.model_id
+        }
+      }
+      
+      // 適合情報
+      const compatibility = product.compatibility || {}
+      document.getElementById('year-from').value = compatibility.year_from || ''
+      document.getElementById('year-to').value = compatibility.year_to || ''
+      document.getElementById('model-code').value = compatibility.model_code || ''
+      document.getElementById('grade').value = compatibility.grade || ''
+      document.getElementById('engine-type').value = compatibility.engine_type || ''
+      document.getElementById('drive-type').value = compatibility.drive_type || ''
+      
+      // 画像を読み込み
+      if (product.images && product.images.length > 0) {
+        productForm.uploadedImages = product.images.map(img => ({
+          url: img.image_url,
+          display_order: img.display_order
+        }))
+        productForm.renderImagePreviews()
+      }
+      
+      // ローディング非表示、フォーム表示
+      document.getElementById('loading').style.display = 'none'
+      document.getElementById('form-content').classList.remove('hidden')
+      
+      // 送信ボタンのテキストを変更
+      const submitBtn = document.getElementById('submit-btn')
+      if (submitBtn) {
+        submitBtn.innerHTML = '<i class="fas fa-save mr-2"></i>変更を保存'
+      }
+      
+    } else {
+      throw new Error(response.data.error || '商品情報の取得に失敗しました')
+    }
+  } catch (error) {
+    console.error('Failed to load product:', error)
+    document.getElementById('loading').innerHTML = `
+      <div class="text-center py-12 text-red-500">
+        <i class="fas fa-exclamation-circle text-4xl mb-4"></i>
+        <p>${error.message || '商品情報の読み込みに失敗しました'}</p>
+        <button onclick="window.history.back()" class="mt-4 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-semibold">
+          戻る
+        </button>
+      </div>
+    `
+  }
+}
