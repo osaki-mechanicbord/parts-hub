@@ -1624,9 +1624,29 @@ app.get('/listing', (c) => {
                                       placeholder="適合に関する注意事項があれば記載してください"></textarea>
                         </div>
 
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox" id="is-proxy" class="w-4 h-4 text-red-500 rounded border-gray-300 focus:ring-red-500">
-                            <label for="is-proxy" class="text-sm text-gray-700">代理出品（整備工場が一般ユーザーの代わりに出品）</label>
+                    </div>
+                </div>
+
+                <!-- 代理出品案内セクション -->
+                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl shadow-sm p-6 border border-blue-200">
+                    <div class="flex items-start gap-4">
+                        <div class="flex-shrink-0">
+                            <div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+                                <i class="fas fa-hands-helping text-white text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="flex-1">
+                            <h2 class="text-lg font-bold text-gray-900 mb-2">
+                                出品が難しい場合は、代理出品サービスをご利用ください
+                            </h2>
+                            <p class="text-sm text-gray-600 mb-4">
+                                パーツハブの担当者が出品作業を代行いたします。<br>
+                                2つの方法からお選びいただけます。
+                            </p>
+                            <button type="button" onclick="showProxyListingModal()" 
+                                    class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors shadow-md">
+                                <i class="fas fa-info-circle mr-2"></i>代理出品の詳細を見る
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1641,8 +1661,185 @@ app.get('/listing', (c) => {
             </form>
         </main>
 
+        <!-- 代理出品モーダル -->
+        <div id="proxy-listing-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+                    <h3 class="text-xl font-bold text-gray-900">代理出品サービスのご案内</h3>
+                    <button onclick="closeProxyListingModal()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
+                </div>
+
+                <div class="p-6 space-y-6">
+                    <!-- パターン1: 出張 -->
+                    <div class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-200">
+                        <div class="flex items-start gap-4 mb-4">
+                            <div class="flex-shrink-0">
+                                <div class="w-16 h-16 bg-purple-500 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-truck text-white text-2xl"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="text-xl font-bold text-gray-900 mb-2">パターン1: 出張代理出品</h4>
+                                <p class="text-gray-600">パーツハブ担当者がお客様の整備工場に出向いて、その場で出品作業を行います。</p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3">
+                            <div class="bg-white rounded-lg p-4">
+                                <h5 class="font-semibold text-gray-900 mb-2"><i class="fas fa-yen-sign text-purple-500 mr-2"></i>料金体系</h5>
+                                <ul class="space-y-2 text-sm text-gray-700">
+                                    <li class="flex items-start gap-2">
+                                        <i class="fas fa-check text-green-500 mt-1"></i>
+                                        <span><strong>出張費用:</strong> 距離により発生（お見積りいたします）</span>
+                                    </li>
+                                    <li class="flex items-start gap-2">
+                                        <i class="fas fa-check text-green-500 mt-1"></i>
+                                        <span><strong>出品点数:</strong> 20点まで無料</span>
+                                    </li>
+                                    <li class="flex items-start gap-2">
+                                        <i class="fas fa-check text-green-500 mt-1"></i>
+                                        <span><strong>21点以上:</strong> 1点につき330円（税込）</span>
+                                    </li>
+                                    <li class="flex items-start gap-2">
+                                        <i class="fas fa-exclamation-triangle text-orange-500 mt-1"></i>
+                                        <span><strong>売買手数料:</strong> 30%（通常7%より高くなります）</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- パターン2: 郵送 -->
+                    <div class="bg-gradient-to-r from-green-50 to-teal-50 rounded-xl p-6 border border-green-200">
+                        <div class="flex items-start gap-4 mb-4">
+                            <div class="flex-shrink-0">
+                                <div class="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-box text-white text-2xl"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="text-xl font-bold text-gray-900 mb-2">パターン2: 郵送代理出品（おすすめ）</h4>
+                                <p class="text-gray-600">商品をパーツハブに郵送いただき、当社で出品作業を代行します。</p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3">
+                            <div class="bg-white rounded-lg p-4">
+                                <h5 class="font-semibold text-gray-900 mb-2"><i class="fas fa-yen-sign text-green-500 mr-2"></i>料金体系</h5>
+                                <ul class="space-y-2 text-sm text-gray-700">
+                                    <li class="flex items-start gap-2">
+                                        <i class="fas fa-check text-green-500 mt-1"></i>
+                                        <span><strong>出張費用:</strong> 無料</span>
+                                    </li>
+                                    <li class="flex items-start gap-2">
+                                        <i class="fas fa-check text-green-500 mt-1"></i>
+                                        <span><strong>出品作業費:</strong> すべて無料（点数制限なし）</span>
+                                    </li>
+                                    <li class="flex items-start gap-2">
+                                        <i class="fas fa-exclamation-triangle text-orange-500 mt-1"></i>
+                                        <span><strong>売買手数料:</strong> 30%（通常7%より高くなります）</span>
+                                    </li>
+                                    <li class="flex items-start gap-2">
+                                        <i class="fas fa-info-circle text-blue-500 mt-1"></i>
+                                        <span><strong>送料:</strong> お客様負担</span>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div class="bg-green-100 border border-green-300 rounded-lg p-4">
+                                <p class="text-sm text-green-800 font-semibold">
+                                    <i class="fas fa-star text-yellow-500 mr-2"></i>
+                                    郵送代理出品なら、出張費用と1点あたりの出品作業費（330円）が無料です！
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 比較表 -->
+                    <div class="bg-gray-50 rounded-xl p-6">
+                        <h4 class="text-lg font-bold text-gray-900 mb-4">料金比較表</h4>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="border-b border-gray-300">
+                                        <th class="text-left py-3 px-2 font-semibold text-gray-700">項目</th>
+                                        <th class="text-center py-3 px-2 font-semibold text-purple-700">出張代理出品</th>
+                                        <th class="text-center py-3 px-2 font-semibold text-green-700">郵送代理出品</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200">
+                                    <tr>
+                                        <td class="py-3 px-2 text-gray-700">出張費用</td>
+                                        <td class="py-3 px-2 text-center text-orange-600">距離により発生</td>
+                                        <td class="py-3 px-2 text-center text-green-600 font-semibold">無料</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-3 px-2 text-gray-700">出品作業費（20点まで）</td>
+                                        <td class="py-3 px-2 text-center text-green-600">無料</td>
+                                        <td class="py-3 px-2 text-center text-green-600 font-semibold">無料</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-3 px-2 text-gray-700">出品作業費（21点以上）</td>
+                                        <td class="py-3 px-2 text-center text-orange-600">1点につき330円</td>
+                                        <td class="py-3 px-2 text-center text-green-600 font-semibold">無料</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-3 px-2 text-gray-700">売買手数料</td>
+                                        <td class="py-3 px-2 text-center text-gray-700">30%</td>
+                                        <td class="py-3 px-2 text-center text-gray-700">30%</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-3 px-2 text-gray-700">送料</td>
+                                        <td class="py-3 px-2 text-center text-gray-400">-</td>
+                                        <td class="py-3 px-2 text-center text-gray-700">お客様負担</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- お問い合わせボタン -->
+                    <div class="flex gap-3">
+                        <a href="/contact?type=proxy_onsite" 
+                           class="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-4 rounded-lg font-bold text-center transition-colors">
+                            <i class="fas fa-truck mr-2"></i>出張代理出品を依頼
+                        </a>
+                        <a href="/contact?type=proxy_shipping" 
+                           class="flex-1 bg-green-500 hover:bg-green-600 text-white py-4 rounded-lg font-bold text-center transition-colors">
+                            <i class="fas fa-box mr-2"></i>郵送代理出品を依頼
+                        </a>
+                    </div>
+
+                    <p class="text-xs text-gray-500 text-center">
+                        ※料金は税込表示です。詳細はお問い合わせください。
+                    </p>
+                </div>
+            </div>
+        </div>
+
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="/static/listing.js"></script>
+        <script>
+            // 代理出品モーダル制御
+            function showProxyListingModal() {
+                document.getElementById('proxy-listing-modal').classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeProxyListingModal() {
+                document.getElementById('proxy-listing-modal').classList.add('hidden');
+                document.body.style.overflow = 'auto';
+            }
+
+            // モーダル外クリックで閉じる
+            document.getElementById('proxy-listing-modal')?.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeProxyListingModal();
+                }
+            });
+        </script>
     </body>
     </html>
   `)

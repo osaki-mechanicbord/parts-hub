@@ -183,7 +183,6 @@ class ProductListingForm {
         condition: document.getElementById('condition-select').value,
         stock_quantity: parseInt(document.getElementById('stock-quantity').value),
         status: 'active',
-        is_proxy: document.getElementById('is-proxy').checked,
         compatibility: {
           year_from: parseInt(document.getElementById('year-from').value) || null,
           year_to: parseInt(document.getElementById('year-to').value) || null,
