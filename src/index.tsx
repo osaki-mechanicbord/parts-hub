@@ -1361,4 +1361,291 @@ app.get('/products/:id', (c) => {
   `)
 })
 
+// 出品ページ
+app.get('/listing', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>商品を出品 - PARTS HUB（パーツハブ）</title>
+        <meta name="theme-color" content="#ff4757">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>
+            .form-input {
+                @apply w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors;
+            }
+            .form-input:focus {
+                border-color: #ef4444;
+            }
+            .image-upload-area {
+                border: 2px dashed #d1d5db;
+                transition: all 0.3s;
+            }
+            .image-upload-area:hover {
+                border-color: #ef4444;
+                background-color: #fef2f2;
+            }
+            .image-upload-area.dragover {
+                border-color: #ef4444;
+                background-color: #fee2e2;
+            }
+        </style>
+    </head>
+    <body class="bg-gray-50 min-h-screen">
+        <!-- シンプルヘッダー -->
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+            <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+                <button onclick="window.history.back()" class="text-gray-600 hover:text-gray-900 flex items-center">
+                    <i class="fas fa-arrow-left mr-2"></i>戻る
+                </button>
+                <div class="text-red-500 font-bold text-lg">商品を出品</div>
+                <div class="w-16"></div>
+            </div>
+        </header>
+
+        <main class="max-w-4xl mx-auto px-4 py-6">
+            <form id="listing-form" class="space-y-6">
+                <!-- 画像アップロードセクション -->
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h2 class="text-lg font-bold text-gray-900 mb-4">
+                        <i class="fas fa-camera text-red-500 mr-2"></i>商品画像（最大10枚）
+                    </h2>
+                    
+                    <div id="drop-zone" class="image-upload-area rounded-lg p-8 text-center cursor-pointer">
+                        <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-3"></i>
+                        <p class="text-gray-600 mb-2">クリックまたはドラッグ＆ドロップで画像を追加</p>
+                        <p class="text-sm text-gray-500">JPG, PNG, WEBP（最大10MB）</p>
+                        <input type="file" id="image-input" accept="image/*" multiple class="hidden">
+                    </div>
+                    
+                    <!-- カメラとギャラリーボタン -->
+                    <div class="grid grid-cols-2 gap-3 mt-3">
+                        <button type="button" onclick="productForm.openCamera()" 
+                                class="flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                            <i class="fas fa-camera"></i>
+                            <span class="text-sm">カメラで撮影</span>
+                        </button>
+                        <button type="button" onclick="productForm.openGallery()" 
+                                class="flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                            <i class="fas fa-image"></i>
+                            <span class="text-sm">ギャラリーから選択</span>
+                        </button>
+                    </div>
+                    
+                    <div id="image-previews" class="grid grid-cols-3 md:grid-cols-5 gap-3 mt-4">
+                        <!-- プレビュー画像 -->
+                    </div>
+                </div>
+
+                <!-- 基本情報セクション -->
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h2 class="text-lg font-bold text-gray-900 mb-4">
+                        <i class="fas fa-info-circle text-red-500 mr-2"></i>基本情報
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">商品名 <span class="text-red-500">*</span></label>
+                            <input type="text" id="product-title" required
+                                   class="form-input"
+                                   placeholder="例: トヨタ プリウス 30系 フロントドア 左側">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">商品説明 <span class="text-red-500">*</span></label>
+                            <textarea id="product-description" required rows="5"
+                                      class="form-input resize-none"
+                                      placeholder="商品の状態、特徴、付属品などを詳しく記載してください"></textarea>
+                            <p class="mt-1 text-xs text-gray-500">購入者が安心できるよう、詳しく記載しましょう</p>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">カテゴリ <span class="text-red-500">*</span></label>
+                                <select id="category-select" required class="form-input">
+                                    <option value="">選択してください</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">サブカテゴリ</label>
+                                <select id="subcategory-select" class="form-input">
+                                    <option value="">カテゴリを選択してください</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">商品の状態 <span class="text-red-500">*</span></label>
+                            <select id="condition-select" required class="form-input">
+                                <option value="">選択してください</option>
+                                <option value="new">新品、未使用</option>
+                                <option value="like_new">未使用に近い</option>
+                                <option value="excellent">目立った傷や汚れなし</option>
+                                <option value="good">やや傷や汚れあり</option>
+                                <option value="acceptable">傷や汚れあり</option>
+                                <option value="junk">全体的に状態が悪い（ジャンク品）</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 価格設定セクション -->
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h2 class="text-lg font-bold text-gray-900 mb-4">
+                        <i class="fas fa-yen-sign text-red-500 mr-2"></i>価格設定
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">販売価格 <span class="text-red-500">*</span></label>
+                            <div class="relative">
+                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">¥</span>
+                                <input type="number" id="product-price" required min="0"
+                                       class="form-input pl-8"
+                                       placeholder="0">
+                            </div>
+                            <p class="mt-1 text-xs text-gray-500">税込価格を入力してください</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">在庫数 <span class="text-red-500">*</span></label>
+                            <input type="number" id="stock-quantity" required min="1" value="1"
+                                   class="form-input"
+                                   placeholder="1">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">部品番号（任意）</label>
+                            <input type="text" id="part-number"
+                                   class="form-input"
+                                   placeholder="例: 04465-12345">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 適合車両情報セクション -->
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h2 class="text-lg font-bold text-gray-900 mb-4">
+                        <i class="fas fa-car text-red-500 mr-2"></i>適合車両情報（任意）
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">メーカー</label>
+                                <select id="maker-select" class="form-input">
+                                    <option value="">選択してください</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">車種</label>
+                                <select id="model-select" class="form-input">
+                                    <option value="">メーカーを選択してください</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">年式（始）</label>
+                                <input type="number" id="year-from" class="form-input" placeholder="例: 2010" min="1900" max="2099">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">年式（終）</label>
+                                <input type="number" id="year-to" class="form-input" placeholder="例: 2015" min="1900" max="2099">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">型式</label>
+                                <input type="text" id="model-code" class="form-input" placeholder="例: DAA-ZVW30">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">グレード</label>
+                                <input type="text" id="grade" class="form-input" placeholder="例: S, G, Gツーリングセレクション">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">エンジン型式</label>
+                                <input type="text" id="engine-type" class="form-input" placeholder="例: 2ZR-FXE">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">駆動方式</label>
+                                <select id="drive-type" class="form-input">
+                                    <option value="">選択してください</option>
+                                    <option value="2WD">2WD（FF）</option>
+                                    <option value="4WD">4WD</option>
+                                    <option value="FR">FR</option>
+                                    <option value="MR">MR</option>
+                                    <option value="RR">RR</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">トランスミッション</label>
+                                <select id="transmission-type" class="form-input">
+                                    <option value="">選択してください</option>
+                                    <option value="AT">オートマ（AT）</option>
+                                    <option value="MT">マニュアル（MT）</option>
+                                    <option value="CVT">CVT</option>
+                                    <option value="DCT">DCT</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">純正部品番号</label>
+                                <input type="text" id="oem-part-number" class="form-input" placeholder="例: 04465-XXXXX">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">確認方法</label>
+                            <select id="verification-method" class="form-input">
+                                <option value="">選択してください</option>
+                                <option value="catalog">カタログで確認</option>
+                                <option value="parts_list">部品リストで確認</option>
+                                <option value="actual_vehicle">実車で確認</option>
+                                <option value="dealer">ディーラーに確認</option>
+                                <option value="manufacturer">メーカーに確認</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">適合に関する備考</label>
+                            <textarea id="fitment-notes" rows="3"
+                                      class="form-input resize-none"
+                                      placeholder="適合に関する注意事項があれば記載してください"></textarea>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="is-proxy" class="w-4 h-4 text-red-500 rounded border-gray-300 focus:ring-red-500">
+                            <label for="is-proxy" class="text-sm text-gray-700">代理出品（整備工場が一般ユーザーの代わりに出品）</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 出品ボタン -->
+                <div class="sticky bottom-0 bg-white border-t border-gray-200 p-4 -mx-4 shadow-lg">
+                    <button type="button" id="submit-btn" onclick="productForm.submitForm()"
+                            class="w-full bg-gradient-to-r from-red-500 to-red-600 text-white py-4 rounded-lg font-bold hover:from-red-600 hover:to-red-700 transition-all shadow-lg text-lg">
+                        <i class="fas fa-check mr-2"></i>出品する
+                    </button>
+                </div>
+            </form>
+        </main>
+
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/listing.js"></script>
+    </body>
+    </html>
+  `)
+})
+
 export default app
