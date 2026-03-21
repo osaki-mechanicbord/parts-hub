@@ -254,12 +254,22 @@ app.get('/', (c) => {
         </header>
 
         <!-- Hero セクション -->
-        <section class="gradient-bg text-white py-12">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="text-center mb-8">
-                    <div class="flex items-center justify-center mb-4">
-                        <div class="w-16 h-16 mr-4 flex-shrink-0">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="64" height="64">
+        <section class="relative py-20 overflow-hidden">
+            <!-- 背景画像 + オーバーレイ -->
+            <div class="absolute inset-0 z-0">
+                <img src="https://www.genspark.ai/api/files/s/Aa01t93D" 
+                     alt="Automotive Parts Background" 
+                     class="w-full h-full object-cover"
+                     loading="eager">
+                <div class="absolute inset-0 bg-gradient-to-br from-purple-900/90 via-indigo-900/85 to-blue-900/90"></div>
+            </div>
+            
+            <!-- コンテンツ -->
+            <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center text-white">
+                    <div class="flex items-center justify-center mb-6">
+                        <div class="w-20 h-20 mr-4 flex-shrink-0 drop-shadow-2xl">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="80" height="80">
                               <defs>
                                 <linearGradient id="heroLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                                   <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
@@ -293,37 +303,37 @@ app.get('/', (c) => {
                               <circle cx="50" cy="50" r="8" fill="rgba(255,255,255,0.3)"/>
                             </svg>
                         </div>
-                        <h1 class="text-3xl sm:text-4xl font-bold">
+                        <h1 class="text-4xl sm:text-5xl font-bold drop-shadow-lg">
                             PARTS HUB
                         </h1>
                     </div>
-                    <p class="text-xl mb-2">自動車パーツの売買がもっと簡単に</p>
-                    <p class="text-lg text-white/90 mb-8">
+                    <p class="text-2xl mb-3 font-semibold drop-shadow-lg">自動車パーツの売買がもっと簡単に</p>
+                    <p class="text-lg text-white/95 mb-10 max-w-3xl mx-auto drop-shadow-md">
                         整備工場専門のパーツマーケットプレイス。純正部品から工具まで、手軽に売買できます。
                     </p>
                     
                     <!-- 検索バー -->
                     <div class="max-w-3xl mx-auto">
-                        <div class="flex gap-2">
+                        <div class="flex gap-3">
                             <div class="flex-1 relative">
-                                <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                <i class="fas fa-search absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></i>
                                 <input type="text" id="search-input" 
                                        placeholder="商品名、メーカー、品番で検索..." 
-                                       class="search-input w-full pl-12 pr-4 py-4 rounded-xl border-0 text-gray-900 focus:outline-none focus:ring-2 focus:ring-white/50">
+                                       class="search-input w-full pl-14 pr-4 py-4 rounded-xl border-0 text-gray-900 text-lg focus:outline-none focus:ring-4 focus:ring-white/50 shadow-2xl">
                             </div>
                             <button onclick="performSearch()" 
-                                    class="px-8 py-4 bg-white text-primary rounded-xl font-bold hover:bg-gray-100 transition-all shadow-lg">
-                                検索
+                                    class="px-10 py-4 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-xl font-bold hover:from-red-600 hover:to-pink-600 transition-all shadow-2xl hover:shadow-red-500/50 text-lg">
+                                <i class="fas fa-search mr-2"></i>検索
                             </button>
                         </div>
                         
                         <!-- 人気キーワード -->
-                        <div class="mt-4 flex flex-wrap gap-2 justify-center">
-                            <span class="text-sm text-white/70">人気:</span>
-                            <button onclick="searchKeyword('トヨタ')" class="text-sm px-3 py-1 bg-white/20 hover:bg-white/30 rounded-full transition-colors">トヨタ</button>
-                            <button onclick="searchKeyword('エンジン')" class="text-sm px-3 py-1 bg-white/20 hover:bg-white/30 rounded-full transition-colors">エンジン</button>
-                            <button onclick="searchKeyword('ドア')" class="text-sm px-3 py-1 bg-white/20 hover:bg-white/30 rounded-full transition-colors">ドア</button>
-                            <button onclick="searchKeyword('ライト')" class="text-sm px-3 py-1 bg-white/20 hover:bg-white/30 rounded-full transition-colors">ライト</button>
+                        <div class="mt-6 flex flex-wrap gap-3 justify-center">
+                            <span class="text-sm text-white/90 font-medium">人気:</span>
+                            <button onclick="searchKeyword('トヨタ')" class="text-sm px-4 py-2 bg-white/20 hover:bg-white/30 rounded-full transition-all backdrop-blur-sm border border-white/30 font-medium">トヨタ</button>
+                            <button onclick="searchKeyword('エンジン')" class="text-sm px-4 py-2 bg-white/20 hover:bg-white/30 rounded-full transition-all backdrop-blur-sm border border-white/30 font-medium">エンジン</button>
+                            <button onclick="searchKeyword('ドア')" class="text-sm px-4 py-2 bg-white/20 hover:bg-white/30 rounded-full transition-all backdrop-blur-sm border border-white/30 font-medium">ドア</button>
+                            <button onclick="searchKeyword('ライト')" class="text-sm px-4 py-2 bg-white/20 hover:bg-white/30 rounded-full transition-all backdrop-blur-sm border border-white/30 font-medium">ライト</button>
                         </div>
                     </div>
                 </div>
