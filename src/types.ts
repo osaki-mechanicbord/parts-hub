@@ -1,10 +1,13 @@
 // Cloudflare Bindings型定義
 export type Bindings = {
   DB: D1Database
+  R2: R2Bucket
   // 外部API設定
   ARGOS_API_KEY?: string
   ARGOS_API_URL?: string
   ARGOS_API_ENABLED?: string
+  // R2画像ストレージ設定
+  R2_PUBLIC_URL?: string
   // Stripe設定（将来実装）
   STRIPE_PUBLIC_KEY?: string
   STRIPE_SECRET_KEY?: string
