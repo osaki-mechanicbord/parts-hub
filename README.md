@@ -22,7 +22,15 @@
    - お気に入り機能
    - 出品代行リクエスト管理
 
-3. **API実装済み**
+3. **適合確認システム** 🆕
+   - 商品適合情報テーブル（詳細型式、グレード対応）
+   - マイガレージ（ユーザー車両登録）
+   - 適合実績フィードバック（クラウドソーシング）
+   - 汎用部品管理
+   - 品番マスターデータベース
+   - 適合マッチングエンジン
+
+4. **API実装済み**
    - `GET /api/health` - ヘルスチェック
    - `GET /api/categories` - カテゴリ一覧
    - `GET /api/categories/:id` - カテゴリ詳細とサブカテゴリ
@@ -30,8 +38,23 @@
    - `GET /api/makers/:id/models` - 車種一覧
    - `GET /api/products` - 商品一覧（検索・フィルタ対応）
    - `GET /api/products/:id` - 商品詳細
+   
+   **適合確認API** 🆕
+   - `GET /api/fitment/vehicles` - ユーザー車両一覧
+   - `GET /api/fitment/vehicles/:id` - 車両詳細
+   - `POST /api/fitment/vehicles` - 車両登録
+   - `GET /api/fitment/products/:id/compatibility` - 商品適合情報
+   - `POST /api/fitment/match` - 適合マッチング検索
+   - `POST /api/fitment/confirmations` - 適合確認投稿
+   - `POST /api/fitment/confirmations/:id/helpful` - 役立った投票
+   
+   **外部API連携（準備完了）** 🆕
+   - `GET /api/external/argos/health` - アルゴスAPIヘルスチェック
+   - `GET /api/external/argos/part-number/:partNumber/vehicles` - 品番検索
+   - `POST /api/external/argos/vehicle/parts` - 車両別部品検索
+   - `GET /api/external/argos/part-number/:partNumber/alternatives` - 互換品番検索
 
-4. **フロントエンド**
+5. **フロントエンド**
    - トップページ（商品一覧表示）
    - レスポンシブデザイン（TailwindCSS）
    - カテゴリナビゲーション
@@ -43,28 +66,39 @@
    - メール認証
    - プロフィール管理
 
-2. **商品機能**
+2. **適合確認フロントエンド** 🎯
+   - マイガレージUI
+   - 車両登録フォーム
+   - 適合情報表示コンポーネント
+   - 適合マッチング検索UI
+
+3. **商品機能**
    - 商品出品（画像アップロード含む）
    - 商品編集・削除
    - 商品検索の詳細フィルター
 
-3. **取引機能**
+4. **取引機能**
    - Stripe決済連携
    - 購入フロー
    - 取引メッセージ
    - 発送通知・受取確認
    - 評価システム
 
-4. **出品代行**
+5. **出品代行**
    - 代行依頼フォーム
    - 管理画面での承認フロー
 
-5. **管理画面**
+6. **管理画面**
    - カテゴリ・メーカー・車種の追加/編集
    - ユーザー管理
    - 商品管理
    - 取引管理
    - 統計ダッシュボード
+
+7. **外部API連携（実装待ち）** 📡
+   - アルゴスAPI実装（準備完了、実装待ち）
+   - 取得データのDB保存
+   - キャッシュ機構
 
 ## URLs
 
@@ -79,7 +113,17 @@
 - 商品一覧: `/api/products?limit=20&page=1`
 - 商品詳細: `/api/products/:id`
 
-## データ構造
+**適合確認API** 🆕
+- 車両一覧: `/api/fitment/vehicles?user_id=1`
+- 車両登録: `POST /api/fitment/vehicles`
+- 商品適合情報: `/api/fitment/products/:id/compatibility`
+- 適合マッチング: `POST /api/fitment/match`
+
+**外部API** 🆕
+- アルゴス連携: `/api/external/argos/*`
+- 詳細: [docs/ARGOS_API_INTEGRATION.md](docs/ARGOS_API_INTEGRATION.md)
+
+## 📊 データ構造
 
 ### 主要テーブル
 1. **users** - ユーザー（整備工場・個人）
@@ -95,6 +139,14 @@
 11. **favorites** - お気に入り
 12. **proxy_requests** - 出品代行依頼
 13. **admins** - 管理者
+
+**適合確認テーブル** 🆕
+14. **product_compatibility** - 商品適合情報（詳細型式、グレード）
+15. **user_vehicles** - マイガレージ（登録車両）
+16. **fitment_confirmations** - 適合実績フィードバック
+17. **universal_parts** - 汎用部品情報
+18. **part_number_master** - 品番マスター
+19. **fitment_searches** - 検索履歴（ML用）
 
 ### ストレージサービス
 - **Cloudflare D1**: メインデータベース（SQLite互換）
@@ -161,6 +213,14 @@ npm run db:seed             # シードデータ投入
 npm run db:reset            # DB完全リセット
 npm run db:console:local    # SQLコンソール
 
+# アルゴスAPI関連 🆕
+npm run argos:health        # ヘルスチェック
+npm run argos:test          # 品番検索テスト
+
+# シークレット管理 🆕
+npm run secret:set ARGOS_API_KEY  # APIキー設定
+npm run secret:list               # シークレット一覧
+
 # Git操作
 npm run git:status
 npm run git:log
@@ -213,13 +273,20 @@ webapp/
 │   ├── index.tsx          # メインアプリケーション
 │   ├── types.ts           # TypeScript型定義
 │   └── routes/
-│       └── api.ts         # APIルート
+│       ├── api.ts         # 基本APIルート
+│       ├── fitment.ts     # 適合確認API 🆕
+│       └── external.ts    # 外部API連携 🆕
 ├── migrations/
-│   ├── 0001_initial_schema.sql    # スキーマ定義
-│   └── 0002_initial_data.sql      # 初期データ
+│   ├── 0001_initial_schema.sql    # 基本スキーマ
+│   ├── 0002_initial_data.sql      # 初期データ
+│   └── 0003_fitment_system.sql    # 適合確認システム 🆕
+├── docs/
+│   └── ARGOS_API_INTEGRATION.md   # アルゴスAPI連携ガイド 🆕
 ├── public/
 │   └── static/            # 静的ファイル
-├── seed.sql               # テストデータ
+├── seed.sql               # 基本テストデータ
+├── seed_fitment.sql       # 適合確認テストデータ 🆕
+├── .env.example           # 環境変数サンプル 🆕
 ├── wrangler.jsonc         # Cloudflare設定
 ├── ecosystem.config.cjs   # PM2設定
 ├── package.json
@@ -249,5 +316,9 @@ npm run deploy:prod
 ---
 
 **最終更新**: 2026-03-21  
-**ステータス**: 🚧 開発中（MVP Phase 1）  
-**進捗**: 基本インフラ・API実装完了、認証・取引機能開発中
+**ステータス**: 🚧 開発中（適合確認システム実装完了）  
+**進捗**: 基本インフラ・API・適合確認システム完了、フロントエンド開発中
+
+## 📚 追加ドキュメント
+
+- [アルゴスAPI連携ガイド](docs/ARGOS_API_INTEGRATION.md) - 外部API連携の詳細
