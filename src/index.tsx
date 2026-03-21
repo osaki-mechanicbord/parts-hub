@@ -257,9 +257,25 @@ app.get('/listing', (c) => {
                     </h2>
                     <p class="text-sm text-gray-600 mb-4">最大10枚まで、1枚目がメイン画像になります</p>
                     
+                    <!-- カメラ・ギャラリーボタン -->
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <button type="button" 
+                                onclick="productForm.openCamera()"
+                                class="flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            <i class="fas fa-camera mr-2"></i>
+                            カメラで撮影
+                        </button>
+                        <button type="button" 
+                                onclick="productForm.openGallery()"
+                                class="flex items-center justify-center px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+                            <i class="fas fa-images mr-2"></i>
+                            ギャラリーから選択
+                        </button>
+                    </div>
+                    
                     <div id="drop-zone" 
                          class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition-colors"
-                         onclick="document.getElementById('image-input').click()">
+                         onclick="productForm.openGallery()">
                         <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-3"></i>
                         <p class="text-gray-600">タップして画像を選択</p>
                         <p class="text-sm text-gray-400 mt-2">またはドラッグ&ドロップ</p>

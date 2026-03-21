@@ -8,6 +8,20 @@ class ProductListingForm {
     this.formData = {}
   }
 
+  // カメラ起動
+  openCamera() {
+    const input = document.getElementById('image-input')
+    input.setAttribute('capture', 'environment') // リアカメラを優先
+    input.click()
+  }
+
+  // ファイル選択（ギャラリー）
+  openGallery() {
+    const input = document.getElementById('image-input')
+    input.removeAttribute('capture')
+    input.click()
+  }
+
   // 画像プレビューとアップロード処理
   async handleImageUpload(files) {
     const fileArray = Array.from(files)
@@ -30,18 +44,65 @@ class ProductListingForm {
         continue
       }
 
+      // 画像圧縮（モバイル対応）
+      const compressedFile = await this.compressImage(file)
+
       // プレビュー表示用にDataURLを作成
       const reader = new FileReader()
       reader.onload = (e) => {
         this.uploadedImages.push({
-          file: file,
+          file: compressedFile,
           preview: e.target.result,
           uploaded: false
         })
         this.renderImagePreviews()
       }
-      reader.readAsDataURL(file)
+      reader.readAsDataURL(compressedFile)
     }
+  }
+
+  // 画像圧縮（クライアント側）
+  async compressImage(file) {
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const img = new Image()
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          let width = img.width
+          let height = img.height
+
+          // 最大サイズを1920pxに制限
+          const maxSize = 1920
+          if (width > height && width > maxSize) {
+            height = (height * maxSize) / width
+            width = maxSize
+          } else if (height > maxSize) {
+            width = (width * maxSize) / height
+            height = maxSize
+          }
+
+          canvas.width = width
+          canvas.height = height
+
+          const ctx = canvas.getContext('2d')
+          ctx.drawImage(img, 0, 0, width, height)
+
+          canvas.toBlob(
+            (blob) => {
+              resolve(new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now()
+              }))
+            },
+            'image/jpeg',
+            0.85 // 画質85%
+          )
+        }
+        img.src = e.target.result
+      }
+      reader.readAsDataURL(file)
+    })
   }
 
   // 画像プレビュー描画
