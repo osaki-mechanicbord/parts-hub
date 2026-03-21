@@ -847,136 +847,245 @@ app.get('/register', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>新規登録 - PARTS HUB（パーツハブ）</title>
+        <title>新規会員登録 - PARTS HUB（パーツハブ）</title>
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>
+            .form-input {
+                @apply w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors;
+            }
+            .form-input:focus {
+                border-color: #ef4444;
+            }
+            .step-indicator {
+                @apply flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold;
+            }
+            .step-active {
+                @apply bg-red-500 text-white;
+            }
+            .step-inactive {
+                @apply bg-gray-200 text-gray-500;
+            }
+        </style>
     </head>
-    <body class="bg-gray-50">
-        <div class="min-h-screen flex items-center justify-center px-4 py-12">
-            <div class="max-w-2xl w-full">
-                <!-- ロゴ -->
-                <div class="text-center mb-8">
-                    <a href="/" class="inline-flex items-center space-x-2 mb-6">
-                        <img src="/icons/logo.svg" alt="PARTS HUB" class="w-12 h-12">
-                        <span class="text-2xl font-bold text-gray-900">PARTS HUB</span>
-                    </a>
-                    <h1 class="text-3xl font-bold text-gray-900 mb-2">新規登録</h1>
-                    <p class="text-gray-600">アカウントを作成してパーツの売買を始めましょう</p>
+    <body class="bg-gray-50 min-h-screen">
+        <!-- シンプルヘッダー -->
+        <header class="bg-white border-b border-gray-200">
+            <div class="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
+                <a href="/" class="text-gray-600 hover:text-gray-900 flex items-center">
+                    <i class="fas fa-arrow-left mr-2"></i>戻る
+                </a>
+                <div class="text-red-500 font-bold text-lg">PARTS HUB</div>
+                <div class="w-16"></div>
+            </div>
+        </header>
+
+        <main class="max-w-2xl mx-auto px-4 py-8">
+            <!-- タイトル -->
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">会員登録</h1>
+                <p class="text-gray-600">自動車パーツの売買を始めましょう</p>
+            </div>
+
+            <!-- ステップインジケーター -->
+            <div class="mb-8">
+                <div class="flex items-center justify-center space-x-4">
+                    <div class="flex items-center">
+                        <div id="step-1" class="step-indicator step-active">1</div>
+                        <span class="ml-2 text-sm font-medium text-gray-700">基本情報</span>
+                    </div>
+                    <div class="w-12 h-0.5 bg-gray-300"></div>
+                    <div class="flex items-center">
+                        <div id="step-2" class="step-indicator step-inactive">2</div>
+                        <span class="ml-2 text-sm font-medium text-gray-500">店舗情報</span>
+                    </div>
                 </div>
+            </div>
 
-                <!-- 登録フォーム -->
-                <div class="bg-white rounded-2xl shadow-xl p-8">
-                    <form id="register-form" class="space-y-6">
-                        <div class="grid md:grid-cols-2 gap-6">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">メールアドレス *</label>
-                                <input type="email" id="email" required
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                                       placeholder="example@email.com">
-                            </div>
-
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">パスワード *</label>
-                                <input type="password" id="password" required minlength="8"
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                                       placeholder="8文字以上">
-                            </div>
+            <!-- 登録フォーム -->
+            <div class="bg-white rounded-xl shadow-sm p-6 md:p-8">
+                <form id="register-form">
+                    <!-- ステップ1: 基本情報 -->
+                    <div id="step-1-content" class="space-y-5">
+                        <h2 class="text-xl font-bold text-gray-900 mb-6">基本情報を入力</h2>
+                        
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">メールアドレス</label>
+                            <input type="email" id="email" required
+                                   class="form-input"
+                                   placeholder="example@email.com">
+                            <p class="mt-1 text-xs text-gray-500">ログイン時に使用します</p>
                         </div>
 
-                        <div class="grid md:grid-cols-2 gap-6">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">店舗名 *</label>
-                                <input type="text" id="shop-name" required
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                                       placeholder="例: 山田自動車整備工場">
-                            </div>
-
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">店舗種別 *</label>
-                                <select id="shop-type" required
-                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent">
-                                    <option value="">選択してください</option>
-                                    <option value="factory">整備工場</option>
-                                    <option value="individual">個人</option>
-                                </select>
-                            </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">パスワード</label>
+                            <input type="password" id="password" required minlength="8"
+                                   class="form-input"
+                                   placeholder="8文字以上の英数字">
+                            <p class="mt-1 text-xs text-gray-500">8文字以上で設定してください</p>
                         </div>
 
-                        <div class="grid md:grid-cols-2 gap-6">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">電話番号</label>
-                                <input type="tel" id="phone"
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                                       placeholder="03-1234-5678">
-                            </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">パスワード（確認）</label>
+                            <input type="password" id="password-confirm" required minlength="8"
+                                   class="form-input"
+                                   placeholder="もう一度入力してください">
+                        </div>
 
+                        <div class="pt-4">
+                            <button type="button" onclick="goToStep2()"
+                                    class="w-full bg-gradient-to-r from-red-500 to-red-600 text-white py-4 rounded-lg font-bold hover:from-red-600 hover:to-red-700 transition-all shadow-lg text-lg">
+                                次へ進む
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- ステップ2: 店舗情報 -->
+                    <div id="step-2-content" class="space-y-5 hidden">
+                        <h2 class="text-xl font-bold text-gray-900 mb-6">店舗情報を入力</h2>
+                        
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">店舗名・屋号</label>
+                            <input type="text" id="shop-name" required
+                                   class="form-input"
+                                   placeholder="例: 山田自動車整備工場">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">業態</label>
+                            <select id="shop-type" required
+                                    class="form-input">
+                                <option value="">選択してください</option>
+                                <option value="factory">整備工場</option>
+                                <option value="dealer">ディーラー</option>
+                                <option value="parts_shop">パーツショップ</option>
+                                <option value="recycler">リサイクルショップ</option>
+                                <option value="individual">個人</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">電話番号</label>
+                            <input type="tel" id="phone"
+                                   class="form-input"
+                                   placeholder="03-1234-5678">
+                            <p class="mt-1 text-xs text-gray-500">ハイフンありで入力</p>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">郵便番号</label>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">郵便番号</label>
                                 <input type="text" id="postal-code"
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                       class="form-input"
                                        placeholder="123-4567">
                             </div>
-                        </div>
-
-                        <div class="grid md:grid-cols-2 gap-6">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">都道府県</label>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">都道府県</label>
                                 <input type="text" id="prefecture"
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                       class="form-input"
                                        placeholder="東京都">
-                            </div>
-
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">市区町村</label>
-                                <input type="text" id="city"
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                                       placeholder="渋谷区">
                             </div>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">住所</label>
-                            <input type="text" id="address"
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                                   placeholder="1-2-3 マンション名 101号室">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">市区町村</label>
+                            <input type="text" id="city"
+                                   class="form-input"
+                                   placeholder="渋谷区神南">
                         </div>
 
-                        <div class="flex items-start">
-                            <input type="checkbox" id="terms" required class="mt-1 mr-3">
-                            <label for="terms" class="text-sm text-gray-600">
-                                <a href="/terms" class="text-red-500 hover:text-red-600 font-medium">利用規約</a>と
-                                <a href="/privacy" class="text-red-500 hover:text-red-600 font-medium">プライバシーポリシー</a>に同意します
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">番地・建物名</label>
+                            <input type="text" id="address"
+                                   class="form-input"
+                                   placeholder="1-2-3 ビル名 101号室">
+                        </div>
+
+                        <div class="flex items-start pt-2">
+                            <input type="checkbox" id="terms" required 
+                                   class="mt-1 mr-3 w-5 h-5 text-red-500 border-gray-300 rounded focus:ring-red-500">
+                            <label for="terms" class="text-sm text-gray-600 leading-relaxed">
+                                <a href="/terms" target="_blank" class="text-red-500 hover:text-red-600 font-medium underline">利用規約</a>および
+                                <a href="/privacy" target="_blank" class="text-red-500 hover:text-red-600 font-medium underline">プライバシーポリシー</a>に同意します
                             </label>
                         </div>
 
-                        <button type="submit"
-                                class="w-full bg-gradient-to-r from-red-500 to-pink-500 text-white py-4 rounded-lg font-bold hover:from-red-600 hover:to-pink-600 transition-all shadow-lg text-lg">
-                            <i class="fas fa-user-plus mr-2"></i>アカウントを作成
-                        </button>
-                    </form>
-
-                    <div class="mt-6 text-center">
-                        <p class="text-gray-600">
-                            すでにアカウントをお持ちの方は
-                            <a href="/login" class="text-red-500 hover:text-red-600 font-semibold">ログイン</a>
-                        </p>
+                        <div class="grid grid-cols-2 gap-3 pt-4">
+                            <button type="button" onclick="goToStep1()"
+                                    class="w-full bg-white border-2 border-gray-300 text-gray-700 py-4 rounded-lg font-bold hover:bg-gray-50 transition-all">
+                                戻る
+                            </button>
+                            <button type="submit"
+                                    class="w-full bg-gradient-to-r from-red-500 to-red-600 text-white py-4 rounded-lg font-bold hover:from-red-600 hover:to-red-700 transition-all shadow-lg">
+                                <i class="fas fa-user-plus mr-2"></i>登録する
+                            </button>
+                        </div>
                     </div>
-                </div>
+                </form>
 
-                <!-- 戻るリンク -->
-                <div class="text-center mt-6">
-                    <a href="/" class="text-gray-600 hover:text-gray-900">
-                        <i class="fas fa-arrow-left mr-2"></i>トップページに戻る
+                <!-- ログインリンク -->
+                <div class="mt-8 pt-6 border-t border-gray-200 text-center">
+                    <p class="text-gray-600">
+                        すでにアカウントをお持ちの方
+                    </p>
+                    <a href="/login" class="inline-block mt-2 text-red-500 hover:text-red-600 font-semibold">
+                        ログインはこちら <i class="fas fa-arrow-right ml-1"></i>
                     </a>
                 </div>
             </div>
-        </div>
+        </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script>
+            // ステップ管理
+            function goToStep2() {
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                const passwordConfirm = document.getElementById('password-confirm').value;
+
+                if (!email || !password || !passwordConfirm) {
+                    alert('すべての項目を入力してください');
+                    return;
+                }
+
+                if (password !== passwordConfirm) {
+                    alert('パスワードが一致しません');
+                    return;
+                }
+
+                if (password.length < 8) {
+                    alert('パスワードは8文字以上で設定してください');
+                    return;
+                }
+
+                // ステップ2に進む
+                document.getElementById('step-1-content').classList.add('hidden');
+                document.getElementById('step-2-content').classList.remove('hidden');
+                document.getElementById('step-1').classList.remove('step-active');
+                document.getElementById('step-1').classList.add('step-inactive');
+                document.getElementById('step-2').classList.remove('step-inactive');
+                document.getElementById('step-2').classList.add('step-active');
+                window.scrollTo(0, 0);
+            }
+
+            function goToStep1() {
+                document.getElementById('step-2-content').classList.add('hidden');
+                document.getElementById('step-1-content').classList.remove('hidden');
+                document.getElementById('step-2').classList.remove('step-active');
+                document.getElementById('step-2').classList.add('step-inactive');
+                document.getElementById('step-1').classList.remove('step-inactive');
+                document.getElementById('step-1').classList.add('step-active');
+                window.scrollTo(0, 0);
+            }
+
+            // フォーム送信
             document.getElementById('register-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
+                
+                const submitButton = e.target.querySelector('button[type="submit"]');
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>登録中...';
                 
                 const data = {
                     email: document.getElementById('email').value,
@@ -994,11 +1103,22 @@ app.get('/register', (c) => {
                     const response = await axios.post('/api/auth/register', data);
                     
                     if (response.data.success) {
-                        alert('アカウントが作成されました！ログインしてください。');
-                        window.location.href = '/login';
+                        // 成功メッセージ
+                        const successMsg = document.createElement('div');
+                        successMsg.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-4 rounded-lg shadow-xl z-50 animate-bounce';
+                        successMsg.innerHTML = '<i class="fas fa-check-circle mr-2"></i>アカウント作成完了！ログインページへ移動します...';
+                        document.body.appendChild(successMsg);
+                        
+                        setTimeout(() => {
+                            window.location.href = '/login?registered=true';
+                        }, 2000);
                     }
                 } catch (error) {
-                    alert(error.response?.data?.error || '登録に失敗しました');
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = '<i class="fas fa-user-plus mr-2"></i>登録する';
+                    
+                    const errorMsg = error.response?.data?.error || '登録に失敗しました。もう一度お試しください。';
+                    alert(errorMsg);
                 }
             });
         </script>
