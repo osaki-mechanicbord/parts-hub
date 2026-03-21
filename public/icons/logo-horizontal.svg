@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 120" width="500" height="120">
+  <defs>
+    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff4757;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ff6b95;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- アイコン部分 -->
+  <g transform="translate(10, 10)">
+    <!-- 背景円 -->
+    <circle cx="50" cy="50" r="48" fill="url(#logoGradient)"/>
+    
+    <!-- ギア（歯車）の外周 - 簡略版 -->
+    <g fill="#ffffff">
+      <rect x="47" y="5" width="6" height="15" rx="1"/>
+      <rect x="47" y="80" width="6" height="15" rx="1"/>
+      <rect x="5" y="47" width="15" height="6" rx="1"/>
+      <rect x="80" y="47" width="15" height="6" rx="1"/>
+      
+      <rect x="72" y="18" width="15" height="6" rx="1" transform="rotate(45 79.5 21)"/>
+      <rect x="13" y="18" width="15" height="6" rx="1" transform="rotate(-45 20.5 21)"/>
+      <rect x="72" y="76" width="15" height="6" rx="1" transform="rotate(-45 79.5 79)"/>
+      <rect x="13" y="76" width="15" height="6" rx="1" transform="rotate(45 20.5 79)"/>
+    </g>
+    
+    <!-- 中央のハブ -->
+    <circle cx="50" cy="50" r="22" fill="#ffffff"/>
+    
+    <!-- ハブの接続ライン -->
+    <g stroke="#ff4757" stroke-width="2" fill="none">
+      <line x1="50" y1="50" x2="50" y2="32"/>
+      <line x1="50" y1="50" x2="50" y2="68"/>
+      <line x1="50" y1="50" x2="32" y2="50"/>
+      <line x1="50" y1="50" x2="68" y2="50"/>
+    </g>
+    
+    <!-- 接続ノード -->
+    <g fill="#ff4757">
+      <circle cx="50" cy="32" r="3"/>
+      <circle cx="50" cy="68" r="3"/>
+      <circle cx="32" cy="50" r="3"/>
+      <circle cx="68" cy="50" r="3"/>
+    </g>
+    
+    <!-- 中央の円 -->
+    <circle cx="50" cy="50" r="8" fill="#ff4757"/>
+    <circle cx="50" cy="50" r="4" fill="#ffffff"/>
+  </g>
+  
+  <!-- テキスト部分 -->
+  <g transform="translate(130, 30)">
+    <!-- PARTS -->
+    <text x="0" y="35" font-family="Arial, sans-serif" font-size="42" font-weight="bold" fill="#2d3436">
+      PARTS
+    </text>
+    
+    <!-- HUB -->
+    <text x="0" y="75" font-family="Arial, sans-serif" font-size="42" font-weight="bold" fill="url(#logoGradient)">
+      HUB
+    </text>
+    
+    <!-- 日本語サブタイトル -->
+    <text x="200" y="75" font-family="Arial, sans-serif" font-size="18" fill="#636e72">
+      パーツハブ
+    </text>
+  </g>
+</svg>

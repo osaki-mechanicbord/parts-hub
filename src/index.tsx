@@ -35,19 +35,19 @@ app.get('/', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-        <title>パーツマーケット - 自動車パーツ売買プラットフォーム</title>
+        <title>PARTS HUB（パーツハブ）- 自動車パーツ売買プラットフォーム</title>
         <meta name="description" content="整備工場専門の純正パーツ・工具売買マーケットプレイス。メルカリのように手軽に部品を売買できます。">
         
         <!-- PWA対応 -->
         <meta name="theme-color" content="#ff4757">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="default">
-        <meta name="apple-mobile-web-app-title" content="パーツマーケット">
+        <meta name="apple-mobile-web-app-title" content="PARTS HUB">
         <link rel="manifest" href="/manifest.json">
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
         
         <!-- Favicon -->
-        <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+        <link rel="icon" type="image/svg+xml" href="/icons/logo.svg">
         
         <!-- スタイル -->
         <script src="https://cdn.tailwindcss.com"></script>
@@ -176,11 +176,12 @@ app.get('/', (c) => {
                 <div class="flex items-center justify-between h-16">
                     <!-- ロゴ -->
                     <div class="flex items-center">
-                        <a href="/" class="flex items-center space-x-2">
-                            <div class="w-10 h-10 gradient-red rounded-xl flex items-center justify-center">
-                                <i class="fas fa-car text-white text-xl"></i>
+                        <a href="/" class="flex items-center space-x-3">
+                            <img src="/icons/logo.svg" alt="PARTS HUB" class="w-10 h-10">
+                            <div class="hidden sm:block">
+                                <div class="text-xl font-bold text-gray-900">PARTS HUB</div>
+                                <div class="text-xs text-gray-500">パーツハブ</div>
                             </div>
-                            <span class="text-xl font-bold text-gray-900 hidden sm:block">パーツマーケット</span>
                         </a>
                     </div>
                     
@@ -218,9 +219,13 @@ app.get('/', (c) => {
         <section class="gradient-bg text-white py-12">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="text-center mb-8">
-                    <h1 class="text-3xl sm:text-4xl font-bold mb-4">
-                        🚗 自動車パーツの売買がもっと簡単に
-                    </h1>
+                    <div class="flex items-center justify-center mb-4">
+                        <img src="/icons/logo.svg" alt="PARTS HUB" class="w-16 h-16 mr-4">
+                        <h1 class="text-3xl sm:text-4xl font-bold">
+                            PARTS HUB
+                        </h1>
+                    </div>
+                    <p class="text-xl mb-2">自動車パーツの売買がもっと簡単に</p>
                     <p class="text-lg text-white/90 mb-8">
                         整備工場専門のパーツマーケットプレイス。純正部品から工具まで、手軽に売買できます。
                     </p>
@@ -563,7 +568,7 @@ app.get('/login', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>ログイン - パーツマーケット</title>
+        <title>ログイン - PARTS HUB（パーツハブ）</title>
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
@@ -577,10 +582,8 @@ app.get('/login', (c) => {
                 <!-- ロゴ -->
                 <div class="text-center mb-8">
                     <a href="/" class="inline-flex items-center space-x-2 mb-6">
-                        <div class="w-12 h-12 bg-gradient-to-br from-red-500 to-pink-500 rounded-xl flex items-center justify-center">
-                            <i class="fas fa-car text-white text-2xl"></i>
-                        </div>
-                        <span class="text-2xl font-bold text-gray-900">パーツマーケット</span>
+                        <img src="/icons/logo.svg" alt="PARTS HUB" class="w-12 h-12">
+                        <span class="text-2xl font-bold text-gray-900">PARTS HUB</span>
                     </a>
                     <h1 class="text-3xl font-bold text-gray-900 mb-2">ログイン</h1>
                     <p class="text-gray-600">アカウントにログインしてください</p>
@@ -677,7 +680,7 @@ app.get('/register', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>新規登録 - パーツマーケット</title>
+        <title>新規登録 - PARTS HUB（パーツハブ）</title>
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
@@ -688,10 +691,8 @@ app.get('/register', (c) => {
                 <!-- ロゴ -->
                 <div class="text-center mb-8">
                     <a href="/" class="inline-flex items-center space-x-2 mb-6">
-                        <div class="w-12 h-12 bg-gradient-to-br from-red-500 to-pink-500 rounded-xl flex items-center justify-center">
-                            <i class="fas fa-car text-white text-2xl"></i>
-                        </div>
-                        <span class="text-2xl font-bold text-gray-900">パーツマーケット</span>
+                        <img src="/icons/logo.svg" alt="PARTS HUB" class="w-12 h-12">
+                        <span class="text-2xl font-bold text-gray-900">PARTS HUB</span>
                     </a>
                     <h1 class="text-3xl font-bold text-gray-900 mb-2">新規登録</h1>
                     <p class="text-gray-600">アカウントを作成してパーツの売買を始めましょう</p>

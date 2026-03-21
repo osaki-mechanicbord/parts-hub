@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff4757;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ff6b95;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- 背景円 -->
+  <circle cx="100" cy="100" r="95" fill="url(#gradient1)"/>
+  
+  <!-- ギア（歯車）の外周 -->
+  <g fill="#ffffff">
+    <!-- 8つの歯 -->
+    <rect x="95" y="10" width="10" height="25" rx="2"/>
+    <rect x="95" y="165" width="10" height="25" rx="2"/>
+    <rect x="10" y="95" width="25" height="10" rx="2"/>
+    <rect x="165" y="95" width="25" height="10" rx="2"/>
+    
+    <!-- 斜めの歯 -->
+    <rect x="145" y="35" width="25" height="10" rx="2" transform="rotate(45 157.5 40)"/>
+    <rect x="30" y="35" width="25" height="10" rx="2" transform="rotate(-45 42.5 40)"/>
+    <rect x="145" y="155" width="25" height="10" rx="2" transform="rotate(-45 157.5 160)"/>
+    <rect x="30" y="155" width="25" height="10" rx="2" transform="rotate(45 42.5 160)"/>
+  </g>
+  
+  <!-- 中央のハブ -->
+  <circle cx="100" cy="100" r="45" fill="#ffffff"/>
+  
+  <!-- ハブの接続ライン -->
+  <g stroke="#ff4757" stroke-width="3" fill="none">
+    <line x1="100" y1="100" x2="100" y2="65"/>
+    <line x1="100" y1="100" x2="100" y2="135"/>
+    <line x1="100" y1="100" x2="65" y2="100"/>
+    <line x1="100" y1="100" x2="135" y2="100"/>
+  </g>
+  
+  <!-- 接続ノード（小円） -->
+  <g fill="#ff4757">
+    <circle cx="100" cy="65" r="5"/>
+    <circle cx="100" cy="135" r="5"/>
+    <circle cx="65" cy="100" r="5"/>
+    <circle cx="135" cy="100" r="5"/>
+  </g>
+  
+  <!-- 中央の円 -->
+  <circle cx="100" cy="100" r="15" fill="#ff4757"/>
+  <circle cx="100" cy="100" r="8" fill="#ffffff"/>
+</svg>
