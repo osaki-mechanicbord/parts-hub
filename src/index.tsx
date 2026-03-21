@@ -1927,4 +1927,422 @@ app.get('/listing', (c) => {
   `)
 })
 
+// チャットルーム一覧ページ
+app.get('/chat', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>メッセージ - PARTS HUB（パーツハブ）</title>
+        <meta name="theme-color" content="#ff4757">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>
+            .unread-badge {
+                min-width: 1.5rem;
+                height: 1.5rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+        </style>
+    </head>
+    <body class="bg-gray-50 min-h-screen">
+        <!-- ヘッダー -->
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+            <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+                <button onclick="window.location.href='/'" class="text-gray-600 hover:text-gray-900 flex items-center">
+                    <i class="fas fa-arrow-left mr-2"></i>戻る
+                </button>
+                <h1 class="text-red-500 font-bold text-lg">メッセージ</h1>
+                <div class="w-16"></div>
+            </div>
+        </header>
+
+        <main class="max-w-4xl mx-auto px-4 py-6">
+            <!-- チャットルーム一覧 -->
+            <div id="chat-rooms-container" class="space-y-3">
+                <!-- JavaScriptで動的に生成 -->
+            </div>
+            
+            <!-- 空状態 -->
+            <div id="empty-state" class="hidden text-center py-12">
+                <div class="bg-white rounded-xl shadow-sm p-8">
+                    <i class="fas fa-comments text-gray-400 text-6xl mb-4"></i>
+                    <h2 class="text-xl font-bold text-gray-900 mb-2">メッセージはまだありません</h2>
+                    <p class="text-gray-600 mb-6">商品詳細ページから出品者に問い合わせてみましょう</p>
+                    <a href="/" class="inline-block bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors">
+                        商品を探す
+                    </a>
+                </div>
+            </div>
+        </main>
+
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script>
+            let currentUserId = 1; // TODO: 実際のログインユーザーID
+
+            // ページ読み込み時にチャットルーム一覧をロード
+            document.addEventListener('DOMContentLoaded', () => {
+                loadChatRooms();
+            });
+
+            // チャットルーム一覧をロード
+            async function loadChatRooms() {
+                try {
+                    const response = await axios.get(\`/api/chat/rooms?user_id=\${currentUserId}\`);
+                    
+                    if (response.data.success) {
+                        const rooms = response.data.data;
+                        renderChatRooms(rooms);
+                    }
+                } catch (error) {
+                    console.error('Failed to load chat rooms:', error);
+                }
+            }
+
+            // チャットルームを描画
+            function renderChatRooms(rooms) {
+                const container = document.getElementById('chat-rooms-container');
+                const emptyState = document.getElementById('empty-state');
+                
+                if (rooms.length === 0) {
+                    container.classList.add('hidden');
+                    emptyState.classList.remove('hidden');
+                    return;
+                }
+                
+                container.classList.remove('hidden');
+                emptyState.classList.add('hidden');
+                
+                container.innerHTML = rooms.map(room => {
+                    const isMe = room.buyer_id === currentUserId;
+                    const otherUserName = isMe ? room.seller_name : room.buyer_name;
+                    const lastMessage = room.last_message || 'まだメッセージがありません';
+                    const lastMessageTime = room.last_message_at 
+                        ? new Date(room.last_message_at).toLocaleString('ja-JP', { 
+                            month: 'short', 
+                            day: 'numeric', 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })
+                        : '';
+                    
+                    return \`
+                        <a href="/chat/\${room.id}" class="block bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow p-4">
+                            <div class="flex items-start gap-4">
+                                <div class="flex-shrink-0">
+                                    <div class="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-user text-gray-600"></i>
+                                    </div>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <h3 class="font-semibold text-gray-900 truncate">\${otherUserName}</h3>
+                                        \${room.unread_count > 0 ? \`
+                                            <span class="unread-badge bg-red-500 text-white text-xs font-bold rounded-full px-2">
+                                                \${room.unread_count}
+                                            </span>
+                                        \` : ''}
+                                    </div>
+                                    <p class="text-sm text-gray-600 mb-2 truncate">\${room.product_title}</p>
+                                    <div class="flex items-center justify-between">
+                                        <p class="text-sm text-gray-500 truncate flex-1 mr-2">\${lastMessage}</p>
+                                        <span class="text-xs text-gray-400 flex-shrink-0">\${lastMessageTime}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                    \`;
+                }).join('');
+            }
+        </script>
+    </body>
+    </html>
+  `)
+})
+
+// チャットメッセージページ
+app.get('/chat/:roomId', (c) => {
+  const roomId = c.req.param('roomId')
+  
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>メッセージ - PARTS HUB（パーツハブ）</title>
+        <meta name="theme-color" content="#ff4757">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>
+            .message-container {
+                display: flex;
+                flex-direction: column;
+                height: calc(100vh - 140px);
+            }
+            .messages-list {
+                flex: 1;
+                overflow-y: auto;
+                padding: 1rem;
+            }
+            .message-bubble {
+                max-width: 70%;
+                word-wrap: break-word;
+            }
+            .message-sent {
+                margin-left: auto;
+                background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                color: white;
+            }
+            .message-received {
+                margin-right: auto;
+                background: white;
+                border: 1px solid #e5e7eb;
+            }
+        </style>
+    </head>
+    <body class="bg-gray-50">
+        <!-- ヘッダー -->
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+            <div class="max-w-4xl mx-auto px-4 py-4">
+                <div class="flex items-center gap-3">
+                    <button onclick="window.location.href='/chat'" class="text-gray-600 hover:text-gray-900">
+                        <i class="fas fa-arrow-left text-xl"></i>
+                    </button>
+                    <div class="flex-shrink-0">
+                        <div class="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
+                            <i class="fas fa-user text-gray-600"></i>
+                        </div>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h1 id="other-user-name" class="font-bold text-gray-900 truncate">読み込み中...</h1>
+                        <p id="product-title" class="text-sm text-gray-600 truncate">-</p>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-4xl mx-auto">
+            <div class="message-container">
+                <!-- メッセージ一覧 -->
+                <div id="messages-list" class="messages-list space-y-3">
+                    <!-- JavaScriptで動的に生成 -->
+                </div>
+
+                <!-- 送信フォーム -->
+                <div class="bg-white border-t border-gray-200 p-4">
+                    <div class="flex items-end gap-3">
+                        <textarea id="message-input" 
+                                  rows="1"
+                                  class="flex-1 px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none resize-none"
+                                  placeholder="メッセージを入力..."
+                                  onkeydown="handleKeyDown(event)"></textarea>
+                        <button onclick="sendMessage()" 
+                                class="bg-gradient-to-r from-red-500 to-red-600 text-white p-3 rounded-lg hover:from-red-600 hover:to-red-700 transition-all">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script>
+            const roomId = ${roomId};
+            let currentUserId = 1; // TODO: 実際のログインユーザーID
+            let pollingInterval = null;
+            let lastMessageId = null;
+
+            // ページ読み込み時
+            document.addEventListener('DOMContentLoaded', () => {
+                loadRoomInfo();
+                loadMessages();
+                markAsRead();
+                
+                // 5秒ごとに新しいメッセージをチェック
+                pollingInterval = setInterval(() => {
+                    loadNewMessages();
+                }, 5000);
+            });
+
+            // ページを離れる時にポーリング停止
+            window.addEventListener('beforeunload', () => {
+                if (pollingInterval) {
+                    clearInterval(pollingInterval);
+                }
+            });
+
+            // ルーム情報をロード
+            async function loadRoomInfo() {
+                try {
+                    const response = await axios.get(\`/api/chat/rooms?user_id=\${currentUserId}\`);
+                    
+                    if (response.data.success) {
+                        const room = response.data.data.find(r => r.id === roomId);
+                        if (room) {
+                            const isMe = room.buyer_id === currentUserId;
+                            const otherUserName = isMe ? room.seller_name : room.buyer_name;
+                            
+                            document.getElementById('other-user-name').textContent = otherUserName;
+                            document.getElementById('product-title').textContent = room.product_title;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Failed to load room info:', error);
+                }
+            }
+
+            // メッセージ一覧をロード
+            async function loadMessages() {
+                try {
+                    const response = await axios.get(\`/api/chat/rooms/\${roomId}/messages?limit=100\`);
+                    
+                    if (response.data.success) {
+                        const messages = response.data.data;
+                        if (messages.length > 0) {
+                            lastMessageId = messages[messages.length - 1].id;
+                        }
+                        renderMessages(messages);
+                        scrollToBottom();
+                    }
+                } catch (error) {
+                    console.error('Failed to load messages:', error);
+                }
+            }
+
+            // 新しいメッセージのみロード（ポーリング用）
+            async function loadNewMessages() {
+                if (!lastMessageId) return;
+                
+                try {
+                    const response = await axios.get(\`/api/chat/rooms/\${roomId}/messages?limit=50\`);
+                    
+                    if (response.data.success) {
+                        const messages = response.data.data;
+                        const newMessages = messages.filter(m => m.id > lastMessageId);
+                        
+                        if (newMessages.length > 0) {
+                            lastMessageId = newMessages[newMessages.length - 1].id;
+                            appendMessages(newMessages);
+                            scrollToBottom();
+                            markAsRead();
+                        }
+                    }
+                } catch (error) {
+                    console.error('Failed to load new messages:', error);
+                }
+            }
+
+            // メッセージを描画
+            function renderMessages(messages) {
+                const container = document.getElementById('messages-list');
+                
+                if (messages.length === 0) {
+                    container.innerHTML = \`
+                        <div class="text-center py-8 text-gray-500">
+                            <i class="fas fa-comment-slash text-4xl mb-3"></i>
+                            <p>メッセージを送信して会話を始めましょう</p>
+                        </div>
+                    \`;
+                    return;
+                }
+                
+                container.innerHTML = messages.map(msg => createMessageHTML(msg)).join('');
+            }
+
+            // メッセージを追加（新しいメッセージのみ）
+            function appendMessages(messages) {
+                const container = document.getElementById('messages-list');
+                const html = messages.map(msg => createMessageHTML(msg)).join('');
+                container.insertAdjacentHTML('beforeend', html);
+            }
+
+            // メッセージHTMLを生成
+            function createMessageHTML(msg) {
+                const isSent = msg.sender_id === currentUserId;
+                const bubbleClass = isSent ? 'message-sent' : 'message-received';
+                const timeStr = new Date(msg.created_at).toLocaleString('ja-JP', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+                
+                return \`
+                    <div class="flex \${isSent ? 'justify-end' : 'justify-start'}">
+                        <div class="message-bubble \${bubbleClass} rounded-2xl px-4 py-2">
+                            \${!isSent ? \`<p class="text-xs text-gray-500 mb-1">\${msg.sender_name}</p>\` : ''}
+                            <p class="\${isSent ? 'text-white' : 'text-gray-900'}">\${msg.message_text}</p>
+                            <p class="text-xs \${isSent ? 'text-red-100' : 'text-gray-400'} mt-1 text-right">
+                                \${timeStr}
+                                \${isSent && msg.is_read ? '<i class="fas fa-check-double ml-1"></i>' : ''}
+                            </p>
+                        </div>
+                    </div>
+                \`;
+            }
+
+            // メッセージを送信
+            async function sendMessage() {
+                const input = document.getElementById('message-input');
+                const text = input.value.trim();
+                
+                if (!text) return;
+                
+                try {
+                    const response = await axios.post(\`/api/chat/rooms/\${roomId}/messages\`, {
+                        sender_id: currentUserId,
+                        message_text: text,
+                        message_type: 'text'
+                    });
+                    
+                    if (response.data.success) {
+                        input.value = '';
+                        input.style.height = 'auto';
+                        loadMessages();
+                    }
+                } catch (error) {
+                    console.error('Failed to send message:', error);
+                    alert('メッセージの送信に失敗しました');
+                }
+            }
+
+            // メッセージを既読にする
+            async function markAsRead() {
+                try {
+                    await axios.put(\`/api/chat/rooms/\${roomId}/read\`, {
+                        user_id: currentUserId
+                    });
+                } catch (error) {
+                    console.error('Failed to mark as read:', error);
+                }
+            }
+
+            // 下にスクロール
+            function scrollToBottom() {
+                const container = document.getElementById('messages-list');
+                container.scrollTop = container.scrollHeight;
+            }
+
+            // Enterキーで送信（Shift+Enterで改行）
+            function handleKeyDown(event) {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault();
+                    sendMessage();
+                }
+            }
+
+            // テキストエリアの自動リサイズ
+            document.getElementById('message-input').addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+            });
+        </script>
+    </body>
+    </html>
+  `)
+})
+
 export default app

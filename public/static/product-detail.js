@@ -260,6 +260,51 @@ function showError(message) {
     `;
 }
 
+// 出品者に質問（チャット機能）
+async function contactSeller() {
+    if (!product) {
+        alert('商品情報を読み込んでいます...');
+        return;
+    }
+    
+    const currentUserId = 1; // TODO: 実際のログインユーザーID
+    const buyerId = currentUserId;
+    const sellerId = product.seller_id;
+    const productId = product.id;
+    
+    if (buyerId === sellerId) {
+        alert('自分の商品には問い合わせできません');
+        return;
+    }
+    
+    try {
+        // チャットルームを作成または取得
+        const response = await axios.post('/api/chat/rooms', {
+            product_id: productId,
+            buyer_id: buyerId,
+            seller_id: sellerId
+        });
+        
+        if (response.data.success) {
+            const roomId = response.data.data.id;
+            window.location.href = `/chat/${roomId}`;
+        }
+    } catch (error) {
+        console.error('Failed to create chat room:', error);
+        alert('チャットルームの作成に失敗しました');
+    }
+}
+
+// 購入手続き
+function purchaseProduct() {
+    alert('購入機能は開発中です');
+}
+
+// いいね
+function addToFavorites() {
+    alert('いいね機能は開発中です');
+}
+
 // ページ読み込み時に実行
 document.addEventListener('DOMContentLoaded', () => {
     loadProduct();
