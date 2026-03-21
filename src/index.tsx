@@ -17,6 +17,8 @@ import favoritesRoutes from './routes/favorites'
 import notificationsRoutes from './routes/notifications'
 import mypageRoutes from './routes/mypage'
 import profileRoutes from './routes/profile'
+import reviewsRoutes from './routes/reviews'
+import transactionsRoutes from './routes/transactions'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -43,6 +45,8 @@ app.route('/api/favorites', favoritesRoutes)
 app.route('/api/notifications', notificationsRoutes)
 app.route('/api/mypage', mypageRoutes)
 app.route('/api/profile', profileRoutes)
+app.route('/api/reviews', reviewsRoutes)
+app.route('/api/transactions', transactionsRoutes)
 
 // トップページ
 app.get('/', (c) => {
@@ -2777,6 +2781,175 @@ app.get('/profile/edit', (c) => {
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="/static/profile-edit.js"></script>
+    </body>
+    </html>
+  `)
+})
+
+// レビュー投稿ページ
+app.get('/reviews/new', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>レビューを書く - PARTS HUB（パーツハブ）</title>
+        <meta name="theme-color" content="#ff4757">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>
+            .star-rating {
+                display: inline-flex;
+                gap: 8px;
+                font-size: 2rem;
+            }
+            .star {
+                cursor: pointer;
+                color: #d1d5db;
+                transition: color 0.2s;
+            }
+            .star.active,
+            .star:hover {
+                color: #fbbf24;
+            }
+            .star:hover ~ .star {
+                color: #d1d5db;
+            }
+        </style>
+    </head>
+    <body class="bg-gray-50 min-h-screen">
+        <!-- ヘッダー -->
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+            <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+                <button onclick="window.history.back()" class="text-gray-600 hover:text-gray-900 flex items-center">
+                    <i class="fas fa-arrow-left mr-2"></i>戻る
+                </button>
+                <h1 class="text-red-500 font-bold text-lg">レビューを書く</h1>
+                <div class="w-16"></div>
+            </div>
+        </header>
+
+        <main class="max-w-4xl mx-auto px-4 py-6">
+            <!-- 取引情報カード -->
+            <div id="transaction-info" class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                <!-- JavaScriptで動的に生成 -->
+                <div class="text-center py-8">
+                    <i class="fas fa-spinner fa-spin text-3xl text-gray-400"></i>
+                </div>
+            </div>
+
+            <!-- レビューフォーム -->
+            <form id="review-form" class="bg-white rounded-xl shadow-sm p-6 space-y-6">
+                <!-- 評価 -->
+                <div>
+                    <label class="block text-lg font-bold text-gray-900 mb-3">評価<span class="text-red-500">*</span></label>
+                    <div class="star-rating" id="star-rating">
+                        <i class="far fa-star star" data-rating="1" onclick="setRating(1)"></i>
+                        <i class="far fa-star star" data-rating="2" onclick="setRating(2)"></i>
+                        <i class="far fa-star star" data-rating="3" onclick="setRating(3)"></i>
+                        <i class="far fa-star star" data-rating="4" onclick="setRating(4)"></i>
+                        <i class="far fa-star star" data-rating="5" onclick="setRating(5)"></i>
+                    </div>
+                    <p class="text-sm text-gray-600 mt-2">星をクリックして評価してください</p>
+                    <input type="hidden" id="rating" value="0">
+                </div>
+
+                <!-- コメント -->
+                <div>
+                    <label class="block text-lg font-bold text-gray-900 mb-3">コメント<span class="text-red-500">*</span></label>
+                    <textarea id="comment" required rows="6" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors resize-none" placeholder="商品の状態、対応、配送などについてお書きください（100文字以上）"></textarea>
+                    <p class="text-sm text-gray-600 mt-2"><span id="char-count">0</span> / 100文字（最低）</p>
+                </div>
+
+                <!-- 評価項目（任意） -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">商品の状態</label>
+                        <select id="product-condition-rating" class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none">
+                            <option value="">-</option>
+                            <option value="5">とても良い</option>
+                            <option value="4">良い</option>
+                            <option value="3">普通</option>
+                            <option value="2">悪い</option>
+                            <option value="1">とても悪い</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">対応・コミュニケーション</label>
+                        <select id="communication-rating" class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none">
+                            <option value="">-</option>
+                            <option value="5">とても良い</option>
+                            <option value="4">良い</option>
+                            <option value="3">普通</option>
+                            <option value="2">悪い</option>
+                            <option value="1">とても悪い</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">配送</label>
+                        <select id="shipping-rating" class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none">
+                            <option value="">-</option>
+                            <option value="5">とても良い</option>
+                            <option value="4">良い</option>
+                            <option value="3">普通</option>
+                            <option value="2">悪い</option>
+                            <option value="1">とても悪い</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 投稿ボタン -->
+                <div class="sticky bottom-0 bg-white border-t border-gray-200 -mx-6 px-6 py-4 mt-6">
+                    <button type="submit" id="submit-btn" class="w-full bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white py-4 px-6 rounded-lg font-bold text-lg shadow-lg transition-all">
+                        <i class="fas fa-paper-plane mr-2"></i>レビューを投稿
+                    </button>
+                </div>
+            </form>
+        </main>
+
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/reviews.js"></script>
+    </body>
+    </html>
+  `)
+})
+
+// 取引詳細ページ
+app.get('/transactions/:id', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>取引詳細 - PARTS HUB（パーツハブ）</title>
+        <meta name="theme-color" content="#ff4757">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    </head>
+    <body class="bg-gray-50 min-h-screen">
+        <!-- ヘッダー -->
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+            <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+                <button onclick="window.history.back()" class="text-gray-600 hover:text-gray-900 flex items-center">
+                    <i class="fas fa-arrow-left mr-2"></i>戻る
+                </button>
+                <h1 class="text-red-500 font-bold text-lg">取引詳細</h1>
+                <div class="w-16"></div>
+            </div>
+        </header>
+
+        <main class="max-w-4xl mx-auto px-4 py-6 space-y-6" id="main-content">
+            <!-- JavaScriptで動的に生成 -->
+            <div class="text-center py-12">
+                <i class="fas fa-spinner fa-spin text-4xl text-gray-400 mb-4"></i>
+                <p class="text-gray-500">読み込み中...</p>
+            </div>
+        </main>
+
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/transaction-detail.js"></script>
     </body>
     </html>
   `)
