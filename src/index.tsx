@@ -740,82 +740,115 @@ app.get('/login', (c) => {
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>
-            .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+            .form-input {
+                @apply w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors;
+            }
+            .form-input:focus {
+                border-color: #ef4444;
+            }
         </style>
     </head>
-    <body class="bg-gray-50">
-        <div class="min-h-screen flex items-center justify-center px-4 py-12">
-            <div class="max-w-md w-full">
-                <!-- ロゴ -->
-                <div class="text-center mb-8">
-                    <a href="/" class="inline-flex items-center space-x-2 mb-6">
-                        <img src="/icons/logo.svg" alt="PARTS HUB" class="w-12 h-12">
-                        <span class="text-2xl font-bold text-gray-900">PARTS HUB</span>
-                    </a>
-                    <h1 class="text-3xl font-bold text-gray-900 mb-2">ログイン</h1>
-                    <p class="text-gray-600">アカウントにログインしてください</p>
+    <body class="bg-gray-50 min-h-screen">
+        <!-- シンプルヘッダー -->
+        <header class="bg-white border-b border-gray-200">
+            <div class="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
+                <a href="/" class="text-gray-600 hover:text-gray-900 flex items-center">
+                    <i class="fas fa-arrow-left mr-2"></i>戻る
+                </a>
+                <div class="text-red-500 font-bold text-lg">PARTS HUB</div>
+                <div class="w-16"></div>
+            </div>
+        </header>
+
+        <main class="max-w-md mx-auto px-4 py-12">
+            <!-- タイトル -->
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">ログイン</h1>
+                <p class="text-gray-600">メールアドレスとパスワードを入力</p>
+            </div>
+
+            <!-- 登録成功メッセージ（URLパラメータで表示） -->
+            <div id="success-message" class="hidden mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div class="flex items-center text-green-800">
+                    <i class="fas fa-check-circle mr-2"></i>
+                    <span class="text-sm font-medium">アカウント作成完了！ログインしてください。</span>
                 </div>
+            </div>
 
-                <!-- ログインフォーム -->
-                <div class="bg-white rounded-2xl shadow-xl p-8">
-                    <form id="login-form" class="space-y-6">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">メールアドレス</label>
-                            <div class="relative">
-                                <i class="fas fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                                <input type="email" id="email" required
-                                       class="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                                       placeholder="example@email.com">
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">パスワード</label>
-                            <div class="relative">
-                                <i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                                <input type="password" id="password" required
-                                       class="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                                       placeholder="8文字以上">
-                            </div>
-                        </div>
-
-                        <div class="flex items-center justify-between">
-                            <label class="flex items-center">
-                                <input type="checkbox" class="rounded border-gray-300 text-red-500 focus:ring-red-500">
-                                <span class="ml-2 text-sm text-gray-600">ログイン状態を保持</span>
-                            </label>
-                            <a href="/password-reset" class="text-sm text-red-500 hover:text-red-600 font-medium">
-                                パスワードを忘れた？
-                            </a>
-                        </div>
-
-                        <button type="submit"
-                                class="w-full bg-gradient-to-r from-red-500 to-pink-500 text-white py-3 rounded-lg font-bold hover:from-red-600 hover:to-pink-600 transition-all shadow-lg">
-                            <i class="fas fa-sign-in-alt mr-2"></i>ログイン
-                        </button>
-                    </form>
-
-                    <div class="mt-6 text-center">
-                        <p class="text-gray-600">
-                            アカウントをお持ちでない方は
-                            <a href="/register" class="text-red-500 hover:text-red-600 font-semibold">新規登録</a>
-                        </p>
+            <!-- ログインフォーム -->
+            <div class="bg-white rounded-xl shadow-sm p-6 md:p-8">
+                <form id="login-form" class="space-y-5">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">メールアドレス</label>
+                        <input type="email" id="email" required
+                               class="form-input"
+                               placeholder="example@email.com"
+                               autocomplete="email">
                     </div>
-                </div>
 
-                <!-- 戻るリンク -->
-                <div class="text-center mt-6">
-                    <a href="/" class="text-gray-600 hover:text-gray-900">
-                        <i class="fas fa-arrow-left mr-2"></i>トップページに戻る
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">パスワード</label>
+                        <input type="password" id="password" required
+                               class="form-input"
+                               placeholder="パスワードを入力"
+                               autocomplete="current-password">
+                    </div>
+
+                    <div class="flex items-center justify-between text-sm">
+                        <label class="flex items-center">
+                            <input type="checkbox" id="remember" 
+                                   class="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500">
+                            <span class="ml-2 text-gray-600">ログイン状態を保持</span>
+                        </label>
+                        <a href="/password-reset" class="text-red-500 hover:text-red-600 font-medium">
+                            パスワードを忘れた？
+                        </a>
+                    </div>
+
+                    <div class="pt-2">
+                        <button type="submit"
+                                class="w-full bg-gradient-to-r from-red-500 to-red-600 text-white py-4 rounded-lg font-bold hover:from-red-600 hover:to-red-700 transition-all shadow-lg text-lg">
+                            ログイン
+                        </button>
+                    </div>
+                </form>
+
+                <!-- 新規登録リンク -->
+                <div class="mt-8 pt-6 border-t border-gray-200 text-center">
+                    <p class="text-gray-600">
+                        アカウントをお持ちでない方
+                    </p>
+                    <a href="/register" class="inline-block mt-2 text-red-500 hover:text-red-600 font-semibold">
+                        新規会員登録はこちら <i class="fas fa-arrow-right ml-1"></i>
                     </a>
                 </div>
             </div>
-        </div>
+
+            <!-- デモアカウント情報（開発用） -->
+            <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div class="text-sm text-blue-800">
+                    <p class="font-semibold mb-1"><i class="fas fa-info-circle mr-1"></i>テストアカウント</p>
+                    <p class="text-xs">メール: test@example.com</p>
+                    <p class="text-xs">パスワード: test1234</p>
+                </div>
+            </div>
+        </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script>
+            // 登録成功メッセージの表示
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('registered') === 'true') {
+                document.getElementById('success-message').classList.remove('hidden');
+            }
+
+            // ログインフォーム送信
             document.getElementById('login-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
+                
+                const submitButton = e.target.querySelector('button[type="submit"]');
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>ログイン中...';
                 
                 const email = document.getElementById('email').value;
                 const password = document.getElementById('password').value;
@@ -824,13 +857,26 @@ app.get('/login', (c) => {
                     const response = await axios.post('/api/auth/login', { email, password });
                     
                     if (response.data.success) {
+                        // トークンとユーザー情報を保存
                         localStorage.setItem('token', response.data.data.token);
                         localStorage.setItem('user', JSON.stringify(response.data.data.user));
-                        alert('ログインしました！');
-                        window.location.href = '/';
+                        
+                        // 成功メッセージ
+                        const successMsg = document.createElement('div');
+                        successMsg.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-4 rounded-lg shadow-xl z-50';
+                        successMsg.innerHTML = '<i class="fas fa-check-circle mr-2"></i>ログイン成功！';
+                        document.body.appendChild(successMsg);
+                        
+                        setTimeout(() => {
+                            window.location.href = '/';
+                        }, 1000);
                     }
                 } catch (error) {
-                    alert(error.response?.data?.error || 'ログインに失敗しました');
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = 'ログイン';
+                    
+                    const errorMsg = error.response?.data?.error || 'ログインに失敗しました。メールアドレスとパスワードを確認してください。';
+                    alert(errorMsg);
                 }
             });
         </script>
