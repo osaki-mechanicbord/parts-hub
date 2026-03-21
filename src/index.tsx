@@ -10,6 +10,9 @@ import fitmentRoutes from './routes/fitment'
 import externalRoutes from './routes/external'
 import productsRoutes from './routes/products'
 import authRoutes from './routes/auth'
+import commentsRoutes from './routes/comments'
+import chatRoutes from './routes/chat'
+import negotiationsRoutes from './routes/negotiations'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -29,6 +32,9 @@ app.route('/api/fitment', fitmentRoutes)
 app.route('/api/external', externalRoutes)
 app.route('/api/products', productsRoutes)
 app.route('/api/auth', authRoutes)
+app.route('/api/comments', commentsRoutes)
+app.route('/api/chat', chatRoutes)
+app.route('/api/negotiations', negotiationsRoutes)
 
 // トップページ
 app.get('/', (c) => {
@@ -1272,6 +1278,10 @@ app.get('/products/:id', (c) => {
                                     class="w-full px-6 py-4 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:border-gray-400 hover:bg-gray-50 transition-all flex items-center justify-center">
                                 <i class="far fa-heart mr-2"></i>いいね
                             </button>
+                            <button onclick="openPriceOfferModal()" 
+                                    class="w-full px-6 py-4 border-2 border-blue-500 text-blue-600 rounded-lg font-semibold hover:bg-blue-50 transition-all flex items-center justify-center">
+                                <i class="fas fa-tag mr-2"></i>値下げ交渉
+                            </button>
                         </div>
                         <button onclick="contactSeller()" 
                                 class="w-full px-6 py-4 bg-white border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-all flex items-center justify-center">
@@ -1352,10 +1362,82 @@ app.get('/products/:id', (c) => {
                     </div>
                 </div>
             </div>
+
+            <!-- コメント・質問セクション -->
+            <div id="comments-section" class="mt-6">
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h2 class="text-xl font-bold text-gray-900 mb-4">
+                        <i class="fas fa-comments text-primary mr-2"></i>コメント・質問
+                    </h2>
+                    
+                    <!-- コメント投稿フォーム -->
+                    <div class="mb-6 p-4 bg-gray-50 rounded-lg">
+                        <textarea id="comment-input" rows="3" 
+                                  class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none resize-none"
+                                  placeholder="商品について質問やコメントを投稿できます"></textarea>
+                        <div class="flex items-center justify-between mt-3">
+                            <label class="flex items-center gap-2 text-sm text-gray-600">
+                                <input type="checkbox" id="is-question" class="w-4 h-4 text-red-500 rounded">
+                                <span>これは質問です</span>
+                            </label>
+                            <button onclick="postComment()" 
+                                    class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg font-semibold transition-colors">
+                                <i class="fas fa-paper-plane mr-2"></i>投稿する
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- コメント一覧 -->
+                    <div id="comments-list" class="space-y-4">
+                        <!-- JavaScriptで動的に生成 -->
+                    </div>
+                </div>
+            </div>
         </main>
+
+        <!-- 値下げモーダル -->
+        <div id="price-offer-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl max-w-md w-full">
+                <div class="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+                    <h3 class="text-xl font-bold text-gray-900">値下げ交渉</h3>
+                    <button onclick="closePriceOfferModal()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">現在の価格</label>
+                        <div class="text-2xl font-bold text-gray-900" id="modal-current-price">¥0</div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">希望価格 *</label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">¥</span>
+                            <input type="number" id="offer-price" 
+                                   class="w-full px-4 py-3 pl-8 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none"
+                                   placeholder="0">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">メッセージ（任意）</label>
+                        <textarea id="offer-message" rows="3"
+                                  class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none resize-none"
+                                  placeholder="値下げの理由など"></textarea>
+                    </div>
+                    <button onclick="submitPriceOffer()" 
+                            class="w-full bg-gradient-to-r from-red-500 to-red-600 text-white py-3 rounded-lg font-bold hover:from-red-600 hover:to-red-700 transition-all">
+                        <i class="fas fa-tag mr-2"></i>値下げをリクエストする
+                    </button>
+                    <p class="text-xs text-gray-500 text-center">
+                        ※値下げリクエストは24時間有効です
+                    </p>
+                </div>
+            </div>
+        </div>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="/static/product-detail.js"></script>
+        <script src="/static/comments.js"></script>
     </body>
     </html>
   `)
