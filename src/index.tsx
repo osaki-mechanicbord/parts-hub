@@ -7,6 +7,7 @@ import type { Bindings } from './types'
 // ルートのインポート
 import apiRoutes from './routes/api'
 import fitmentRoutes from './routes/fitment'
+import externalRoutes from './routes/external'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -20,6 +21,7 @@ app.use('/static/*', serveStatic({ root: './public' }))
 // APIルート
 app.route('/api', apiRoutes)
 app.route('/api/fitment', fitmentRoutes)
+app.route('/api/external', externalRoutes)
 
 // トップページ
 app.get('/', (c) => {

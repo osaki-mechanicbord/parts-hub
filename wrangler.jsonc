@@ -13,4 +13,11 @@
       "database_id": "local-dev-database"
     }
   ]
+  // 環境変数の設定例（本番環境用）
+  // "vars": {
+  //   "ARGOS_API_ENABLED": "true",
+  //   "ARGOS_API_URL": "https://api.argos-example.com/v1"
+  // }
+  // 機密情報は wrangler secret put コマンドで設定:
+  // npx wrangler secret put ARGOS_API_KEY
 }
