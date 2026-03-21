@@ -150,6 +150,16 @@ app.get('/', (c) => {
                 100% { transform: rotate(360deg); }
             }
             
+            /* ヒーローセクションのアニメーション */
+            @keyframes float {
+                0%, 100% { transform: translateY(0px); }
+                50% { transform: translateY(-20px); }
+            }
+            
+            .hero-float {
+                animation: float 6s ease-in-out infinite;
+            }
+            
             /* PWA用追加スタイル */
             @media (display-mode: standalone) {
                 body {
@@ -254,21 +264,28 @@ app.get('/', (c) => {
         </header>
 
         <!-- Hero セクション -->
-        <section class="relative py-20 overflow-hidden">
-            <!-- 背景画像 + オーバーレイ -->
-            <div class="absolute inset-0 z-0">
-                <img src="https://www.genspark.ai/api/files/s/Aa01t93D" 
-                     alt="Automotive Parts Background" 
-                     class="w-full h-full object-cover"
-                     loading="eager">
-                <div class="absolute inset-0 bg-gradient-to-br from-purple-900/90 via-indigo-900/85 to-blue-900/90"></div>
+        <section class="relative py-20 overflow-hidden bg-gradient-to-br from-indigo-900 via-purple-900 to-gray-900">
+            <!-- パターンオーバーレイ -->
+            <div class="absolute inset-0 z-0 opacity-10">
+                <svg class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <pattern id="gear-pattern" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
+                            <circle cx="50" cy="50" r="20" fill="none" stroke="white" stroke-width="2"/>
+                            <line x1="50" y1="30" x2="50" y2="10" stroke="white" stroke-width="2"/>
+                            <line x1="50" y1="70" x2="50" y2="90" stroke="white" stroke-width="2"/>
+                            <line x1="30" y1="50" x2="10" y2="50" stroke="white" stroke-width="2"/>
+                            <line x1="70" y1="50" x2="90" y2="50" stroke="white" stroke-width="2"/>
+                        </pattern>
+                    </defs>
+                    <rect width="100%" height="100%" fill="url(#gear-pattern)" />
+                </svg>
             </div>
             
             <!-- コンテンツ -->
             <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="text-center text-white">
                     <div class="flex items-center justify-center mb-6">
-                        <div class="w-20 h-20 mr-4 flex-shrink-0 drop-shadow-2xl">
+                        <div class="w-20 h-20 mr-4 flex-shrink-0 drop-shadow-2xl hero-float">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="80" height="80">
                               <defs>
                                 <linearGradient id="heroLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
