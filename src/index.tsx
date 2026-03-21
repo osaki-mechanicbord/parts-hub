@@ -9,6 +9,7 @@ import apiRoutes from './routes/api'
 import fitmentRoutes from './routes/fitment'
 import externalRoutes from './routes/external'
 import productsRoutes from './routes/products'
+import authRoutes from './routes/auth'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -24,6 +25,7 @@ app.route('/api', apiRoutes)
 app.route('/api/fitment', fitmentRoutes)
 app.route('/api/external', externalRoutes)
 app.route('/api/products', productsRoutes)
+app.route('/api/auth', authRoutes)
 
 // トップページ
 app.get('/', (c) => {
