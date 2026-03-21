@@ -43,6 +43,7 @@ negotiations.get('/user/:userId', async (c) => {
         pn.*,
         p.title as product_title,
         p.price as current_price,
+        (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as product_image,
         buyer.shop_name as buyer_name,
         seller.shop_name as seller_name
       FROM price_negotiations pn
@@ -143,10 +144,9 @@ negotiations.put('/:negotiationId', async (c) => {
     const { DB } = c.env
     const negotiationId = c.req.param('negotiationId')
     const body = await c.req.json()
-    const { seller_id, action, counter_price, seller_response } = body
-    // action: 'accept', 'reject', 'counter'
+    const { seller_id, status, counter_price, message } = body
 
-    if (!seller_id || !action) {
+    if (!seller_id || !status) {
       return c.json({ success: false, error: '必須項目が不足しています' }, 400)
     }
 
@@ -159,22 +159,18 @@ negotiations.put('/:negotiationId', async (c) => {
       return c.json({ success: false, error: '権限がありません' }, 403)
     }
 
-    if (negotiation.status !== 'pending' && negotiation.status !== 'countered') {
+    if (negotiation.status !== 'pending' && negotiation.status !== 'counter_offered') {
       return c.json({ success: false, error: 'この値下げリクエストは既に処理されています' }, 400)
     }
 
-    let newStatus = action
     let finalPrice = negotiation.requested_price
 
-    if (action === 'counter') {
+    if (status === 'counter_offered') {
       if (!counter_price) {
         return c.json({ success: false, error: 'カウンター価格が必要です' }, 400)
       }
-      newStatus = 'countered'
       finalPrice = counter_price
-    } else if (action === 'accept') {
-      newStatus = 'accepted'
-      
+    } else if (status === 'accepted') {
       // 商品価格を更新
       const oldPrice = await DB.prepare(`
         SELECT price FROM products WHERE id = ?
@@ -197,8 +193,6 @@ negotiations.put('/:negotiationId', async (c) => {
         '値下げ交渉により変更',
         negotiationId
       ).run()
-    } else if (action === 'reject') {
-      newStatus = 'rejected'
     }
 
     // 交渉ステータス更新
@@ -206,23 +200,23 @@ negotiations.put('/:negotiationId', async (c) => {
       UPDATE price_negotiations 
       SET status = ?, 
           counter_price = ?, 
-          seller_response = ?, 
+          message = ?, 
           responded_at = CURRENT_TIMESTAMP,
           updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `).bind(newStatus, counter_price || null, seller_response || null, negotiationId).run()
+    `).bind(status, counter_price || null, message || null, negotiationId).run()
 
     // 購入者に通知
     let notificationTitle = ''
     let notificationMessage = ''
     
-    if (action === 'accept') {
+    if (status === 'accepted') {
       notificationTitle = '値下げリクエストが承認されました'
       notificationMessage = `出品者が¥${finalPrice.toLocaleString()}での販売に同意しました`
-    } else if (action === 'reject') {
+    } else if (status === 'rejected') {
       notificationTitle = '値下げリクエストが却下されました'
-      notificationMessage = seller_response || '出品者が値下げを見送りました'
-    } else if (action === 'counter') {
+      notificationMessage = message || '出品者が値下げを見送りました'
+    } else if (status === 'counter_offered') {
       notificationTitle = 'カウンターオファーが届きました'
       notificationMessage = `出品者から¥${counter_price.toLocaleString()}の提案があります`
     }
@@ -233,7 +227,7 @@ negotiations.put('/:negotiationId', async (c) => {
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).bind(
       negotiation.buyer_id,
-      `price_${action}`,
+      `price_${status}`,
       notificationTitle,
       notificationMessage,
       negotiationId,
