@@ -3,6 +3,36 @@ import type { Bindings } from '../types'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
+// スラッグ生成関数（日本語対応）
+function generateSlug(title: string, id: number): string {
+  // 日本語の場合はそのままローマ字表記にせず、英数字部分のみ使用
+  let slug = title
+    .toLowerCase()
+    .trim()
+    // 全角スペースを半角に
+    .replace(/　/g, ' ')
+    // 全角英数を半角に
+    .replace(/[Ａ-Ｚａ-ｚ０-９]/g, (s) => {
+      return String.fromCharCode(s.charCodeAt(0) - 0xFEE0)
+    })
+    // 日本語文字を削除（英数字・ハイフン以外）
+    .replace(/[^\w\-]/g, '')
+    // スペースをハイフンに
+    .replace(/\s+/g, '-')
+    // 連続するハイフンを1つに
+    .replace(/\-+/g, '-')
+    // 前後のハイフンを削除
+    .replace(/^-+|-+$/g, '')
+  
+  // スラッグが空または短すぎる場合はproductを使用
+  if (!slug || slug.length < 3) {
+    slug = 'product'
+  }
+  
+  // IDを末尾に追加してユニーク性を保証
+  return `${slug}-${id}`
+}
+
 // 画像アップロード
 app.post('/images/upload', async (c) => {
   try {
@@ -103,7 +133,7 @@ app.delete('/images/:imageId', async (c) => {
 })
 
 // 商品の画像一覧取得
-app.get('/:productId/images', async (c) => {
+app.get('/images/:productId', async (c) => {
   try {
     const { DB } = c.env
     const productId = c.req.param('productId')
@@ -164,6 +194,12 @@ app.post('/', async (c) => {
 
     const productId = result.meta.last_row_id
 
+    // スラッグを生成して更新
+    const slug = generateSlug(body.title, Number(productId))
+    await DB.prepare(`
+      UPDATE products SET slug = ? WHERE id = ?
+    `).bind(slug, productId).run()
+
     // 適合情報を保存（ある場合）
     if (body.compatibility) {
       await DB.prepare(`
@@ -201,6 +237,7 @@ app.post('/', async (c) => {
       success: true,
       data: {
         id: productId,
+        slug: slug,
         ...body,
         created_at: new Date().toISOString()
       }
@@ -377,6 +414,96 @@ app.delete('/:id', async (c) => {
   } catch (error) {
     console.error('Product delete error:', error)
     return c.json({ success: false, error: '商品の削除に失敗しました' }, 500)
+  }
+})
+
+// 商品詳細取得（スラッグまたはID）
+app.get('/:slugOrId', async (c) => {
+  try {
+    const { DB } = c.env
+    const slugOrId = c.req.param('slugOrId')
+    
+    console.log('[商品詳細] パラメータ:', slugOrId, 'isNaN:', isNaN(Number(slugOrId)))
+    
+    // スラッグまたはIDで検索
+    let product
+    if (isNaN(Number(slugOrId))) {
+      // スラッグの場合
+      console.log('[商品詳細] スラッグで検索:', slugOrId)
+      product = await DB.prepare(`
+        SELECT 
+          p.*,
+          u.shop_name,
+          u.shop_type,
+          u.rating,
+          u.is_verified,
+          c.name as category_name,
+          m.name as maker_name,
+          mo.name as model_name
+        FROM products p
+        LEFT JOIN users u ON p.seller_id = u.id
+        LEFT JOIN categories c ON p.category_id = c.id
+        LEFT JOIN car_makers m ON p.maker_id = m.id
+        LEFT JOIN car_models mo ON p.model_id = mo.id
+        WHERE p.slug = ? AND p.status = 'active'
+      `).bind(slugOrId).first()
+      console.log('[商品詳細] 検索結果:', product ? `見つかった(ID:${product.id})` : '見つからない')
+    } else {
+      // IDの場合
+      console.log('[商品詳細] IDで検索:', slugOrId)
+      product = await DB.prepare(`
+        SELECT 
+          p.*,
+          u.shop_name,
+          u.shop_type,
+          u.rating,
+          u.is_verified,
+          c.name as category_name,
+          m.name as maker_name,
+          mo.name as model_name
+        FROM products p
+        LEFT JOIN users u ON p.seller_id = u.id
+        LEFT JOIN categories c ON p.category_id = c.id
+        LEFT JOIN car_makers m ON p.maker_id = m.id
+        LEFT JOIN car_models mo ON p.model_id = mo.id
+        WHERE p.id = ? AND p.status = 'active'
+      `).bind(slugOrId).first()
+      console.log('[商品詳細] 検索結果:', product ? `見つかった(ID:${product.id})` : '見つからない')
+    }
+    
+    if (!product) {
+      return c.json({ success: false, error: '商品が見つかりません' }, 404)
+    }
+    
+    // 画像を取得
+    const { results: images } = await DB.prepare(`
+      SELECT * FROM product_images
+      WHERE product_id = ?
+      ORDER BY display_order ASC
+    `).bind(product.id).all()
+    
+    // 適合情報を取得
+    const compatibility = await DB.prepare(`
+      SELECT * FROM product_compatibility
+      WHERE product_id = ?
+    `).bind(product.id).first()
+    
+    // 閲覧数を増やす
+    await DB.prepare(`
+      UPDATE products SET view_count = view_count + 1 WHERE id = ?
+    `).bind(product.id).run()
+    
+    return c.json({
+      success: true,
+      data: {
+        ...product,
+        images,
+        compatibility
+      }
+    })
+  } catch (error) {
+    console.error('Get product error:', error)
+    return c.json({ success: false, error: '商品の取得に失敗しました' }, 500)
   }
 })
 

@@ -939,4 +939,227 @@ app.get('/register', (c) => {
   `)
 })
 
+// 商品詳細ページ
+app.get('/products/:slug', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>商品詳細 - PARTS HUB（パーツハブ）</title>
+        <meta name="description" content="自動車パーツの詳細情報、適合車両、価格など">
+        <meta name="theme-color" content="#ff4757">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>
+            .main-image-container {
+                aspect-ratio: 1 / 1;
+                max-height: 500px;
+            }
+            .thumbnail-scroll {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: thin;
+            }
+            .thumbnail-scroll::-webkit-scrollbar {
+                height: 4px;
+            }
+            .thumbnail-scroll::-webkit-scrollbar-thumb {
+                background: #cbd5e0;
+                border-radius: 4px;
+            }
+        </style>
+    </head>
+    <body class="bg-gray-50">
+        <!-- ヘッダー -->
+        <header class="bg-white shadow-sm sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                <div class="flex items-center justify-between">
+                    <a href="/" class="flex items-center space-x-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="40" height="40">
+                          <defs>
+                            <linearGradient id="headerLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                              <stop offset="0%" style="stop-color:#ff4757;stop-opacity:1" />
+                              <stop offset="100%" style="stop-color:#ff6b95;stop-opacity:1" />
+                            </linearGradient>
+                          </defs>
+                          <circle cx="50" cy="50" r="48" fill="url(#headerLogoGrad)"/>
+                          <g fill="#ffffff">
+                            <rect x="47" y="5" width="6" height="15" rx="1"/>
+                            <rect x="47" y="80" width="6" height="15" rx="1"/>
+                            <rect x="5" y="47" width="15" height="6" rx="1"/>
+                            <rect x="80" y="47" width="15" height="6" rx="1"/>
+                            <rect x="72" y="18" width="15" height="6" rx="1" transform="rotate(45 79.5 21)"/>
+                            <rect x="13" y="18" width="15" height="6" rx="1" transform="rotate(-45 20.5 21)"/>
+                            <rect x="72" y="76" width="15" height="6" rx="1" transform="rotate(-45 79.5 79)"/>
+                            <rect x="13" y="76" width="15" height="6" rx="1" transform="rotate(45 20.5 79)"/>
+                          </g>
+                          <circle cx="50" cy="50" r="22" fill="#ffffff"/>
+                          <g stroke="#ff4757" stroke-width="2" fill="none">
+                            <line x1="50" y1="50" x2="50" y2="32"/>
+                            <line x1="50" y1="50" x2="50" y2="68"/>
+                            <line x1="50" y1="50" x2="32" y2="50"/>
+                            <line x1="50" y1="50" x2="68" y2="50"/>
+                          </g>
+                          <g fill="#ff4757">
+                            <circle cx="50" cy="32" r="3"/>
+                            <circle cx="50" cy="68" r="3"/>
+                            <circle cx="32" cy="50" r="3"/>
+                            <circle cx="68" cy="50" r="3"/>
+                          </g>
+                          <circle cx="50" cy="50" r="8" fill="#ff4757"/>
+                          <circle cx="50" cy="50" r="4" fill="#ffffff"/>
+                        </svg>
+                        <div class="hidden sm:block">
+                            <div class="text-xl font-bold text-gray-900">PARTS HUB</div>
+                            <div class="text-xs text-gray-500">パーツハブ</div>
+                        </div>
+                    </a>
+                    <button onclick="window.location.href='/'" 
+                            class="px-4 py-2 text-gray-700 hover:text-primary transition-all">
+                        <i class="fas fa-arrow-left mr-2"></i>戻る
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- メインコンテンツ -->
+        <main id="product-detail-container" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- 左カラム：画像ギャラリー -->
+                <div>
+                    <!-- メイン画像 -->
+                    <div class="bg-white rounded-lg shadow-md p-4 mb-4">
+                        <div class="main-image-container flex items-center justify-center bg-gray-100 rounded-lg overflow-hidden">
+                            <img id="main-product-image" 
+                                 src="/static/placeholder.jpg" 
+                                 alt="商品画像" 
+                                 class="w-full h-full object-contain">
+                        </div>
+                    </div>
+                    
+                    <!-- サムネイル -->
+                    <div id="image-thumbnails" class="thumbnail-scroll flex space-x-2 pb-2">
+                        <!-- JavaScriptで動的に生成 -->
+                    </div>
+                </div>
+
+                <!-- 右カラム：商品情報 -->
+                <div>
+                    <!-- 商品タイトル・価格 -->
+                    <div class="bg-white rounded-lg shadow-md p-6 mb-4">
+                        <h1 id="product-title" class="text-3xl font-bold text-gray-900 mb-4">
+                            読み込み中...
+                        </h1>
+                        <div class="flex items-baseline space-x-2 mb-6">
+                            <div id="product-price" class="text-4xl font-bold text-primary">
+                                ¥0
+                            </div>
+                            <div class="text-gray-500">（税込）</div>
+                        </div>
+                        
+                        <!-- アクションボタン -->
+                        <div class="grid grid-cols-2 gap-3 mb-4">
+                            <button onclick="purchaseProduct()" 
+                                    class="w-full px-6 py-3 bg-primary text-white rounded-lg font-semibold hover:bg-primary-dark transition-all shadow-md hover:shadow-lg">
+                                <i class="fas fa-shopping-cart mr-2"></i>購入する
+                            </button>
+                            <button onclick="addToFavorites()" 
+                                    class="w-full px-6 py-3 border-2 border-primary text-primary rounded-lg font-semibold hover:bg-primary hover:text-white transition-all">
+                                <i class="far fa-heart mr-2"></i>お気に入り
+                            </button>
+                        </div>
+                        <button onclick="contactSeller()" 
+                                class="w-full px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:border-gray-400 transition-all">
+                            <i class="fas fa-comment mr-2"></i>出品者に問い合わせ
+                        </button>
+                    </div>
+
+                    <!-- 商品説明 -->
+                    <div class="bg-white rounded-lg shadow-md p-6 mb-4">
+                        <h2 class="text-xl font-bold text-gray-900 mb-4">
+                            <i class="fas fa-info-circle text-primary mr-2"></i>商品説明
+                        </h2>
+                        <p id="product-description" class="text-gray-700 whitespace-pre-wrap leading-relaxed">
+                            読み込み中...
+                        </p>
+                    </div>
+
+                    <!-- 商品詳細 -->
+                    <div class="bg-white rounded-lg shadow-md p-6 mb-4">
+                        <h2 class="text-xl font-bold text-gray-900 mb-4">
+                            <i class="fas fa-clipboard-list text-primary mr-2"></i>商品詳細
+                        </h2>
+                        <div class="space-y-3">
+                            <div class="flex justify-between py-2 border-b">
+                                <span class="text-gray-600">商品の状態</span>
+                                <span id="product-condition" class="font-semibold">-</span>
+                            </div>
+                            <div class="flex justify-between py-2 border-b">
+                                <span class="text-gray-600">在庫数</span>
+                                <span id="product-stock" class="font-semibold">-</span>
+                            </div>
+                            <div class="flex justify-between py-2 border-b">
+                                <span class="text-gray-600">カテゴリ</span>
+                                <span id="product-category" class="font-semibold">-</span>
+                            </div>
+                            <div class="flex justify-between py-2 border-b">
+                                <span class="text-gray-600">部品番号</span>
+                                <span id="product-part-number" class="font-semibold">-</span>
+                            </div>
+                            <div class="flex justify-between py-2">
+                                <span class="text-gray-600">閲覧数</span>
+                                <span id="product-view-count" class="font-semibold">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 適合車両情報 -->
+                    <div id="compatibility-section" class="bg-white rounded-lg shadow-md p-6 mb-4">
+                        <h2 class="text-xl font-bold text-gray-900 mb-4">
+                            <i class="fas fa-car text-primary mr-2"></i>適合車両情報
+                        </h2>
+                        <div id="compatibility-info">
+                            読み込み中...
+                        </div>
+                    </div>
+
+                    <!-- 出品者情報 -->
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h2 class="text-xl font-bold text-gray-900 mb-4">
+                            <i class="fas fa-store text-primary mr-2"></i>出品者情報
+                        </h2>
+                        <div class="space-y-3">
+                            <div class="flex justify-between py-2 border-b">
+                                <span class="text-gray-600">店舗名</span>
+                                <span id="seller-shop-name" class="font-semibold">-</span>
+                            </div>
+                            <div class="flex justify-between py-2 border-b">
+                                <span class="text-gray-600">業態</span>
+                                <span id="seller-shop-type" class="font-semibold">-</span>
+                            </div>
+                            <div class="flex justify-between py-2 border-b">
+                                <span class="text-gray-600">評価</span>
+                                <span id="seller-rating" class="font-semibold">
+                                    <i class="fas fa-star text-yellow-400 mr-1"></i>-
+                                </span>
+                            </div>
+                            <div class="flex justify-between py-2">
+                                <span class="text-gray-600">認証状態</span>
+                                <span id="seller-verified" class="font-semibold">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/product-detail.js"></script>
+    </body>
+    </html>
+  `)
+})
+
 export default app
