@@ -3,18 +3,18 @@
 let currentImageIndex = 0;
 let product = null;
 
-// URLからスラッグを取得
-function getSlugFromUrl() {
+// URLからIDを取得
+function getIdFromUrl() {
     const pathParts = window.location.pathname.split('/');
     return pathParts[pathParts.length - 1];
 }
 
 // 商品データを読み込み
 async function loadProduct() {
-    const slug = getSlugFromUrl();
+    const id = getIdFromUrl();
     
     try {
-        const response = await axios.get(`/api/products/${slug}`);
+        const response = await axios.get(`/api/products/${id}`);
         
         if (response.data.success) {
             product = response.data.data;
@@ -38,17 +38,37 @@ function renderProduct() {
     // 画像ギャラリー
     renderImageGallery();
     
-    // 商品情報
+    // 商品タイトル
     document.getElementById('product-title').textContent = product.title;
+    
+    // 価格
     document.getElementById('product-price').textContent = `¥${Number(product.price).toLocaleString()}`;
+    
+    // 状態バッジ
+    const conditionBadge = document.getElementById('product-condition-badge');
+    const conditionColors = {
+        'new': 'bg-blue-500',
+        'like_new': 'bg-green-500',
+        'excellent': 'bg-teal-500',
+        'good': 'bg-gray-500',
+        'acceptable': 'bg-orange-500',
+        'junk': 'bg-red-500'
+    };
+    const conditionLabel = getConditionLabel(product.condition);
+    const conditionColor = conditionColors[product.condition] || 'bg-gray-500';
+    conditionBadge.innerHTML = `
+        <span class="px-3 py-1 ${conditionColor} text-white text-sm font-semibold rounded-full">
+            ${conditionLabel}
+        </span>
+    `;
+    
+    // 商品説明
     document.getElementById('product-description').textContent = product.description;
     
     // 商品詳細情報
-    document.getElementById('product-condition').textContent = getConditionLabel(product.condition);
-    document.getElementById('product-stock').textContent = product.stock_quantity;
     document.getElementById('product-category').textContent = product.category_name || '-';
     document.getElementById('product-part-number').textContent = product.part_number || '-';
-    document.getElementById('product-view-count').textContent = product.view_count;
+    document.getElementById('product-stock').textContent = product.stock_quantity || '0';
     
     // 適合車両情報
     if (product.compatibility) {
@@ -67,7 +87,7 @@ function renderImageGallery() {
     const thumbnailsContainer = document.getElementById('image-thumbnails');
     
     if (!product.images || product.images.length === 0) {
-        mainImage.src = '/static/placeholder.jpg';
+        mainImage.src = 'https://placehold.co/600x600/e2e8f0/64748b?text=No+Image';
         thumbnailsContainer.innerHTML = '';
         return;
     }
@@ -76,12 +96,15 @@ function renderImageGallery() {
     mainImage.src = product.images[0].image_url;
     mainImage.alt = product.title;
     
-    // サムネイル
+    // サムネイル（グリッド表示）
     thumbnailsContainer.innerHTML = product.images.map((img, index) => `
-        <img src="${img.image_url}" 
-             alt="${product.title} - 画像${index + 1}"
-             class="w-20 h-20 object-cover rounded-lg cursor-pointer border-2 ${index === 0 ? 'border-primary' : 'border-gray-200'} hover:border-primary transition-all"
+        <div class="aspect-square bg-white rounded-lg overflow-hidden cursor-pointer border-2 ${index === 0 ? 'border-primary' : 'border-gray-200'} hover:border-primary transition-all shadow-sm hover:shadow-md"
              onclick="changeImage(${index})">
+            <img src="${img.image_url}" 
+                 alt="${product.title} - 画像${index + 1}"
+                 class="w-full h-full object-cover"
+                 loading="lazy">
+        </div>
     `).join('');
 }
 
@@ -93,7 +116,7 @@ function changeImage(index) {
     document.getElementById('main-product-image').src = product.images[index].image_url;
     
     // サムネイルのボーダーを更新
-    const thumbnails = document.querySelectorAll('#image-thumbnails img');
+    const thumbnails = document.querySelectorAll('#image-thumbnails > div');
     thumbnails.forEach((thumb, i) => {
         if (i === index) {
             thumb.classList.remove('border-gray-200');
@@ -171,12 +194,12 @@ function renderSellerInfo() {
     
     shopName.textContent = product.shop_name || '未設定';
     shopType.textContent = getShopTypeLabel(product.shop_type);
-    rating.textContent = product.rating ? product.rating.toFixed(1) : '未評価';
+    rating.textContent = product.rating ? product.rating.toFixed(1) : '新規出品者';
     
     if (product.is_verified) {
-        verified.innerHTML = '<i class="fas fa-check-circle text-green-500 mr-1"></i>認証済み';
+        verified.innerHTML = '<span class="inline-flex items-center px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-semibold rounded"><i class="fas fa-check-circle mr-1"></i>認証済み</span>';
     } else {
-        verified.innerHTML = '<span class="text-gray-500">未認証</span>';
+        verified.innerHTML = '';
     }
 }
 

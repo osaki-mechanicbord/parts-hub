@@ -1008,7 +1008,7 @@ app.get('/register', (c) => {
 })
 
 // 商品詳細ページ
-app.get('/products/:slug', (c) => {
+app.get('/products/:id', (c) => {
   return c.html(`
     <!DOCTYPE html>
     <html lang="ja">
@@ -1040,184 +1040,149 @@ app.get('/products/:slug', (c) => {
         </style>
     </head>
     <body class="bg-gray-50">
-        <!-- ヘッダー -->
-        <header class="bg-white shadow-sm sticky top-0 z-50">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-                <div class="flex items-center justify-between">
-                    <a href="/" class="flex items-center space-x-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="40" height="40">
-                          <defs>
-                            <linearGradient id="headerLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                              <stop offset="0%" style="stop-color:#ff4757;stop-opacity:1" />
-                              <stop offset="100%" style="stop-color:#ff6b95;stop-opacity:1" />
-                            </linearGradient>
-                          </defs>
-                          <circle cx="50" cy="50" r="48" fill="url(#headerLogoGrad)"/>
-                          <g fill="#ffffff">
-                            <rect x="47" y="5" width="6" height="15" rx="1"/>
-                            <rect x="47" y="80" width="6" height="15" rx="1"/>
-                            <rect x="5" y="47" width="15" height="6" rx="1"/>
-                            <rect x="80" y="47" width="15" height="6" rx="1"/>
-                            <rect x="72" y="18" width="15" height="6" rx="1" transform="rotate(45 79.5 21)"/>
-                            <rect x="13" y="18" width="15" height="6" rx="1" transform="rotate(-45 20.5 21)"/>
-                            <rect x="72" y="76" width="15" height="6" rx="1" transform="rotate(-45 79.5 79)"/>
-                            <rect x="13" y="76" width="15" height="6" rx="1" transform="rotate(45 20.5 79)"/>
-                          </g>
-                          <circle cx="50" cy="50" r="22" fill="#ffffff"/>
-                          <g stroke="#ff4757" stroke-width="2" fill="none">
-                            <line x1="50" y1="50" x2="50" y2="32"/>
-                            <line x1="50" y1="50" x2="50" y2="68"/>
-                            <line x1="50" y1="50" x2="32" y2="50"/>
-                            <line x1="50" y1="50" x2="68" y2="50"/>
-                          </g>
-                          <g fill="#ff4757">
-                            <circle cx="50" cy="32" r="3"/>
-                            <circle cx="50" cy="68" r="3"/>
-                            <circle cx="32" cy="50" r="3"/>
-                            <circle cx="68" cy="50" r="3"/>
-                          </g>
-                          <circle cx="50" cy="50" r="8" fill="#ff4757"/>
-                          <circle cx="50" cy="50" r="4" fill="#ffffff"/>
-                        </svg>
-                        <div class="hidden sm:block">
-                            <div class="text-xl font-bold text-gray-900">PARTS HUB</div>
-                            <div class="text-xs text-gray-500">パーツハブ</div>
-                        </div>
-                    </a>
-                    <button onclick="window.location.href='/'" 
-                            class="px-4 py-2 text-gray-700 hover:text-primary transition-all">
-                        <i class="fas fa-arrow-left mr-2"></i>戻る
-                    </button>
-                </div>
+        <!-- シンプルヘッダー -->
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+                <button onclick="window.history.back()" 
+                        class="flex items-center text-gray-600 hover:text-gray-900 transition-colors">
+                    <i class="fas fa-arrow-left mr-2"></i>
+                    <span class="font-medium">戻る</span>
+                </button>
+                <a href="/" class="text-primary font-bold text-lg">PARTS HUB</a>
+                <div class="w-16"></div> <!-- スペーサー -->
             </div>
         </header>
 
         <!-- メインコンテンツ -->
-        <main id="product-detail-container" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <!-- 左カラム：画像ギャラリー -->
-                <div>
+        <main id="product-detail-container" class="max-w-6xl mx-auto px-4 py-6">
+            <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                <!-- 左カラム：画像ギャラリー (3カラム) -->
+                <div class="lg:col-span-3">
                     <!-- メイン画像 -->
-                    <div class="bg-white rounded-lg shadow-md p-4 mb-4">
-                        <div class="main-image-container flex items-center justify-center bg-gray-100 rounded-lg overflow-hidden">
+                    <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-4">
+                        <div class="aspect-square bg-gray-100 flex items-center justify-center">
                             <img id="main-product-image" 
-                                 src="/static/placeholder.jpg" 
+                                 src="https://placehold.co/600x600/e2e8f0/64748b?text=Loading..." 
                                  alt="商品画像" 
-                                 class="w-full h-full object-contain">
+                                 class="w-full h-full object-cover"
+                                 onerror="this.src='https://placehold.co/600x600/e2e8f0/64748b?text=No+Image'">
                         </div>
                     </div>
                     
                     <!-- サムネイル -->
-                    <div id="image-thumbnails" class="thumbnail-scroll flex space-x-2 pb-2">
+                    <div id="image-thumbnails" class="grid grid-cols-5 gap-2">
                         <!-- JavaScriptで動的に生成 -->
                     </div>
                 </div>
 
-                <!-- 右カラム：商品情報 -->
-                <div>
-                    <!-- 商品タイトル・価格 -->
-                    <div class="bg-white rounded-lg shadow-md p-6 mb-4">
-                        <h1 id="product-title" class="text-3xl font-bold text-gray-900 mb-4">
+                <!-- 右カラム：商品情報 (2カラム) -->
+                <div class="lg:col-span-2">
+                    <!-- 商品タイトルと基本情報 -->
+                    <div class="bg-white rounded-xl shadow-sm p-5 mb-4">
+                        <h1 id="product-title" class="text-2xl font-bold text-gray-900 mb-3 leading-tight">
                             読み込み中...
                         </h1>
-                        <div class="flex items-baseline space-x-2 mb-6">
-                            <div id="product-price" class="text-4xl font-bold text-primary">
-                                ¥0
+                        
+                        <!-- 状態バッジ -->
+                        <div id="product-condition-badge" class="inline-block mb-4">
+                            <!-- JavaScriptで生成 -->
+                        </div>
+                        
+                        <!-- 価格 -->
+                        <div class="mb-6">
+                            <div class="flex items-baseline space-x-2">
+                                <span id="product-price" class="text-4xl font-bold text-gray-900">¥0</span>
+                                <span class="text-gray-500 text-sm">（税込・送料別）</span>
                             </div>
-                            <div class="text-gray-500">（税込）</div>
                         </div>
                         
                         <!-- アクションボタン -->
-                        <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="space-y-3 mb-6">
                             <button onclick="purchaseProduct()" 
-                                    class="w-full px-6 py-3 bg-primary text-white rounded-lg font-semibold hover:bg-primary-dark transition-all shadow-md hover:shadow-lg">
-                                <i class="fas fa-shopping-cart mr-2"></i>購入する
+                                    class="w-full px-6 py-4 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg font-bold text-lg hover:from-red-600 hover:to-red-700 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                                購入手続きへ
                             </button>
                             <button onclick="addToFavorites()" 
-                                    class="w-full px-6 py-3 border-2 border-primary text-primary rounded-lg font-semibold hover:bg-primary hover:text-white transition-all">
-                                <i class="far fa-heart mr-2"></i>お気に入り
+                                    class="w-full px-6 py-4 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:border-gray-400 hover:bg-gray-50 transition-all flex items-center justify-center">
+                                <i class="far fa-heart mr-2"></i>いいね
                             </button>
                         </div>
                         <button onclick="contactSeller()" 
-                                class="w-full px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:border-gray-400 transition-all">
-                            <i class="fas fa-comment mr-2"></i>出品者に問い合わせ
+                                class="w-full px-6 py-4 bg-white border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-all flex items-center justify-center">
+                            <i class="fas fa-comment-dots mr-2"></i>出品者に質問
                         </button>
                     </div>
-
-                    <!-- 商品説明 -->
-                    <div class="bg-white rounded-lg shadow-md p-6 mb-4">
-                        <h2 class="text-xl font-bold text-gray-900 mb-4">
-                            <i class="fas fa-info-circle text-primary mr-2"></i>商品説明
-                        </h2>
-                        <p id="product-description" class="text-gray-700 whitespace-pre-wrap leading-relaxed">
-                            読み込み中...
-                        </p>
+                    
+                    <!-- 商品詳細テーブル -->
+                    <div class="bg-white rounded-xl shadow-sm p-5 mb-4">
+                        <h2 class="font-bold text-gray-900 mb-4 text-lg">商品の情報</h2>
+                        <table class="w-full text-sm">
+                            <tbody>
+                                <tr class="border-b">
+                                    <td class="py-3 text-gray-600 font-medium">カテゴリ</td>
+                                    <td id="product-category" class="py-3 text-gray-900 text-right">-</td>
+                                </tr>
+                                <tr class="border-b">
+                                    <td class="py-3 text-gray-600 font-medium">部品番号</td>
+                                    <td id="product-part-number" class="py-3 text-gray-900 text-right">-</td>
+                                </tr>
+                                <tr class="border-b">
+                                    <td class="py-3 text-gray-600 font-medium">在庫数</td>
+                                    <td id="product-stock" class="py-3 text-gray-900 text-right">-</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-3 text-gray-600 font-medium">配送方法</td>
+                                    <td class="py-3 text-gray-900 text-right">未定（出品者と相談）</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
-
-                    <!-- 商品詳細 -->
-                    <div class="bg-white rounded-lg shadow-md p-6 mb-4">
-                        <h2 class="text-xl font-bold text-gray-900 mb-4">
-                            <i class="fas fa-clipboard-list text-primary mr-2"></i>商品詳細
-                        </h2>
+                    
+                    <!-- 出品者情報カード -->
+                    <div class="bg-white rounded-xl shadow-sm p-5">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="font-bold text-gray-900 text-lg">出品者</h2>
+                            <div class="flex items-center text-sm">
+                                <i class="fas fa-star text-yellow-400 mr-1"></i>
+                                <span id="seller-rating" class="font-semibold">-</span>
+                            </div>
+                        </div>
                         <div class="space-y-3">
-                            <div class="flex justify-between py-2 border-b">
-                                <span class="text-gray-600">商品の状態</span>
-                                <span id="product-condition" class="font-semibold">-</span>
-                            </div>
-                            <div class="flex justify-between py-2 border-b">
-                                <span class="text-gray-600">在庫数</span>
-                                <span id="product-stock" class="font-semibold">-</span>
-                            </div>
-                            <div class="flex justify-between py-2 border-b">
-                                <span class="text-gray-600">カテゴリ</span>
-                                <span id="product-category" class="font-semibold">-</span>
-                            </div>
-                            <div class="flex justify-between py-2 border-b">
-                                <span class="text-gray-600">部品番号</span>
-                                <span id="product-part-number" class="font-semibold">-</span>
-                            </div>
-                            <div class="flex justify-between py-2">
-                                <span class="text-gray-600">閲覧数</span>
-                                <span id="product-view-count" class="font-semibold">-</span>
+                            <div class="flex items-center space-x-3">
+                                <div class="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-store text-gray-400 text-lg"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <div id="seller-shop-name" class="font-semibold text-gray-900">-</div>
+                                    <div class="flex items-center text-sm text-gray-500">
+                                        <span id="seller-shop-type">-</span>
+                                        <span id="seller-verified" class="ml-2"><!-- バッジ --></span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-
-                    <!-- 適合車両情報 -->
-                    <div id="compatibility-section" class="bg-white rounded-lg shadow-md p-6 mb-4">
-                        <h2 class="text-xl font-bold text-gray-900 mb-4">
-                            <i class="fas fa-car text-primary mr-2"></i>適合車両情報
-                        </h2>
-                        <div id="compatibility-info">
-                            読み込み中...
-                        </div>
+                </div>
+            </div>
+            
+            <!-- 商品説明セクション（全幅） -->
+            <div class="mt-6">
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h2 class="text-xl font-bold text-gray-900 mb-4">商品の説明</h2>
+                    <div id="product-description" class="text-gray-700 whitespace-pre-wrap leading-relaxed">
+                        読み込み中...
                     </div>
-
-                    <!-- 出品者情報 -->
-                    <div class="bg-white rounded-lg shadow-md p-6">
-                        <h2 class="text-xl font-bold text-gray-900 mb-4">
-                            <i class="fas fa-store text-primary mr-2"></i>出品者情報
-                        </h2>
-                        <div class="space-y-3">
-                            <div class="flex justify-between py-2 border-b">
-                                <span class="text-gray-600">店舗名</span>
-                                <span id="seller-shop-name" class="font-semibold">-</span>
-                            </div>
-                            <div class="flex justify-between py-2 border-b">
-                                <span class="text-gray-600">業態</span>
-                                <span id="seller-shop-type" class="font-semibold">-</span>
-                            </div>
-                            <div class="flex justify-between py-2 border-b">
-                                <span class="text-gray-600">評価</span>
-                                <span id="seller-rating" class="font-semibold">
-                                    <i class="fas fa-star text-yellow-400 mr-1"></i>-
-                                </span>
-                            </div>
-                            <div class="flex justify-between py-2">
-                                <span class="text-gray-600">認証状態</span>
-                                <span id="seller-verified" class="font-semibold">-</span>
-                            </div>
-                        </div>
+                </div>
+            </div>
+            
+            <!-- 適合車両情報セクション（全幅） -->
+            <div id="compatibility-section" class="mt-6">
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h2 class="text-xl font-bold text-gray-900 mb-4">
+                        <i class="fas fa-car text-primary mr-2"></i>適合車両情報
+                    </h2>
+                    <div id="compatibility-info" class="text-gray-700">
+                        読み込み中...
                     </div>
                 </div>
             </div>
