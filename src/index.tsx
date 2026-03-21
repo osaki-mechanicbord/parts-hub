@@ -22,6 +22,48 @@ import transactionsRoutes from './routes/transactions'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
+// 共通フッターコンポーネント
+const Footer = () => `
+<footer class="bg-gray-900 text-white mt-16">
+    <div class="max-w-6xl mx-auto px-4 py-8">
+        <div class="grid md:grid-cols-4 gap-8 mb-8">
+            <div>
+                <h3 class="font-bold text-lg mb-4">PARTS HUB</h3>
+                <p class="text-sm text-gray-400">自動車部品の<br>フリーマーケット</p>
+            </div>
+            <div>
+                <h4 class="font-semibold mb-3">サービス</h4>
+                <ul class="space-y-2 text-sm text-gray-400">
+                    <li><a href="/" class="hover:text-white transition-colors">商品を探す</a></li>
+                    <li><a href="/listing" class="hover:text-white transition-colors">出品する</a></li>
+                    <li><a href="/search" class="hover:text-white transition-colors">検索</a></li>
+                    <li><a href="/contact" class="hover:text-white transition-colors">代理出品</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="font-semibold mb-3">サポート</h4>
+                <ul class="space-y-2 text-sm text-gray-400">
+                    <li><a href="/contact" class="hover:text-white transition-colors">お問い合わせ</a></li>
+                    <li><a href="/mypage" class="hover:text-white transition-colors">マイページ</a></li>
+                    <li><a href="/notifications" class="hover:text-white transition-colors">通知</a></li>
+                    <li><a href="/favorites" class="hover:text-white transition-colors">お気に入り</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="font-semibold mb-3">法的情報</h4>
+                <ul class="space-y-2 text-sm text-gray-400">
+                    <li><a href="/terms" class="hover:text-white transition-colors">利用規約</a></li>
+                    <li><a href="/privacy" class="hover:text-white transition-colors">プライバシーポリシー</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="border-t border-gray-800 pt-6 text-center text-sm text-gray-400">
+            <p>&copy; 2026 PARTS HUB. All rights reserved.</p>
+        </div>
+    </div>
+</footer>
+`
+
 // ミドルウェア
 app.use(logger())
 app.use('/api/*', cors())
@@ -740,6 +782,8 @@ app.get('/', (c) => {
                 loadProducts();
             });
         </script>
+
+        ${Footer()}
     </body>
     </html>
   `)
@@ -3310,6 +3354,8 @@ app.get('/favorites', (c) => {
             // ページ読み込み時に実行
             loadFavorites();
         </script>
+
+        ${Footer()}
     </body>
     </html>
   `)
@@ -3531,6 +3577,8 @@ app.get('/search', (c) => {
                 performSearch();
             }
         </script>
+
+        ${Footer()}
     </body>
     </html>
   `)
@@ -3618,6 +3666,8 @@ app.get('/privacy', (c) => {
                 </section>
             </div>
         </main>
+
+        ${Footer()}
     </body>
     </html>
   `)
@@ -3712,6 +3762,8 @@ app.get('/terms', (c) => {
                 </section>
             </div>
         </main>
+
+        ${Footer()}
     </body>
     </html>
   `)
