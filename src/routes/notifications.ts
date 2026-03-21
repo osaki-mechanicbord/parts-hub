@@ -8,7 +8,7 @@ type Bindings = {
 const notifications = new Hono<{ Bindings: Bindings }>()
 
 // 通知一覧取得
-notifications.get('/user/:userId', async (c) => {
+notifications.get('/:userId', async (c) => {
   try {
     const { DB } = c.env
     const userId = c.req.param('userId')
@@ -36,7 +36,7 @@ notifications.get('/user/:userId', async (c) => {
 })
 
 // 未読通知数取得
-notifications.get('/user/:userId/unread-count', async (c) => {
+notifications.get('/:userId/unread-count', async (c) => {
   try {
     const { DB } = c.env
     const userId = c.req.param('userId')
@@ -46,7 +46,7 @@ notifications.get('/user/:userId/unread-count', async (c) => {
       WHERE user_id = ? AND is_read = 0
     `).bind(userId).first()
 
-    return c.json({ success: true, data: { count: result.count } })
+    return c.json({ success: true, data: { count: result?.count || 0 } })
   } catch (error) {
     console.error('Get unread count error:', error)
     return c.json({ success: false, error: '未読数の取得に失敗しました' }, 500)
@@ -79,16 +79,21 @@ notifications.put('/:notificationId/read', async (c) => {
 })
 
 // 全通知を既読にする
-notifications.put('/user/:userId/read-all', async (c) => {
+notifications.put('/read-all', async (c) => {
   try {
     const { DB } = c.env
-    const userId = c.req.param('userId')
+    const body = await c.req.json()
+    const { user_id } = body
+
+    if (!user_id) {
+      return c.json({ success: false, error: 'ユーザーIDが必要です' }, 400)
+    }
 
     await DB.prepare(`
       UPDATE notifications 
       SET is_read = 1, read_at = CURRENT_TIMESTAMP 
       WHERE user_id = ? AND is_read = 0
-    `).bind(userId).run()
+    `).bind(user_id).run()
 
     return c.json({ success: true })
   } catch (error) {

@@ -16,6 +16,7 @@ import negotiationsRoutes from './routes/negotiations'
 import favoritesRoutes from './routes/favorites'
 import notificationsRoutes from './routes/notifications'
 import mypageRoutes from './routes/mypage'
+import profileRoutes from './routes/profile'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -41,6 +42,7 @@ app.route('/api/negotiations', negotiationsRoutes)
 app.route('/api/favorites', favoritesRoutes)
 app.route('/api/notifications', notificationsRoutes)
 app.route('/api/mypage', mypageRoutes)
+app.route('/api/profile', profileRoutes)
 
 // トップページ
 app.get('/', (c) => {
@@ -2526,6 +2528,255 @@ app.get('/mypage', (c) => {
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="/static/mypage.js"></script>
+    </body>
+    </html>
+  `)
+})
+
+// 通知ページ
+app.get('/notifications', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>通知 - PARTS HUB（パーツハブ）</title>
+        <meta name="theme-color" content="#ff4757">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    </head>
+    <body class="bg-gray-50 min-h-screen">
+        <!-- ヘッダー -->
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+            <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+                <button onclick="window.location.href='/mypage'" class="text-gray-600 hover:text-gray-900 flex items-center">
+                    <i class="fas fa-arrow-left mr-2"></i>戻る
+                </button>
+                <h1 class="text-red-500 font-bold text-lg">通知</h1>
+                <button onclick="markAllAsRead()" class="text-sm text-blue-600 hover:underline">
+                    すべて既読
+                </button>
+            </div>
+        </header>
+
+        <main class="max-w-6xl mx-auto px-4 py-6">
+            <!-- フィルタータブ -->
+            <div class="bg-white rounded-xl shadow-sm mb-6">
+                <div class="flex border-b border-gray-200 overflow-x-auto">
+                    <button onclick="filterNotifications('all')" class="filter-tab flex-1 px-6 py-4 font-semibold text-red-500 border-b-2 border-red-500" data-filter="all">
+                        すべて
+                    </button>
+                    <button onclick="filterNotifications('unread')" class="filter-tab flex-1 px-6 py-4 font-semibold text-gray-600 border-b-2 border-transparent hover:text-red-500" data-filter="unread">
+                        未読
+                    </button>
+                    <button onclick="filterNotifications('comment')" class="filter-tab flex-1 px-6 py-4 font-semibold text-gray-600 border-b-2 border-transparent hover:text-red-500" data-filter="comment">
+                        コメント
+                    </button>
+                    <button onclick="filterNotifications('negotiation')" class="filter-tab flex-1 px-6 py-4 font-semibold text-gray-600 border-b-2 border-transparent hover:text-red-500" data-filter="negotiation">
+                        値下げ交渉
+                    </button>
+                    <button onclick="filterNotifications('transaction')" class="filter-tab flex-1 px-6 py-4 font-semibold text-gray-600 border-b-2 border-transparent hover:text-red-500" data-filter="transaction">
+                        取引
+                    </button>
+                </div>
+            </div>
+
+            <!-- 通知一覧 -->
+            <div id="notifications-container" class="space-y-3">
+                <!-- JavaScriptで動的に生成 -->
+                <div class="text-center py-12">
+                    <i class="fas fa-spinner fa-spin text-4xl text-gray-400 mb-4"></i>
+                    <p class="text-gray-500">読み込み中...</p>
+                </div>
+            </div>
+        </main>
+
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/notifications.js"></script>
+    </body>
+    </html>
+  `)
+})
+
+// プロフィール編集ページ
+app.get('/profile/edit', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>プロフィール編集 - PARTS HUB（パーツハブ）</title>
+        <meta name="theme-color" content="#ff4757">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>
+            .upload-area {
+                border: 2px dashed #e5e7eb;
+                transition: all 0.3s;
+            }
+            .upload-area:hover {
+                border-color: #ef4444;
+                background: #fef2f2;
+            }
+        </style>
+    </head>
+    <body class="bg-gray-50 min-h-screen">
+        <!-- ヘッダー -->
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+            <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+                <button onclick="window.location.href='/mypage'" class="text-gray-600 hover:text-gray-900 flex items-center">
+                    <i class="fas fa-arrow-left mr-2"></i>戻る
+                </button>
+                <h1 class="text-red-500 font-bold text-lg">プロフィール編集</h1>
+                <div class="w-16"></div>
+            </div>
+        </header>
+
+        <main class="max-w-4xl mx-auto px-4 py-6">
+            <form id="profile-form" class="space-y-6">
+                <!-- プロフィール画像 -->
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h2 class="text-lg font-bold text-gray-900 mb-4">プロフィール画像</h2>
+                    <div class="flex items-center gap-6">
+                        <div class="relative">
+                            <div id="profile-image-preview" class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden">
+                                <i class="fas fa-user text-4xl text-gray-400"></i>
+                            </div>
+                            <button type="button" onclick="document.getElementById('profile-image-input').click()" class="absolute bottom-0 right-0 bg-red-500 hover:bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center transition-colors">
+                                <i class="fas fa-camera text-sm"></i>
+                            </button>
+                            <input type="file" id="profile-image-input" accept="image/*" class="hidden" onchange="handleProfileImageUpload(event)">
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-sm text-gray-600 mb-2">推奨サイズ: 200x200px以上</p>
+                            <p class="text-xs text-gray-500">JPG、PNG形式、最大5MB</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 基本情報 -->
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h2 class="text-lg font-bold text-gray-900 mb-4">基本情報</h2>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">店舗名・工場名<span class="text-red-500">*</span></label>
+                            <input type="text" id="shop-name" required class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors" placeholder="山田自動車整備工場">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">店舗種別<span class="text-red-500">*</span></label>
+                            <select id="shop-type" required class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors">
+                                <option value="">選択してください</option>
+                                <option value="factory">整備工場</option>
+                                <option value="dealer">ディーラー</option>
+                                <option value="parts_shop">パーツショップ</option>
+                                <option value="scrapyard">解体業者</option>
+                                <option value="individual">個人</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">電話番号<span class="text-red-500">*</span></label>
+                            <input type="tel" id="phone" required class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors" placeholder="03-1234-5678">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">メールアドレス<span class="text-red-500">*</span></label>
+                            <input type="email" id="email" required class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors" placeholder="info@example.com">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">自己紹介</label>
+                            <textarea id="bio" rows="4" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors resize-none" placeholder="創業50年の老舗整備工場です。国産車全般の修理・整備を承っております。"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 住所情報 -->
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h2 class="text-lg font-bold text-gray-900 mb-4">住所情報</h2>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">郵便番号</label>
+                            <input type="text" id="postal-code" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors" placeholder="123-4567" maxlength="8">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">都道府県</label>
+                            <select id="prefecture" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors">
+                                <option value="">選択してください</option>
+                                <option value="東京都">東京都</option>
+                                <option value="神奈川県">神奈川県</option>
+                                <option value="埼玉県">埼玉県</option>
+                                <option value="千葉県">千葉県</option>
+                                <!-- その他の都道府県も追加 -->
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">市区町村</label>
+                            <input type="text" id="city" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors" placeholder="渋谷区">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">番地・建物名</label>
+                            <input type="text" id="address" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors" placeholder="神南1-2-3 ビル4F">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 銀行口座情報（振込用） -->
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h2 class="text-lg font-bold text-gray-900 mb-2">銀行口座情報</h2>
+                    <p class="text-sm text-gray-600 mb-4">売上金の振込先口座を登録してください</p>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">銀行名</label>
+                            <input type="text" id="bank-name" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors" placeholder="みずほ銀行">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">支店名</label>
+                            <input type="text" id="branch-name" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors" placeholder="渋谷支店">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">口座種別</label>
+                            <select id="account-type" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors">
+                                <option value="">選択してください</option>
+                                <option value="普通">普通</option>
+                                <option value="当座">当座</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">口座番号</label>
+                            <input type="text" id="account-number" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors" placeholder="1234567" maxlength="7">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">口座名義（カタカナ）</label>
+                            <input type="text" id="account-holder" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors" placeholder="ヤマダジドウシャセイビコウジョウ">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 保存ボタン -->
+                <div class="sticky bottom-0 bg-white border-t border-gray-200 -mx-4 px-4 py-4 mt-6">
+                    <button type="submit" id="submit-btn" class="w-full bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white py-4 px-6 rounded-lg font-bold text-lg shadow-lg transition-all">
+                        <i class="fas fa-save mr-2"></i>変更を保存
+                    </button>
+                </div>
+            </form>
+        </main>
+
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/profile-edit.js"></script>
     </body>
     </html>
   `)
