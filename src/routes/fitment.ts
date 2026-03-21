@@ -168,7 +168,7 @@ fitment.get('/products/:id/compatibility', async (c) => {
 fitment.post('/match', async (c) => {
   try {
     const body = await c.req.json()
-    const { vehicle_id, maker_id, model_id, year, model_code } = body
+    let { vehicle_id, maker_id, model_id, year, model_code } = body
 
     let conditions = ['p.status = ?']
     let params: any[] = ['active']
