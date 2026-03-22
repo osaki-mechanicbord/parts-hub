@@ -154,8 +154,8 @@ profile.post('/upload-image', async (c) => {
       }
     })
 
-    // 公開URLを生成（環境変数から取得、または固定値）
-    const publicUrl = `https://storage.example.com/${filename}`
+    // 公開URLを生成
+    const publicUrl = `https://images.parts-hub-tci.com/${filename}`
 
     return c.json({
       success: true,
