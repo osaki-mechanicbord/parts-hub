@@ -16,7 +16,7 @@
   "r2_buckets": [
     {
       "binding": "R2",
-      "bucket_name": "parts-hub-images"
+      "bucket_name": "partshubimages"
     }
   ]
   // 環境変数の設定例（本番環境用）
