@@ -54,6 +54,8 @@ const Footer = () => `
                 <ul class="space-y-2 text-sm text-gray-400">
                     <li><a href="/terms" class="hover:text-white transition-colors">利用規約</a></li>
                     <li><a href="/privacy" class="hover:text-white transition-colors">プライバシーポリシー</a></li>
+                    <li><a href="/security" class="hover:text-white transition-colors">セキュリティポリシー</a></li>
+                    <li><a href="/legal" class="hover:text-white transition-colors">特定商取引法に基づく表記</a></li>
                 </ul>
             </div>
         </div>
@@ -3611,58 +3613,107 @@ app.get('/privacy', (c) => {
         <main class="max-w-4xl mx-auto px-4 py-8">
             <div class="bg-white rounded-xl shadow-sm p-8 space-y-6">
                 <div>
-                    <p class="text-sm text-gray-600 mb-4">最終更新日：2026年3月21日</p>
+                    <p class="text-sm text-gray-600 mb-4">最終更新日：2026年3月22日</p>
                     <p class="text-gray-700 leading-relaxed">
-                        PARTS HUB（以下「当社」）は、ユーザーの皆様の個人情報保護の重要性を認識し、個人情報の保護に関する法律（以下「個人情報保護法」）を遵守し、適切に取り扱います。
+                        株式会社TCI（以下「当社」）が運営するPARTS HUB（パーツハブ）は、ユーザーの皆様の個人情報保護の重要性を認識し、個人情報の保護に関する法律を遵守し、適切に取り扱います。
                     </p>
                 </div>
 
                 <section>
-                    <h2 class="text-xl font-bold text-gray-900 mb-3">1. 収集する情報</h2>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">1. 事業者情報</h2>
+                    <div class="bg-gray-50 p-4 rounded-lg text-gray-700 leading-relaxed">
+                        <p><strong>事業者名：</strong>株式会社TCI</p>
+                        <p><strong>代表者：</strong>代表取締役 尾崎俊行</p>
+                        <p><strong>所在地：</strong>〒532-0000 大阪府大阪市淀川区新高1-5-4</p>
+                        <p><strong>電話番号：</strong>06-6151-3697</p>
+                        <p><strong>受付時間：</strong>平日 10:00～17:00（土日祝日を除く）</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">2. 収集する個人情報</h2>
                     <p class="text-gray-700 leading-relaxed mb-3">当社は、以下の情報を収集します：</p>
                     <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
-                        <li>氏名、メールアドレス、電話番号、住所などの登録情報</li>
-                        <li>取引履歴、出品・購入情報</li>
-                        <li>お問い合わせ内容</li>
-                        <li>アクセスログ、IPアドレス、Cookie情報</li>
+                        <li><strong>登録情報：</strong>氏名、メールアドレス、電話番号、住所、生年月日</li>
+                        <li><strong>取引情報：</strong>出品・購入履歴、支払情報、配送先情報</li>
+                        <li><strong>本人確認情報：</strong>運転免許証、マイナンバーカードなどの本人確認書類（必要な場合のみ）</li>
+                        <li><strong>銀行口座情報：</strong>売上金の振込先情報</li>
+                        <li><strong>アクセス情報：</strong>IPアドレス、Cookie、閲覧履歴</li>
+                        <li><strong>お問い合わせ内容：</strong>カスタマーサポートとのやりとり</li>
                     </ul>
                 </section>
 
                 <section>
-                    <h2 class="text-xl font-bold text-gray-900 mb-3">2. 情報の利用目的</h2>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">3. 個人情報の利用目的</h2>
                     <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
-                        <li>サービスの提供・運営</li>
-                        <li>ユーザーサポート対応</li>
-                        <li>取引の円滑化</li>
-                        <li>サービス改善のための分析</li>
-                        <li>重要なお知らせの通知</li>
+                        <li>本サービスの提供、運営、維持</li>
+                        <li>会員登録、本人確認、認証</li>
+                        <li>商品の売買取引の仲介と管理</li>
+                        <li>代金の決済、売上金の支払い</li>
+                        <li>商品の配送手配</li>
+                        <li>カスタマーサポート対応</li>
+                        <li>利用規約違反の調査、不正行為の防止</li>
+                        <li>サービス改善のための統計データ分析</li>
+                        <li>重要なお知らせ、キャンペーン情報の通知</li>
                     </ul>
                 </section>
 
                 <section>
-                    <h2 class="text-xl font-bold text-gray-900 mb-3">3. 第三者への提供</h2>
-                    <p class="text-gray-700 leading-relaxed">
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">4. 第三者への情報提供</h2>
+                    <p class="text-gray-700 leading-relaxed mb-3">
                         当社は、以下の場合を除き、ユーザーの個人情報を第三者に提供しません：
                     </p>
-                    <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4 mt-3">
-                        <li>ユーザーの同意がある場合</li>
-                        <li>法令に基づく場合</li>
-                        <li>人の生命、身体または財産の保護のために必要がある場合</li>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
+                        <li><strong>ユーザーの同意がある場合：</strong>取引相手への配送先情報の提供など</li>
+                        <li><strong>業務委託先への提供：</strong>決済代行会社、配送業者、カスタマーサポート業者など（機密保持契約を締結）</li>
+                        <li><strong>法令に基づく場合：</strong>裁判所、警察などの公的機関からの要請</li>
+                        <li><strong>緊急の場合：</strong>人の生命、身体、財産の保護のために必要な場合</li>
                     </ul>
                 </section>
 
                 <section>
-                    <h2 class="text-xl font-bold text-gray-900 mb-3">4. セキュリティ</h2>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">5. 個人情報の保管と管理</h2>
+                    <p class="text-gray-700 leading-relaxed mb-3">当社は、以下のセキュリティ対策を実施しています：</p>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
+                        <li>SSL/TLS暗号化通信による情報の保護</li>
+                        <li>アクセス制限による不正アクセスの防止</li>
+                        <li>定期的なセキュリティ監査とシステム更新</li>
+                        <li>個人情報取扱責任者の設置</li>
+                        <li>従業員への個人情報保護に関する教育</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">6. Cookieの使用</h2>
                     <p class="text-gray-700 leading-relaxed">
-                        当社は、個人情報への不正アクセス、紛失、破壊、改ざん、漏洩などを防止するため、適切なセキュリティ対策を講じています。
+                        当社は、サービスの利便性向上のためCookieを使用します。Cookieの設定は、ブラウザの設定から変更できますが、一部機能が利用できなくなる場合があります。
                     </p>
                 </section>
 
                 <section>
-                    <h2 class="text-xl font-bold text-gray-900 mb-3">5. お問い合わせ</h2>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">7. 個人情報の開示・訂正・削除</h2>
                     <p class="text-gray-700 leading-relaxed">
-                        個人情報の取り扱いに関するお問い合わせは、<a href="/contact" class="text-red-500 hover:underline">お問い合わせフォーム</a>よりご連絡ください。
+                        ユーザーは、自身の個人情報について、開示・訂正・利用停止・削除を請求できます。マイページから変更いただくか、<a href="/contact" class="text-red-500 hover:underline">お問い合わせフォーム</a>よりご連絡ください。
                     </p>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">8. 個人情報保護方針の変更</h2>
+                    <p class="text-gray-700 leading-relaxed">
+                        当社は、法令の変更やサービスの改善に伴い、本ポリシーを変更することがあります。重要な変更がある場合は、サイト上で事前に通知します。
+                    </p>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">9. お問い合わせ</h2>
+                    <div class="bg-gray-50 p-4 rounded-lg text-gray-700 leading-relaxed">
+                        <p class="mb-2">個人情報の取り扱いに関するお問い合わせ：</p>
+                        <p><strong>株式会社TCI 個人情報保護窓口</strong></p>
+                        <p>〒532-0000 大阪府大阪市淀川区新高1-5-4</p>
+                        <p>電話：06-6151-3697</p>
+                        <p>受付時間：平日 10:00～17:00</p>
+                        <p class="mt-2">または<a href="/contact" class="text-red-500 hover:underline font-semibold">お問い合わせフォーム</a>よりご連絡ください。</p>
+                    </div>
                 </section>
             </div>
         </main>
@@ -3700,65 +3751,208 @@ app.get('/terms', (c) => {
         <main class="max-w-4xl mx-auto px-4 py-8">
             <div class="bg-white rounded-xl shadow-sm p-8 space-y-6">
                 <div>
-                    <p class="text-sm text-gray-600 mb-4">最終更新日：2026年3月21日</p>
-                    <p class="text-gray-700 leading-relaxed">
-                        この利用規約（以下「本規約」）は、PARTS HUB（以下「当社」）が提供するサービス（以下「本サービス」）の利用条件を定めるものです。
+                    <p class="text-sm text-gray-600 mb-4">最終更新日：2026年3月22日</p>
+                    <p class="text-gray-700 leading-relaxed mb-4">
+                        この利用規約（以下「本規約」）は、株式会社TCI（以下「当社」）が運営するPARTS HUB（パーツハブ、以下「本サービス」）の利用条件を定めるものです。本サービスをご利用いただく前に、必ずお読みください。
                     </p>
+                    <div class="bg-gray-50 p-4 rounded-lg text-gray-700 leading-relaxed text-sm">
+                        <p><strong>運営会社：</strong>株式会社TCI</p>
+                        <p><strong>代表者：</strong>代表取締役 尾崎俊行</p>
+                        <p><strong>所在地：</strong>〒532-0000 大阪府大阪市淀川区新高1-5-4</p>
+                        <p><strong>電話：</strong>06-6151-3697</p>
+                    </div>
                 </div>
 
                 <section>
-                    <h2 class="text-xl font-bold text-gray-900 mb-3">第1条（適用）</h2>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">第1条（本規約への同意）</h2>
                     <p class="text-gray-700 leading-relaxed">
-                        本規約は、ユーザーと当社との間の本サービスの利用に関わる一切の関係に適用されるものとします。
+                        ユーザーは、本規約に同意した上で本サービスを利用するものとします。本サービスの利用を開始した時点で、本規約に同意したものとみなします。
                     </p>
                 </section>
 
                 <section>
-                    <h2 class="text-xl font-bold text-gray-900 mb-3">第2条（利用登録）</h2>
-                    <p class="text-gray-700 leading-relaxed mb-3">
-                        本サービスの利用を希望する者は、本規約に同意の上、当社の定める方法によって利用登録を申請し、当社がこれを承認することによって、利用登録が完了するものとします。
-                    </p>
-                </section>
-
-                <section>
-                    <h2 class="text-xl font-bold text-gray-900 mb-3">第3条（禁止事項）</h2>
-                    <p class="text-gray-700 leading-relaxed mb-3">ユーザーは、本サービスの利用にあたり、以下の行為をしてはなりません：</p>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">第2条（本サービスの内容）</h2>
+                    <p class="text-gray-700 leading-relaxed mb-2">本サービスは、自動車部品の売買を仲介するマーケットプレイスです。主な機能：</p>
                     <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
-                        <li>法令または公序良俗に違反する行為</li>
-                        <li>犯罪行為に関連する行為</li>
-                        <li>虚偽の情報を登録する行為</li>
-                        <li>他のユーザーまたは第三者の権利を侵害する行為</li>
-                        <li>当社のサーバーまたはネットワークの機能を破壊したり、妨害したりする行為</li>
-                        <li>不正アクセスをし、またはこれを試みる行為</li>
+                        <li>自動車部品の出品・購入</li>
+                        <li>出品者と購入者のメッセージ機能</li>
+                        <li>商品の検索・閲覧</li>
+                        <li>代理出品サービス（オプション）</li>
+                    </ul>
+                    <p class="text-gray-700 leading-relaxed mt-3 text-sm">
+                        ※当社は取引の仲介を行うものであり、売買契約の当事者ではありません。
+                    </p>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">第3条（利用登録）</h2>
+                    <p class="text-gray-700 leading-relaxed mb-3">
+                        本サービスの利用を希望する者は、以下の条件を満たす必要があります：
+                    </p>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
+                        <li>18歳以上であること（未成年者は保護者の同意が必要）</li>
+                        <li>反社会的勢力に該当しないこと</li>
+                        <li>過去に本サービスから退会処分を受けていないこと</li>
+                        <li>真実かつ正確な情報を登録すること</li>
+                    </ul>
+                    <p class="text-gray-700 leading-relaxed mt-3">
+                        当社は、登録申請を審査し、不適切と判断した場合は登録を拒否することができます。
+                    </p>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">第4条（禁止事項）</h2>
+                    <p class="text-gray-700 leading-relaxed mb-3">ユーザーは、以下の行為を行ってはなりません：</p>
+                    <div class="space-y-4">
+                        <div>
+                            <h3 class="font-semibold text-gray-900 mb-2">1. 法令違反行為</h3>
+                            <ul class="list-disc list-inside space-y-1 text-gray-700 ml-4 text-sm">
+                                <li>盗品、偽造品、違法薬物などの出品・購入</li>
+                                <li>著作権、商標権、特許権などの知的財産権を侵害する行為</li>
+                                <li>児童ポルノや暴力的コンテンツの掲載</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-gray-900 mb-2">2. 不正行為</h3>
+                            <ul class="list-disc list-inside space-y-1 text-gray-700 ml-4 text-sm">
+                                <li>虚偽の情報を登録する行為</li>
+                                <li>他人のアカウントを不正に利用する行為</li>
+                                <li>複数アカウントの作成（当社が認めた場合を除く）</li>
+                                <li>なりすまし行為</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-gray-900 mb-2">3. 取引に関する行為</h3>
+                            <ul class="list-disc list-inside space-y-1 text-gray-700 ml-4 text-sm">
+                                <li>商品を発送しない、または代金を支払わない</li>
+                                <li>説明と異なる商品を発送する</li>
+                                <li>本サービス外で直接取引を行う</li>
+                                <li>不当に高額または低額な価格設定</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-gray-900 mb-2">4. システムへの攻撃</h3>
+                            <ul class="list-disc list-inside space-y-1 text-gray-700 ml-4 text-sm">
+                                <li>不正アクセス、ハッキング</li>
+                                <li>ウイルスやマルウェアの送信</li>
+                                <li>サーバーへの過度な負荷をかける行為</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-gray-900 mb-2">5. その他</h3>
+                            <ul class="list-disc list-inside space-y-1 text-gray-700 ml-4 text-sm">
+                                <li>誹謗中傷、ハラスメント</li>
+                                <li>スパム行為、過度な宣伝</li>
+                                <li>公序良俗に反する行為</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">第5条（取引の成立と責任）</h2>
+                    <p class="text-gray-700 leading-relaxed mb-3">
+                        購入者が購入ボタンを押した時点で、売買契約が成立します。当社は取引の仲介のみを行い、以下について責任を負いません：
+                    </p>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
+                        <li>商品の品質、適合性、安全性</li>
+                        <li>出品者・購入者間のトラブル</li>
+                        <li>配送中の事故や遅延</li>
+                        <li>商品の瑕疵や不具合</li>
+                    </ul>
+                    <p class="text-gray-700 leading-relaxed mt-3 text-sm bg-yellow-50 p-3 rounded">
+                        <strong>⚠️ 重要：</strong>当社は商品の検品や動作確認を行いません。購入前に必ず出品者に質問し、納得した上で購入してください。
+                    </p>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">第6条（手数料）</h2>
+                    <p class="text-gray-700 leading-relaxed mb-3">
+                        本サービスの利用には、以下の手数料が発生します：
+                    </p>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
+                        <li><strong>販売手数料：</strong>商品価格の7%（税込）</li>
+                        <li><strong>振込手数料：</strong>売上金の出金時に200円</li>
+                        <li><strong>代理出品手数料：</strong>別途料金表に基づく</li>
+                    </ul>
+                    <p class="text-gray-700 leading-relaxed mt-3 text-sm">
+                        手数料は予告なく変更する場合があります。変更前に成立した取引には変更前の手数料が適用されます。
+                    </p>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">第7条（返品・キャンセル）</h2>
+                    <p class="text-gray-700 leading-relaxed mb-3">
+                        原則として、購入後のキャンセルや返品はできません。ただし、以下の場合は返品を受け付けます：
+                    </p>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
+                        <li>商品が説明と著しく異なる場合</li>
+                        <li>商品に重大な欠陥がある場合</li>
+                        <li>出品者が商品を発送しない場合</li>
+                    </ul>
+                    <p class="text-gray-700 leading-relaxed mt-3 text-sm">
+                        返品を希望する場合は、商品到着後3日以内にカスタマーサポートにご連絡ください。
+                    </p>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">第8条（アカウントの停止・削除）</h2>
+                    <p class="text-gray-700 leading-relaxed mb-3">
+                        当社は、以下の場合にアカウントを停止または削除することができます：
+                    </p>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
+                        <li>本規約に違反した場合</li>
+                        <li>6ヶ月以上ログインがない場合</li>
+                        <li>支払いや配送の遅延が複数回ある場合</li>
+                        <li>悪質なクレームや迷惑行為が認められた場合</li>
+                    </ul>
+                    <p class="text-gray-700 leading-relaxed mt-3 text-sm">
+                        アカウント削除時、未払いの手数料や売上金は精算されます。
+                    </p>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">第9条（サービスの変更・停止）</h2>
+                    <p class="text-gray-700 leading-relaxed">
+                        当社は、以下の場合にサービスの全部または一部を停止できます：
+                    </p>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4 mt-2">
+                        <li>システムメンテナンスの実施</li>
+                        <li>サーバーやネットワークの障害</li>
+                        <li>法令の改正</li>
+                        <li>天災や不可抗力</li>
                     </ul>
                 </section>
 
                 <section>
-                    <h2 class="text-xl font-bold text-gray-900 mb-3">第4条（本サービスの提供の停止等）</h2>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">第10条（免責事項）</h2>
+                    <p class="text-gray-700 leading-relaxed mb-3">
+                        当社は、以下について一切の責任を負いません：
+                    </p>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
+                        <li>ユーザー間のトラブルや紛争</li>
+                        <li>商品の品質や適合性</li>
+                        <li>配送業者による遅延や事故</li>
+                        <li>システム障害による損害</li>
+                        <li>第三者による不正アクセス</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">第11条（準拠法・管轄裁判所）</h2>
                     <p class="text-gray-700 leading-relaxed">
-                        当社は、以下のいずれかの事由があると判断した場合、ユーザーに事前に通知することなく本サービスの全部または一部の提供を停止または中断することができるものとします。
+                        本規約は日本法に基づいて解釈されます。本サービスに関する紛争は、大阪地方裁判所を第一審の専属的合意管轄裁判所とします。
                     </p>
                 </section>
 
                 <section>
-                    <h2 class="text-xl font-bold text-gray-900 mb-3">第5条（免責事項）</h2>
-                    <p class="text-gray-700 leading-relaxed">
-                        当社は、本サービスに関して、ユーザーと他のユーザーまたは第三者との間において生じた取引、連絡または紛争等について一切責任を負いません。
-                    </p>
-                </section>
-
-                <section>
-                    <h2 class="text-xl font-bold text-gray-900 mb-3">第6条（サービス内容の変更等）</h2>
-                    <p class="text-gray-700 leading-relaxed">
-                        当社は、ユーザーに通知することなく、本サービスの内容を変更しまたは本サービスの提供を中止することができるものとし、これによってユーザーに生じた損害について一切の責任を負いません。
-                    </p>
-                </section>
-
-                <section>
-                    <h2 class="text-xl font-bold text-gray-900 mb-3">第7条（準拠法・管轄裁判所）</h2>
-                    <p class="text-gray-700 leading-relaxed">
-                        本規約の解釈にあたっては、日本法を準拠法とします。本サービスに関して紛争が生じた場合には、当社の本店所在地を管轄する裁判所を専属的合意管轄とします。
-                    </p>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">第12条（お問い合わせ）</h2>
+                    <div class="bg-gray-50 p-4 rounded-lg text-gray-700 leading-relaxed">
+                        <p class="mb-2"><strong>株式会社TCI カスタマーサポート</strong></p>
+                        <p>〒532-0000 大阪府大阪市淀川区新高1-5-4</p>
+                        <p>電話：06-6151-3697（平日 10:00～17:00）</p>
+                        <p class="mt-2">または<a href="/contact" class="text-red-500 hover:underline font-semibold">お問い合わせフォーム</a>よりご連絡ください。</p>
+                    </div>
                 </section>
             </div>
         </main>
@@ -3869,6 +4063,371 @@ app.get('/password-reset', (c) => {
                 }
             });
         </script>
+    </body>
+    </html>
+  `)
+})
+
+// セキュリティポリシー
+app.get('/security', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>セキュリティポリシー - PARTS HUB（パーツハブ）</title>
+        <meta name="theme-color" content="#ff4757">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    </head>
+    <body class="bg-gray-50 min-h-screen">
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+            <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+                <button onclick="window.history.back()" class="text-gray-600 hover:text-gray-900 flex items-center">
+                    <i class="fas fa-arrow-left mr-2"></i>戻る
+                </button>
+                <h1 class="text-red-500 font-bold text-lg">セキュリティポリシー</h1>
+                <div class="w-16"></div>
+            </div>
+        </header>
+
+        <main class="max-w-4xl mx-auto px-4 py-8">
+            <div class="bg-white rounded-xl shadow-sm p-8 space-y-6">
+                <div>
+                    <p class="text-sm text-gray-600 mb-4">最終更新日：2026年3月22日</p>
+                    <p class="text-gray-700 leading-relaxed">
+                        株式会社TCIが運営するPARTS HUB（パーツハブ）は、ユーザーの皆様に安心してご利用いただけるよう、以下のセキュリティ対策を実施しています。
+                    </p>
+                </div>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">1. 通信の暗号化</h2>
+                    <div class="bg-green-50 border-l-4 border-green-500 p-4 mb-3">
+                        <div class="flex items-center">
+                            <i class="fas fa-lock text-green-600 text-2xl mr-3"></i>
+                            <div>
+                                <p class="font-semibold text-green-900">SSL/TLS暗号化通信を採用</p>
+                                <p class="text-sm text-green-700">全てのページでHTTPS通信を使用し、データを暗号化して保護しています。</p>
+                            </div>
+                        </div>
+                    </div>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
+                        <li>ログイン情報、個人情報、決済情報などすべての通信を暗号化</li>
+                        <li>最新のTLS 1.3プロトコルを使用</li>
+                        <li>第三者による盗聴や改ざんを防止</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">2. パスワードの保護</h2>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
+                        <li><strong>ハッシュ化：</strong>パスワードは一方向ハッシュ関数で暗号化して保存</li>
+                        <li><strong>ソルト付加：</strong>レインボーテーブル攻撃への対策を実施</li>
+                        <li><strong>パスワード要件：</strong>8文字以上、英数字の組み合わせを推奨</li>
+                        <li><strong>二段階認証：</strong>今後、オプションで提供予定</li>
+                    </ul>
+                    <div class="bg-yellow-50 p-4 rounded-lg mt-3">
+                        <p class="text-sm text-gray-700">
+                            <strong>⚠️ パスワード管理のお願い：</strong>他のサービスと同じパスワードを使い回さないでください。定期的な変更をおすすめします。
+                        </p>
+                    </div>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">3. 決済情報の保護</h2>
+                    <p class="text-gray-700 leading-relaxed mb-3">
+                        クレジットカード情報など決済に関する情報は、当社のサーバーに保存されません：
+                    </p>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
+                        <li><strong>PCI DSS準拠：</strong>国際的なカード情報セキュリティ基準に準拠した決済代行会社を利用</li>
+                        <li><strong>トークン化：</strong>カード情報は暗号化されたトークンとして処理</li>
+                        <li><strong>3Dセキュア対応：</strong>本人認証サービスに対応</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">4. アクセス制限とログ管理</h2>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
+                        <li>個人情報へのアクセスは、必要最小限の担当者のみに制限</li>
+                        <li>すべてのアクセスログを記録し、定期的に監視</li>
+                        <li>不正アクセスの検知システムを導入</li>
+                        <li>複数回のログイン失敗でアカウントを一時ロック</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">5. データバックアップ</h2>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
+                        <li>ユーザーデータは毎日自動バックアップ</li>
+                        <li>複数の地理的に離れた場所に分散保存</li>
+                        <li>災害時の迅速な復旧体制を整備</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">6. 脆弱性対策</h2>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
+                        <li>システムの定期的なセキュリティ診断を実施</li>
+                        <li>脆弱性が発見された場合、速やかに修正</li>
+                        <li>最新のセキュリティパッチを適用</li>
+                        <li>外部の専門機関による監査を実施</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">7. 従業員教育</h2>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
+                        <li>全従業員に対してセキュリティ教育を実施</li>
+                        <li>個人情報保護に関する社内規程を整備</li>
+                        <li>秘密保持契約の締結</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">8. 不正利用の防止</h2>
+                    <div class="space-y-3">
+                        <div class="bg-blue-50 p-4 rounded-lg">
+                            <h3 class="font-semibold text-blue-900 mb-2">24時間監視体制</h3>
+                            <p class="text-sm text-blue-800">不審な取引や不正アクセスを自動検知し、速やかに対応します。</p>
+                        </div>
+                        <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
+                            <li>異常なログインパターンの検知</li>
+                            <li>高額取引の自動チェック</li>
+                            <li>同一IPからの大量アクセスの遮断</li>
+                            <li>フィッシングサイト対策</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">9. ユーザーの皆様へのお願い</h2>
+                    <div class="bg-red-50 border-l-4 border-red-500 p-4">
+                        <ul class="space-y-2 text-gray-700 text-sm">
+                            <li>✅ パスワードは他人に教えないでください</li>
+                            <li>✅ 共有パソコンではログアウトを忘れずに</li>
+                            <li>✅ 不審なメールやリンクにご注意ください</li>
+                            <li>✅ 公式サイト以外でのログインにご注意ください</li>
+                            <li>✅ 不審な動きを発見したら速やかにご連絡ください</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">10. セキュリティインシデント発生時の対応</h2>
+                    <p class="text-gray-700 leading-relaxed mb-3">
+                        万が一、セキュリティ事故が発生した場合：
+                    </p>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
+                        <li>直ちに被害の拡大防止措置を実施</li>
+                        <li>影響を受けるユーザーへ速やかに通知</li>
+                        <li>関係機関（警察、個人情報保護委員会など）へ報告</li>
+                        <li>原因の究明と再発防止策の実施</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-gray-900 mb-3">11. お問い合わせ</h2>
+                    <div class="bg-gray-50 p-4 rounded-lg text-gray-700 leading-relaxed">
+                        <p class="mb-2">セキュリティに関するお問い合わせ：</p>
+                        <p><strong>株式会社TCI セキュリティ窓口</strong></p>
+                        <p>〒532-0000 大阪府大阪市淀川区新高1-5-4</p>
+                        <p>電話：06-6151-3697（平日 10:00～17:00）</p>
+                        <p class="mt-2">または<a href="/contact" class="text-red-500 hover:underline font-semibold">お問い合わせフォーム</a>よりご連絡ください。</p>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        ${Footer()}
+    </body>
+    </html>
+  `)
+})
+
+// 特定商取引法に基づく表記
+app.get('/legal', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>特定商取引法に基づく表記 - PARTS HUB（パーツハブ）</title>
+        <meta name="theme-color" content="#ff4757">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    </head>
+    <body class="bg-gray-50 min-h-screen">
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+            <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+                <button onclick="window.history.back()" class="text-gray-600 hover:text-gray-900 flex items-center">
+                    <i class="fas fa-arrow-left mr-2"></i>戻る
+                </button>
+                <h1 class="text-red-500 font-bold text-lg">特定商取引法に基づく表記</h1>
+                <div class="w-16"></div>
+            </div>
+        </header>
+
+        <main class="max-w-4xl mx-auto px-4 py-8">
+            <div class="bg-white rounded-xl shadow-sm p-8 space-y-6">
+                <div>
+                    <p class="text-sm text-gray-600 mb-4">最終更新日：2026年3月22日</p>
+                    <p class="text-gray-700 leading-relaxed">
+                        PARTS HUB（パーツハブ）における特定商取引法に基づく表記は以下の通りです。
+                    </p>
+                </div>
+
+                <section class="border-b border-gray-200 pb-4">
+                    <h2 class="text-lg font-bold text-gray-900 mb-3">販売業者</h2>
+                    <p class="text-gray-700">株式会社TCI</p>
+                </section>
+
+                <section class="border-b border-gray-200 pb-4">
+                    <h2 class="text-lg font-bold text-gray-900 mb-3">運営責任者</h2>
+                    <p class="text-gray-700">代表取締役 尾崎俊行</p>
+                </section>
+
+                <section class="border-b border-gray-200 pb-4">
+                    <h2 class="text-lg font-bold text-gray-900 mb-3">所在地</h2>
+                    <p class="text-gray-700">〒532-0000</p>
+                    <p class="text-gray-700">大阪府大阪市淀川区新高1-5-4</p>
+                </section>
+
+                <section class="border-b border-gray-200 pb-4">
+                    <h2 class="text-lg font-bold text-gray-900 mb-3">電話番号</h2>
+                    <p class="text-gray-700">06-6151-3697</p>
+                    <p class="text-sm text-gray-600">受付時間：平日 10:00～17:00（土日祝日を除く）</p>
+                </section>
+
+                <section class="border-b border-gray-200 pb-4">
+                    <h2 class="text-lg font-bold text-gray-900 mb-3">メールアドレス</h2>
+                    <p class="text-gray-700">support@parts-hub.example.com</p>
+                    <p class="text-sm text-gray-600">または<a href="/contact" class="text-red-500 hover:underline">お問い合わせフォーム</a>をご利用ください</p>
+                </section>
+
+                <section class="border-b border-gray-200 pb-4">
+                    <h2 class="text-lg font-bold text-gray-900 mb-3">サービス内容</h2>
+                    <p class="text-gray-700 mb-2">自動車部品のオンラインマーケットプレイス</p>
+                    <ul class="list-disc list-inside space-y-1 text-gray-700 ml-4 text-sm">
+                        <li>自動車部品の売買仲介サービス</li>
+                        <li>代理出品サービス</li>
+                        <li>その他関連サービス</li>
+                    </ul>
+                </section>
+
+                <section class="border-b border-gray-200 pb-4">
+                    <h2 class="text-lg font-bold text-gray-900 mb-3">販売価格</h2>
+                    <p class="text-gray-700 mb-2">各商品ページに表示される価格（税込）</p>
+                    <p class="text-sm text-gray-600">※商品価格は出品者が設定します</p>
+                </section>
+
+                <section class="border-b border-gray-200 pb-4">
+                    <h2 class="text-lg font-bold text-gray-900 mb-3">手数料</h2>
+                    <div class="space-y-2 text-gray-700">
+                        <p><strong>販売手数料：</strong>商品価格の7%（税込）</p>
+                        <p><strong>振込手数料：</strong>売上金の出金時に200円</p>
+                        <p><strong>代理出品手数料：</strong>サービス内容により異なります（別途お見積り）</p>
+                    </div>
+                </section>
+
+                <section class="border-b border-gray-200 pb-4">
+                    <h2 class="text-lg font-bold text-gray-900 mb-3">商品代金以外の必要料金</h2>
+                    <ul class="list-disc list-inside space-y-1 text-gray-700 ml-4">
+                        <li>配送料（商品・配送方法により異なります）</li>
+                        <li>インターネット接続料金</li>
+                        <li>振込手数料（銀行振込の場合）</li>
+                    </ul>
+                </section>
+
+                <section class="border-b border-gray-200 pb-4">
+                    <h2 class="text-lg font-bold text-gray-900 mb-3">支払方法</h2>
+                    <ul class="list-disc list-inside space-y-1 text-gray-700 ml-4">
+                        <li>クレジットカード決済（Visa、Mastercard、JCB、American Express）</li>
+                        <li>コンビニ決済</li>
+                        <li>銀行振込</li>
+                        <li>キャリア決済（docomo、au、SoftBank）</li>
+                    </ul>
+                </section>
+
+                <section class="border-b border-gray-200 pb-4">
+                    <h2 class="text-lg font-bold text-gray-900 mb-3">支払時期</h2>
+                    <p class="text-gray-700">商品購入時に即時決済</p>
+                    <p class="text-sm text-gray-600">※商品が発送されるまで、代金は当社が一時預かりします</p>
+                </section>
+
+                <section class="border-b border-gray-200 pb-4">
+                    <h2 class="text-lg font-bold text-gray-900 mb-3">商品の引渡時期</h2>
+                    <p class="text-gray-700 mb-2">出品者により異なります（通常1～7日程度）</p>
+                    <p class="text-sm text-gray-600">※各商品ページの「発送までの日数」をご確認ください</p>
+                </section>
+
+                <section class="border-b border-gray-200 pb-4">
+                    <h2 class="text-lg font-bold text-gray-900 mb-3">返品・交換について</h2>
+                    <div class="space-y-3 text-gray-700">
+                        <div>
+                            <p class="font-semibold mb-2">返品可能な場合：</p>
+                            <ul class="list-disc list-inside space-y-1 ml-4 text-sm">
+                                <li>商品が説明と著しく異なる場合</li>
+                                <li>商品に重大な欠陥がある場合</li>
+                                <li>出品者が商品を発送しない場合</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <p class="font-semibold mb-2">返品期限：</p>
+                            <p class="text-sm">商品到着後3日以内にご連絡ください</p>
+                        </div>
+                        <div>
+                            <p class="font-semibold mb-2">返品送料：</p>
+                            <p class="text-sm">出品者の責めに帰すべき事由の場合は出品者負担、それ以外は購入者負担</p>
+                        </div>
+                        <div class="bg-yellow-50 p-3 rounded">
+                            <p class="text-sm"><strong>注意：</strong>原則として購入後のキャンセルや返品はできません。購入前に必ず商品説明をご確認ください。</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="border-b border-gray-200 pb-4">
+                    <h2 class="text-lg font-bold text-gray-900 mb-3">キャンセルについて</h2>
+                    <div class="space-y-2 text-gray-700">
+                        <p class="font-semibold">購入後のキャンセル：</p>
+                        <p class="text-sm">原則として購入後のキャンセルはできません。ただし、以下の場合は例外とします：</p>
+                        <ul class="list-disc list-inside space-y-1 ml-4 text-sm">
+                            <li>出品者が7日以内に発送しない場合</li>
+                            <li>出品者が取引を承諾しない場合</li>
+                            <li>その他、当社が正当と認める理由がある場合</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section class="border-b border-gray-200 pb-4">
+                    <h2 class="text-lg font-bold text-gray-900 mb-3">不良品・誤送品の対応</h2>
+                    <p class="text-gray-700 mb-2">商品到着後3日以内にカスタマーサポートまでご連絡ください。</p>
+                    <p class="text-sm text-gray-600">確認の上、返品・交換または返金にて対応いたします。</p>
+                </section>
+
+                <section class="border-b border-gray-200 pb-4">
+                    <h2 class="text-lg font-bold text-gray-900 mb-3">免責事項</h2>
+                    <div class="space-y-2 text-gray-700 text-sm">
+                        <p>当社は取引の仲介を行うものであり、商品の品質・適合性・安全性について責任を負いません。</p>
+                        <p>商品に関する問い合わせは、購入前に必ず出品者にご確認ください。</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h2 class="text-lg font-bold text-gray-900 mb-3">お問い合わせ</h2>
+                    <div class="bg-gray-50 p-4 rounded-lg text-gray-700 leading-relaxed">
+                        <p class="mb-2"><strong>株式会社TCI カスタマーサポート</strong></p>
+                        <p>〒532-0000 大阪府大阪市淀川区新高1-5-4</p>
+                        <p>電話：06-6151-3697（平日 10:00～17:00）</p>
+                        <p>メール：support@parts-hub.example.com</p>
+                        <p class="mt-2">または<a href="/contact" class="text-red-500 hover:underline font-semibold">お問い合わせフォーム</a>よりご連絡ください。</p>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        ${Footer()}
     </body>
     </html>
   `)
