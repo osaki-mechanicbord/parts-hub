@@ -3,6 +3,7 @@ import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import { serveStatic } from 'hono/cloudflare-workers'
 import type { Bindings } from './types'
+import { AdminLayout } from './admin-layout'
 
 // ルートのインポート
 import apiRoutes from './routes/api'
@@ -20,6 +21,7 @@ import profileRoutes from './routes/profile'
 import reviewsRoutes from './routes/reviews'
 import transactionsRoutes from './routes/transactions'
 import adminRoutes from './routes/admin'
+import adminPagesRoutes from './routes/admin-pages'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -149,6 +151,7 @@ app.route('/api/profile', profileRoutes)
 app.route('/api/reviews', reviewsRoutes)
 app.route('/api/transactions', transactionsRoutes)
 app.route('/api/admin', adminRoutes)
+app.route('/admin', adminPagesRoutes)
 
 // トップページ
 app.get('/', (c) => {
@@ -5484,6 +5487,212 @@ app.get('/admin', (c) => {
     </body>
     </html>
   `)
+})
+
+// ユーザー管理ページ
+app.get('/admin/users', (c) => {
+  const content = `
+    <h2 class="text-2xl font-bold text-gray-800 mb-6">ユーザー管理</h2>
+    
+    <!-- 検索・フィルター -->
+    <div class="bg-white p-4 rounded-lg shadow mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <input type="text" id="search-input" placeholder="名前・メールで検索..." class="px-4 py-2 border rounded-lg">
+            <select id="status-filter" class="px-4 py-2 border rounded-lg">
+                <option value="">すべてのステータス</option>
+                <option value="active">有効</option>
+                <option value="suspended">停止中</option>
+                <option value="banned">追放</option>
+            </select>
+            <select id="sort" class="px-4 py-2 border rounded-lg">
+                <option value="created_desc">登録日（新しい順）</option>
+                <option value="created_asc">登録日（古い順）</option>
+                <option value="name_asc">名前（昇順）</option>
+            </select>
+            <button onclick="searchUsers()" class="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600">
+                <i class="fas fa-search mr-2"></i>検索
+            </button>
+        </div>
+    </div>
+
+    <!-- ユーザー一覧 -->
+    <div class="bg-white rounded-lg shadow">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50 border-b">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ユーザー名</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">メール</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ステータス</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">出品数</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">取引数</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">登録日</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="users-tbody" class="divide-y divide-gray-200">
+                    <tr>
+                        <td colspan="8" class="px-6 py-12 text-center">
+                            <div class="flex justify-center">
+                                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- ページネーション -->
+        <div id="pagination" class="px-6 py-4 border-t flex justify-between items-center"></div>
+    </div>
+
+    <script>
+        let currentPage = 1;
+
+        async function loadUsers(page = 1) {
+            try {
+                const status = document.getElementById('status-filter').value;
+                const search = document.getElementById('search-input').value;
+                
+                let url = \`/api/admin/users?page=\${page}\`;
+                if (status) url += \`&status=\${status}\`;
+                if (search) url += \`&search=\${search}\`;
+                
+                const response = await axios.get(url);
+                const { users, total, totalPages } = response.data;
+                
+                renderUsers(users);
+                renderPagination(page, totalPages);
+                currentPage = page;
+            } catch (error) {
+                console.error('ユーザー読み込みエラー:', error);
+                alert('ユーザーデータの読み込みに失敗しました');
+            }
+        }
+
+        function renderUsers(users) {
+            const tbody = document.getElementById('users-tbody');
+            
+            if (users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="px-6 py-8 text-center text-gray-500">ユーザーが見つかりません</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = users.map(user => \`
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 text-sm text-gray-900">\${user.id}</td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center mr-3">
+                                <i class="fas fa-user text-gray-500 text-xs"></i>
+                            </div>
+                            <span class="text-sm font-medium text-gray-900">\${user.name}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-600">\${user.email}</td>
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-1 text-xs rounded \${user.status === 'active' ? 'bg-green-100 text-green-700' : user.status === 'suspended' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}">
+                            \${user.status === 'active' ? '有効' : user.status === 'suspended' ? '停止中' : '追放'}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-900">\${user.products_count || 0}</td>
+                    <td class="px-6 py-4 text-sm text-gray-900">\${user.transactions_count || 0}</td>
+                    <td class="px-6 py-4 text-sm text-gray-600">\${new Date(user.created_at).toLocaleDateString('ja-JP')}</td>
+                    <td class="px-6 py-4 text-sm">
+                        <button onclick="viewUser(\${user.id})" class="text-blue-600 hover:text-blue-800 mr-3">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        \${user.status === 'active' ? 
+                            \`<button onclick="suspendUser(\${user.id})" class="text-yellow-600 hover:text-yellow-800 mr-3" title="停止">
+                                <i class="fas fa-pause"></i>
+                            </button>\` : 
+                            \`<button onclick="activateUser(\${user.id})" class="text-green-600 hover:text-green-800 mr-3" title="有効化">
+                                <i class="fas fa-play"></i>
+                            </button>\`
+                        }
+                        <button onclick="banUser(\${user.id})" class="text-red-600 hover:text-red-800" title="追放">
+                            <i class="fas fa-ban"></i>
+                        </button>
+                    </td>
+                </tr>
+            \`).join('');
+        }
+
+        function renderPagination(current, total) {
+            const pagination = document.getElementById('pagination');
+            
+            let html = \`<div class="text-sm text-gray-600">ページ \${current} / \${total}</div><div class="flex space-x-2">\`;
+            
+            if (current > 1) {
+                html += \`<button onclick="loadUsers(\${current - 1})" class="px-3 py-1 border rounded hover:bg-gray-50">前へ</button>\`;
+            }
+            if (current < total) {
+                html += \`<button onclick="loadUsers(\${current + 1})" class="px-3 py-1 border rounded hover:bg-gray-50">次へ</button>\`;
+            }
+            
+            html += '</div>';
+            pagination.innerHTML = html;
+        }
+
+        function searchUsers() {
+            loadUsers(1);
+        }
+
+        async function suspendUser(id) {
+            if (!confirm('このユーザーを停止しますか？')) return;
+            
+            try {
+                await axios.put(\`/api/admin/users/\${id}/status\`, { status: 'suspended' });
+                alert('ユーザーを停止しました');
+                loadUsers(currentPage);
+            } catch (error) {
+                console.error('ユーザー停止エラー:', error);
+                alert('ユーザーの停止に失敗しました');
+            }
+        }
+
+        async function activateUser(id) {
+            if (!confirm('このユーザーを有効化しますか？')) return;
+            
+            try {
+                await axios.put(\`/api/admin/users/\${id}/status\`, { status: 'active' });
+                alert('ユーザーを有効化しました');
+                loadUsers(currentPage);
+            } catch (error) {
+                console.error('ユーザー有効化エラー:', error);
+                alert('ユーザーの有効化に失敗しました');
+            }
+        }
+
+        async function banUser(id) {
+            if (!confirm('このユーザーを追放しますか？この操作は取り消せません。')) return;
+            
+            try {
+                await axios.put(\`/api/admin/users/\${id}/status\`, { status: 'banned' });
+                alert('ユーザーを追放しました');
+                loadUsers(currentPage);
+            } catch (error) {
+                console.error('ユーザー追放エラー:', error);
+                alert('ユーザーの追放に失敗しました');
+            }
+        }
+
+        function viewUser(id) {
+            window.location.href = \`/admin/users/\${id}\`;
+        }
+
+        // 初期読み込み
+        loadUsers(1);
+        
+        // Enterキーで検索
+        document.getElementById('search-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchUsers();
+        });
+    </script>
+  `;
+  
+  return c.html(AdminLayout('users', 'ユーザー管理', content));
 })
 
 export default app

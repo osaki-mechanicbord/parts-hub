@@ -349,4 +349,326 @@ adminRoutes.delete('/products/:id', async (c) => {
   }
 });
 
+// ユーザーステータス更新
+adminRoutes.put('/users/:id/status', async (c) => {
+  const { env } = c;
+  const userId = c.req.param('id');
+  const { status } = await c.req.json();
+  
+  try {
+    await env.DB.prepare(`
+      UPDATE users
+      SET status = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(status, userId).run();
+
+    return c.json({ success: true, message: 'ユーザーステータスを更新しました' });
+  } catch (error) {
+    console.error('ユーザーステータス更新エラー:', error);
+    return c.json({ error: 'ユーザーステータスの更新に失敗しました' }, 500);
+  }
+});
+
+// 取引一覧
+adminRoutes.get('/transactions', async (c) => {
+  const { env } = c;
+  const page = parseInt(c.req.query('page') || '1');
+  const status = c.req.query('status');
+  const limit = 50;
+  const offset = (page - 1) * limit;
+  
+  try {
+    let query = `
+      SELECT 
+        t.id,
+        t.amount,
+        t.status,
+        t.created_at,
+        p.title as product_title,
+        buyer.name as buyer_name,
+        seller.name as seller_name
+      FROM transactions t
+      LEFT JOIN products p ON t.product_id = p.id
+      LEFT JOIN users buyer ON t.buyer_id = buyer.id
+      LEFT JOIN users seller ON t.seller_id = seller.id
+    `;
+
+    if (status) {
+      query += ` WHERE t.status = ?`;
+    }
+
+    query += `
+      ORDER BY t.created_at DESC
+      LIMIT ? OFFSET ?
+    `;
+
+    const stmt = env.DB.prepare(query);
+    const transactions = status ? 
+      await stmt.bind(status, limit, offset).all() :
+      await stmt.bind(limit, offset).all();
+
+    let countQuery = 'SELECT COUNT(*) as count FROM transactions';
+    if (status) {
+      countQuery += ' WHERE status = ?';
+    }
+    const countStmt = env.DB.prepare(countQuery);
+    const total = status ? 
+      await countStmt.bind(status).first() :
+      await countStmt.first();
+
+    return c.json({
+      transactions: transactions.results || [],
+      total: total?.count || 0,
+      page,
+      totalPages: Math.ceil((total?.count || 0) / limit)
+    });
+  } catch (error) {
+    console.error('取引一覧取得エラー:', error);
+    return c.json({ error: '取引一覧の取得に失敗しました' }, 500);
+  }
+});
+
+// 取引ステータス更新
+adminRoutes.put('/transactions/:id/status', async (c) => {
+  const { env } = c;
+  const transactionId = c.req.param('id');
+  const { status } = await c.req.json();
+  
+  try {
+    await env.DB.prepare(`
+      UPDATE transactions
+      SET status = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(status, transactionId).run();
+
+    return c.json({ success: true, message: '取引ステータスを更新しました' });
+  } catch (error) {
+    console.error('取引ステータス更新エラー:', error);
+    return c.json({ error: '取引ステータスの更新に失敗しました' }, 500);
+  }
+});
+
+// レビュー一覧
+adminRoutes.get('/reviews', async (c) => {
+  const { env } = c;
+  const page = parseInt(c.req.query('page') || '1');
+  const rating = c.req.query('rating');
+  const limit = 20;
+  const offset = (page - 1) * limit;
+  
+  try {
+    let query = `
+      SELECT 
+        r.id,
+        r.rating,
+        r.comment,
+        r.created_at,
+        r.transaction_id,
+        reviewer.name as reviewer_name,
+        reviewee.name as reviewee_name
+      FROM reviews r
+      LEFT JOIN users reviewer ON r.reviewer_id = reviewer.id
+      LEFT JOIN users reviewee ON r.reviewee_id = reviewee.id
+    `;
+
+    if (rating) {
+      query += ` WHERE r.rating = ?`;
+    }
+
+    query += `
+      ORDER BY r.created_at DESC
+      LIMIT ? OFFSET ?
+    `;
+
+    const stmt = env.DB.prepare(query);
+    const reviews = rating ? 
+      await stmt.bind(parseInt(rating), limit, offset).all() :
+      await stmt.bind(limit, offset).all();
+
+    let countQuery = 'SELECT COUNT(*) as count FROM reviews';
+    if (rating) {
+      countQuery += ' WHERE rating = ?';
+    }
+    const countStmt = env.DB.prepare(countQuery);
+    const total = rating ? 
+      await countStmt.bind(parseInt(rating)).first() :
+      await countStmt.first();
+
+    return c.json({
+      reviews: reviews.results || [],
+      total: total?.count || 0,
+      page,
+      totalPages: Math.ceil((total?.count || 0) / limit)
+    });
+  } catch (error) {
+    console.error('レビュー一覧取得エラー:', error);
+    return c.json({ error: 'レビュー一覧の取得に失敗しました' }, 500);
+  }
+});
+
+// レビュー削除
+adminRoutes.delete('/reviews/:id', async (c) => {
+  const { env } = c;
+  const reviewId = c.req.param('id');
+  
+  try {
+    await env.DB.prepare(`
+      DELETE FROM reviews
+      WHERE id = ?
+    `).bind(reviewId).run();
+
+    return c.json({ success: true, message: 'レビューを削除しました' });
+  } catch (error) {
+    console.error('レビュー削除エラー:', error);
+    return c.json({ error: 'レビューの削除に失敗しました' }, 500);
+  }
+});
+
+// 通報一覧
+adminRoutes.get('/reports', async (c) => {
+  const { env } = c;
+  const page = parseInt(c.req.query('page') || '1');
+  const status = c.req.query('status');
+  const limit = 20;
+  const offset = (page - 1) * limit;
+  
+  try {
+    let query = `
+      SELECT 
+        r.id,
+        r.reason,
+        r.description,
+        r.status,
+        r.created_at,
+        r.product_id,
+        reporter.name as reporter_name,
+        p.title as product_title
+      FROM reports r
+      LEFT JOIN users reporter ON r.reporter_id = reporter.id
+      LEFT JOIN products p ON r.product_id = p.id
+    `;
+
+    if (status) {
+      query += ` WHERE r.status = ?`;
+    }
+
+    query += `
+      ORDER BY r.created_at DESC
+      LIMIT ? OFFSET ?
+    `;
+
+    const stmt = env.DB.prepare(query);
+    const reports = status ? 
+      await stmt.bind(status, limit, offset).all() :
+      await stmt.bind(limit, offset).all();
+
+    let countQuery = 'SELECT COUNT(*) as count FROM reports';
+    if (status) {
+      countQuery += ' WHERE status = ?';
+    }
+    const countStmt = env.DB.prepare(countQuery);
+    const total = status ? 
+      await countStmt.bind(status).first() :
+      await countStmt.first();
+
+    return c.json({
+      reports: reports.results || [],
+      total: total?.count || 0,
+      page,
+      totalPages: Math.ceil((total?.count || 0) / limit)
+    });
+  } catch (error) {
+    console.error('通報一覧取得エラー:', error);
+    return c.json({ error: '通報一覧の取得に失敗しました' }, 500);
+  }
+});
+
+// 通報ステータス更新
+adminRoutes.put('/reports/:id/status', async (c) => {
+  const { env } = c;
+  const reportId = c.req.param('id');
+  const { status } = await c.req.json();
+  
+  try {
+    await env.DB.prepare(`
+      UPDATE reports
+      SET status = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(status, reportId).run();
+
+    return c.json({ success: true, message: '通報ステータスを更新しました' });
+  } catch (error) {
+    console.error('通報ステータス更新エラー:', error);
+    return c.json({ error: '通報ステータスの更新に失敗しました' }, 500);
+  }
+});
+
+// 売上レポート
+adminRoutes.get('/sales', async (c) => {
+  const { env } = c;
+  
+  try {
+    // 今月の売上統計
+    const now = new Date();
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    
+    const currentMonth = await env.DB.prepare(`
+      SELECT 
+        COUNT(*) as count,
+        COALESCE(SUM(amount), 0) as totalSales
+      FROM transactions
+      WHERE status = 'completed'
+      AND created_at >= ?
+    `).bind(firstDayOfMonth.toISOString()).first();
+
+    const totalFees = Math.floor((currentMonth?.totalSales || 0) * 0.07);
+
+    // 過去12ヶ月の月別売上
+    const monthlyData = [];
+    for (let i = 11; i >= 0; i--) {
+      const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+      
+      const monthSales = await env.DB.prepare(`
+        SELECT COALESCE(SUM(amount), 0) as sales
+        FROM transactions
+        WHERE status = 'completed'
+        AND created_at >= ? AND created_at < ?
+      `).bind(monthStart.toISOString(), monthEnd.toISOString()).first();
+      
+      monthlyData.push({
+        month: monthStart.getMonth() + 1,
+        sales: monthSales?.sales || 0
+      });
+    }
+
+    // 最近の取引
+    const recentTransactions = await env.DB.prepare(`
+      SELECT 
+        t.id,
+        t.amount,
+        t.created_at,
+        p.title as product_title
+      FROM transactions t
+      LEFT JOIN products p ON t.product_id = p.id
+      WHERE t.status = 'completed'
+      ORDER BY t.created_at DESC
+      LIMIT 20
+    `).all();
+
+    return c.json({
+      currentMonth: {
+        count: currentMonth?.count || 0,
+        totalSales: currentMonth?.totalSales || 0,
+        totalFees
+      },
+      monthlyData,
+      recentTransactions: recentTransactions.results || []
+    });
+  } catch (error) {
+    console.error('売上レポート取得エラー:', error);
+    return c.json({ error: '売上レポートの取得に失敗しました' }, 500);
+  }
+});
+
 export default adminRoutes
