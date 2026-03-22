@@ -43,6 +43,7 @@ const Footer = () => `
             <div>
                 <h4 class="font-semibold mb-3">サポート</h4>
                 <ul class="space-y-2 text-sm text-gray-400">
+                    <li><a href="/faq" class="hover:text-white transition-colors">よくある質問</a></li>
                     <li><a href="/contact" class="hover:text-white transition-colors">お問い合わせ</a></li>
                     <li><a href="/mypage" class="hover:text-white transition-colors">マイページ</a></li>
                     <li><a href="/notifications" class="hover:text-white transition-colors">通知</a></li>
@@ -102,7 +103,7 @@ app.get('/', (c) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
         <title>PARTS HUB（パーツハブ）- 自動車パーツ売買プラットフォーム</title>
-        <meta name="description" content="整備工場専門の純正パーツ・工具売買マーケットプレイス。メルカリのように手軽に部品を売買できます。">
+        <meta name="description" content="整備工場専門の純正パーツ・工具売買マーケットプレイス。手軽に部品を出品・購入できるプラットフォームです。">
         
         <!-- PWA対応 -->
         <meta name="theme-color" content="#ff4757">
@@ -244,6 +245,57 @@ app.get('/', (c) => {
                 }
             }
         </script>
+
+        <!-- 構造化データ（JSON-LD） -->
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          "name": "PARTS HUB（パーツハブ）",
+          "url": "https://parts-hub.com",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://parts-hub.com/search?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+          },
+          "description": "整備工場専門の自動車パーツ売買マーケットプレイス。純正部品から工具まで手軽に売買できるプラットフォーム。",
+          "publisher": {
+            "@type": "Organization",
+            "name": "株式会社TCI",
+            "url": "https://parts-hub.com",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://parts-hub.com/logo.png"
+            },
+            "address": {
+              "@type": "PostalAddress",
+              "streetAddress": "淀川区新高1-5-4",
+              "addressLocality": "大阪市",
+              "addressRegion": "大阪府",
+              "postalCode": "532-0000",
+              "addressCountry": "JP"
+            },
+            "telephone": "+81-6-6151-3697",
+            "email": "contact@parts-hub.com"
+          }
+        }
+        </script>
+
+        <!-- Open Graph タグ -->
+        <meta property="og:type" content="website">
+        <meta property="og:title" content="PARTS HUB（パーツハブ）- 自動車パーツ売買プラットフォーム">
+        <meta property="og:description" content="整備工場専門の自動車パーツマーケットプレイス。純正部品から工具まで、手軽に売買できます。">
+        <meta property="og:url" content="https://parts-hub.com">
+        <meta property="og:site_name" content="PARTS HUB">
+        <meta property="og:locale" content="ja_JP">
+        
+        <!-- Twitter Card -->
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:title" content="PARTS HUB - 自動車パーツ売買プラットフォーム">
+        <meta name="twitter:description" content="整備工場専門の自動車パーツマーケットプレイス">
+
+        <!-- Canonical URL -->
+        <link rel="canonical" href="https://parts-hub.com">
     </head>
     <body class="bg-gray-50">
         <!-- ヘッダー -->
@@ -576,7 +628,7 @@ app.get('/', (c) => {
                 }
             }
             
-            // 商品カード生成（メルカリ風）
+            // 商品カード生成
             function createProductCard(product) {
                 const conditionLabels = {
                     'new': '新品',
@@ -4436,6 +4488,662 @@ app.get('/legal', (c) => {
     </body>
     </html>
   `)
+})
+
+// FAQページ
+app.get('/faq', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>よくある質問（FAQ） - PARTS HUB（パーツハブ）</title>
+        <meta name="description" content="PARTS HUBの利用方法、手数料、配送、返品などについてのよくある質問をまとめています。">
+        <meta name="theme-color" content="#ff4757">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+
+        <!-- 構造化データ（JSON-LD） - FAQ -->
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          "mainEntity": [{
+            "@type": "Question",
+            "name": "PARTS HUB（パーツハブ）とは何ですか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "PARTS HUB（パーツハブ）は、自動車整備工場向けの部品売買プラットフォームです。手軽に、トヨタ、日産、ホンダなどの純正部品や工具を出品・購入できます。株式会社TCIが運営しています。"
+            }
+          },{
+            "@type": "Question",
+            "name": "誰が利用できますか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "自動車整備工場、解体業者、部品販売業者が出品でき、整備工場、車検業者、個人のDIYユーザーが購入できます。会員登録（無料）が必要です。"
+            }
+          },{
+            "@type": "Question",
+            "name": "手数料はいくらですか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "販売手数料は商品価格の7%（税込）です。振込手数料は売上金の出金時に200円かかります。購入者は商品代金と配送料のみで、購入手数料は無料です。"
+            }
+          },{
+            "@type": "Question",
+            "name": "どんな商品が売買されていますか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "エンジン、ミッション、ドアパネル、バンパー、ヘッドライト、テールランプ、マフラー、タイヤ、ホイール、整備工具など、自動車に関するあらゆる部品を取り扱っています。主な対応メーカー：トヨタ、日産、ホンダ、マツダ、スバル、ダイハツ、スズキ、三菱など国内全メーカーに対応しています。"
+            }
+          },{
+            "@type": "Question",
+            "name": "配送方法はどうなっていますか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "ヤマト運輸、佐川急便、日本郵便など、出品者が選択した配送方法で発送されます。大型部品（エンジン、ミッションなど）の場合は、路線便や直接引き取りも可能です。配送料は商品ページに記載されています。"
+            }
+          },{
+            "@type": "Question",
+            "name": "返品・返金は可能ですか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "商品が説明と異なる場合、破損していた場合は返品・返金が可能です。商品到着後7日以内にお問い合わせフォームよりご連絡ください。お客様都合での返品は原則受け付けておりません。"
+            }
+          },{
+            "@type": "Question",
+            "name": "支払い方法は何がありますか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "クレジットカード決済（Visa、Mastercard、JCB、American Express）、コンビニ決済、銀行振込に対応しています。クレジットカード決済が最も迅速です。"
+            }
+          },{
+            "@type": "Question",
+            "name": "出品するにはどうすればいいですか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "会員登録後、「出品する」ボタンから商品情報（写真、タイトル、説明、価格など）を入力するだけで簡単に出品できます。出品は無料で、売れた時のみ販売手数料7%が発生します。"
+            }
+          },{
+            "@type": "Question",
+            "name": "売上金の受け取り方法は？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "商品が購入者に届き、取引が完了すると売上金が確定します。マイページから銀行口座を登録し、出金申請を行うことで指定口座に振り込まれます（振込手数料200円）。最低出金額は1,000円からです。"
+            }
+          },{
+            "@type": "Question",
+            "name": "代理出品サービスとは何ですか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "大量の在庫や出品作業が困難な場合、当社スタッフがお客様に代わって撮影・出品・発送までを代行するサービスです。出張代理出品と郵送代理出品の2種類があります。詳細はお問い合わせください。"
+            }
+          }]
+        }
+        </script>
+
+        <!-- Open Graph -->
+        <meta property="og:type" content="website">
+        <meta property="og:title" content="よくある質問（FAQ） - PARTS HUB">
+        <meta property="og:description" content="PARTS HUBの利用方法、手数料、配送、返品などについてのよくある質問">
+        <meta property="og:url" content="https://parts-hub.com/faq">
+        
+        <!-- Canonical URL -->
+        <link rel="canonical" href="https://parts-hub.com/faq">
+    </head>
+    <body class="bg-gray-50 min-h-screen">
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+            <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+                <button onclick="window.history.back()" class="text-gray-600 hover:text-gray-900 flex items-center">
+                    <i class="fas fa-arrow-left mr-2"></i>戻る
+                </button>
+                <h1 class="text-red-500 font-bold text-lg">よくある質問</h1>
+                <div class="w-16"></div>
+            </div>
+        </header>
+
+        <main class="max-w-4xl mx-auto px-4 py-8">
+            <!-- ページ説明 -->
+            <div class="bg-gradient-to-r from-red-50 to-pink-50 rounded-xl p-6 mb-8">
+                <h2 class="text-2xl font-bold text-gray-900 mb-3">
+                    <i class="fas fa-question-circle text-red-500 mr-2"></i>
+                    よくある質問（FAQ）
+                </h2>
+                <p class="text-gray-700">
+                    PARTS HUB（パーツハブ）の利用方法、手数料、配送、返品などについて、よくいただく質問をまとめています。
+                    ご不明な点がございましたら、<a href="/contact" class="text-red-500 hover:underline font-semibold">お問い合わせフォーム</a>よりお気軽にご連絡ください。
+                </p>
+            </div>
+
+            <!-- FAQ一覧 -->
+            <div class="space-y-4">
+                <!-- FAQ 1 -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <button onclick="toggleFAQ('faq1')" class="w-full text-left p-6 hover:bg-gray-50 transition-colors flex items-center justify-between">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-bold text-gray-900 mb-1">
+                                <i class="fas fa-circle text-red-500 text-xs mr-2"></i>
+                                PARTS HUB（パーツハブ）とは何ですか？
+                            </h3>
+                        </div>
+                        <i class="fas fa-chevron-down text-gray-400 transition-transform" id="icon-faq1"></i>
+                    </button>
+                    <div id="faq1" class="hidden px-6 pb-6">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <p class="text-gray-700 leading-relaxed">
+                                <strong>PARTS HUB（パーツハブ）</strong>は、自動車整備工場向けの部品売買プラットフォームです。
+                                手軽に、トヨタ、日産、ホンダなどの純正部品や工具を出品・購入できます。
+                                <strong>株式会社TCI</strong>が運営しており、全国の整備工場・解体業者・部品販売業者が利用しています。
+                            </p>
+                            <div class="mt-3 p-3 bg-blue-50 rounded border-l-4 border-blue-500">
+                                <p class="text-sm text-blue-900">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    <strong>特徴：</strong>整備工場専門、手軽な出品・購入、全国配送対応、安心の取引保証
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ 2 -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <button onclick="toggleFAQ('faq2')" class="w-full text-left p-6 hover:bg-gray-50 transition-colors flex items-center justify-between">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-bold text-gray-900 mb-1">
+                                <i class="fas fa-circle text-red-500 text-xs mr-2"></i>
+                                誰が利用できますか？
+                            </h3>
+                        </div>
+                        <i class="fas fa-chevron-down text-gray-400 transition-transform" id="icon-faq2"></i>
+                    </button>
+                    <div id="faq2" class="hidden px-6 pb-6">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div class="bg-white p-4 rounded border-2 border-green-200">
+                                    <h4 class="font-bold text-green-700 mb-2">
+                                        <i class="fas fa-store mr-1"></i>出品者
+                                    </h4>
+                                    <ul class="text-sm text-gray-700 space-y-1">
+                                        <li>✓ 自動車整備工場</li>
+                                        <li>✓ 解体業者</li>
+                                        <li>✓ 部品販売業者</li>
+                                        <li>✓ 法人・個人事業主</li>
+                                    </ul>
+                                </div>
+                                <div class="bg-white p-4 rounded border-2 border-blue-200">
+                                    <h4 class="font-bold text-blue-700 mb-2">
+                                        <i class="fas fa-shopping-cart mr-1"></i>購入者
+                                    </h4>
+                                    <ul class="text-sm text-gray-700 space-y-1">
+                                        <li>✓ 自動車整備工場</li>
+                                        <li>✓ 車検業者</li>
+                                        <li>✓ 個人のDIYユーザー</li>
+                                        <li>✓ どなたでも購入可能</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <p class="text-sm text-gray-600 mt-3">
+                                ※会員登録（無料）が必要です。18歳以上の方が対象です。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ 3 -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <button onclick="toggleFAQ('faq3')" class="w-full text-left p-6 hover:bg-gray-50 transition-colors flex items-center justify-between">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-bold text-gray-900 mb-1">
+                                <i class="fas fa-circle text-red-500 text-xs mr-2"></i>
+                                手数料はいくらですか？
+                            </h3>
+                        </div>
+                        <i class="fas fa-chevron-down text-gray-400 transition-transform" id="icon-faq3"></i>
+                    </button>
+                    <div id="faq3" class="hidden px-6 pb-6">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <div class="space-y-3">
+                                <div class="bg-white p-4 rounded border-2 border-red-200">
+                                    <h4 class="font-bold text-red-700 mb-2">販売手数料</h4>
+                                    <p class="text-2xl font-bold text-red-600 mb-1">7%（税込）</p>
+                                    <p class="text-sm text-gray-600">商品が売れた時のみ発生します</p>
+                                </div>
+                                <div class="bg-white p-4 rounded border-2 border-yellow-200">
+                                    <h4 class="font-bold text-yellow-700 mb-2">振込手数料</h4>
+                                    <p class="text-2xl font-bold text-yellow-600 mb-1">200円</p>
+                                    <p class="text-sm text-gray-600">売上金の出金時に1回のみ</p>
+                                </div>
+                                <div class="bg-white p-4 rounded border-2 border-blue-200">
+                                    <h4 class="font-bold text-blue-700 mb-2">購入手数料</h4>
+                                    <p class="text-2xl font-bold text-blue-600 mb-1">無料</p>
+                                    <p class="text-sm text-gray-600">購入者は商品代金と配送料のみ</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ 4 -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <button onclick="toggleFAQ('faq4')" class="w-full text-left p-6 hover:bg-gray-50 transition-colors flex items-center justify-between">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-bold text-gray-900 mb-1">
+                                <i class="fas fa-circle text-red-500 text-xs mr-2"></i>
+                                どんな商品が売買されていますか？
+                            </h3>
+                        </div>
+                        <i class="fas fa-chevron-down text-gray-400 transition-transform" id="icon-faq4"></i>
+                    </button>
+                    <div id="faq4" class="hidden px-6 pb-6">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <p class="text-gray-700 mb-4">自動車に関するあらゆる部品を取り扱っています：</p>
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                <div class="bg-white p-3 rounded text-center">
+                                    <i class="fas fa-cog text-red-500 text-2xl mb-2"></i>
+                                    <p class="text-sm font-semibold">エンジン</p>
+                                </div>
+                                <div class="bg-white p-3 rounded text-center">
+                                    <i class="fas fa-tools text-red-500 text-2xl mb-2"></i>
+                                    <p class="text-sm font-semibold">ミッション</p>
+                                </div>
+                                <div class="bg-white p-3 rounded text-center">
+                                    <i class="fas fa-car text-red-500 text-2xl mb-2"></i>
+                                    <p class="text-sm font-semibold">ドア・パネル</p>
+                                </div>
+                                <div class="bg-white p-3 rounded text-center">
+                                    <i class="fas fa-lightbulb text-red-500 text-2xl mb-2"></i>
+                                    <p class="text-sm font-semibold">ライト類</p>
+                                </div>
+                                <div class="bg-white p-3 rounded text-center">
+                                    <i class="fas fa-circle text-red-500 text-2xl mb-2"></i>
+                                    <p class="text-sm font-semibold">タイヤ・ホイール</p>
+                                </div>
+                                <div class="bg-white p-3 rounded text-center">
+                                    <i class="fas fa-wrench text-red-500 text-2xl mb-2"></i>
+                                    <p class="text-sm font-semibold">整備工具</p>
+                                </div>
+                            </div>
+                            <p class="text-sm text-gray-600 mt-4">
+                                <strong>対応メーカー：</strong>トヨタ、日産、ホンダ、マツダ、スバル、ダイハツ、スズキ、三菱など国内全メーカー対応
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ 5 -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <button onclick="toggleFAQ('faq5')" class="w-full text-left p-6 hover:bg-gray-50 transition-colors flex items-center justify-between">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-bold text-gray-900 mb-1">
+                                <i class="fas fa-circle text-red-500 text-xs mr-2"></i>
+                                配送方法はどうなっていますか？
+                            </h3>
+                        </div>
+                        <i class="fas fa-chevron-down text-gray-400 transition-transform" id="icon-faq5"></i>
+                    </button>
+                    <div id="faq5" class="hidden px-6 pb-6">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <p class="text-gray-700 mb-3">出品者が選択した配送方法で発送されます：</p>
+                            <ul class="space-y-2 text-gray-700">
+                                <li class="flex items-start">
+                                    <i class="fas fa-check-circle text-green-500 mr-2 mt-1"></i>
+                                    <span><strong>小型部品：</strong>ヤマト運輸、佐川急便、日本郵便</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-check-circle text-green-500 mr-2 mt-1"></i>
+                                    <span><strong>大型部品：</strong>路線便（エンジン、ミッションなど）</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-check-circle text-green-500 mr-2 mt-1"></i>
+                                    <span><strong>直接引き取り：</strong>近隣の場合は直接受け渡しも可能</span>
+                                </li>
+                            </ul>
+                            <p class="text-sm text-gray-600 mt-3 bg-yellow-50 p-3 rounded">
+                                <i class="fas fa-info-circle text-yellow-600 mr-1"></i>
+                                配送料は商品ページに記載されています。大型部品は別途お見積りとなる場合があります。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ 6 -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <button onclick="toggleFAQ('faq6')" class="w-full text-left p-6 hover:bg-gray-50 transition-colors flex items-center justify-between">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-bold text-gray-900 mb-1">
+                                <i class="fas fa-circle text-red-500 text-xs mr-2"></i>
+                                返品・返金は可能ですか？
+                            </h3>
+                        </div>
+                        <i class="fas fa-chevron-down text-gray-400 transition-transform" id="icon-faq6"></i>
+                    </button>
+                    <div id="faq6" class="hidden px-6 pb-6">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <div class="space-y-3">
+                                <div class="bg-green-50 border-l-4 border-green-500 p-4">
+                                    <h4 class="font-bold text-green-800 mb-2">
+                                        <i class="fas fa-check-circle mr-1"></i>返品・返金可能な場合
+                                    </h4>
+                                    <ul class="text-sm text-green-800 space-y-1">
+                                        <li>• 商品が説明と明らかに異なる場合</li>
+                                        <li>• 商品が破損・故障していた場合</li>
+                                        <li>• 配送中の事故で損傷した場合</li>
+                                    </ul>
+                                    <p class="text-xs text-green-700 mt-2">
+                                        ※商品到着後7日以内にお問い合わせフォームよりご連絡ください
+                                    </p>
+                                </div>
+                                <div class="bg-red-50 border-l-4 border-red-500 p-4">
+                                    <h4 class="font-bold text-red-800 mb-2">
+                                        <i class="fas fa-times-circle mr-1"></i>返品不可の場合
+                                    </h4>
+                                    <ul class="text-sm text-red-800 space-y-1">
+                                        <li>• お客様都合での返品</li>
+                                        <li>• イメージ違いなどの主観的理由</li>
+                                        <li>• 使用後の返品</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ 7 -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <button onclick="toggleFAQ('faq7')" class="w-full text-left p-6 hover:bg-gray-50 transition-colors flex items-center justify-between">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-bold text-gray-900 mb-1">
+                                <i class="fas fa-circle text-red-500 text-xs mr-2"></i>
+                                支払い方法は何がありますか？
+                            </h3>
+                        </div>
+                        <i class="fas fa-chevron-down text-gray-400 transition-transform" id="icon-faq7"></i>
+                    </button>
+                    <div id="faq7" class="hidden px-6 pb-6">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <div class="grid md:grid-cols-3 gap-4">
+                                <div class="bg-white p-4 rounded text-center border-2 border-blue-200">
+                                    <i class="fas fa-credit-card text-blue-500 text-3xl mb-2"></i>
+                                    <h4 class="font-bold text-gray-900 mb-1">クレジットカード</h4>
+                                    <p class="text-xs text-gray-600">Visa / Mastercard / JCB / Amex</p>
+                                    <span class="inline-block mt-2 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">おすすめ</span>
+                                </div>
+                                <div class="bg-white p-4 rounded text-center border-2 border-green-200">
+                                    <i class="fas fa-store text-green-500 text-3xl mb-2"></i>
+                                    <h4 class="font-bold text-gray-900 mb-1">コンビニ決済</h4>
+                                    <p class="text-xs text-gray-600">セブン / ローソン / ファミマ</p>
+                                </div>
+                                <div class="bg-white p-4 rounded text-center border-2 border-yellow-200">
+                                    <i class="fas fa-university text-yellow-500 text-3xl mb-2"></i>
+                                    <h4 class="font-bold text-gray-900 mb-1">銀行振込</h4>
+                                    <p class="text-xs text-gray-600">各種銀行対応</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ 8 -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <button onclick="toggleFAQ('faq8')" class="w-full text-left p-6 hover:bg-gray-50 transition-colors flex items-center justify-between">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-bold text-gray-900 mb-1">
+                                <i class="fas fa-circle text-red-500 text-xs mr-2"></i>
+                                出品するにはどうすればいいですか？
+                            </h3>
+                        </div>
+                        <i class="fas fa-chevron-down text-gray-400 transition-transform" id="icon-faq8"></i>
+                    </button>
+                    <div id="faq8" class="hidden px-6 pb-6">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <p class="text-gray-700 mb-4">簡単3ステップで出品できます：</p>
+                            <div class="space-y-3">
+                                <div class="flex items-start gap-3">
+                                    <div class="w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">1</div>
+                                    <div>
+                                        <h4 class="font-bold text-gray-900">写真をアップロード</h4>
+                                        <p class="text-sm text-gray-600">商品の写真を最大10枚まで登録</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-start gap-3">
+                                    <div class="w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">2</div>
+                                    <div>
+                                        <h4 class="font-bold text-gray-900">商品情報を入力</h4>
+                                        <p class="text-sm text-gray-600">タイトル、説明、価格、カテゴリなどを入力</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-start gap-3">
+                                    <div class="w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">3</div>
+                                    <div>
+                                        <h4 class="font-bold text-gray-900">出品完了</h4>
+                                        <p class="text-sm text-gray-600">「出品する」ボタンを押すだけ</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-4 bg-blue-50 p-3 rounded">
+                                <p class="text-sm text-blue-900">
+                                    <i class="fas fa-star text-yellow-500 mr-1"></i>
+                                    <strong>出品は無料！</strong>売れた時のみ販売手数料7%が発生します
+                                </p>
+                            </div>
+                            <div class="mt-3 text-center">
+                                <a href="/listing" class="inline-block bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-bold transition-colors">
+                                    <i class="fas fa-plus-circle mr-2"></i>今すぐ出品する
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ 9 -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <button onclick="toggleFAQ('faq9')" class="w-full text-left p-6 hover:bg-gray-50 transition-colors flex items-center justify-between">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-bold text-gray-900 mb-1">
+                                <i class="fas fa-circle text-red-500 text-xs mr-2"></i>
+                                売上金の受け取り方法は？
+                            </h3>
+                        </div>
+                        <i class="fas fa-chevron-down text-gray-400 transition-transform" id="icon-faq9"></i>
+                    </button>
+                    <div id="faq9" class="hidden px-6 pb-6">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <p class="text-gray-700 mb-4">取引完了後、以下の流れで売上金を受け取れます：</p>
+                            <div class="space-y-2 text-gray-700">
+                                <div class="flex items-start">
+                                    <i class="fas fa-arrow-right text-red-500 mr-2 mt-1"></i>
+                                    <span>商品が購入者に届き、取引が完了すると売上金が確定</span>
+                                </div>
+                                <div class="flex items-start">
+                                    <i class="fas fa-arrow-right text-red-500 mr-2 mt-1"></i>
+                                    <span>マイページから銀行口座を登録</span>
+                                </div>
+                                <div class="flex items-start">
+                                    <i class="fas fa-arrow-right text-red-500 mr-2 mt-1"></i>
+                                    <span>出金申請を行う（最低1,000円から）</span>
+                                </div>
+                                <div class="flex items-start">
+                                    <i class="fas fa-arrow-right text-red-500 mr-2 mt-1"></i>
+                                    <span>指定口座に振込（振込手数料200円）</span>
+                                </div>
+                            </div>
+                            <div class="mt-4 bg-yellow-50 p-3 rounded">
+                                <p class="text-sm text-yellow-900">
+                                    <i class="fas fa-clock mr-1"></i>
+                                    振込は申請後、3～5営業日で完了します
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ 10 -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <button onclick="toggleFAQ('faq10')" class="w-full text-left p-6 hover:bg-gray-50 transition-colors flex items-center justify-between">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-bold text-gray-900 mb-1">
+                                <i class="fas fa-circle text-red-500 text-xs mr-2"></i>
+                                代理出品サービスとは何ですか？
+                            </h3>
+                        </div>
+                        <i class="fas fa-chevron-down text-gray-400 transition-transform" id="icon-faq10"></i>
+                    </button>
+                    <div id="faq10" class="hidden px-6 pb-6">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <p class="text-gray-700 mb-4">
+                                大量の在庫や出品作業が困難な場合、当社スタッフがお客様に代わって
+                                <strong>撮影・出品・発送まで</strong>を代行するサービスです。
+                            </p>
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div class="bg-purple-50 p-4 rounded border-2 border-purple-200">
+                                    <h4 class="font-bold text-purple-800 mb-2">
+                                        <i class="fas fa-truck mr-1"></i>出張代理出品
+                                    </h4>
+                                    <p class="text-sm text-purple-800 mb-2">
+                                        スタッフがお客様の工場・倉庫に伺い、現地で撮影・出品作業を行います。
+                                    </p>
+                                    <p class="text-xs text-purple-700">
+                                        大量在庫の一括出品に最適
+                                    </p>
+                                </div>
+                                <div class="bg-green-50 p-4 rounded border-2 border-green-200">
+                                    <h4 class="font-bold text-green-800 mb-2">
+                                        <i class="fas fa-box mr-1"></i>郵送代理出品
+                                    </h4>
+                                    <p class="text-sm text-green-800 mb-2">
+                                        商品を当社に郵送いただき、当社で撮影・出品・発送を代行します。
+                                    </p>
+                                    <p class="text-xs text-green-700">
+                                        少量の出品にも対応
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="mt-4 text-center">
+                                <a href="/contact?type=proxy_onsite" class="inline-block bg-purple-500 hover:bg-purple-600 text-white px-6 py-3 rounded-lg font-bold transition-colors mr-2">
+                                    <i class="fas fa-truck mr-2"></i>出張代理出品
+                                </a>
+                                <a href="/contact?type=proxy_shipping" class="inline-block bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-bold transition-colors">
+                                    <i class="fas fa-box mr-2"></i>郵送代理出品
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- さらに質問がある場合 -->
+            <div class="mt-12 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-8 text-center">
+                <i class="fas fa-question-circle text-blue-500 text-4xl mb-4"></i>
+                <h3 class="text-xl font-bold text-gray-900 mb-2">他にご質問はありますか？</h3>
+                <p class="text-gray-700 mb-6">
+                    上記で解決しない場合は、お気軽にお問い合わせください。<br>
+                    平日10:00～17:00に対応いたします。
+                </p>
+                <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                    <a href="/contact" class="inline-block bg-red-500 hover:bg-red-600 text-white px-8 py-3 rounded-lg font-bold transition-colors">
+                        <i class="fas fa-envelope mr-2"></i>お問い合わせフォーム
+                    </a>
+                    <a href="tel:06-6151-3697" class="inline-block bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg font-bold transition-colors">
+                        <i class="fas fa-phone mr-2"></i>06-6151-3697
+                    </a>
+                </div>
+            </div>
+        </main>
+
+        ${Footer()}
+
+        <script>
+            function toggleFAQ(id) {
+                const element = document.getElementById(id);
+                const icon = document.getElementById('icon-' + id);
+                
+                if (element.classList.contains('hidden')) {
+                    element.classList.remove('hidden');
+                    icon.classList.add('rotate-180');
+                } else {
+                    element.classList.add('hidden');
+                    icon.classList.remove('rotate-180');
+                }
+            }
+        </script>
+    </body>
+    </html>
+  `)
+})
+
+// Sitemap.xml生成
+app.get('/sitemap.xml', async (c) => {
+  const currentDate = new Date().toISOString().split('T')[0];
+  
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+  <!-- トップページ -->
+  <url>
+    <loc>https://parts-hub.com/</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  
+  <!-- 主要ページ -->
+  <url>
+    <loc>https://parts-hub.com/search</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://parts-hub.com/listing</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://parts-hub.com/faq</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <!-- 法的ページ -->
+  <url>
+    <loc>https://parts-hub.com/terms</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://parts-hub.com/privacy</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://parts-hub.com/security</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://parts-hub.com/legal</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://parts-hub.com/contact</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+</urlset>`;
+
+  c.header('Content-Type', 'application/xml; charset=utf-8');
+  return c.body(xml);
 })
 
 export default app

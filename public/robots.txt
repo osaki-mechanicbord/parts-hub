@@ -1,0 +1,32 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /mypage/
+Disallow: /transactions/
+Disallow: /chat/
+Disallow: /notifications/
+Disallow: /profile/edit
+
+# LLMクローラー向け
+User-agent: GPTBot
+Allow: /
+Allow: /faq
+Allow: /products/
+
+User-agent: ChatGPT-User
+Allow: /
+Allow: /faq
+Allow: /products/
+
+User-agent: ClaudeBot
+Allow: /
+Allow: /faq
+Allow: /products/
+
+User-agent: Google-Extended
+Allow: /
+Allow: /faq
+Allow: /products/
+
+Sitemap: https://parts-hub.com/sitemap.xml
