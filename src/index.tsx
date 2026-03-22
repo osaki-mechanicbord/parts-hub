@@ -75,6 +75,60 @@ app.use('/api/*', cors())
 // 静的ファイル配信
 app.use('/static/*', serveStatic({ root: './public' }))
 app.use('/icons/*', serveStatic({ root: './public' }))
+
+// robots.txt, manifest.json, sw.js配信
+app.get('/robots.txt', async (c) => {
+  return c.text(`User-agent: *
+Allow: /
+Allow: /products/*
+Allow: /search
+Allow: /listing
+Allow: /contact
+Allow: /faq
+Allow: /terms
+Allow: /privacy
+Allow: /security
+Allow: /legal
+
+# APIエンドポイントはクロール不要
+Disallow: /api/*
+
+# 個人情報ページ
+Disallow: /mypage
+Disallow: /profile/*
+Disallow: /chat/*
+Disallow: /notifications
+Disallow: /transactions/*
+Disallow: /listing/edit/*
+
+# LLM専用クローラーには追加情報を許可
+User-agent: GPTBot
+Allow: /
+Allow: /products/*
+Allow: /faq
+Allow: /search
+Disallow: /mypage
+Disallow: /api/*
+
+User-agent: ClaudeBot
+Allow: /
+Allow: /products/*
+Allow: /faq
+Allow: /search
+Disallow: /mypage
+Disallow: /api/*
+
+User-agent: Google-Extended
+Allow: /
+Allow: /products/*
+Allow: /faq
+Allow: /search
+Disallow: /mypage
+Disallow: /api/*
+
+# Sitemap
+Sitemap: https://parts-hub.com/sitemap.xml`, { headers: { 'Content-Type': 'text/plain' } })
+})
 app.use('/manifest.json', serveStatic({ root: './public' }))
 app.use('/sw.js', serveStatic({ root: './public' }))
 
