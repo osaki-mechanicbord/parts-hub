@@ -19,6 +19,7 @@ import mypageRoutes from './routes/mypage'
 import profileRoutes from './routes/profile'
 import reviewsRoutes from './routes/reviews'
 import transactionsRoutes from './routes/transactions'
+import adminRoutes from './routes/admin'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -147,6 +148,7 @@ app.route('/api/mypage', mypageRoutes)
 app.route('/api/profile', profileRoutes)
 app.route('/api/reviews', reviewsRoutes)
 app.route('/api/transactions', transactionsRoutes)
+app.route('/api/admin', adminRoutes)
 
 // トップページ
 app.get('/', (c) => {
@@ -5198,6 +5200,290 @@ app.get('/sitemap.xml', async (c) => {
 
   c.header('Content-Type', 'application/xml; charset=utf-8');
   return c.body(xml);
+})
+
+// ========================================
+// 管理画面（Admin Panel）
+// ========================================
+
+// 管理画面トップ（ダッシュボード）
+app.get('/admin', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>管理画面 - PARTS HUB</title>
+        <meta name="robots" content="noindex, nofollow">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    </head>
+    <body class="bg-gray-100">
+        <!-- ヘッダー -->
+        <header class="bg-white shadow-sm sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <i class="fas fa-shield-alt text-red-500 text-2xl"></i>
+                    <h1 class="text-xl font-bold text-gray-800">PARTS HUB 管理画面</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm text-gray-600">管理者: 尾崎俊行</span>
+                    <a href="/" class="text-sm text-red-500 hover:underline">
+                        <i class="fas fa-home mr-1"></i>サイトへ
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <div class="flex">
+            <!-- サイドバー -->
+            <aside class="w-64 bg-white shadow-lg min-h-screen">
+                <nav class="p-4">
+                    <a href="/admin" class="flex items-center px-4 py-3 mb-2 bg-red-50 text-red-600 rounded-lg">
+                        <i class="fas fa-chart-line w-5"></i>
+                        <span class="ml-3 font-medium">ダッシュボード</span>
+                    </a>
+                    <a href="/admin/users" class="flex items-center px-4 py-3 mb-2 text-gray-700 hover:bg-gray-50 rounded-lg">
+                        <i class="fas fa-users w-5"></i>
+                        <span class="ml-3">ユーザー管理</span>
+                    </a>
+                    <a href="/admin/products" class="flex items-center px-4 py-3 mb-2 text-gray-700 hover:bg-gray-50 rounded-lg">
+                        <i class="fas fa-box w-5"></i>
+                        <span class="ml-3">商品管理</span>
+                    </a>
+                    <a href="/admin/transactions" class="flex items-center px-4 py-3 mb-2 text-gray-700 hover:bg-gray-50 rounded-lg">
+                        <i class="fas fa-exchange-alt w-5"></i>
+                        <span class="ml-3">取引管理</span>
+                    </a>
+                    <a href="/admin/reviews" class="flex items-center px-4 py-3 mb-2 text-gray-700 hover:bg-gray-50 rounded-lg">
+                        <i class="fas fa-star w-5"></i>
+                        <span class="ml-3">レビュー管理</span>
+                    </a>
+                    <a href="/admin/reports" class="flex items-center px-4 py-3 mb-2 text-gray-700 hover:bg-gray-50 rounded-lg">
+                        <i class="fas fa-flag w-5"></i>
+                        <span class="ml-3">通報管理</span>
+                    </a>
+                    <a href="/admin/sales" class="flex items-center px-4 py-3 mb-2 text-gray-700 hover:bg-gray-50 rounded-lg">
+                        <i class="fas fa-yen-sign w-5"></i>
+                        <span class="ml-3">売上レポート</span>
+                    </a>
+                </nav>
+            </aside>
+
+            <!-- メインコンテンツ -->
+            <main class="flex-1 p-8">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">ダッシュボード</h2>
+
+                <!-- 統計カード -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <!-- 総売上 -->
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="p-3 bg-green-100 rounded-lg">
+                                <i class="fas fa-yen-sign text-2xl text-green-600"></i>
+                            </div>
+                            <span class="text-sm text-gray-500">今月</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-1">総売上</p>
+                        <p class="text-2xl font-bold text-gray-800" id="total-sales">¥0</p>
+                        <p class="text-xs text-green-600 mt-2">
+                            <i class="fas fa-arrow-up"></i> +15.3% 前月比
+                        </p>
+                    </div>
+
+                    <!-- 新規ユーザー -->
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="p-3 bg-blue-100 rounded-lg">
+                                <i class="fas fa-user-plus text-2xl text-blue-600"></i>
+                            </div>
+                            <span class="text-sm text-gray-500">今月</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-1">新規ユーザー</p>
+                        <p class="text-2xl font-bold text-gray-800" id="new-users">0</p>
+                        <p class="text-xs text-blue-600 mt-2">
+                            <i class="fas fa-arrow-up"></i> +8.2% 前月比
+                        </p>
+                    </div>
+
+                    <!-- 商品数 -->
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="p-3 bg-purple-100 rounded-lg">
+                                <i class="fas fa-box text-2xl text-purple-600"></i>
+                            </div>
+                            <span class="text-sm text-gray-500">出品中</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-1">出品商品数</p>
+                        <p class="text-2xl font-bold text-gray-800" id="total-products">0</p>
+                        <p class="text-xs text-purple-600 mt-2">
+                            <i class="fas fa-arrow-up"></i> +12.5% 前月比
+                        </p>
+                    </div>
+
+                    <!-- 取引数 -->
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="p-3 bg-orange-100 rounded-lg">
+                                <i class="fas fa-handshake text-2xl text-orange-600"></i>
+                            </div>
+                            <span class="text-sm text-gray-500">今月</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-1">成立取引</p>
+                        <p class="text-2xl font-bold text-gray-800" id="total-transactions">0</p>
+                        <p class="text-xs text-orange-600 mt-2">
+                            <i class="fas fa-arrow-up"></i> +20.1% 前月比
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 最近のアクティビティ -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- 最近の取引 -->
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4">
+                            <i class="fas fa-exchange-alt mr-2 text-red-500"></i>
+                            最近の取引
+                        </h3>
+                        <div id="recent-transactions" class="space-y-3">
+                            <div class="flex justify-center items-center py-8">
+                                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 最近の登録ユーザー -->
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4">
+                            <i class="fas fa-user-plus mr-2 text-blue-500"></i>
+                            最近の登録ユーザー
+                        </h3>
+                        <div id="recent-users" class="space-y-3">
+                            <div class="flex justify-center items-center py-8">
+                                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 通報・要対応 -->
+                <div class="mt-6 bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">
+                        <i class="fas fa-exclamation-triangle mr-2 text-yellow-500"></i>
+                        要対応事項
+                    </h3>
+                    <div id="alerts" class="space-y-3">
+                        <div class="flex justify-center items-center py-8">
+                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500"></div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script>
+            // ダッシュボードデータ読み込み
+            async function loadDashboard() {
+                try {
+                    // 統計データ取得
+                    const stats = await axios.get('/api/admin/stats');
+                    document.getElementById('total-sales').textContent = '¥' + stats.data.totalSales.toLocaleString();
+                    document.getElementById('new-users').textContent = stats.data.newUsers;
+                    document.getElementById('total-products').textContent = stats.data.totalProducts;
+                    document.getElementById('total-transactions').textContent = stats.data.totalTransactions;
+
+                    // 最近の取引
+                    const transactions = await axios.get('/api/admin/transactions/recent');
+                    renderRecentTransactions(transactions.data);
+
+                    // 最近のユーザー
+                    const users = await axios.get('/api/admin/users/recent');
+                    renderRecentUsers(users.data);
+
+                    // 要対応事項
+                    const alerts = await axios.get('/api/admin/alerts');
+                    renderAlerts(alerts.data);
+                } catch (error) {
+                    console.error('データ読み込みエラー:', error);
+                }
+            }
+
+            function renderRecentTransactions(transactions) {
+                const container = document.getElementById('recent-transactions');
+                if (transactions.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-center py-4">取引データがありません</p>';
+                    return;
+                }
+                
+                container.innerHTML = transactions.map(tx => \`
+                    <div class="flex items-center justify-between p-3 border-b hover:bg-gray-50">
+                        <div class="flex-1">
+                            <p class="font-medium text-gray-800">\${tx.product_title}</p>
+                            <p class="text-sm text-gray-500">\${tx.buyer_name} → \${tx.seller_name}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-bold text-gray-800">¥\${tx.amount.toLocaleString()}</p>
+                            <span class="text-xs px-2 py-1 rounded \${tx.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}">
+                                \${tx.status}
+                            </span>
+                        </div>
+                    </div>
+                \`).join('');
+            }
+
+            function renderRecentUsers(users) {
+                const container = document.getElementById('recent-users');
+                if (users.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-center py-4">ユーザーデータがありません</p>';
+                    return;
+                }
+                
+                container.innerHTML = users.map(user => \`
+                    <div class="flex items-center justify-between p-3 border-b hover:bg-gray-50">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                                <i class="fas fa-user text-gray-500"></i>
+                            </div>
+                            <div>
+                                <p class="font-medium text-gray-800">\${user.name}</p>
+                                <p class="text-sm text-gray-500">\${user.email}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs text-gray-500">\${new Date(user.created_at).toLocaleDateString('ja-JP')}</p>
+                        </div>
+                    </div>
+                \`).join('');
+            }
+
+            function renderAlerts(alerts) {
+                const container = document.getElementById('alerts');
+                if (alerts.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-center py-4">要対応事項はありません</p>';
+                    return;
+                }
+                
+                container.innerHTML = alerts.map(alert => \`
+                    <div class="flex items-center justify-between p-4 border-l-4 \${alert.priority === 'high' ? 'border-red-500 bg-red-50' : 'border-yellow-500 bg-yellow-50'} rounded">
+                        <div class="flex-1">
+                            <p class="font-medium text-gray-800">\${alert.title}</p>
+                            <p class="text-sm text-gray-600 mt-1">\${alert.message}</p>
+                        </div>
+                        <a href="\${alert.link}" class="px-4 py-2 bg-white border rounded hover:bg-gray-50 text-sm">
+                            対応する
+                        </a>
+                    </div>
+                \`).join('');
+            }
+
+            // 初期読み込み
+            loadDashboard();
+        </script>
+    </body>
+    </html>
+  `)
 })
 
 export default app
