@@ -59,8 +59,9 @@ const Footer = () => `
                 </ul>
             </div>
         </div>
-        <div class="border-t border-gray-800 pt-6 text-center text-sm text-gray-400">
-            <p>&copy; 2026 PARTS HUB. All rights reserved.</p>
+        <div class="border-t border-gray-800 pt-6 text-center">
+            <p class="text-sm text-gray-400 mb-2">&copy; 2026 PARTS HUB. All rights reserved.</p>
+            <p class="text-xs text-gray-500">運営：株式会社TCI / 大阪府大阪市淀川区新高1-5-4 / TEL: 06-6151-3697</p>
         </div>
     </div>
 </footer>
