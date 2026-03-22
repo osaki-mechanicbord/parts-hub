@@ -5,8 +5,14 @@
   "pages_build_output_dir": "./dist",
   "compatibility_flags": [
     "nodejs_compat"
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "parts-hub-production",
+      "database_id": "c99514a8-1aa1-4ad2-b3a2-906b8d8d26d5"
+    }
   ]
-  // D1データベースとR2バケットは本番環境で個別に設定
   // 環境変数の設定例（本番環境用）
   // "vars": {
   //   "ENVIRONMENT": "production"
