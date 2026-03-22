@@ -229,7 +229,7 @@ adminRoutes.get('/users', async (c) => {
         COUNT(DISTINCT p.id) as products_count,
         COUNT(DISTINCT t.id) as transactions_count
       FROM users u
-      LEFT JOIN products p ON u.id = p.seller_id
+      LEFT JOIN products p ON u.id = p.user_id
       LEFT JOIN transactions t ON u.id = t.buyer_id OR u.id = t.seller_id
       GROUP BY u.id
       ORDER BY u.created_at DESC
@@ -270,7 +270,7 @@ adminRoutes.get('/products', async (c) => {
         COUNT(DISTINCT f.id) as favorites_count,
         COUNT(DISTINCT c.id) as comments_count
       FROM products p
-      LEFT JOIN users u ON p.seller_id = u.id
+      LEFT JOIN users u ON p.user_id = u.id
       LEFT JOIN favorites f ON p.id = f.product_id
       LEFT JOIN comments c ON p.id = c.product_id
     `;
