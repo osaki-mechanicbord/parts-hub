@@ -130,7 +130,7 @@ Disallow: /mypage
 Disallow: /api/*
 
 # Sitemap
-Sitemap: https://parts-hub.com/sitemap.xml`, { headers: { 'Content-Type': 'text/plain' } })
+Sitemap: https://parts-hub-tci.com/sitemap.xml`, { headers: { 'Content-Type': 'text/plain' } })
 })
 app.use('/manifest.json', serveStatic({ root: './public' }))
 app.use('/sw.js', serveStatic({ root: './public' }))
@@ -311,20 +311,20 @@ app.get('/', (c) => {
           "@context": "https://schema.org",
           "@type": "WebSite",
           "name": "PARTS HUB（パーツハブ）",
-          "url": "https://parts-hub.com",
+          "url": "https://parts-hub-tci.com",
           "potentialAction": {
             "@type": "SearchAction",
-            "target": "https://parts-hub.com/search?q={search_term_string}",
+            "target": "https://parts-hub-tci.com/search?q={search_term_string}",
             "query-input": "required name=search_term_string"
           },
           "description": "整備工場専門の自動車パーツ売買マーケットプレイス。純正部品から工具まで手軽に売買できるプラットフォーム。",
           "publisher": {
             "@type": "Organization",
             "name": "株式会社TCI",
-            "url": "https://parts-hub.com",
+            "url": "https://parts-hub-tci.com",
             "logo": {
               "@type": "ImageObject",
-              "url": "https://parts-hub.com/logo.png"
+              "url": "https://parts-hub-tci.com/logo.png"
             },
             "address": {
               "@type": "PostalAddress",
@@ -335,7 +335,7 @@ app.get('/', (c) => {
               "addressCountry": "JP"
             },
             "telephone": "+81-6-6151-3697",
-            "email": "contact@parts-hub.com"
+            "email": "contact@parts-hub-tci.com"
           }
         }
         </script>
@@ -344,7 +344,7 @@ app.get('/', (c) => {
         <meta property="og:type" content="website">
         <meta property="og:title" content="PARTS HUB（パーツハブ）- 自動車パーツ売買プラットフォーム">
         <meta property="og:description" content="整備工場専門の自動車パーツマーケットプレイス。純正部品から工具まで、手軽に売買できます。">
-        <meta property="og:url" content="https://parts-hub.com">
+        <meta property="og:url" content="https://parts-hub-tci.com">
         <meta property="og:site_name" content="PARTS HUB">
         <meta property="og:locale" content="ja_JP">
         
@@ -354,7 +354,7 @@ app.get('/', (c) => {
         <meta name="twitter:description" content="整備工場専門の自動車パーツマーケットプレイス">
 
         <!-- Canonical URL -->
-        <link rel="canonical" href="https://parts-hub.com">
+        <link rel="canonical" href="https://parts-hub-tci.com">
     </head>
     <body class="bg-gray-50">
         <!-- ヘッダー -->
@@ -3396,7 +3396,7 @@ app.get('/favorites', (c) => {
             <div id="loading" class="text-center py-12">
                 <i class="fas fa-spinner fa-spin text-4xl text-gray-400 mb-4"></i>
                 <p class="text-gray-500">読み込み中...</p>
-            </div>
+          div>
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
@@ -3680,7 +3680,7 @@ app.get('/search', (c) => {
             }
             
             // 検索入力の監視（デバウンス）
-            document.getElementById('search-input').addEventListener('input', () => {
+            document.getElementById('search-input').t').addEventListener('input', () => {
                 clearTimeout(searchTimeout);
                 searchTimeout = setTimeout(performSearch, 500);
             });
@@ -4646,10 +4646,10 @@ app.get('/faq', (c) => {
         <meta property="og:type" content="website">
         <meta property="og:title" content="よくある質問（FAQ） - PARTS HUB">
         <meta property="og:description" content="PARTS HUBの利用方法、手数料、配送、返品などについてのよくある質問">
-        <meta property="og:url" content="https://parts-hub.com/faq">
+        <meta property="og:url" content="https://parts-hub-tci.com/faq">
         
         <!-- Canonical URL -->
-        <link rel="canonical" href="https://parts-hub.com/faq">
+        <link rel="canonical" href="https://parts-hub-tci.com/faq">
     </head>
     <body class="bg-gray-50 min-h-screen">
         <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -5142,7 +5142,7 @@ app.get('/sitemap.xml', async (c) => {
         http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
   <!-- トップページ -->
   <url>
-    <loc>https://parts-hub.com/</loc>
+    <loc>https://parts-hub-tci.com/</loc>
     <lastmod>${currentDate}</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
@@ -5150,19 +5150,19 @@ app.get('/sitemap.xml', async (c) => {
   
   <!-- 主要ページ -->
   <url>
-    <loc>https://parts-hub.com/search</loc>
+    <loc>https://parts-hub-tci.com/search</loc>
     <lastmod>${currentDate}</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://parts-hub.com/listing</loc>
+    <loc>https://parts-hub-tci.com/listing</loc>
     <lastmod>${currentDate}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://parts-hub.com/faq</loc>
+    <loc>https://parts-hub-tci.com/faq</loc>
     <lastmod>${currentDate}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -5170,31 +5170,31 @@ app.get('/sitemap.xml', async (c) => {
   
   <!-- 法的ページ -->
   <url>
-    <loc>https://parts-hub.com/terms</loc>
+    <loc>https://parts-hub-tci.com/terms</loc>
     <lastmod>${currentDate}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://parts-hub.com/privacy</loc>
+    <loc>https://parts-hub-tci.com/privacy</loc>
     <lastmod>${currentDate}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://parts-hub.com/security</loc>
+    <loc>https://parts-hub-tci.com/security</loc>
     <lastmod>${currentDate}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://parts-hub.com/legal</loc>
+    <loc>https://parts-hub-tci.com/legal</loc>
     <lastmod>${currentDate}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://parts-hub.com/contact</loc>
+    <loc>https://parts-hub-tci.com/contact</loc>
     <lastmod>${currentDate}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
