@@ -3175,17 +3175,22 @@ app.get('/contact', (c) => {
                         </div>
                         <div>
                             <div class="text-sm text-gray-600">電話</div>
-                            <div class="font-semibold text-gray-900">03-1234-5678</div>
-                            <div class="text-xs text-gray-500">平日 9:00-18:00</div>
+                            <div class="font-semibold text-gray-900">06-6151-3697</div>
+                            <div class="text-xs text-gray-500">平日 10:00～17:00</div>
                         </div>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                            <i class="fas fa-envelope text-green-600"></i>
-                        </div>
-                        <div>
-                            <div class="text-sm text-gray-600">メール</div>
-                            <div class="font-semibold text-gray-900">support@partshub.jp</div>
+                    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-info-circle text-yellow-600"></i>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-yellow-800">
+                                    <strong>メールでのお問い合わせについて</strong><br>
+                                    メールでのお問い合わせは受け付けておりません。<br>
+                                    上記のお問い合わせフォームまたは電話をご利用ください。
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -4302,9 +4307,9 @@ app.get('/legal', (c) => {
                 </section>
 
                 <section class="border-b border-gray-200 pb-4">
-                    <h2 class="text-lg font-bold text-gray-900 mb-3">メールアドレス</h2>
-                    <p class="text-gray-700">support@parts-hub.example.com</p>
-                    <p class="text-sm text-gray-600">または<a href="/contact" class="text-red-500 hover:underline">お問い合わせフォーム</a>をご利用ください</p>
+                    <h2 class="text-lg font-bold text-gray-900 mb-3">お問い合わせ</h2>
+                    <p class="text-gray-700 mb-2"><a href="/contact" class="text-red-500 hover:underline font-semibold">お問い合わせフォーム</a>をご利用ください</p>
+                    <p class="text-sm text-gray-600">※メールでのお問い合わせは受け付けておりません。お問い合わせフォームよりご連絡ください。</p>
                 </section>
 
                 <section class="border-b border-gray-200 pb-4">
@@ -4421,8 +4426,7 @@ app.get('/legal', (c) => {
                         <p class="mb-2"><strong>株式会社TCI カスタマーサポート</strong></p>
                         <p>〒532-0000 大阪府大阪市淀川区新高1-5-4</p>
                         <p>電話：06-6151-3697（平日 10:00～17:00）</p>
-                        <p>メール：support@parts-hub.example.com</p>
-                        <p class="mt-2">または<a href="/contact" class="text-red-500 hover:underline font-semibold">お問い合わせフォーム</a>よりご連絡ください。</p>
+                        <p class="mt-2"><a href="/contact" class="text-red-500 hover:underline font-semibold">お問い合わせフォーム</a>よりご連絡ください。</p>
                     </div>
                 </section>
             </div>
