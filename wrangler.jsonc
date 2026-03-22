@@ -1,31 +1,16 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "webapp",
+  "name": "parts-hub",
   "compatibility_date": "2026-03-21",
   "pages_build_output_dir": "./dist",
   "compatibility_flags": [
     "nodejs_compat"
-  ],
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "webapp-production",
-      "database_id": "local-dev-database"
-    }
-  ],
-  "r2_buckets": [
-    {
-      "binding": "R2",
-      "bucket_name": "webapp-images",
-      "preview_bucket_name": "webapp-images-preview"
-    }
   ]
+  // D1データベースとR2バケットは本番環境で個別に設定
   // 環境変数の設定例（本番環境用）
   // "vars": {
-  //   "ARGOS_API_ENABLED": "true",
-  //   "ARGOS_API_URL": "https://api.argos-example.com/v1",
-  //   "R2_PUBLIC_URL": "https://images.your-domain.com"
+  //   "ENVIRONMENT": "production"
   // }
   // 機密情報は wrangler secret put コマンドで設定:
-  // npx wrangler secret put ARGOS_API_KEY
+  // npx wrangler secret put API_KEY
 }
