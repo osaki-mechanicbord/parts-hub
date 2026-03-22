@@ -383,37 +383,37 @@ app.get('/', (c) => {
                               <circle cx="50" cy="50" r="8" fill="rgba(255,255,255,0.3)"/>
                             </svg>
                         </div>
-                        <h1 class="text-4xl sm:text-5xl font-bold drop-shadow-lg">
+                        <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold drop-shadow-lg">
                             PARTS HUB
                         </h1>
                     </div>
-                    <p class="text-2xl mb-3 font-semibold drop-shadow-lg">自動車パーツの売買がもっと簡単に</p>
-                    <p class="text-lg text-white/95 mb-10 max-w-3xl mx-auto drop-shadow-md">
+                    <p class="text-lg sm:text-xl md:text-2xl mb-2 sm:mb-3 font-semibold drop-shadow-lg">自動車パーツの売買がもっと簡単に</p>
+                    <p class="text-sm sm:text-base md:text-lg text-white/95 mb-6 sm:mb-8 md:mb-10 max-w-3xl mx-auto drop-shadow-md px-4">
                         整備工場専門のパーツマーケットプレイス。純正部品から工具まで、手軽に売買できます。
                     </p>
                     
                     <!-- 検索バー -->
                     <div class="max-w-3xl mx-auto">
-                        <div class="flex gap-3">
+                        <div class="flex flex-col sm:flex-row gap-3">
                             <div class="flex-1 relative">
-                                <i class="fas fa-search absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></i>
+                                <i class="fas fa-search absolute left-4 sm:left-5 top-1/2 -translate-y-1/2 text-gray-400 text-base sm:text-lg"></i>
                                 <input type="text" id="search-input" 
                                        placeholder="商品名、メーカー、品番で検索..." 
-                                       class="search-input w-full pl-14 pr-4 py-4 rounded-xl border-0 text-gray-900 text-lg focus:outline-none focus:ring-4 focus:ring-white/50 shadow-2xl">
+                                       class="search-input w-full pl-11 sm:pl-14 pr-4 py-3 sm:py-4 rounded-xl border-0 text-gray-900 text-base sm:text-lg focus:outline-none focus:ring-4 focus:ring-white/50 shadow-2xl">
                             </div>
                             <button onclick="performSearch()" 
-                                    class="px-10 py-4 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-xl font-bold hover:from-red-600 hover:to-pink-600 transition-all shadow-2xl hover:shadow-red-500/50 text-lg">
+                                    class="w-full sm:w-auto px-8 sm:px-10 py-3 sm:py-4 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-xl font-bold hover:from-red-600 hover:to-pink-600 transition-all shadow-2xl hover:shadow-red-500/50 text-base sm:text-lg">
                                 <i class="fas fa-search mr-2"></i>検索
                             </button>
                         </div>
                         
                         <!-- 人気キーワード -->
-                        <div class="mt-6 flex flex-wrap gap-3 justify-center">
-                            <span class="text-sm text-white/90 font-medium">人気:</span>
-                            <button onclick="searchKeyword('トヨタ')" class="text-sm px-4 py-2 bg-white/20 hover:bg-white/30 rounded-full transition-all backdrop-blur-sm border border-white/30 font-medium">トヨタ</button>
-                            <button onclick="searchKeyword('エンジン')" class="text-sm px-4 py-2 bg-white/20 hover:bg-white/30 rounded-full transition-all backdrop-blur-sm border border-white/30 font-medium">エンジン</button>
-                            <button onclick="searchKeyword('ドア')" class="text-sm px-4 py-2 bg-white/20 hover:bg-white/30 rounded-full transition-all backdrop-blur-sm border border-white/30 font-medium">ドア</button>
-                            <button onclick="searchKeyword('ライト')" class="text-sm px-4 py-2 bg-white/20 hover:bg-white/30 rounded-full transition-all backdrop-blur-sm border border-white/30 font-medium">ライト</button>
+                        <div class="mt-4 sm:mt-6 flex flex-wrap gap-2 sm:gap-3 justify-center">
+                            <span class="text-xs sm:text-sm text-white/90 font-medium">人気:</span>
+                            <button onclick="searchKeyword('トヨタ')" class="text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2 bg-white/20 hover:bg-white/30 rounded-full transition-all backdrop-blur-sm border border-white/30 font-medium">トヨタ</button>
+                            <button onclick="searchKeyword('エンジン')" class="text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2 bg-white/20 hover:bg-white/30 rounded-full transition-all backdrop-blur-sm border border-white/30 font-medium">エンジン</button>
+                            <button onclick="searchKeyword('ドア')" class="text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2 bg-white/20 hover:bg-white/30 rounded-full transition-all backdrop-blur-sm border border-white/30 font-medium">ドア</button>
+                            <button onclick="searchKeyword('ライト')" class="text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2 bg-white/20 hover:bg-white/30 rounded-full transition-all backdrop-blur-sm border border-white/30 font-medium">ライト</button>
                         </div>
                     </div>
                 </div>
@@ -3385,24 +3385,24 @@ app.get('/search', (c) => {
     <body class="bg-gray-50 min-h-screen">
         <!-- ヘッダー -->
         <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
-            <div class="max-w-6xl mx-auto px-4 py-4">
-                <div class="flex items-center gap-3">
-                    <button onclick="window.location.href='/'" class="text-gray-600 hover:text-gray-900">
-                        <i class="fas fa-arrow-left text-xl"></i>
+            <div class="max-w-6xl mx-auto px-4 py-3 sm:py-4">
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <button onclick="window.location.href='/'" class="text-gray-600 hover:text-gray-900 flex-shrink-0">
+                        <i class="fas fa-arrow-left text-lg sm:text-xl"></i>
                     </button>
                     <div class="flex-1 relative">
                         <input type="text" id="search-input" placeholder="商品名、メーカー、型番で検索" 
-                               class="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-500">
-                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                               class="w-full pl-9 sm:pl-10 pr-4 py-2.5 sm:py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-500 text-sm sm:text-base">
+                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm sm:text-base"></i>
                     </div>
                 </div>
                 
                 <!-- フィルター -->
-                <div class="mt-4 flex gap-2 overflow-x-auto pb-2">
-                    <button onclick="toggleFilter()" class="px-4 py-2 bg-white border-2 border-gray-300 rounded-lg text-sm font-semibold hover:border-red-500 whitespace-nowrap">
-                        <i class="fas fa-filter mr-1"></i>詳細フィルター
+                <div class="mt-3 sm:mt-4 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                    <button onclick="toggleFilter()" class="px-3 sm:px-4 py-2 bg-white border-2 border-gray-300 rounded-lg text-xs sm:text-sm font-semibold hover:border-red-500 whitespace-nowrap flex-shrink-0">
+                        <i class="fas fa-filter mr-1"></i>フィルター
                     </button>
-                    <select id="sort-select" class="px-4 py-2 bg-white border-2 border-gray-300 rounded-lg text-sm font-semibold">
+                    <select id="sort-select" class="px-3 sm:px-4 py-2 bg-white border-2 border-gray-300 rounded-lg text-xs sm:text-sm font-semibold flex-shrink-0">
                         <option value="newest">新着順</option>
                         <option value="price_asc">価格が安い順</option>
                         <option value="price_desc">価格が高い順</option>
@@ -3415,13 +3415,13 @@ app.get('/search', (c) => {
         <!-- 詳細フィルターパネル -->
         <div id="filter-panel" class="hidden bg-white border-b border-gray-200">
             <div class="max-w-6xl mx-auto px-4 py-4 space-y-4">
-                <div class="grid md:grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">価格帯</label>
                         <div class="flex gap-2 items-center">
-                            <input type="number" id="price-min" placeholder="最小" class="flex-1 px-3 py-2 border rounded-lg">
-                            <span>〜</span>
-                            <input type="number" id="price-max" placeholder="最大" class="flex-1 px-3 py-2 border rounded-lg">
+                            <input type="number" id="price-min" placeholder="最小" class="flex-1 px-3 py-2 border rounded-lg text-sm">
+                            <span class="text-sm">〜</span>
+                            <input type="number" id="price-max" placeholder="最大" class="flex-1 px-3 py-2 border rounded-lg text-sm">
                         </div>
                     </div>
                     <div>
