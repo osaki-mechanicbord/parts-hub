@@ -1286,18 +1286,28 @@ adminPagesRoutes.get('/articles', (c) => {
     </div>
 
     <script>
+        // Global variables
+        let currentPage = 1;
+        let currentStatus = '';
+
         // Wait for axios to load
         function initArticlePage() {
             if (typeof axios === 'undefined') {
-                // Axios not loaded yet, wait and try again
                 setTimeout(initArticlePage, 100);
                 return;
             }
+            
+            // Initialize event listeners
+            document.getElementById('status-filter').addEventListener('change', (e) => {
+                currentStatus = e.target.value;
+                loadArticles(1);
+            });
+            
+            // Load initial data
+            loadArticles(1);
+        }
 
-            let currentPage = 1;
-            let currentStatus = '';
-
-            async function loadArticles(page = 1) {
+        async function loadArticles(page = 1) {
             currentPage = page;
             try {
                 const params = new URLSearchParams({
@@ -1545,14 +1555,6 @@ adminPagesRoutes.get('/articles', (c) => {
                 button.disabled = false;
                 button.innerHTML = originalText;
             }
-        }
-
-        document.getElementById('status-filter').addEventListener('change', (e) => {
-            currentStatus = e.target.value;
-            loadArticles(1);
-        });
-
-        loadArticles(1);
         }
 
         // Start initialization when DOM is ready
