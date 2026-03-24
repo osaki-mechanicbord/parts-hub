@@ -28,7 +28,11 @@
     "git:log": "git log --oneline"
   },
   "dependencies": {
-    "hono": "^4.12.8"
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "bcryptjs": "^3.0.3",
+    "hono": "^4.12.9",
+    "jsonwebtoken": "^9.0.3"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260317.1",
