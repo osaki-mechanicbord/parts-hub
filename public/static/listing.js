@@ -297,14 +297,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const categorySelect = document.getElementById('category-select')
     if (categorySelect) {
       categorySelect.innerHTML = '<option value="">カテゴリを選択 *</option>' +
-        categoriesRes.data.data.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('')
+        categoriesRes.data.categories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('')
     }
 
     // メーカー選択肢を設定
     const makerSelect = document.getElementById('maker-select')
     if (makerSelect) {
       makerSelect.innerHTML = '<option value="">メーカーを選択</option>' +
-        makersRes.data.data.map(maker => `<option value="${maker.id}">${maker.name}</option>`).join('')
+        makersRes.data.makers.map(maker => `<option value="${maker.id}">${maker.name}</option>`).join('')
     }
   } catch (error) {
     console.error('Failed to load initial data:', error)

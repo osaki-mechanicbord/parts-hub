@@ -11,14 +11,19 @@ api.get('/health', (c) => {
 // カテゴリ一覧
 api.get('/categories', async (c) => {
   try {
-    const { results } = await c.env.DB.prepare(`
-      SELECT id, name, slug, icon, display_order
-      FROM categories
-      WHERE is_active = 1
-      ORDER BY display_order ASC
-    `).all()
+    // ハードコードされたカテゴリデータ（DBテーブル未作成のため）
+    const categories = [
+      { id: 1, name: 'エンジンパーツ', slug: 'engine', icon: 'fa-cog', display_order: 1 },
+      { id: 2, name: 'ブレーキパーツ', slug: 'brake', icon: 'fa-circle-stop', display_order: 2 },
+      { id: 3, name: 'サスペンション', slug: 'suspension', icon: 'fa-spring', display_order: 3 },
+      { id: 4, name: '電装パーツ', slug: 'electric', icon: 'fa-bolt', display_order: 4 },
+      { id: 5, name: '外装パーツ', slug: 'exterior', icon: 'fa-car', display_order: 5 },
+      { id: 6, name: '内装パーツ', slug: 'interior', icon: 'fa-seat', display_order: 6 },
+      { id: 7, name: 'ホイール・タイヤ', slug: 'wheel', icon: 'fa-tire', display_order: 7 },
+      { id: 8, name: '排気系パーツ', slug: 'exhaust', icon: 'fa-wind', display_order: 8 }
+    ]
 
-    return c.json({ success: true, categories: results })
+    return c.json({ success: true, categories })
   } catch (error) {
     console.error('Category fetch error:', error)
     return c.json({ success: false, error: 'カテゴリの取得に失敗しました' }, 500)
@@ -61,14 +66,19 @@ api.get('/categories/:id', async (c) => {
 // メーカー一覧
 api.get('/makers', async (c) => {
   try {
-    const { results } = await c.env.DB.prepare(`
-      SELECT id, name, name_en, display_order
-      FROM car_makers
-      WHERE is_active = 1
-      ORDER BY display_order ASC
-    `).all()
+    // ハードコードされたメーカーデータ（DBテーブル未作成のため）
+    const makers = [
+      { id: 1, name: 'トヨタ', name_en: 'TOYOTA', display_order: 1 },
+      { id: 2, name: 'ホンダ', name_en: 'HONDA', display_order: 2 },
+      { id: 3, name: '日産', name_en: 'NISSAN', display_order: 3 },
+      { id: 4, name: 'マツダ', name_en: 'MAZDA', display_order: 4 },
+      { id: 5, name: 'スバル', name_en: 'SUBARU', display_order: 5 },
+      { id: 6, name: 'スズキ', name_en: 'SUZUKI', display_order: 6 },
+      { id: 7, name: 'ダイハツ', name_en: 'DAIHATSU', display_order: 7 },
+      { id: 8, name: '三菱', name_en: 'MITSUBISHI', display_order: 8 }
+    ]
 
-    return c.json({ success: true, makers: results })
+    return c.json({ success: true, makers })
   } catch (error) {
     console.error('Maker fetch error:', error)
     return c.json({ success: false, error: 'メーカーの取得に失敗しました' }, 500)
