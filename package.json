@@ -33,6 +33,7 @@
     "bcryptjs": "^3.0.3",
     "hono": "^4.12.9",
     "jsonwebtoken": "^9.0.3",
+    "resend": "^6.9.4",
     "stripe": "^20.4.1"
   },
   "devDependencies": {

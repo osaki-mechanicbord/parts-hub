@@ -23,6 +23,7 @@ import reviewsRoutes from './routes/reviews'
 import transactionsRoutes from './routes/transactions'
 import adminRoutes from './routes/admin'
 import adminPagesRoutes from './routes/admin-pages'
+import emailRoutes from './routes/email'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -152,6 +153,7 @@ app.route('/api/mypage', mypageRoutes)
 app.route('/api/profile', profileRoutes)
 app.route('/api/reviews', reviewsRoutes)
 app.route('/api/transactions', transactionsRoutes)
+app.route('/api/email', emailRoutes)
 app.route('/api/admin', adminRoutes)
 app.route('/admin', adminPagesRoutes)
 

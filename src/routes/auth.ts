@@ -69,6 +69,21 @@ auth.post('/register', async (c) => {
     const secret = (c.env as any)?.JWT_SECRET
     const token = await generateToken(userId as number, email, secret)
 
+    // 登録確認メール送信（非同期、エラーは無視）
+    try {
+      const resendKey = (c.env as any)?.RESEND_API_KEY
+      if (resendKey) {
+        await fetch(`${new URL(c.req.url).origin}/api/email/send-registration`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, userName: name })
+        })
+      }
+    } catch (emailError) {
+      console.error('Failed to send registration email:', emailError)
+      // メール送信失敗でも登録は成功とする
+    }
+
     return c.json({
       success: true,
       message: 'ユーザー登録が完了しました',

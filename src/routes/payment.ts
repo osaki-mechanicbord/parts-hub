@@ -257,6 +257,41 @@ payment.post('/webhook', async (c) => {
             WHERE id = (SELECT product_id FROM transactions WHERE id = ?)
           `).bind(transactionId).run()
 
+          // 取引情報を取得してメール送信
+          const txData = await c.env.DB.prepare(`
+            SELECT 
+              t.id, t.amount, 
+              p.title as product_name,
+              buyer.name as buyer_name, buyer.email as buyer_email,
+              seller.name as seller_name, seller.email as seller_email
+            FROM transactions t
+            JOIN products p ON t.product_id = p.id
+            JOIN users buyer ON t.buyer_id = buyer.id
+            JOIN users seller ON t.seller_id = seller.id
+            WHERE t.id = ?
+          `).bind(transactionId).first()
+
+          // 購入完了メール送信（非同期、エラーは無視）
+          if (txData) {
+            try {
+              await fetch(`${new URL(c.req.url).origin}/api/email/send-purchase-notification`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  buyerEmail: txData.buyer_email,
+                  buyerName: txData.buyer_name,
+                  sellerEmail: txData.seller_email,
+                  sellerName: txData.seller_name,
+                  productName: txData.product_name,
+                  amount: txData.amount,
+                  transactionId: txData.id
+                })
+              })
+            } catch (emailError) {
+              console.error('Failed to send purchase notification email:', emailError)
+            }
+          }
+
           console.log(`Transaction ${transactionId} marked as paid`)
         }
         break
