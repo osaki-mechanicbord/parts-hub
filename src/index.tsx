@@ -11,6 +11,7 @@ import fitmentRoutes from './routes/fitment'
 import externalRoutes from './routes/external'
 import productsRoutes from './routes/products'
 import authRoutes from './routes/auth'
+import paymentRoutes from './routes/payment'
 import commentsRoutes from './routes/comments'
 import chatRoutes from './routes/chat'
 import negotiationsRoutes from './routes/negotiations'
@@ -141,6 +142,7 @@ app.route('/api/fitment', fitmentRoutes)
 app.route('/api/external', externalRoutes)
 app.route('/api/products', productsRoutes)
 app.route('/api/auth', authRoutes)
+app.route('/api/payment', paymentRoutes)
 app.route('/api/comments', commentsRoutes)
 app.route('/api/chat', chatRoutes)
 app.route('/api/negotiations', negotiationsRoutes)
