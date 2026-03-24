@@ -922,4 +922,178 @@ adminRoutes.post('/articles/generate', async (c) => {
   }
 });
 
+// 自動投稿API（画像生成付き）
+adminRoutes.post('/articles/auto-generate-with-image', async (c) => {
+  const { env } = c;
+  
+  try {
+    // OpenAI APIキーの確認
+    const openaiApiKey = env.OPENAI_API_KEY;
+    if (!openaiApiKey) {
+      return c.json({ error: 'OpenAI APIキーが設定されていません' }, 500);
+    }
+
+    // トピック候補
+    const topics = [
+      'ブレーキパッドの選び方と交換時期',
+      'エンジンオイル交換の適切なタイミング',
+      'タイヤの寿命を延ばすメンテナンス方法',
+      'バッテリーの点検と交換時期の見極め方',
+      '中古パーツの賢い選び方と注意点',
+      'エアフィルター交換のタイミングと効果',
+      'ワイパーブレード交換のポイント',
+      'スパークプラグの役割と交換時期',
+      '車のサスペンション交換のメリット',
+      'ヘッドライトバルブの種類と選び方'
+    ];
+    
+    const categories = [
+      { id: 'parts-guide', name: 'パーツガイド' },
+      { id: 'maintenance', name: 'メンテナンス' },
+      { id: 'tips', name: 'お役立ち情報' }
+    ];
+    
+    // ランダムに選択
+    const topic = topics[Math.floor(Math.random() * topics.length)];
+    const category = categories[Math.floor(Math.random() * categories.length)];
+
+    console.log(`自動生成開始 - トピック: ${topic}, カテゴリ: ${category.name}`);
+
+    // ステップ1: OpenAI APIでコラムを生成
+    const articleResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${openaiApiKey}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'あなたは自動車パーツ専門のライターです。SEOに最適化された、読みやすく有益なコラム記事を作成してください。'
+          },
+          {
+            role: 'user',
+            content: `以下のトピックについて、自動車パーツの売買プラットフォーム「PARTS HUB」のコラム記事を書いてください：
+
+トピック: ${topic}
+カテゴリ: ${category.name}
+
+以下のJSON形式で出力してください（必ずJSONのみを出力し、それ以外の文字は含めないでください）：
+{
+  "title": "記事タイトル（40文字以内、SEO最適化）",
+  "slug": "url-friendly-slug",
+  "summary": "記事の要約（120文字以内）",
+  "content": "記事本文（HTMLタグ使用可、見出しはh2/h3、段落はp、リストはul/li。最低800文字以上）",
+  "tags": "タグ1,タグ2,タグ3"
+}`
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 3000
+      })
+    });
+
+    if (!articleResponse.ok) {
+      throw new Error('OpenAI API呼び出しに失敗しました');
+    }
+
+    const articleData = await articleResponse.json();
+    const content = articleData.choices[0].message.content;
+    
+    // JSONを抽出（マークダウンコードブロックを削除）
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('JSONの抽出に失敗しました');
+    }
+    
+    const article = JSON.parse(jsonMatch[0]);
+
+    console.log(`記事生成完了: ${article.title}`);
+
+    // ステップ2: DALL-E 3でアイキャッチ画像を生成
+    const imagePrompt = `Professional automotive parts blog header image about ${topic}. Clean, modern design with car parts. High quality, photorealistic style.`;
+    
+    console.log(`画像生成開始: ${imagePrompt}`);
+    
+    const imageResponse = await fetch('https://api.openai.com/v1/images/generations', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${openaiApiKey}`
+      },
+      body: JSON.stringify({
+        model: 'dall-e-3',
+        prompt: imagePrompt,
+        n: 1,
+        size: '1792x1024',
+        quality: 'standard',
+        style: 'natural'
+      })
+    });
+
+    if (!imageResponse.ok) {
+      console.error('画像生成に失敗しましたが、記事は生成されました');
+    }
+
+    let thumbnailUrl = '';
+    try {
+      const imageData = await imageResponse.json();
+      thumbnailUrl = imageData.data[0].url;
+      console.log(`画像生成完了: ${thumbnailUrl}`);
+    } catch (err) {
+      console.error('画像URL取得エラー:', err);
+      // 画像生成に失敗した場合はプレースホルダーを使用
+      thumbnailUrl = 'https://placehold.co/1792x1024/ef4444/ffffff?text=PARTS+HUB+NEWS';
+    }
+
+    // ステップ3: データベースに記事を保存（公開状態）
+    const now = new Date().toISOString();
+    const slug = `${article.slug}-${Date.now()}`;
+    
+    const result = await env.DB.prepare(`
+      INSERT INTO articles (
+        title, slug, summary, content, thumbnail_url, category, tags, 
+        status, is_featured, published_at, created_at, updated_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'published', 1, ?, ?, ?)
+    `).bind(
+      article.title,
+      slug,
+      article.summary,
+      article.content,
+      thumbnailUrl,
+      category.id,
+      article.tags,
+      now,
+      now,
+      now
+    ).run();
+
+    console.log(`記事公開完了: ID ${result.meta.last_row_id}`);
+
+    return c.json({
+      success: true,
+      article: {
+        id: result.meta.last_row_id,
+        title: article.title,
+        slug: slug,
+        summary: article.summary,
+        thumbnail_url: thumbnailUrl,
+        category: category.id,
+        published_at: now
+      },
+      message: '記事が自動生成され、公開されました'
+    });
+
+  } catch (error) {
+    console.error('自動投稿エラー:', error);
+    return c.json({ 
+      error: '自動投稿に失敗しました: ' + (error as Error).message,
+      details: error instanceof Error ? error.stack : String(error)
+    }, 500);
+  }
+});
+
 export default adminRoutes
