@@ -1147,7 +1147,7 @@ adminPagesRoutes.get('/articles', (c) => {
             <button onclick="showGenerateModal()" class="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600">
                 <i class="fas fa-magic mr-2"></i>AI自動生成
             </button>
-            <button onclick="autoGenerateWithImage()" class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600">
+            <button onclick="autoGenerateWithImage(event)" class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600">
                 <i class="fas fa-image mr-2"></i>自動生成（画像付き）
             </button>
         </div>
@@ -1286,10 +1286,18 @@ adminPagesRoutes.get('/articles', (c) => {
     </div>
 
     <script>
-        let currentPage = 1;
-        let currentStatus = '';
+        // Wait for axios to load
+        function initArticlePage() {
+            if (typeof axios === 'undefined') {
+                // Axios not loaded yet, wait and try again
+                setTimeout(initArticlePage, 100);
+                return;
+            }
 
-        async function loadArticles(page = 1) {
+            let currentPage = 1;
+            let currentStatus = '';
+
+            async function loadArticles(page = 1) {
             currentPage = page;
             try {
                 const params = new URLSearchParams({
@@ -1510,8 +1518,8 @@ adminPagesRoutes.get('/articles', (c) => {
             }
         }
 
-        async function autoGenerateWithImage() {
-            if (!confirm('AIが自動で記事とアイキャッチ画像を生成し、即座に公開します。よろしいですか？\n\n※この機能はOpenAI APIを使用し、約$0.05のコストがかかります。')) {
+        async function autoGenerateWithImage(event) {
+            if (!confirm('AIが自動で記事とアイキャッチ画像を生成し、即座に公開します。よろしいですか？\\n\\n※この機能はOpenAI APIを使用し、約$0.05のコストがかかります。')) {
                 return;
             }
             
@@ -1525,7 +1533,7 @@ adminPagesRoutes.get('/articles', (c) => {
                 
                 if (response.data.success) {
                     const article = response.data.article;
-                    alert(\`記事が生成され、公開されました！\n\nタイトル: \${article.title}\nカテゴリ: \${article.category}\n\nトップページに表示されます。\`);
+                    alert('記事が生成され、公開されました！\\n\\nタイトル: ' + article.title + '\\nカテゴリ: ' + article.category + '\\n\\nトップページに表示されます。');
                     loadArticles(currentPage);
                 } else {
                     alert('自動生成に失敗しました');
@@ -1545,6 +1553,14 @@ adminPagesRoutes.get('/articles', (c) => {
         });
 
         loadArticles(1);
+        }
+
+        // Start initialization when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initArticlePage);
+        } else {
+            initArticlePage();
+        }
     </script>
   `;
 
