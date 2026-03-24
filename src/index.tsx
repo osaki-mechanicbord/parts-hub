@@ -1262,6 +1262,332 @@ app.get('/news', (c) => {
   `)
 })
 
+// コラム詳細ページ共通CSS
+function getArticleDetailCSS() {
+  return `
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+        <style>
+            body { font-family: 'Noto Sans JP', sans-serif; }
+            .hero-image { position: relative; }
+            .hero-image::after {
+                content: '';
+                position: absolute;
+                bottom: 0; left: 0; right: 0;
+                height: 50%;
+                background: linear-gradient(to top, rgba(0,0,0,0.5), transparent);
+            }
+            .article-content h2 {
+                font-size: 1.5rem; font-weight: 700;
+                margin-top: 2.5rem; margin-bottom: 1rem;
+                color: #111827; padding-left: 1rem;
+                border-left: 4px solid #ef4444; line-height: 1.4;
+            }
+            .article-content h3 {
+                font-size: 1.25rem; font-weight: 600;
+                margin-top: 2rem; margin-bottom: 0.75rem;
+                color: #1f2937; padding-bottom: 0.5rem;
+                border-bottom: 2px dashed #fecaca;
+            }
+            .article-content p {
+                margin-bottom: 1.25rem; line-height: 2;
+                color: #374151; font-size: 1.05rem;
+            }
+            .article-content ul { list-style: none; padding-left: 0; margin-bottom: 1.25rem; }
+            .article-content ul li {
+                position: relative; padding-left: 1.75rem;
+                margin-bottom: 0.75rem; color: #374151; line-height: 1.8;
+            }
+            .article-content ul li::before {
+                content: ''; position: absolute;
+                left: 0; top: 0.6rem;
+                width: 8px; height: 8px;
+                background: linear-gradient(135deg, #ef4444, #f97316);
+                border-radius: 50%;
+            }
+            .article-content ol { margin-bottom: 1.25rem; padding-left: 1.5rem; }
+            .article-content ol li { margin-bottom: 0.75rem; color: #374151; line-height: 1.8; }
+            .article-content strong {
+                color: #111827;
+                background: linear-gradient(transparent 60%, #fef08a 60%);
+                padding: 0 2px;
+            }
+            .article-content a {
+                color: #ef4444; text-decoration: none;
+                border-bottom: 1px solid #fecaca; transition: all 0.2s;
+            }
+            .article-content a:hover { color: #dc2626; border-bottom-color: #ef4444; }
+            .article-content blockquote {
+                border-left: 4px solid #ef4444;
+                background: linear-gradient(135deg, #fef2f2, #fff7ed);
+                padding: 1.25rem 1.5rem; margin: 1.5rem 0;
+                border-radius: 0 0.75rem 0.75rem 0;
+                font-style: italic; color: #4b5563;
+            }
+            .article-content table {
+                width: 100%; border-collapse: collapse;
+                margin: 1.5rem 0; border-radius: 0.5rem;
+                overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            .article-content th {
+                background: linear-gradient(135deg, #1f2937, #374151);
+                color: white; padding: 0.75rem 1rem;
+                text-align: left; font-weight: 600;
+            }
+            .article-content td { padding: 0.75rem 1rem; border-bottom: 1px solid #e5e7eb; }
+            .article-content tr:nth-child(even) { background: #f9fafb; }
+            .article-content tr:hover { background: #fef2f2; }
+            .cat-tips { background: linear-gradient(135deg, #fef3c7, #fde68a); color: #92400e; }
+            .cat-maintenance { background: linear-gradient(135deg, #dbeafe, #bfdbfe); color: #1e40af; }
+            .cat-parts-guide { background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #065f46; }
+            .cat-news { background: linear-gradient(135deg, #fce7f3, #fbcfe8); color: #9d174d; }
+            .cat-general { background: linear-gradient(135deg, #e5e7eb, #d1d5db); color: #374151; }
+            .share-btn { transition: all 0.3s; transform: translateY(0); }
+            .share-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+            .cta-section {
+                background: linear-gradient(135deg, #1e293b 0%, #0f172a 50%, #1e293b 100%);
+                position: relative; overflow: hidden;
+            }
+            .cta-section::before {
+                content: ''; position: absolute;
+                top: -50%; left: -50%; width: 200%; height: 200%;
+                background: radial-gradient(circle, rgba(239,68,68,0.1) 0%, transparent 50%);
+                animation: pulse-bg 4s ease-in-out infinite;
+            }
+            @keyframes pulse-bg {
+                0%, 100% { transform: scale(1); opacity: 0.5; }
+                50% { transform: scale(1.1); opacity: 1; }
+            }
+            .cta-btn {
+                background: linear-gradient(135deg, #ef4444, #dc2626);
+                transition: all 0.3s; position: relative; overflow: hidden;
+            }
+            .cta-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(239,68,68,0.4); }
+            .cta-btn::after {
+                content: ''; position: absolute;
+                top: -50%; left: -50%; width: 200%; height: 200%;
+                background: linear-gradient(to right, transparent, rgba(255,255,255,0.1), transparent);
+                transform: rotate(45deg); animation: shine 3s infinite;
+            }
+            @keyframes shine { 0% { left: -50%; } 100% { left: 150%; } }
+            .related-card { transition: all 0.3s; border: 1px solid #e5e7eb; }
+            .related-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.1); border-color: #fecaca; }
+            .related-card img { transition: transform 0.5s; }
+            .related-card:hover img { transform: scale(1.05); }
+            .progress-bar {
+                position: fixed; top: 0; left: 0; height: 3px;
+                background: linear-gradient(90deg, #ef4444, #f97316);
+                z-index: 9999; transition: width 0.1s;
+            }
+            .tag-pill { transition: all 0.2s; }
+            .tag-pill:hover { background: #fef2f2; color: #ef4444; border-color: #fecaca; }
+        </style>`;
+}
+
+// コラム詳細ページ共通HTML
+function getArticleDetailBody() {
+  return `
+        <div class="progress-bar" id="progress-bar" style="width: 0%"></div>
+        <header class="bg-white/95 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+            <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+                <a href="/news" class="text-gray-500 hover:text-red-500 flex items-center text-sm font-medium transition-colors">
+                    <i class="fas fa-chevron-left mr-2"></i>ニュース一覧
+                </a>
+                <a href="/" class="flex items-center gap-2">
+                    <span class="bg-red-500 text-white px-2 py-0.5 rounded text-xs font-bold">PH</span>
+                    <span class="text-gray-800 font-bold text-lg">PARTS HUB</span>
+                </a>
+                <a href="/" class="text-gray-500 hover:text-red-500 flex items-center text-sm font-medium transition-colors">
+                    <i class="fas fa-home mr-1"></i>TOP
+                </a>
+            </div>
+        </header>
+        <main class="max-w-5xl mx-auto px-4 py-6 md:py-10">
+            <article id="article-detail">
+                <div class="text-center py-16">
+                    <div class="animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-red-500 mx-auto"></div>
+                    <p class="text-gray-400 mt-4 text-sm">記事を読み込み中...</p>
+                </div>
+            </article>
+            <div id="cta-section" class="mt-12 hidden">
+                <div class="cta-section rounded-2xl p-8 md:p-12 text-center text-white relative">
+                    <div class="relative z-10">
+                        <div class="flex justify-center mb-4">
+                            <div class="bg-red-500/20 rounded-full p-4">
+                                <i class="fas fa-warehouse text-3xl text-red-400"></i>
+                            </div>
+                        </div>
+                        <h3 class="text-xl md:text-2xl font-bold mb-3">
+                            あなたの倉庫に眠っている在庫を<br class="hidden md:block">
+                            パーツハブで出品して必要なお客様に届けませんか？
+                        </h3>
+                        <p class="text-gray-300 mb-6 text-sm md:text-base max-w-xl mx-auto">
+                            使わなくなった自動車パーツを必要としている方が全国にいます。<br>
+                            PARTS HUBなら簡単に出品でき、あなたのパーツが誰かの愛車を救います。
+                        </p>
+                        <a href="/listing" class="cta-btn inline-flex items-center gap-2 text-white font-bold py-3 px-8 rounded-full text-lg">
+                            <i class="fas fa-plus-circle"></i>出品してみる
+                        </a>
+                        <p class="text-gray-400 mt-3 text-xs">
+                            <i class="fas fa-shield-alt mr-1"></i>登録無料・安心の取引保証付き
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div id="related-articles" class="mt-12"></div>
+        </main>
+        <footer class="bg-gray-900 text-gray-400 py-8 mt-16">
+            <div class="max-w-5xl mx-auto px-4 text-center">
+                <a href="/" class="text-white font-bold text-lg">PARTS HUB</a>
+                <p class="text-sm mt-2">自動車パーツの個人間売買プラットフォーム</p>
+                <div class="flex justify-center gap-6 mt-4 text-sm">
+                    <a href="/news" class="hover:text-white transition-colors">ニュース</a>
+                    <a href="/products" class="hover:text-white transition-colors">パーツ検索</a>
+                    <a href="/listing" class="hover:text-white transition-colors">出品する</a>
+                    <a href="/faq" class="hover:text-white transition-colors">FAQ</a>
+                </div>
+                <p class="text-xs mt-4 text-gray-500">&copy; 2026 PARTS HUB All rights reserved.</p>
+            </div>
+        </footer>`;
+}
+
+// コラム詳細ページ共通スクリプト
+function getArticleDetailScript() {
+  return `
+            var categoryNames = {
+                'tips': 'お役立ち情報',
+                'maintenance': 'メンテナンス',
+                'parts-guide': 'パーツガイド',
+                'news': '最新ニュース',
+                'general': '総合'
+            };
+            var categoryClasses = {
+                'tips': 'cat-tips',
+                'maintenance': 'cat-maintenance',
+                'parts-guide': 'cat-parts-guide',
+                'news': 'cat-news',
+                'general': 'cat-general'
+            };
+            
+            window.addEventListener('scroll', function() {
+                var scrollTop = window.scrollY;
+                var docHeight = document.documentElement.scrollHeight - window.innerHeight;
+                var scrollPercent = (scrollTop / docHeight) * 100;
+                document.getElementById('progress-bar').style.width = scrollPercent + '%';
+            });
+            
+            function estimateReadTime(content) {
+                var text = content.replace(/<[^>]+>/g, '');
+                return Math.max(1, Math.ceil(text.length / 600));
+            }
+            
+            function renderArticle(article) {
+                var readTime = estimateReadTime(article.content || '');
+                var catName = categoryNames[article.category] || article.category;
+                var catClass = categoryClasses[article.category] || 'cat-general';
+                
+                document.title = article.title + ' - PARTS HUBニュース';
+                
+                var head = document.head;
+                var metas = [
+                    { property: 'og:title', content: article.title },
+                    { property: 'og:description', content: article.summary },
+                    { property: 'og:image', content: article.thumbnail_url },
+                    { property: 'og:url', content: window.location.href },
+                    { property: 'og:type', content: 'article' },
+                    { name: 'description', content: article.summary },
+                    { name: 'keywords', content: article.tags }
+                ];
+                metas.forEach(function(tag) {
+                    var meta = document.createElement('meta');
+                    if (tag.property) meta.setAttribute('property', tag.property);
+                    if (tag.name) meta.setAttribute('name', tag.name);
+                    meta.setAttribute('content', tag.content);
+                    head.appendChild(meta);
+                });
+                
+                var pubDate = new Date(article.published_at);
+                var dateStr = pubDate.getFullYear() + '年' + (pubDate.getMonth()+1) + '月' + pubDate.getDate() + '日';
+                
+                var tagsHtml = '';
+                if (article.tags) {
+                    tagsHtml = '<div class="mt-10 pt-8 border-t border-gray-100">' +
+                        '<p class="text-xs text-gray-400 mb-3 font-medium uppercase tracking-wider"><i class="fas fa-tags mr-1"></i>関連タグ</p>' +
+                        '<div class="flex flex-wrap gap-2">' +
+                        article.tags.split(',').map(function(tag) {
+                            return '<span class="tag-pill px-4 py-1.5 border border-gray-200 text-gray-600 rounded-full text-sm cursor-pointer">#' + tag.trim() + '</span>';
+                        }).join('') +
+                        '</div></div>';
+                }
+                
+                var shareUrl = encodeURIComponent(window.location.href);
+                var shareTitle = encodeURIComponent(article.title);
+                
+                document.getElementById('article-detail').innerHTML = 
+                    '<div class="hero-image rounded-2xl overflow-hidden shadow-lg mb-8">' +
+                        '<img src="' + (article.thumbnail_url || '') + '" alt="' + article.title + '" class="w-full h-64 md:h-[28rem] object-cover" onerror="this.src=\\'https://placehold.co/1200x600/1f2937/ef4444?text=PARTS+HUB+NEWS\\'">' +
+                    '</div>' +
+                    '<div class="bg-white rounded-2xl shadow-sm overflow-hidden">' +
+                        '<div class="p-6 md:p-10">' +
+                            '<div class="flex flex-wrap items-center gap-3 mb-5">' +
+                                '<span class="' + catClass + ' px-4 py-1.5 rounded-full text-sm font-bold">' + catName + '</span>' +
+                                '<div class="flex items-center gap-4 text-sm text-gray-400">' +
+                                    '<span><i class="far fa-calendar-alt mr-1"></i>' + dateStr + '</span>' +
+                                    '<span><i class="far fa-clock mr-1"></i>約' + readTime + '分で読めます</span>' +
+                                    '<span><i class="far fa-eye mr-1"></i>' + (article.view_count || 0) + '</span>' +
+                                '</div>' +
+                            '</div>' +
+                            '<h1 class="text-2xl md:text-4xl font-black text-gray-900 leading-tight mb-5">' + article.title + '</h1>' +
+                            '<div class="bg-gradient-to-r from-red-50 to-orange-50 border-l-4 border-red-400 rounded-r-xl p-5 mb-8">' +
+                                '<p class="text-gray-700 leading-relaxed text-base md:text-lg font-medium">' + article.summary + '</p>' +
+                            '</div>' +
+                            '<div class="article-content">' + article.content + '</div>' +
+                            tagsHtml +
+                            '<div class="mt-8 pt-8 border-t border-gray-100">' +
+                                '<p class="text-xs text-gray-400 mb-3 font-medium uppercase tracking-wider"><i class="fas fa-share-alt mr-1"></i>この記事をシェア</p>' +
+                                '<div class="flex flex-wrap gap-3">' +
+                                    '<a href="https://twitter.com/intent/tweet?text=' + shareTitle + '&url=' + shareUrl + '" target="_blank" class="share-btn flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg text-sm font-medium"><i class="fab fa-x-twitter"></i>ポスト</a>' +
+                                    '<a href="https://www.facebook.com/sharer/sharer.php?u=' + shareUrl + '" target="_blank" class="share-btn flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium"><i class="fab fa-facebook-f"></i>シェア</a>' +
+                                    '<a href="https://social-plugins.line.me/lineit/share?url=' + shareUrl + '" target="_blank" class="share-btn flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-medium"><i class="fab fa-line"></i>LINE</a>' +
+                                    '<button onclick="navigator.clipboard.writeText(window.location.href).then(function(){alert(\\'URLをコピーしました\\')})" class="share-btn flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200"><i class="fas fa-link"></i>コピー</button>' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>';
+                
+                document.getElementById('cta-section').classList.remove('hidden');
+            }
+            
+            function renderRelatedArticles(articles, currentSlug) {
+                var filtered = articles.filter(function(a) { return a.slug !== currentSlug; }).slice(0, 3);
+                if (filtered.length > 0) {
+                    document.getElementById('related-articles').innerHTML = 
+                        '<div class="flex items-center gap-3 mb-6"><div class="w-1 h-8 bg-red-500 rounded-full"></div><h2 class="text-2xl font-bold text-gray-900">関連記事</h2></div>' +
+                        '<div class="grid grid-cols-1 md:grid-cols-3 gap-6">' +
+                        filtered.map(function(a) {
+                            var cn = categoryNames[a.category] || a.category;
+                            var cc = categoryClasses[a.category] || 'cat-general';
+                            var d = new Date(a.published_at).toLocaleDateString('ja-JP');
+                            return '<a href="/news/' + a.slug + '" class="related-card bg-white rounded-xl overflow-hidden">' +
+                                '<div class="overflow-hidden"><img src="' + a.thumbnail_url + '" alt="' + a.title + '" class="w-full h-44 object-cover" onerror="this.src=\\'https://placehold.co/600x400/1f2937/ef4444?text=PARTS+HUB\\'"></div>' +
+                                '<div class="p-4"><span class="' + cc + ' px-2 py-0.5 rounded text-xs font-bold inline-block mb-2">' + cn + '</span>' +
+                                '<h3 class="font-bold text-gray-900 mb-1 line-clamp-2 text-sm leading-snug">' + a.title + '</h3>' +
+                                '<p class="text-xs text-gray-400 mt-2"><i class="far fa-calendar-alt mr-1"></i>' + d + '</p></div></a>';
+                        }).join('') +
+                        '</div>';
+                }
+            }
+            
+            function showError() {
+                document.getElementById('article-detail').innerHTML = 
+                    '<div class="text-center py-16 bg-white rounded-2xl shadow-sm">' +
+                        '<i class="fas fa-exclamation-triangle text-5xl text-red-300 mb-4"></i>' +
+                        '<p class="text-gray-700 text-lg font-medium mb-2">記事が見つかりませんでした</p>' +
+                        '<p class="text-gray-400 text-sm mb-6">お探しの記事は削除された可能性があります</p>' +
+                        '<a href="/news" class="inline-flex items-center gap-2 bg-red-500 text-white px-6 py-3 rounded-full font-medium hover:bg-red-600 transition-colors"><i class="fas fa-arrow-left"></i>ニュース一覧に戻る</a>' +
+                    '</div>';
+            }`;
+}
+
 // コラム詳細ページ（SEO最適化URL: /news/category/YYYY/MM/slug）
 app.get('/news/:category/:year/:month/:slug', (c) => {
   const { category, year, month, slug } = c.req.param();
@@ -1277,188 +1603,28 @@ app.get('/news/:category/:year/:month/:slug', (c) => {
         <meta name="robots" content="index, follow">
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-        <style>
-            .article-content h2 {
-                font-size: 1.75rem;
-                font-weight: 700;
-                margin-top: 2rem;
-                margin-bottom: 1rem;
-                color: #1f2937;
-            }
-            .article-content h3 {
-                font-size: 1.5rem;
-                font-weight: 600;
-                margin-top: 1.5rem;
-                margin-bottom: 0.75rem;
-                color: #374151;
-            }
-            .article-content p {
-                margin-bottom: 1rem;
-                line-height: 1.75;
-                color: #4b5563;
-            }
-            .article-content ul, .article-content ol {
-                margin-bottom: 1rem;
-                padding-left: 1.5rem;
-            }
-            .article-content li {
-                margin-bottom: 0.5rem;
-                color: #4b5563;
-            }
-            .article-content a {
-                color: #ef4444;
-                text-decoration: underline;
-            }
-        </style>
+        ${getArticleDetailCSS()}
     </head>
     <body class="bg-gray-50">
-        <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
-            <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-                <a href="/news" class="text-gray-600 hover:text-gray-900 flex items-center">
-                    <i class="fas fa-arrow-left mr-2"></i>一覧に戻る
-                </a>
-                <a href="/" class="text-red-500 font-bold text-xl">PARTS HUB</a>
-                <div class="w-24"></div>
-            </div>
-        </header>
-
-        <main class="max-w-4xl mx-auto px-4 py-8">
-            <article id="article-detail">
-                <div class="text-center py-12">
-                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
-                    <p class="text-gray-500">記事を読み込み中...</p>
-                </div>
-            </article>
-
-            <div id="related-articles" class="mt-12">
-                <!-- 関連記事 -->
-            </div>
-        </main>
-
+        ${getArticleDetailBody()}
+        
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script>
-            const fullSlug = '${fullSlug}';
+            var articleSlug = '${fullSlug}';
+            ${getArticleDetailScript()}
             
             async function loadArticle() {
                 try {
-                    const response = await axios.get(\`/api/articles/\${fullSlug}\`);
-                    const article = response.data.article || response.data;
-                    
-                    // メタタグを動的に更新
-                    document.title = \`\${article.title} - PARTS HUBニュース\`;
-                    
-                    // OGPタグを追加
-                    const head = document.head;
-                    const metaTags = [
-                        { property: 'og:title', content: article.title },
-                        { property: 'og:description', content: article.summary },
-                        { property: 'og:image', content: article.thumbnail_url },
-                        { property: 'og:url', content: window.location.href },
-                        { property: 'og:type', content: 'article' },
-                        { name: 'description', content: article.summary },
-                        { name: 'keywords', content: article.tags }
-                    ];
-                    
-                    metaTags.forEach(tag => {
-                        const meta = document.createElement('meta');
-                        if (tag.property) meta.setAttribute('property', tag.property);
-                        if (tag.name) meta.setAttribute('name', tag.name);
-                        meta.setAttribute('content', tag.content);
-                        head.appendChild(meta);
-                    });
-                    
-                    const detail = document.getElementById('article-detail');
-                    detail.innerHTML = \`
-                        <div class="bg-white rounded-lg shadow-sm overflow-hidden">
-                            <img src="\${article.thumbnail_url}" alt="\${article.title}" 
-                                 class="w-full h-96 object-cover" 
-                                 onerror="this.src='https://placehold.co/1200x600/e2e8f0/64748b?text=PARTS+HUB+NEWS'">
-                            
-                            <div class="p-8">
-                                <div class="flex items-center gap-4 mb-6 text-sm text-gray-600">
-                                    <span class="px-3 py-1 bg-red-50 text-red-600 rounded-full font-medium">
-                                        \${article.category}
-                                    </span>
-                                    <span>
-                                        <i class="far fa-calendar mr-1"></i>
-                                        \${new Date(article.published_at).toLocaleDateString('ja-JP')}
-                                    </span>
-                                    <span>
-                                        <i class="far fa-eye mr-1"></i>
-                                        \${article.view_count || 0}回閲覧
-                                    </span>
-                                </div>
-                                
-                                <h1 class="text-3xl font-bold text-gray-900 mb-4">
-                                    \${article.title}
-                                </h1>
-                                
-                                <p class="text-lg text-gray-600 mb-8 pb-8 border-b">
-                                    \${article.summary}
-                                </p>
-                                
-                                <div class="article-content prose max-w-none">
-                                    \${article.content}
-                                </div>
-                                
-                                \${article.tags ? \`
-                                    <div class="mt-8 pt-8 border-t">
-                                        <div class="flex flex-wrap gap-2">
-                                            \${article.tags.split(',').map(tag => 
-                                                \`<span class="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">#\${tag.trim()}</span>\`
-                                            ).join('')}
-                                        </div>
-                                    </div>
-                                \` : ''}
-                            </div>
-                        </div>
-                    \`;
-                    
-                    // 関連記事を読み込む
-                    loadRelatedArticles(article.category);
-                    
+                    var response = await axios.get('/api/articles/' + articleSlug);
+                    var article = response.data.article || response.data;
+                    renderArticle(article);
+                    var relRes = await axios.get('/api/articles?category=' + article.category + '&limit=4');
+                    renderRelatedArticles(relRes.data.articles, articleSlug);
                 } catch (error) {
                     console.error('記事読み込みエラー:', error);
-                    document.getElementById('article-detail').innerHTML = \`
-                        <div class="text-center py-12">
-                            <i class="fas fa-exclamation-circle text-5xl text-gray-400 mb-4"></i>
-                            <p class="text-gray-600">記事の読み込みに失敗しました</p>
-                            <a href="/news" class="mt-4 inline-block text-red-500 hover:underline">
-                                一覧に戻る
-                            </a>
-                        </div>
-                    \`;
+                    showError();
                 }
             }
-            
-            async function loadRelatedArticles(category) {
-                try {
-                    const response = await axios.get(\`/api/articles?category=\${category}&limit=3\`);
-                    const articles = response.data.articles.filter(a => a.slug !== fullSlug);
-                    
-                    if (articles.length > 0) {
-                        document.getElementById('related-articles').innerHTML = \`
-                            <h2 class="text-2xl font-bold text-gray-900 mb-6">関連記事</h2>
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                \${articles.map(article => \`
-                                    <a href="/news/\${article.slug}" class="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all">
-                                        <img src="\${article.thumbnail_url}" alt="\${article.title}" 
-                                             class="w-full h-48 object-cover"
-                                             onerror="this.src='https://placehold.co/600x400/e2e8f0/64748b?text=PARTS+HUB+NEWS'">
-                                        <div class="p-4">
-                                            <h3 class="font-bold text-gray-900 mb-2 line-clamp-2">\${article.title}</h3>
-                                            <p class="text-sm text-gray-600 line-clamp-2">\${article.summary}</p>
-                                        </div>
-                                    </a>
-                                \`).join('')}
-                            </div>
-                        \`;
-                    }
-                } catch (error) {
-                    console.error('関連記事読み込みエラー:', error);
-                }
-            }
-            
             loadArticle();
         </script>
     </body>
@@ -1468,6 +1634,8 @@ app.get('/news/:category/:year/:month/:slug', (c) => {
 
 // コラム詳細ページ（後方互換性のため残す: /news/:slug）
 app.get('/news/:slug', (c) => {
+  const slug = c.req.param('slug');
+  
   return c.html(`
     <!DOCTYPE html>
     <html lang="ja">
@@ -1477,142 +1645,29 @@ app.get('/news/:slug', (c) => {
         <title>記事詳細 - PARTS HUBニュース</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-        <style>
-            .article-content h2 {
-                font-size: 1.75rem;
-                font-weight: 700;
-                margin-top: 2rem;
-                margin-bottom: 1rem;
-                color: #1f2937;
-            }
-            .article-content h3 {
-                font-size: 1.5rem;
-                font-weight: 600;
-                margin-top: 1.5rem;
-                margin-bottom: 0.75rem;
-                color: #374151;
-            }
-            .article-content p {
-                margin-bottom: 1rem;
-                line-height: 1.75;
-                color: #4b5563;
-            }
-            .article-content ul, .article-content ol {
-                margin-bottom: 1rem;
-                padding-left: 1.5rem;
-            }
-            .article-content li {
-                margin-bottom: 0.5rem;
-                color: #4b5563;
-            }
-            .article-content a {
-                color: #ef4444;
-                text-decoration: underline;
-            }
-        </style>
+        ${getArticleDetailCSS()}
     </head>
     <body class="bg-gray-50">
-        <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
-            <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-                <a href="/news" class="text-gray-600 hover:text-gray-900 flex items-center">
-                    <i class="fas fa-arrow-left mr-2"></i>一覧に戻る
-                </a>
-                <a href="/" class="text-red-500 font-bold text-xl">PARTS HUB</a>
-                <div class="w-24"></div>
-            </div>
-        </header>
-
-        <main class="max-w-4xl mx-auto px-4 py-8">
-            <article id="article-detail">
-                <div class="text-center py-12">
-                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
-                    <p class="text-gray-500">記事を読み込み中...</p>
-                </div>
-            </article>
-
-            <div id="related-articles" class="mt-12">
-                <!-- 関連記事 -->
-            </div>
-        </main>
-
+        ${getArticleDetailBody()}
+        
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script>
-            const slug = window.location.pathname.split('/').pop();
+            var articleSlug = '${slug}';
+            ${getArticleDetailScript()}
             
             async function loadArticle() {
                 try {
-                    const response = await axios.get(\`/api/articles/\${slug}\`);
-                    const { article, relatedArticles } = response.data;
-                    
-                    document.title = article.title + ' - PARTS HUBニュース';
-                    
-                    document.getElementById('article-detail').innerHTML = \`
-                        <div class="bg-white rounded-lg shadow-sm overflow-hidden mb-8">
-                            <img src="\${article.thumbnail_url || 'https://placehold.co/1200x600/e2e8f0/64748b?text=PARTS+HUB+NEWS'}" 
-                                 alt="\${article.title}" 
-                                 class="w-full h-96 object-cover">
-                            <div class="p-8">
-                                <div class="flex items-center text-sm text-gray-500 mb-4">
-                                    <span class="px-3 py-1 bg-red-100 text-red-600 rounded font-medium">\${article.category}</span>
-                                    <span class="mx-3">•</span>
-                                    <i class="far fa-clock mr-2"></i>
-                                    <span>\${new Date(article.published_at).toLocaleDateString('ja-JP')}</span>
-                                    <span class="mx-3">•</span>
-                                    <i class="far fa-eye mr-2"></i>
-                                    <span>\${article.view_count} 閲覧</span>
-                                </div>
-                                
-                                <h1 class="text-4xl font-bold text-gray-900 mb-6">\${article.title}</h1>
-                                
-                                <div class="article-content text-lg">
-                                    \${article.content}
-                                </div>
-                                
-                                \${article.tags ? \`
-                                    <div class="mt-8 pt-6 border-t border-gray-200">
-                                        <div class="flex flex-wrap gap-2">
-                                            \${article.tags.split(',').map(tag => \`
-                                                <span class="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">
-                                                    #\${tag.trim()}
-                                                </span>
-                                            \`).join('')}
-                                        </div>
-                                    </div>
-                                \` : ''}
-                            </div>
-                        </div>
-                    \`;
-                    
-                    if (relatedArticles.length > 0) {
-                        document.getElementById('related-articles').innerHTML = \`
-                            <h2 class="text-2xl font-bold text-gray-900 mb-6">関連記事</h2>
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                \${relatedArticles.map(related => \`
-                                    <a href="/news/\${related.slug}" class="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
-                                        <img src="\${related.thumbnail_url || 'https://placehold.co/600x400/e2e8f0/64748b?text=PARTS+HUB+NEWS'}" 
-                                             alt="\${related.title}" 
-                                             class="w-full h-40 object-cover">
-                                        <div class="p-4">
-                                            <h3 class="font-bold text-gray-900 mb-2 line-clamp-2">\${related.title}</h3>
-                                            <p class="text-sm text-gray-600 line-clamp-2">\${related.summary || ''}</p>
-                                        </div>
-                                    </a>
-                                \`).join('')}
-                            </div>
-                        \`;
-                    }
+                    var response = await axios.get('/api/articles/' + articleSlug);
+                    var data = response.data;
+                    var article = data.article || data;
+                    renderArticle(article);
+                    var relRes = await axios.get('/api/articles?category=' + article.category + '&limit=4');
+                    renderRelatedArticles(relRes.data.articles, articleSlug);
                 } catch (error) {
                     console.error('記事読み込みエラー:', error);
-                    document.getElementById('article-detail').innerHTML = \`
-                        <div class="text-center py-12">
-                            <i class="fas fa-exclamation-circle text-5xl text-red-500 mb-4"></i>
-                            <p class="text-gray-700 text-lg mb-2">記事が見つかりませんでした</p>
-                            <a href="/news" class="text-red-500 hover:text-red-600 font-medium">一覧に戻る</a>
-                        </div>
-                    \`;
+                    showError();
                 }
             }
-            
             loadArticle();
         </script>
     </body>
