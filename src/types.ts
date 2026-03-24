@@ -2,6 +2,8 @@
 export type Bindings = {
   DB: D1Database
   R2: R2Bucket
+  // OpenAI設定
+  OPENAI_API_KEY?: string
   // 外部API設定
   ARGOS_API_KEY?: string
   ARGOS_API_URL?: string

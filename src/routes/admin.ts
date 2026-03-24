@@ -1079,8 +1079,42 @@ adminRoutes.post('/articles/auto-generate-with-image', async (c) => {
     let thumbnailUrl = '';
     try {
       const imageData = await imageResponse.json();
-      thumbnailUrl = imageData.data[0].url;
-      console.log(`画像生成完了: ${thumbnailUrl}`);
+      const tempImageUrl = imageData.data[0].url;
+      console.log(`画像生成完了: ${tempImageUrl}`);
+      
+      // ステップ2.5: 画像をR2に永続保存
+      try {
+        // 画像をダウンロード
+        const imageDownloadResponse = await fetch(tempImageUrl);
+        if (!imageDownloadResponse.ok) {
+          throw new Error('画像のダウンロードに失敗しました');
+        }
+        
+        const imageBuffer = await imageDownloadResponse.arrayBuffer();
+        
+        // R2に保存するファイル名を生成（タイムスタンプ付き）
+        const timestamp = Date.now();
+        const imageFilename = `articles/${timestamp}.png`;
+        
+        // R2にアップロード
+        await env.R2.put(imageFilename, imageBuffer, {
+          httpMetadata: {
+            contentType: 'image/png',
+          },
+        });
+        
+        // 公開URLを生成
+        // R2_PUBLIC_URL環境変数がある場合はそれを使用、なければデフォルトURL
+        const r2PublicUrl = env.R2_PUBLIC_URL || 'https://parts-hub-images.r2.dev';
+        thumbnailUrl = `${r2PublicUrl}/${imageFilename}`;
+        console.log(`画像をR2に保存: ${thumbnailUrl}`);
+        
+      } catch (r2Error) {
+        console.error('R2への画像保存エラー:', r2Error);
+        // R2保存に失敗した場合は、元のOpenAI URLを使用（2時間有効）
+        thumbnailUrl = tempImageUrl;
+      }
+      
     } catch (err) {
       console.error('画像URL取得エラー:', err);
       // 画像生成に失敗した場合はプレースホルダーを使用
