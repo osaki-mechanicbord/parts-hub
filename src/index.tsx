@@ -1411,6 +1411,7 @@ function getArticleDetailCSS() {
             .cat-maintenance { background: linear-gradient(135deg, #dbeafe, #bfdbfe); color: #1e40af; }
             .cat-parts-guide { background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #065f46; }
             .cat-news { background: linear-gradient(135deg, #fce7f3, #fbcfe8); color: #9d174d; }
+            .cat-deadstock { background: linear-gradient(135deg, #fef3c7, #fed7aa); color: #9a3412; }
             .cat-general { background: linear-gradient(135deg, #e5e7eb, #d1d5db); color: #374151; }
             .share-btn { transition: all 0.3s; transform: translateY(0); }
             .share-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
@@ -1540,6 +1541,7 @@ function getArticleDetailScript() {
                 'tips': 'お役立ち情報',
                 'maintenance': 'メンテナンス',
                 'parts-guide': 'パーツガイド',
+                'deadstock': 'デッドストック活用',
                 'news': '最新ニュース',
                 'general': '総合'
             };
@@ -1547,6 +1549,7 @@ function getArticleDetailScript() {
                 'tips': 'cat-tips',
                 'maintenance': 'cat-maintenance',
                 'parts-guide': 'cat-parts-guide',
+                'deadstock': 'cat-deadstock',
                 'news': 'cat-news',
                 'general': 'cat-general'
             };
