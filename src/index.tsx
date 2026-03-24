@@ -24,6 +24,7 @@ import transactionsRoutes from './routes/transactions'
 import adminRoutes from './routes/admin'
 import adminPagesRoutes from './routes/admin-pages'
 import emailRoutes from './routes/email'
+import articlesRoutes from './routes/articles'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -154,6 +155,7 @@ app.route('/api/profile', profileRoutes)
 app.route('/api/reviews', reviewsRoutes)
 app.route('/api/transactions', transactionsRoutes)
 app.route('/api/email', emailRoutes)
+app.route('/api/articles', articlesRoutes)
 app.route('/api/admin', adminRoutes)
 app.route('/admin', adminPagesRoutes)
 
@@ -419,6 +421,9 @@ app.get('/', (c) => {
                         <a href="/search" class="text-gray-700 hover:text-primary font-medium transition-colors">
                             <i class="fas fa-search mr-1"></i>検索
                         </a>
+                        <a href="/news" class="text-gray-700 hover:text-primary font-medium transition-colors">
+                            <i class="fas fa-newspaper mr-1"></i>ニュース
+                        </a>
                         <a href="/favorites" class="text-gray-700 hover:text-primary font-medium transition-colors">
                             <i class="far fa-heart mr-1"></i>お気に入り
                         </a>
@@ -604,6 +609,32 @@ app.get('/', (c) => {
                     <button id="load-more" class="px-8 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:border-primary hover:text-primary transition-all">
                         もっと見る
                     </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- PARTS HUBニュースセクション -->
+        <section class="py-16 bg-gray-50">
+            <div class="max-w-7xl mx-auto px-4">
+                <div class="flex items-center justify-between mb-8">
+                    <div>
+                        <h2 class="text-3xl font-bold text-gray-900 mb-2">
+                            <i class="fas fa-newspaper text-primary mr-2"></i>PARTS HUBニュース
+                        </h2>
+                        <p class="text-gray-600">自動車パーツに関する最新情報をお届けします</p>
+                    </div>
+                    <a href="/news" class="text-primary hover:text-primary-dark font-semibold flex items-center">
+                        すべて見る
+                        <i class="fas fa-arrow-right ml-2"></i>
+                    </a>
+                </div>
+
+                <div id="articles-container" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- 記事カード（JavaScriptで動的に生成） -->
+                    <div class="col-span-full text-center py-12">
+                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                        <p class="text-gray-500">記事を読み込み中...</p>
+                    </div>
                 </div>
             </div>
         </section>
@@ -902,6 +933,119 @@ app.get('/', (c) => {
         </script>
 
         ${Footer()}
+    </body>
+    </html>
+  `)
+})
+
+// コラム一覧ページ
+app.get('/news', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>PARTS HUBニュース - PARTS HUB（パーツハブ）</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    </head>
+    <body class="bg-gray-50">
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+                <a href="/" class="text-red-500 font-bold text-2xl">PARTS HUB</a>
+                <a href="/" class="text-gray-600 hover:text-gray-900">
+                    <i class="fas fa-times text-2xl"></i>
+                </a>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto px-4 py-8">
+            <div class="mb-8">
+                <h1 class="text-4xl font-bold text-gray-900 mb-2">
+                    <i class="fas fa-newspaper text-red-500 mr-2"></i>PARTS HUBニュース
+                </h1>
+                <p class="text-gray-600 text-lg">自動車パーツに関する最新情報</p>
+            </div>
+
+            <div id="articles-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="col-span-full text-center py-12">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
+                    <p class="text-gray-500">記事を読み込み中...</p>
+                </div>
+            </div>
+
+            <div id="pagination" class="mt-8 flex justify-center"></div>
+        </main>
+
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script>
+            let currentPage = 1;
+            
+            async function loadArticles(page = 1) {
+                try {
+                    const response = await axios.get(\`/api/articles?page=\${page}&limit=12\`);
+                    const { articles, totalPages } = response.data;
+                    
+                    const grid = document.getElementById('articles-grid');
+                    
+                    if (articles.length === 0) {
+                        grid.innerHTML = '<div class="col-span-full text-center py-12"><p class="text-gray-500">記事がありません</p></div>';
+                        return;
+                    }
+                    
+                    grid.innerHTML = articles.map(article => \`
+                        <a href="/news/\${article.slug}" class="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
+                            <img src="\${article.thumbnail_url || 'https://placehold.co/600x400/e2e8f0/64748b?text=PARTS+HUB+NEWS'}" 
+                                 alt="\${article.title}" 
+                                 class="w-full h-48 object-cover">
+                            <div class="p-4">
+                                <div class="flex items-center text-xs text-gray-500 mb-2">
+                                    <span class="px-2 py-1 bg-red-100 text-red-600 rounded">\${article.category}</span>
+                                    <span class="mx-2">•</span>
+                                    <span>\${new Date(article.published_at).toLocaleDateString('ja-JP')}</span>
+                                </div>
+                                <h3 class="text-lg font-bold text-gray-900 mb-2 line-clamp-2">\${article.title}</h3>
+                                <p class="text-gray-600 text-sm line-clamp-3">\${article.summary || ''}</p>
+                            </div>
+                        </a>
+                    \`).join('');
+                    
+                    renderPagination(page, totalPages);
+                    currentPage = page;
+                } catch (error) {
+                    console.error('記事読み込みエラー:', error);
+                    document.getElementById('articles-grid').innerHTML = '<div class="col-span-full text-center py-12"><p class="text-red-500">記事の読み込みに失敗しました</p></div>';
+                }
+            }
+            
+            function renderPagination(page, totalPages) {
+                const pagination = document.getElementById('pagination');
+                if (totalPages <= 1) {
+                    pagination.innerHTML = '';
+                    return;
+                }
+                
+                let html = '<div class="flex space-x-2">';
+                if (page > 1) {
+                    html += \`<button onclick="loadArticles(\${page - 1})" class="px-4 py-2 border rounded hover:bg-gray-50">前へ</button>\`;
+                }
+                for (let i = 1; i <= totalPages; i++) {
+                    if (i === page) {
+                        html += \`<button class="px-4 py-2 bg-red-500 text-white rounded">\${i}</button>\`;
+                    } else {
+                        html += \`<button onclick="loadArticles(\${i})" class="px-4 py-2 border rounded hover:bg-gray-50">\${i}</button>\`;
+                    }
+                }
+                if (page < totalPages) {
+                    html += \`<button onclick="loadArticles(\${page + 1})" class="px-4 py-2 border rounded hover:bg-gray-50">次へ</button>\`;
+                }
+                html += '</div>';
+                pagination.innerHTML = html;
+            }
+            
+            loadArticles(1);
+        </script>
     </body>
     </html>
   `)

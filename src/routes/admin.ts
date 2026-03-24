@@ -703,4 +703,223 @@ adminRoutes.get('/sales', async (c) => {
   }
 });
 
+// ===== コラム管理API =====
+
+// コラム一覧取得（管理画面用 - 全ステータス）
+adminRoutes.get('/articles', async (c) => {
+  const { env } = c;
+  const page = parseInt(c.req.query('page') || '1');
+  const limit = parseInt(c.req.query('limit') || '20');
+  const status = c.req.query('status');
+  const offset = (page - 1) * limit;
+
+  try {
+    let query = `SELECT * FROM articles WHERE 1=1`;
+    const params = [];
+
+    if (status) {
+      query += ` AND status = ?`;
+      params.push(status);
+    }
+
+    query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+    params.push(limit, offset);
+
+    const articles = await env.DB.prepare(query).bind(...params).all();
+
+    let countQuery = `SELECT COUNT(*) as count FROM articles WHERE 1=1`;
+    if (status) {
+      countQuery += ` AND status = ?`;
+    }
+    const countParams = status ? [status] : [];
+    const total = await env.DB.prepare(countQuery).bind(...countParams).first();
+
+    return c.json({
+      articles: articles.results || [],
+      total: total?.count || 0,
+      page,
+      totalPages: Math.ceil((total?.count || 0) / limit)
+    });
+  } catch (error) {
+    console.error('コラム一覧取得エラー:', error);
+    return c.json({ error: 'コラム一覧の取得に失敗しました' }, 500);
+  }
+});
+
+// コラム作成
+adminRoutes.post('/articles', async (c) => {
+  const { env } = c;
+  const { title, slug, summary, content, thumbnail_url, category, tags, status, is_featured } = await c.req.json();
+
+  try {
+    // slugの重複チェック
+    const existing = await env.DB.prepare(`
+      SELECT id FROM articles WHERE slug = ?
+    `).bind(slug).first();
+
+    if (existing) {
+      return c.json({ error: 'このスラッグは既に使用されています' }, 400);
+    }
+
+    const published_at = status === 'published' ? new Date().toISOString() : null;
+
+    const result = await env.DB.prepare(`
+      INSERT INTO articles (title, slug, summary, content, thumbnail_url, category, tags, status, is_featured, published_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(title, slug, summary, content, thumbnail_url, category || 'general', tags, status || 'draft', is_featured ? 1 : 0, published_at).run();
+
+    return c.json({ 
+      success: true, 
+      message: 'コラムを作成しました',
+      id: result.meta.last_row_id
+    });
+  } catch (error) {
+    console.error('コラム作成エラー:', error);
+    return c.json({ error: 'コラムの作成に失敗しました' }, 500);
+  }
+});
+
+// コラム更新
+adminRoutes.put('/articles/:id', async (c) => {
+  const { env } = c;
+  const id = c.req.param('id');
+  const { title, slug, summary, content, thumbnail_url, category, tags, status, is_featured } = await c.req.json();
+
+  try {
+    // 現在の記事を取得
+    const currentArticle = await env.DB.prepare(`
+      SELECT * FROM articles WHERE id = ?
+    `).bind(id).first();
+
+    if (!currentArticle) {
+      return c.json({ error: 'コラムが見つかりません' }, 404);
+    }
+
+    // slugが変更されている場合、重複チェック
+    if (slug !== currentArticle.slug) {
+      const existing = await env.DB.prepare(`
+        SELECT id FROM articles WHERE slug = ? AND id != ?
+      `).bind(slug, id).first();
+
+      if (existing) {
+        return c.json({ error: 'このスラッグは既に使用されています' }, 400);
+      }
+    }
+
+    // 下書きから公開に変更する場合、published_atを設定
+    let published_at = currentArticle.published_at;
+    if (status === 'published' && currentArticle.status !== 'published' && !published_at) {
+      published_at = new Date().toISOString();
+    }
+
+    await env.DB.prepare(`
+      UPDATE articles
+      SET title = ?, slug = ?, summary = ?, content = ?, thumbnail_url = ?, 
+          category = ?, tags = ?, status = ?, is_featured = ?, published_at = ?,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(title, slug, summary, content, thumbnail_url, category, tags, status, is_featured ? 1 : 0, published_at, id).run();
+
+    return c.json({ 
+      success: true, 
+      message: 'コラムを更新しました'
+    });
+  } catch (error) {
+    console.error('コラム更新エラー:', error);
+    return c.json({ error: 'コラムの更新に失敗しました' }, 500);
+  }
+});
+
+// コラム削除
+adminRoutes.delete('/articles/:id', async (c) => {
+  const { env } = c;
+  const id = c.req.param('id');
+
+  try {
+    await env.DB.prepare(`
+      DELETE FROM articles WHERE id = ?
+    `).bind(id).run();
+
+    return c.json({ 
+      success: true, 
+      message: 'コラムを削除しました'
+    });
+  } catch (error) {
+    console.error('コラム削除エラー:', error);
+    return c.json({ error: 'コラムの削除に失敗しました' }, 500);
+  }
+});
+
+// コラム自動生成API（OpenAI使用）
+adminRoutes.post('/articles/generate', async (c) => {
+  const { env } = c;
+  const { topic, category } = await c.req.json();
+
+  try {
+    // OpenAI APIキーの確認
+    const openaiApiKey = c.env?.OPENAI_API_KEY;
+    if (!openaiApiKey) {
+      return c.json({ error: 'OpenAI APIキーが設定されていません' }, 500);
+    }
+
+    // OpenAI APIを呼び出してコラムを生成
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${openaiApiKey}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'あなたは自動車パーツ専門のライターです。SEOに最適化された、読みやすく有益なコラム記事を作成してください。'
+          },
+          {
+            role: 'user',
+            content: `以下のトピックについて、自動車パーツの売買プラットフォーム「PARTS HUB」のコラム記事を書いてください：
+
+トピック: ${topic}
+カテゴリ: ${category || '一般'}
+
+以下のJSON形式で出力してください：
+{
+  "title": "記事タイトル（40文字以内、SEO最適化）",
+  "slug": "url-friendly-slug",
+  "summary": "記事の要約（120文字以内）",
+  "content": "記事本文（HTMLタグ使用可、見出しはh2/h3、段落はp、リストはul/li）",
+  "tags": "タグ1,タグ2,タグ3"
+}`
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 2000
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('OpenAI API呼び出しに失敗しました');
+    }
+
+    const data = await response.json();
+    const generatedContent = data.choices[0].message.content;
+    
+    // JSONをパース
+    const articleData = JSON.parse(generatedContent);
+
+    return c.json({
+      success: true,
+      article: {
+        ...articleData,
+        category: category || 'general',
+        status: 'draft'
+      }
+    });
+  } catch (error) {
+    console.error('コラム自動生成エラー:', error);
+    return c.json({ error: 'コラムの自動生成に失敗しました: ' + (error as Error).message }, 500);
+  }
+});
+
 export default adminRoutes
