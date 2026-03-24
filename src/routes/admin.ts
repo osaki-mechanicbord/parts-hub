@@ -1087,9 +1087,24 @@ adminRoutes.post('/articles/auto-generate-with-image', async (c) => {
       thumbnailUrl = 'https://placehold.co/1792x1024/ef4444/ffffff?text=PARTS+HUB+NEWS';
     }
 
-    // ステップ3: データベースに記事を保存（公開状態）
-    const now = new Date().toISOString();
-    const slug = `${article.slug}-${Date.now()}`;
+    // ステップ3: SEO最適化されたスラッグを生成
+    const now = new Date();
+    const dateStr = now.toISOString();
+    
+    // 日付部分を取得（YYYY-MM-DD形式）
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    
+    // SEO最適化されたスラッグ: カテゴリ/日付/キーワード
+    // 例: parts-guide/2026/03/brake-pad-selection-guide
+    const baseSlug = article.slug
+      .toLowerCase()
+      .replace(/[^a-z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .substring(0, 50);
+    
+    const slug = `${category.id}/${year}/${month}/${baseSlug}`;
     
     const result = await env.DB.prepare(`
       INSERT INTO articles (
@@ -1105,9 +1120,9 @@ adminRoutes.post('/articles/auto-generate-with-image', async (c) => {
       thumbnailUrl,
       category.id,
       article.tags,
-      now,
-      now,
-      now
+      dateStr,
+      dateStr,
+      dateStr
     ).run();
 
     console.log(`記事公開完了: ID ${result.meta.last_row_id}`);

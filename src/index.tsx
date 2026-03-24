@@ -82,7 +82,7 @@ app.use('/api/*', cors())
 app.use('/static/*', serveStatic({ root: './public' }))
 app.use('/icons/*', serveStatic({ root: './public' }))
 
-// robots.txt, manifest.json, sw.js配信
+// robots.txt, sitemap.xml, manifest.json, sw.js配信
 app.get('/robots.txt', async (c) => {
   return c.text(`User-agent: *
 Allow: /
@@ -95,6 +95,8 @@ Allow: /terms
 Allow: /privacy
 Allow: /security
 Allow: /legal
+Allow: /news
+Allow: /news/*
 
 # APIエンドポイントはクロール不要
 Disallow: /api/*
@@ -106,12 +108,17 @@ Disallow: /chat/*
 Disallow: /notifications
 Disallow: /transactions/*
 Disallow: /listing/edit/*
+Disallow: /admin/*
+
+# Sitemap
+Sitemap: https://parts-hub-tci.com/sitemap.xml
 
 # LLM専用クローラーには追加情報を許可
 User-agent: GPTBot
 Allow: /
 Allow: /products/*
 Allow: /faq
+Allow: /news/*
 Allow: /search
 Disallow: /mypage
 Disallow: /api/*
@@ -134,6 +141,73 @@ Disallow: /api/*
 
 # Sitemap
 Sitemap: https://parts-hub-tci.com/sitemap.xml`, { headers: { 'Content-Type': 'text/plain' } })
+})
+
+// sitemap.xml（動的に記事を含める）
+app.get('/sitemap.xml', async (c) => {
+  const { env } = c;
+  
+  try {
+    // 公開済みの記事を取得
+    const articles = await env.DB.prepare(`
+      SELECT slug, updated_at, category 
+      FROM articles 
+      WHERE status = 'published' 
+      ORDER BY published_at DESC 
+      LIMIT 1000
+    `).all();
+    
+    const baseUrl = 'https://parts-hub-tci.com';
+    const now = new Date().toISOString().split('T')[0];
+    
+    // 静的ページ
+    const staticPages = [
+      { url: '/', changefreq: 'daily', priority: '1.0' },
+      { url: '/news', changefreq: 'daily', priority: '0.9' },
+      { url: '/search', changefreq: 'weekly', priority: '0.8' },
+      { url: '/listing', changefreq: 'monthly', priority: '0.7' },
+      { url: '/contact', changefreq: 'monthly', priority: '0.6' },
+      { url: '/faq', changefreq: 'monthly', priority: '0.6' },
+      { url: '/terms', changefreq: 'yearly', priority: '0.3' },
+      { url: '/privacy', changefreq: 'yearly', priority: '0.3' },
+    ];
+    
+    // XML生成
+    let xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`;
+    
+    // 静的ページを追加
+    staticPages.forEach(page => {
+      xml += `
+  <url>
+    <loc>${baseUrl}${page.url}</loc>
+    <lastmod>${now}</lastmod>
+    <changefreq>${page.changefreq}</changefreq>
+    <priority>${page.priority}</priority>
+  </url>`;
+    });
+    
+    // 記事ページを追加
+    articles.results.forEach((article: any) => {
+      const lastmod = article.updated_at ? new Date(article.updated_at).toISOString().split('T')[0] : now;
+      xml += `
+  <url>
+    <loc>${baseUrl}/news/${article.slug}</loc>
+    <lastmod>${lastmod}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`;
+    });
+    
+    xml += `
+</urlset>`;
+    
+    return c.text(xml, 200, { 'Content-Type': 'application/xml' });
+    
+  } catch (error) {
+    console.error('Sitemap generation error:', error);
+    return c.text('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>', 200, { 'Content-Type': 'application/xml' });
+  }
 })
 app.use('/manifest.json', serveStatic({ root: './public' }))
 app.use('/sw.js', serveStatic({ root: './public' }))
@@ -1091,7 +1165,211 @@ app.get('/news', (c) => {
   `)
 })
 
-// コラム詳細ページ
+// コラム詳細ページ（SEO最適化URL: /news/category/YYYY/MM/slug）
+app.get('/news/:category/:year/:month/:slug', (c) => {
+  const { category, year, month, slug } = c.req.param();
+  const fullSlug = `${category}/${year}/${month}/${slug}`;
+  
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>記事詳細 - PARTS HUBニュース</title>
+        <meta name="robots" content="index, follow">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>
+            .article-content h2 {
+                font-size: 1.75rem;
+                font-weight: 700;
+                margin-top: 2rem;
+                margin-bottom: 1rem;
+                color: #1f2937;
+            }
+            .article-content h3 {
+                font-size: 1.5rem;
+                font-weight: 600;
+                margin-top: 1.5rem;
+                margin-bottom: 0.75rem;
+                color: #374151;
+            }
+            .article-content p {
+                margin-bottom: 1rem;
+                line-height: 1.75;
+                color: #4b5563;
+            }
+            .article-content ul, .article-content ol {
+                margin-bottom: 1rem;
+                padding-left: 1.5rem;
+            }
+            .article-content li {
+                margin-bottom: 0.5rem;
+                color: #4b5563;
+            }
+            .article-content a {
+                color: #ef4444;
+                text-decoration: underline;
+            }
+        </style>
+    </head>
+    <body class="bg-gray-50">
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+            <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+                <a href="/news" class="text-gray-600 hover:text-gray-900 flex items-center">
+                    <i class="fas fa-arrow-left mr-2"></i>一覧に戻る
+                </a>
+                <a href="/" class="text-red-500 font-bold text-xl">PARTS HUB</a>
+                <div class="w-24"></div>
+            </div>
+        </header>
+
+        <main class="max-w-4xl mx-auto px-4 py-8">
+            <article id="article-detail">
+                <div class="text-center py-12">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
+                    <p class="text-gray-500">記事を読み込み中...</p>
+                </div>
+            </article>
+
+            <div id="related-articles" class="mt-12">
+                <!-- 関連記事 -->
+            </div>
+        </main>
+
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script>
+            const fullSlug = '${fullSlug}';
+            
+            async function loadArticle() {
+                try {
+                    const response = await axios.get(\`/api/articles/\${fullSlug}\`);
+                    const article = response.data;
+                    
+                    // メタタグを動的に更新
+                    document.title = \`\${article.title} - PARTS HUBニュース\`;
+                    
+                    // OGPタグを追加
+                    const head = document.head;
+                    const metaTags = [
+                        { property: 'og:title', content: article.title },
+                        { property: 'og:description', content: article.summary },
+                        { property: 'og:image', content: article.thumbnail_url },
+                        { property: 'og:url', content: window.location.href },
+                        { property: 'og:type', content: 'article' },
+                        { name: 'description', content: article.summary },
+                        { name: 'keywords', content: article.tags }
+                    ];
+                    
+                    metaTags.forEach(tag => {
+                        const meta = document.createElement('meta');
+                        if (tag.property) meta.setAttribute('property', tag.property);
+                        if (tag.name) meta.setAttribute('name', tag.name);
+                        meta.setAttribute('content', tag.content);
+                        head.appendChild(meta);
+                    });
+                    
+                    const detail = document.getElementById('article-detail');
+                    detail.innerHTML = \`
+                        <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                            <img src="\${article.thumbnail_url}" alt="\${article.title}" 
+                                 class="w-full h-96 object-cover" 
+                                 onerror="this.src='https://placehold.co/1200x600/e2e8f0/64748b?text=PARTS+HUB+NEWS'">
+                            
+                            <div class="p-8">
+                                <div class="flex items-center gap-4 mb-6 text-sm text-gray-600">
+                                    <span class="px-3 py-1 bg-red-50 text-red-600 rounded-full font-medium">
+                                        \${article.category}
+                                    </span>
+                                    <span>
+                                        <i class="far fa-calendar mr-1"></i>
+                                        \${new Date(article.published_at).toLocaleDateString('ja-JP')}
+                                    </span>
+                                    <span>
+                                        <i class="far fa-eye mr-1"></i>
+                                        \${article.view_count || 0}回閲覧
+                                    </span>
+                                </div>
+                                
+                                <h1 class="text-3xl font-bold text-gray-900 mb-4">
+                                    \${article.title}
+                                </h1>
+                                
+                                <p class="text-lg text-gray-600 mb-8 pb-8 border-b">
+                                    \${article.summary}
+                                </p>
+                                
+                                <div class="article-content prose max-w-none">
+                                    \${article.content}
+                                </div>
+                                
+                                \${article.tags ? \`
+                                    <div class="mt-8 pt-8 border-t">
+                                        <div class="flex flex-wrap gap-2">
+                                            \${article.tags.split(',').map(tag => 
+                                                \`<span class="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">#\${tag.trim()}</span>\`
+                                            ).join('')}
+                                        </div>
+                                    </div>
+                                \` : ''}
+                            </div>
+                        </div>
+                    \`;
+                    
+                    // 関連記事を読み込む
+                    loadRelatedArticles(article.category);
+                    
+                } catch (error) {
+                    console.error('記事読み込みエラー:', error);
+                    document.getElementById('article-detail').innerHTML = \`
+                        <div class="text-center py-12">
+                            <i class="fas fa-exclamation-circle text-5xl text-gray-400 mb-4"></i>
+                            <p class="text-gray-600">記事の読み込みに失敗しました</p>
+                            <a href="/news" class="mt-4 inline-block text-red-500 hover:underline">
+                                一覧に戻る
+                            </a>
+                        </div>
+                    \`;
+                }
+            }
+            
+            async function loadRelatedArticles(category) {
+                try {
+                    const response = await axios.get(\`/api/articles?category=\${category}&limit=3\`);
+                    const articles = response.data.articles.filter(a => a.slug !== fullSlug);
+                    
+                    if (articles.length > 0) {
+                        document.getElementById('related-articles').innerHTML = \`
+                            <h2 class="text-2xl font-bold text-gray-900 mb-6">関連記事</h2>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                \${articles.map(article => \`
+                                    <a href="/news/\${article.slug}" class="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all">
+                                        <img src="\${article.thumbnail_url}" alt="\${article.title}" 
+                                             class="w-full h-48 object-cover"
+                                             onerror="this.src='https://placehold.co/600x400/e2e8f0/64748b?text=PARTS+HUB+NEWS'">
+                                        <div class="p-4">
+                                            <h3 class="font-bold text-gray-900 mb-2 line-clamp-2">\${article.title}</h3>
+                                            <p class="text-sm text-gray-600 line-clamp-2">\${article.summary}</p>
+                                        </div>
+                                    </a>
+                                \`).join('')}
+                            </div>
+                        \`;
+                    }
+                } catch (error) {
+                    console.error('関連記事読み込みエラー:', error);
+                }
+            }
+            
+            loadArticle();
+        </script>
+    </body>
+    </html>
+  `)
+})
+
+// コラム詳細ページ（後方互換性のため残す: /news/:slug）
 app.get('/news/:slug', (c) => {
   return c.html(`
     <!DOCTYPE html>
