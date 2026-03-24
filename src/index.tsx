@@ -254,6 +254,11 @@ self.addEventListener('fetch', (event) => {
   `.trim(), 200, { 'Content-Type': 'application/javascript' });
 })
 
+// favicon.ico（SVGアイコンにリダイレクト）
+app.get('/favicon.ico', (c) => {
+  return c.redirect('/icons/icon.svg', 301);
+})
+
 // APIルート
 app.route('/api', apiRoutes)
 app.route('/api/fitment', fitmentRoutes)
