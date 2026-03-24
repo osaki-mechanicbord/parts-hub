@@ -19,6 +19,9 @@
       "bucket_name": "partshubimages"
     }
   ]
+  // Note: Cron Triggersは Cloudflare Dashboard で設定する必要があります
+  // Workers & Pages → parts-hub → Settings → Triggers → Cron Triggers
+  // 設定例: 0 0 * * * (毎日 UTC 0:00 = 日本時間 9:00)
   // 環境変数の設定例（本番環境用）
   // "vars": {
   //   "ENVIRONMENT": "production",
