@@ -44,6 +44,10 @@ export const AdminSidebar = (currentPage: string) => `
             <i class="fas fa-flag w-5"></i>
             <span class="ml-3 ${currentPage === 'reports' ? 'font-medium' : ''}">通報管理</span>
         </a>
+        <a href="/admin/articles" class="flex items-center px-4 py-3 mb-2 ${currentPage === 'articles' ? 'bg-red-50 text-red-600' : 'text-gray-700 hover:bg-gray-50'} rounded-lg">
+            <i class="fas fa-newspaper w-5"></i>
+            <span class="ml-3 ${currentPage === 'articles' ? 'font-medium' : ''}">コラム管理</span>
+        </a>
         <a href="/admin/sales" class="flex items-center px-4 py-3 mb-2 ${currentPage === 'sales' ? 'bg-red-50 text-red-600' : 'text-gray-700 hover:bg-gray-50'} rounded-lg">
             <i class="fas fa-yen-sign w-5"></i>
             <span class="ml-3 ${currentPage === 'sales' ? 'font-medium' : ''}">売上レポート</span>

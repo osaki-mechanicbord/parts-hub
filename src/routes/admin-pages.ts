@@ -1130,4 +1130,393 @@ adminPagesRoutes.get('/sales', (c) => {
   return c.html(AdminLayout('sales', '売上レポート', content));
 })
 
+// コラム管理ページ
+adminPagesRoutes.get('/articles', (c) => {
+  const content = `
+    <h2 class="text-2xl font-bold text-gray-800 mb-6">コラム管理</h2>
+    
+    <div class="bg-white p-4 rounded-lg shadow mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <select id="status-filter" class="px-4 py-2 border rounded-lg">
+                <option value="">すべてのステータス</option>
+                <option value="draft">下書き</option>
+                <option value="published">公開中</option>
+                <option value="archived">アーカイブ</option>
+            </select>
+            <div class="md:col-span-2"></div>
+            <button onclick="showGenerateModal()" class="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600">
+                <i class="fas fa-magic mr-2"></i>AI自動生成
+            </button>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow">
+        <div class="overflow-x-auto">
+            <table class="min-w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">タイトル</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">カテゴリ</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ステータス</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">閲覧数</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">公開日</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="articles-table-body" class="bg-white divide-y divide-gray-200">
+                    <tr>
+                        <td colspan="7" class="px-6 py-4 text-center">
+                            <i class="fas fa-spinner fa-spin text-gray-400 text-2xl"></i>
+                            <p class="text-gray-500 mt-2">読み込み中...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="px-6 py-4 border-t">
+            <div id="pagination" class="flex justify-center space-x-2"></div>
+        </div>
+    </div>
+
+    <!-- AI自動生成モーダル -->
+    <div id="generate-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+        <div class="bg-white rounded-lg p-8 max-w-2xl w-full mx-4">
+            <h3 class="text-2xl font-bold text-gray-900 mb-6">AI自動生成</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">トピック</label>
+                    <input type="text" id="generate-topic" class="w-full px-4 py-2 border rounded-lg" 
+                           placeholder="例: 自動車パーツの選び方">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">カテゴリ</label>
+                    <select id="generate-category" class="w-full px-4 py-2 border rounded-lg">
+                        <option value="general">一般</option>
+                        <option value="parts-guide">パーツガイド</option>
+                        <option value="maintenance">メンテナンス</option>
+                        <option value="news">ニュース</option>
+                        <option value="tips">お役立ち情報</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mt-6 flex space-x-3">
+                <button onclick="closeGenerateModal()" class="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+                    キャンセル
+                </button>
+                <button onclick="generateArticle()" class="flex-1 px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600">
+                    <i class="fas fa-magic mr-2"></i>生成する
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 編集モーダル -->
+    <div id="edit-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center overflow-y-auto">
+        <div class="bg-white rounded-lg p-8 max-w-4xl w-full mx-4 my-8">
+            <h3 class="text-2xl font-bold text-gray-900 mb-6" id="modal-title">コラム編集</h3>
+            <div class="space-y-4 max-h-[70vh] overflow-y-auto">
+                <input type="hidden" id="edit-id">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">タイトル</label>
+                    <input type="text" id="edit-title" class="w-full px-4 py-2 border rounded-lg">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">スラッグ（URL）</label>
+                    <input type="text" id="edit-slug" class="w-full px-4 py-2 border rounded-lg">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">要約</label>
+                    <textarea id="edit-summary" rows="3" class="w-full px-4 py-2 border rounded-lg"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">本文（HTML）</label>
+                    <textarea id="edit-content" rows="10" class="w-full px-4 py-2 border rounded-lg font-mono text-sm"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">サムネイルURL</label>
+                        <input type="text" id="edit-thumbnail" class="w-full px-4 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">カテゴリ</label>
+                        <select id="edit-category" class="w-full px-4 py-2 border rounded-lg">
+                            <option value="general">一般</option>
+                            <option value="parts-guide">パーツガイド</option>
+                            <option value="maintenance">メンテナンス</option>
+                            <option value="news">ニュース</option>
+                            <option value="tips">お役立ち情報</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">タグ（カンマ区切り）</label>
+                        <input type="text" id="edit-tags" class="w-full px-4 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">ステータス</label>
+                        <select id="edit-status" class="w-full px-4 py-2 border rounded-lg">
+                            <option value="draft">下書き</option>
+                            <option value="published">公開</option>
+                            <option value="archived">アーカイブ</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="flex items-center">
+                        <input type="checkbox" id="edit-featured" class="mr-2">
+                        <span class="text-sm font-semibold text-gray-700">注目記事として表示</span>
+                    </label>
+                </div>
+            </div>
+            <div class="mt-6 flex space-x-3">
+                <button onclick="closeEditModal()" class="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+                    キャンセル
+                </button>
+                <button onclick="saveArticle()" class="flex-1 px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600">
+                    保存
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPage = 1;
+        let currentStatus = '';
+
+        async function loadArticles(page = 1) {
+            currentPage = page;
+            try {
+                const params = new URLSearchParams({
+                    page: page.toString(),
+                    limit: '20',
+                    status: currentStatus
+                });
+                
+                const response = await axios.get('/api/admin/articles?' + params);
+                const { articles, total, totalPages } = response.data;
+                
+                renderArticles(articles);
+                renderPagination(page, totalPages);
+            } catch (error) {
+                console.error('コラム読み込みエラー:', error);
+            }
+        }
+
+        function renderArticles(articles) {
+            const tbody = document.getElementById('articles-table-body');
+            
+            if (articles.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-4 text-center text-gray-500">コラムが見つかりませんでした</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = articles.map(article => \`
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">\${article.id}</td>
+                    <td class="px-6 py-4 text-sm font-medium text-gray-900 max-w-xs truncate">\${article.title}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">\${article.category}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 py-1 text-xs rounded \${
+                            article.status === 'published' ? 'bg-green-100 text-green-700' :
+                            article.status === 'draft' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-gray-100 text-gray-700'
+                        }">
+                            \${article.status === 'published' ? '公開中' : 
+                              article.status === 'draft' ? '下書き' : 'アーカイブ'}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">\${article.view_count || 0}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        \${article.published_at ? new Date(article.published_at).toLocaleDateString('ja-JP') : '-'}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <button onclick="editArticle(\${article.id})" class="text-blue-500 hover:underline mr-2">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="deleteArticle(\${article.id})" class="text-red-500 hover:underline">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            \`).join('');
+        }
+
+        function renderPagination(page, totalPages) {
+            const pagination = document.getElementById('pagination');
+            
+            if (totalPages <= 1) {
+                pagination.innerHTML = '';
+                return;
+            }
+            
+            let html = '';
+            
+            if (page > 1) {
+                html += \`<button onclick="loadArticles(\${page - 1})" 
+                        class="px-3 py-1 border rounded hover:bg-gray-100">前へ</button>\`;
+            }
+            
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === page) {
+                    html += \`<button class="px-3 py-1 bg-red-500 text-white rounded">\${i}</button>\`;
+                } else if (i === 1 || i === totalPages || (i >= page - 2 && i <= page + 2)) {
+                    html += \`<button onclick="loadArticles(\${i})" 
+                            class="px-3 py-1 border rounded hover:bg-gray-100">\${i}</button>\`;
+                } else if (i === page - 3 || i === page + 3) {
+                    html += \`<span class="px-3 py-1">...</span>\`;
+                }
+            }
+            
+            if (page < totalPages) {
+                html += \`<button onclick="loadArticles(\${page + 1})" 
+                        class="px-3 py-1 border rounded hover:bg-gray-100">次へ</button>\`;
+            }
+            
+            pagination.innerHTML = html;
+        }
+
+        function showGenerateModal() {
+            document.getElementById('generate-modal').classList.remove('hidden');
+        }
+
+        function closeGenerateModal() {
+            document.getElementById('generate-modal').classList.add('hidden');
+            document.getElementById('generate-topic').value = '';
+        }
+
+        async function generateArticle() {
+            const topic = document.getElementById('generate-topic').value;
+            const category = document.getElementById('generate-category').value;
+            
+            if (!topic.trim()) {
+                alert('トピックを入力してください');
+                return;
+            }
+            
+            try {
+                const response = await axios.post('/api/admin/articles/generate', { topic, category });
+                
+                if (response.data.success) {
+                    const article = response.data.article;
+                    closeGenerateModal();
+                    
+                    // 生成された記事を編集モーダルに表示
+                    document.getElementById('edit-id').value = '';
+                    document.getElementById('edit-title').value = article.title;
+                    document.getElementById('edit-slug').value = article.slug;
+                    document.getElementById('edit-summary').value = article.summary;
+                    document.getElementById('edit-content').value = article.content;
+                    document.getElementById('edit-thumbnail').value = '';
+                    document.getElementById('edit-category').value = article.category;
+                    document.getElementById('edit-tags').value = article.tags;
+                    document.getElementById('edit-status').value = 'draft';
+                    document.getElementById('edit-featured').checked = false;
+                    document.getElementById('modal-title').textContent = 'AI生成されたコラム（保存前に確認してください）';
+                    document.getElementById('edit-modal').classList.remove('hidden');
+                } else {
+                    alert('コラムの生成に失敗しました');
+                }
+            } catch (error) {
+                console.error('生成エラー:', error);
+                alert('コラムの生成に失敗しました: ' + (error.response?.data?.error || error.message));
+            }
+        }
+
+        async function editArticle(id) {
+            try {
+                const response = await axios.get(\`/api/admin/articles?page=1&limit=100\`);
+                const article = response.data.articles.find(a => a.id === id);
+                
+                if (!article) {
+                    alert('コラムが見つかりません');
+                    return;
+                }
+                
+                document.getElementById('edit-id').value = article.id;
+                document.getElementById('edit-title').value = article.title;
+                document.getElementById('edit-slug').value = article.slug;
+                document.getElementById('edit-summary').value = article.summary || '';
+                document.getElementById('edit-content').value = article.content;
+                document.getElementById('edit-thumbnail').value = article.thumbnail_url || '';
+                document.getElementById('edit-category').value = article.category;
+                document.getElementById('edit-tags').value = article.tags || '';
+                document.getElementById('edit-status').value = article.status;
+                document.getElementById('edit-featured').checked = article.is_featured === 1;
+                document.getElementById('modal-title').textContent = 'コラム編集';
+                document.getElementById('edit-modal').classList.remove('hidden');
+            } catch (error) {
+                console.error('編集準備エラー:', error);
+                alert('コラムの読み込みに失敗しました');
+            }
+        }
+
+        function closeEditModal() {
+            document.getElementById('edit-modal').classList.add('hidden');
+        }
+
+        async function saveArticle() {
+            const id = document.getElementById('edit-id').value;
+            const data = {
+                title: document.getElementById('edit-title').value,
+                slug: document.getElementById('edit-slug').value,
+                summary: document.getElementById('edit-summary').value,
+                content: document.getElementById('edit-content').value,
+                thumbnail_url: document.getElementById('edit-thumbnail').value,
+                category: document.getElementById('edit-category').value,
+                tags: document.getElementById('edit-tags').value,
+                status: document.getElementById('edit-status').value,
+                is_featured: document.getElementById('edit-featured').checked
+            };
+            
+            if (!data.title || !data.slug || !data.content) {
+                alert('タイトル、スラッグ、本文は必須です');
+                return;
+            }
+            
+            try {
+                if (id) {
+                    await axios.put(\`/api/admin/articles/\${id}\`, data);
+                    alert('コラムを更新しました');
+                } else {
+                    await axios.post('/api/admin/articles', data);
+                    alert('コラムを作成しました');
+                }
+                closeEditModal();
+                loadArticles(currentPage);
+            } catch (error) {
+                console.error('保存エラー:', error);
+                alert('保存に失敗しました: ' + (error.response?.data?.error || error.message));
+            }
+        }
+
+        async function deleteArticle(id) {
+            if (!confirm('このコラムを削除してもよろしいですか？')) {
+                return;
+            }
+            
+            try {
+                await axios.delete(\`/api/admin/articles/\${id}\`);
+                alert('コラムを削除しました');
+                loadArticles(currentPage);
+            } catch (error) {
+                console.error('削除エラー:', error);
+                alert('削除に失敗しました');
+            }
+        }
+
+        document.getElementById('status-filter').addEventListener('change', (e) => {
+            currentStatus = e.target.value;
+            loadArticles(1);
+        });
+
+        loadArticles(1);
+    </script>
+  `;
+
+  return c.html(AdminLayout('articles', 'コラム管理', content));
+})
+
 export default adminPagesRoutes
