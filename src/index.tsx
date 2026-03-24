@@ -1960,7 +1960,7 @@ app.get('/listing', (c) => {
                                     </li>
                                     <li class="flex items-start gap-2">
                                         <i class="fas fa-exclamation-triangle text-orange-500 mt-1"></i>
-                                        <span><strong>売買手数料:</strong> 30%（通常10%より高くなります）</span>
+                                        <span><strong>売買手数料:</strong> 10%（商品価格の10%）</span>
                                     </li>
                                 </ul>
                             </div>
@@ -1995,7 +1995,7 @@ app.get('/listing', (c) => {
                                     </li>
                                     <li class="flex items-start gap-2">
                                         <i class="fas fa-exclamation-triangle text-orange-500 mt-1"></i>
-                                        <span><strong>売買手数料:</strong> 30%（通常10%より高くなります）</span>
+                                        <span><strong>売買手数料:</strong> 10%（商品価格の10%）</span>
                                     </li>
                                     <li class="flex items-start gap-2">
                                         <i class="fas fa-info-circle text-blue-500 mt-1"></i>
