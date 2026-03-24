@@ -800,25 +800,38 @@ app.get('/', (c) => {
         <!-- PARTS HUBニュースセクション -->
         <section class="py-16 bg-gray-50">
             <div class="max-w-7xl mx-auto px-4">
-                <div class="flex items-center justify-between mb-8">
-                    <div>
-                        <h2 class="text-3xl font-bold text-gray-900 mb-2">
-                            <i class="fas fa-newspaper text-primary mr-2"></i>PARTS HUBニュース
-                        </h2>
-                        <p class="text-gray-600">自動車パーツに関する最新情報をお届けします</p>
-                    </div>
-                    <a href="/news" class="text-primary hover:text-primary-dark font-semibold flex items-center">
-                        すべて見る
-                        <i class="fas fa-arrow-right ml-2"></i>
-                    </a>
+                <div class="mb-8">
+                    <h2 class="text-3xl font-bold text-gray-900 mb-2">
+                        <i class="fas fa-newspaper text-primary mr-2"></i>PARTS HUBニュース
+                    </h2>
+                    <p class="text-gray-600">自動車パーツに関する最新情報をお届けします</p>
                 </div>
 
-                <div id="articles-container" class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <!-- 記事カード（JavaScriptで動的に生成） -->
+                <!-- PC: 3列グリッド / スマホ: 横スクロールスライダー -->
+                <div id="articles-container" class="hidden md:grid md:grid-cols-3 gap-6">
                     <div class="col-span-full text-center py-12">
                         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
                         <p class="text-gray-500">記事を読み込み中...</p>
                     </div>
+                </div>
+                <div id="articles-slider" class="md:hidden overflow-x-auto scroll-smooth" style="-webkit-overflow-scrolling: touch; scrollbar-width: none; -ms-overflow-style: none;">
+                    <style>#articles-slider::-webkit-scrollbar { display: none; }</style>
+                    <div id="articles-slider-inner" class="flex gap-4 pb-4" style="min-width: min-content;">
+                        <div class="text-center py-12 w-full">
+                            <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto mb-3"></div>
+                            <p class="text-gray-500 text-sm">読み込み中...</p>
+                        </div>
+                    </div>
+                    <!-- スクロールインジケーター -->
+                    <div id="slider-dots" class="flex justify-center gap-1.5 mt-3"></div>
+                </div>
+
+                <!-- すべて見るリンク（セクション下部） -->
+                <div class="mt-8 text-center">
+                    <a href="/news" class="inline-flex items-center gap-2 text-primary hover:text-primary-dark font-semibold text-sm bg-white px-6 py-3 rounded-full shadow-sm hover:shadow-md transition-all">
+                        すべてのニュースを見る
+                        <i class="fas fa-arrow-right"></i>
+                    </a>
                 </div>
             </div>
         </section>
@@ -1108,39 +1121,84 @@ app.get('/', (c) => {
                 }
             });
             
+            // 記事カードHTML生成（PC用）
+            function articleCardPC(article) {
+                return \`<a href="/news/\${article.slug}" class="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all">
+                    <img src="\${article.thumbnail_url || 'https://placehold.co/600x400/e2e8f0/64748b?text=PARTS+HUB+NEWS'}"
+                         alt="\${article.title}" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <div class="flex items-center text-xs text-gray-500 mb-3">
+                            <span class="px-2 py-1 bg-red-100 text-red-600 rounded font-medium">\${article.category}</span>
+                            <span class="mx-2">•</span>
+                            <span>\${new Date(article.published_at).toLocaleDateString('ja-JP')}</span>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-2 line-clamp-2">\${article.title}</h3>
+                        <p class="text-gray-600 text-sm line-clamp-3">\${article.summary || ''}</p>
+                        <div class="mt-4 text-red-500 font-medium flex items-center">
+                            続きを読む<i class="fas fa-arrow-right ml-2"></i>
+                        </div>
+                    </div>
+                </a>\`;
+            }
+
+            // 記事カードHTML生成（スマホスライダー用）
+            function articleCardMobile(article) {
+                return \`<a href="/news/\${article.slug}" class="flex-shrink-0 bg-white rounded-xl overflow-hidden shadow-sm" style="width: 280px;">
+                    <img src="\${article.thumbnail_url || 'https://placehold.co/600x400/e2e8f0/64748b?text=PARTS+HUB+NEWS'}"
+                         alt="\${article.title}" class="w-full h-40 object-cover">
+                    <div class="p-4">
+                        <div class="flex items-center text-xs text-gray-500 mb-2">
+                            <span class="px-1.5 py-0.5 bg-red-100 text-red-600 rounded text-xs font-medium">\${article.category}</span>
+                            <span class="mx-1.5">•</span>
+                            <span>\${new Date(article.published_at).toLocaleDateString('ja-JP')}</span>
+                        </div>
+                        <h3 class="font-bold text-gray-900 text-sm leading-snug line-clamp-2">\${article.title}</h3>
+                        <p class="text-gray-500 text-xs mt-1.5 line-clamp-2">\${article.summary || ''}</p>
+                    </div>
+                </a>\`;
+            }
+
             // 記事読み込み（TOPページ用）
             async function loadFeaturedArticles() {
                 try {
-                    const response = await axios.get('/api/articles/featured?limit=3');
-                    const articles = response.data.articles || [];
-                    
-                    const container = document.getElementById('articles-container');
-                    
+                    var response = await axios.get('/api/articles/featured?limit=5');
+                    var articles = response.data.articles || [];
+
+                    var pcContainer = document.getElementById('articles-container');
+                    var sliderInner = document.getElementById('articles-slider-inner');
+                    var dotsContainer = document.getElementById('slider-dots');
+
                     if (articles.length === 0) {
-                        container.innerHTML = '<div class="col-span-full text-center py-12"><p class="text-gray-500">記事がありません</p></div>';
+                        pcContainer.innerHTML = '<div class="col-span-full text-center py-12"><p class="text-gray-500">記事がありません</p></div>';
+                        sliderInner.innerHTML = '<div class="text-center py-12 w-full"><p class="text-gray-500 text-sm">記事がありません</p></div>';
                         return;
                     }
-                    
-                    container.innerHTML = articles.map(article => \`
-                        <a href="/news/\${article.slug}" class="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all">
-                            <img src="\${article.thumbnail_url || 'https://placehold.co/600x400/e2e8f0/64748b?text=PARTS+HUB+NEWS'}" 
-                                 alt="\${article.title}" 
-                                 class="w-full h-48 object-cover">
-                            <div class="p-6">
-                                <div class="flex items-center text-xs text-gray-500 mb-3">
-                                    <span class="px-2 py-1 bg-red-100 text-red-600 rounded font-medium">\${article.category}</span>
-                                    <span class="mx-2">•</span>
-                                    <span>\${new Date(article.published_at).toLocaleDateString('ja-JP')}</span>
-                                </div>
-                                <h3 class="text-xl font-bold text-gray-900 mb-2 line-clamp-2">\${article.title}</h3>
-                                <p class="text-gray-600 text-sm line-clamp-3">\${article.summary || ''}</p>
-                                <div class="mt-4 text-red-500 font-medium flex items-center">
-                                    続きを読む
-                                    <i class="fas fa-arrow-right ml-2"></i>
-                                </div>
-                            </div>
-                        </a>
-                    \`).join('');
+
+                    // PC用：最大3件をグリッド表示
+                    pcContainer.innerHTML = articles.slice(0, 3).map(articleCardPC).join('');
+
+                    // スマホ用：最大5件をスライダー表示
+                    var mobileArticles = articles.slice(0, 5);
+                    sliderInner.innerHTML = mobileArticles.map(articleCardMobile).join('');
+
+                    // スクロールドットインジケーター
+                    if (mobileArticles.length > 1) {
+                        dotsContainer.innerHTML = mobileArticles.map(function(_, i) {
+                            return '<div class="slider-dot w-1.5 h-1.5 rounded-full ' + (i === 0 ? 'bg-red-500' : 'bg-gray-300') + ' transition-colors" data-index="' + i + '"></div>';
+                        }).join('');
+
+                        // スクロール時にドット更新
+                        var slider = document.getElementById('articles-slider');
+                        slider.addEventListener('scroll', function() {
+                            var scrollLeft = slider.scrollLeft;
+                            var cardWidth = 280 + 16; // カード幅 + gap
+                            var activeIndex = Math.round(scrollLeft / cardWidth);
+                            document.querySelectorAll('.slider-dot').forEach(function(dot, i) {
+                                dot.classList.toggle('bg-red-500', i === activeIndex);
+                                dot.classList.toggle('bg-gray-300', i !== activeIndex);
+                            });
+                        });
+                    }
                 } catch (error) {
                     console.error('記事読み込みエラー:', error);
                     document.getElementById('articles-container').innerHTML = '<div class="col-span-full text-center py-12"><p class="text-gray-500">記事を読み込めませんでした</p></div>';
