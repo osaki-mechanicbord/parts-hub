@@ -209,8 +209,50 @@ app.get('/sitemap.xml', async (c) => {
     return c.text('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>', 200, { 'Content-Type': 'application/xml' });
   }
 })
-app.use('/manifest.json', serveStatic({ root: './public' }))
-app.use('/sw.js', serveStatic({ root: './public' }))
+
+// manifest.json を直接返す
+app.get('/manifest.json', async (c) => {
+  const manifest = {
+    "name": "PARTS HUB",
+    "short_name": "PARTS HUB",
+    "description": "自動車部品の個人間売買プラットフォーム",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#ef4444",
+    "icons": [
+      {
+        "src": "/icons/icon.svg",
+        "sizes": "any",
+        "type": "image/svg+xml"
+      }
+    ]
+  };
+  return c.json(manifest);
+})
+
+// sw.js（サービスワーカー）
+app.get('/sw.js', (c) => {
+  return c.text(`
+// Service Worker
+self.addEventListener('install', (event) => {
+  console.log('Service Worker installing');
+});
+
+self.addEventListener('activate', (event) => {
+  console.log('Service Worker activating');
+});
+
+self.addEventListener('fetch', (event) => {
+  // 基本的なキャッシング戦略
+  event.respondWith(
+    caches.match(event.request).then((response) => {
+      return response || fetch(event.request);
+    })
+  );
+});
+  `.trim(), 200, { 'Content-Type': 'application/javascript' });
+})
 
 // APIルート
 app.route('/api', apiRoutes)
