@@ -1958,7 +1958,7 @@ app.get('/listing', (c) => {
                                     </li>
                                     <li class="flex items-start gap-2">
                                         <i class="fas fa-exclamation-triangle text-orange-500 mt-1"></i>
-                                        <span><strong>売買手数料:</strong> 30%（通常7%より高くなります）</span>
+                                        <span><strong>売買手数料:</strong> 30%（通常10%より高くなります）</span>
                                     </li>
                                 </ul>
                             </div>
@@ -1993,7 +1993,7 @@ app.get('/listing', (c) => {
                                     </li>
                                     <li class="flex items-start gap-2">
                                         <i class="fas fa-exclamation-triangle text-orange-500 mt-1"></i>
-                                        <span><strong>売買手数料:</strong> 30%（通常7%より高くなります）</span>
+                                        <span><strong>売買手数料:</strong> 30%（通常10%より高くなります）</span>
                                     </li>
                                     <li class="flex items-start gap-2">
                                         <i class="fas fa-info-circle text-blue-500 mt-1"></i>
@@ -3990,7 +3990,7 @@ app.get('/terms', (c) => {
                         本サービスの利用には、以下の手数料が発生します：
                     </p>
                     <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
-                        <li><strong>販売手数料：</strong>商品価格の7%（税込）</li>
+                        <li><strong>販売手数料：</strong>商品価格の10%（税込）</li>
                         <li><strong>振込手数料：</strong>売上金の出金時に200円</li>
                         <li><strong>代理出品手数料：</strong>別途料金表に基づく</li>
                     </ul>
@@ -4444,7 +4444,7 @@ app.get('/legal', (c) => {
                 <section class="border-b border-gray-200 pb-4">
                     <h2 class="text-lg font-bold text-gray-900 mb-3">手数料</h2>
                     <div class="space-y-2 text-gray-700">
-                        <p><strong>販売手数料：</strong>商品価格の7%（税込）</p>
+                        <p><strong>販売手数料：</strong>商品価格の10%（税込）</p>
                         <p><strong>振込手数料：</strong>売上金の出金時に200円</p>
                         <p><strong>代理出品手数料：</strong>サービス内容により異なります（別途お見積り）</p>
                     </div>
@@ -4589,7 +4589,7 @@ app.get('/faq', (c) => {
             "name": "手数料はいくらですか？",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "販売手数料は商品価格の7%（税込）です。振込手数料は売上金の出金時に200円かかります。購入者は商品代金と配送料のみで、購入手数料は無料です。"
+              "text": "販売手数料は商品価格の10%（税込）です。振込手数料は売上金の出金時に200円かかります。購入者は商品代金と配送料のみで、購入手数料は無料です。"
             }
           },{
             "@type": "Question",
@@ -4624,7 +4624,7 @@ app.get('/faq', (c) => {
             "name": "出品するにはどうすればいいですか？",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "会員登録後、「出品する」ボタンから商品情報（写真、タイトル、説明、価格など）を入力するだけで簡単に出品できます。出品は無料で、売れた時のみ販売手数料7%が発生します。"
+              "text": "会員登録後、「出品する」ボタンから商品情報（写真、タイトル、説明、価格など）を入力するだけで簡単に出品できます。出品は無料で、売れた時のみ販売手数料10%が発生します。"
             }
           },{
             "@type": "Question",
@@ -4767,7 +4767,7 @@ app.get('/faq', (c) => {
                             <div class="space-y-3">
                                 <div class="bg-white p-4 rounded border-2 border-red-200">
                                     <h4 class="font-bold text-red-700 mb-2">販売手数料</h4>
-                                    <p class="text-2xl font-bold text-red-600 mb-1">7%（税込）</p>
+                                    <p class="text-2xl font-bold text-red-600 mb-1">10%（税込）</p>
                                     <p class="text-sm text-gray-600">商品が売れた時のみ発生します</p>
                                 </div>
                                 <div class="bg-white p-4 rounded border-2 border-yellow-200">
@@ -4985,7 +4985,7 @@ app.get('/faq', (c) => {
                             <div class="mt-4 bg-blue-50 p-3 rounded">
                                 <p class="text-sm text-blue-900">
                                     <i class="fas fa-star text-yellow-500 mr-1"></i>
-                                    <strong>出品は無料！</strong>売れた時のみ販売手数料7%が発生します
+                                    <strong>出品は無料！</strong>売れた時のみ販売手数料10%が発生します
                                 </p>
                             </div>
                             <div class="mt-3 text-center">

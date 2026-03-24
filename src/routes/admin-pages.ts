@@ -597,7 +597,7 @@ adminPagesRoutes.get('/sales', (c) => {
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">取引日</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">商品名</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">金額</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">手数料（7%）</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">手数料（10%）</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">純利益</th>
                     </tr>
                 </thead>
@@ -658,7 +658,7 @@ adminPagesRoutes.get('/sales', (c) => {
             }
             
             tbody.innerHTML = transactions.map(t => {
-                const fee = Math.floor(t.amount * 0.07);
+                const fee = Math.floor(t.amount * 0.10);
                 const net = t.amount - fee;
                 return \`
                     <tr class="hover:bg-gray-50">

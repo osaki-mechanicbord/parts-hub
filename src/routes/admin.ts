@@ -621,7 +621,7 @@ adminRoutes.get('/sales', async (c) => {
       AND created_at >= ?
     `).bind(firstDayOfMonth.toISOString()).first();
 
-    const totalFees = Math.floor((currentMonth?.totalSales || 0) * 0.07);
+    const totalFees = Math.floor((currentMonth?.totalSales || 0) * 0.10);
 
     // 過去12ヶ月の月別売上
     const monthlyData = [];
