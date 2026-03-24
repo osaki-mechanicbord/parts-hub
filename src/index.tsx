@@ -2435,301 +2435,507 @@ app.get('/listing', (c) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>商品を出品 - PARTS HUB（パーツハブ）</title>
         <meta name="theme-color" content="#ff4757">
+        <meta name="description" content="PARTS HUBで自動車パーツを出品。簡単ステップで今すぐ出品できます。">
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
         <style>
+            * { font-family: 'Noto Sans JP', sans-serif; }
+
+            /* ステッププログレスバー */
+            .step-indicator { display: flex; justify-content: center; }
+            .step-item {
+                display: flex; flex-direction: column; align-items: center;
+                flex: 1; position: relative; z-index: 1;
+            }
+            .step-circle {
+                width: 36px; height: 36px; border-radius: 50%;
+                display: flex; align-items: center; justify-content: center;
+                font-weight: 700; font-size: 14px; transition: all 0.3s;
+                border: 3px solid #e5e7eb; background: #fff; color: #9ca3af;
+            }
+            .step-item.active .step-circle {
+                border-color: #ef4444; background: #ef4444; color: #fff;
+                box-shadow: 0 0 0 4px rgba(239,68,68,0.15);
+            }
+            .step-item.completed .step-circle {
+                border-color: #22c55e; background: #22c55e; color: #fff;
+            }
+            .step-label { font-size: 11px; margin-top: 6px; color: #9ca3af; font-weight: 500; white-space: nowrap; }
+            .step-item.active .step-label { color: #ef4444; font-weight: 600; }
+            .step-item.completed .step-label { color: #22c55e; }
+            .step-connector {
+                position: absolute; top: 18px; left: calc(50% + 22px); right: calc(-50% + 22px);
+                height: 3px; background: #e5e7eb; z-index: 0;
+            }
+            .step-item.completed .step-connector { background: #22c55e; }
+
+            /* フォーム入力 */
             .form-input {
-                @apply w-full px-4 py-4 text-base border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors;
-                min-height: 48px;
-                font-size: 16px;
+                width: 100%; padding: 12px 16px; font-size: 16px;
+                border: 2px solid #e5e7eb; border-radius: 12px; outline: none;
+                transition: all 0.2s; background: #fff; min-height: 48px;
+                -webkit-appearance: none; appearance: none;
             }
             .form-input:focus {
                 border-color: #ef4444;
-                box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+                box-shadow: 0 0 0 4px rgba(239,68,68,0.08);
             }
-            .form-label {
-                @apply block text-base font-semibold text-gray-700 mb-2;
+            .form-input::placeholder { color: #c0c4cc; }
+            select.form-input {
+                background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+                background-position: right 12px center; background-repeat: no-repeat; background-size: 20px;
+                padding-right: 40px;
             }
-            .image-upload-area {
-                border: 2px dashed #d1d5db;
-                transition: all 0.3s;
+            .form-label { display: block; font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+            .form-label .required {
+                color: #ef4444; font-size: 11px; background: #fef2f2;
+                padding: 1px 6px; border-radius: 4px; margin-left: 6px; font-weight: 500;
             }
-            .image-upload-area:hover {
-                border-color: #ef4444;
-                background-color: #fef2f2;
+            .form-label .optional {
+                color: #9ca3af; font-size: 11px; background: #f9fafb;
+                padding: 1px 6px; border-radius: 4px; margin-left: 6px; font-weight: 400;
             }
-            .image-upload-area.dragover {
-                border-color: #ef4444;
-                background-color: #fee2e2;
+            .form-helper { font-size: 12px; color: #9ca3af; margin-top: 4px; }
+
+            /* セクション */
+            .section-card {
+                background: #fff; border-radius: 16px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+                overflow: hidden;
+            }
+            .section-header {
+                padding: 16px 20px; border-bottom: 1px solid #f3f4f6;
+                display: flex; align-items: center; gap: 10px;
+            }
+            .section-header-icon {
+                width: 32px; height: 32px; border-radius: 8px;
+                display: flex; align-items: center; justify-content: center;
+                font-size: 14px; flex-shrink: 0;
+            }
+            .section-body { padding: 20px; }
+
+            /* 画像アップロード */
+            .image-upload-zone {
+                border: 2px dashed #d1d5db; border-radius: 16px;
+                padding: 32px 20px; text-align: center; cursor: pointer;
+                transition: all 0.3s; background: #fafbfc;
+            }
+            .image-upload-zone:hover { border-color: #ef4444; background: #fef7f7; }
+            .image-upload-zone.dragover { border-color: #ef4444; background: #fee2e2; }
+
+            /* 画像プレビュー */
+            .image-preview-item {
+                position: relative; border-radius: 12px; overflow: hidden;
+                aspect-ratio: 1; background: #f3f4f6;
+            }
+            .image-preview-item img { width: 100%; height: 100%; object-fit: cover; }
+            .image-preview-item .badge-main {
+                position: absolute; top: 4px; left: 4px; background: #ef4444;
+                color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 600;
+            }
+            .image-preview-item .remove-btn {
+                position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.6);
+                color: #fff; width: 22px; height: 22px; border-radius: 50%;
+                display: flex; align-items: center; justify-content: center;
+                font-size: 10px; cursor: pointer; border: none;
+            }
+
+            /* 状態選択チップ */
+            .condition-chip {
+                padding: 10px 12px; border: 2px solid #e5e7eb; border-radius: 12px;
+                cursor: pointer; transition: all 0.2s; text-align: center;
+                font-size: 13px; font-weight: 500; background: #fff;
+                display: flex; align-items: center; justify-content: center; gap: 4px;
+            }
+            .condition-chip:hover { border-color: #fca5a5; background: #fff5f5; }
+            .condition-chip.selected {
+                border-color: #ef4444; background: #fef2f2; color: #dc2626; font-weight: 600;
+            }
+
+            /* アコーディオン */
+            .accordion-toggle { cursor: pointer; user-select: none; }
+            .accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.35s ease; }
+            .accordion-content.open { max-height: 2000px; }
+            .accordion-arrow { transition: transform 0.3s; }
+            .accordion-arrow.open { transform: rotate(180deg); }
+
+            /* 出品ボタンフッター */
+            .submit-footer {
+                position: sticky; bottom: 0; background: #fff;
+                border-top: 1px solid #f3f4f6; padding: 12px 16px;
+                box-shadow: 0 -4px 12px rgba(0,0,0,0.06); z-index: 40;
+            }
+            .submit-btn {
+                width: 100%; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                color: #fff; padding: 16px; border-radius: 14px;
+                font-weight: 700; font-size: 17px; border: none; cursor: pointer;
+                transition: all 0.2s; box-shadow: 0 4px 14px rgba(239,68,68,0.35);
+            }
+            .submit-btn:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 6px 20px rgba(239,68,68,0.45);
+            }
+            .submit-btn:disabled {
+                opacity: 0.6; cursor: not-allowed; transform: none;
+                box-shadow: none;
+            }
+
+            /* 横並びフィールド */
+            .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+            @media (max-width: 480px) {
+                .field-row.stack-mobile { grid-template-columns: 1fr; }
             }
         </style>
     </head>
-    <body class="bg-gray-50 min-h-screen">
-        <!-- シンプルヘッダー -->
-        <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
-            <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-                <button onclick="window.history.back()" class="text-gray-600 hover:text-gray-900 flex items-center">
-                    <i class="fas fa-arrow-left mr-2"></i>戻る
+    <body class="bg-gray-50 min-h-screen pb-24">
+        <!-- ヘッダー -->
+        <header class="bg-white border-b border-gray-100 sticky top-0 z-50">
+            <div class="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
+                <button onclick="window.history.back()" class="text-gray-500 hover:text-gray-900 flex items-center gap-1.5 text-sm font-medium">
+                    <i class="fas fa-chevron-left"></i><span>戻る</span>
                 </button>
-                <div class="text-red-500 font-bold text-lg">商品を出品</div>
-                <div class="w-16"></div>
+                <div class="font-bold text-base text-gray-900">商品を出品</div>
+                <a href="/faq" class="text-gray-400 hover:text-gray-600 text-sm">
+                    <i class="fas fa-question-circle text-lg"></i>
+                </a>
             </div>
         </header>
 
-        <main class="max-w-4xl mx-auto px-4 py-6">
-            <form id="listing-form" class="space-y-6">
-                <!-- 画像アップロードセクション -->
-                <div class="bg-white rounded-xl shadow-sm p-6">
-                    <h2 class="text-lg font-bold text-gray-900 mb-4">
-                        <i class="fas fa-camera text-red-500 mr-2"></i>商品画像（最大10枚）
-                    </h2>
-                    
-                    <div id="drop-zone" class="image-upload-area rounded-lg p-8 text-center cursor-pointer">
-                        <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-3"></i>
-                        <p class="text-gray-600 mb-2">クリックまたはドラッグ＆ドロップで画像を追加</p>
-                        <p class="text-sm text-gray-500">JPG, PNG, WEBP（最大10MB）</p>
-                        <input type="file" id="image-input" accept="image/*" multiple class="hidden">
-                    </div>
-                    
-                    <!-- カメラとギャラリーボタン -->
-                    <div class="grid grid-cols-2 gap-3 mt-3">
-                        <button type="button" onclick="productForm.openCamera()" 
-                                class="flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+        <!-- ステップインジケーター -->
+        <div class="max-w-2xl mx-auto px-6 py-4">
+            <div class="step-indicator" id="step-indicator">
+                <div class="step-item active" data-step="1">
+                    <div class="step-circle">1</div>
+                    <div class="step-label">画像</div>
+                    <div class="step-connector"></div>
+                </div>
+                <div class="step-item" data-step="2">
+                    <div class="step-circle">2</div>
+                    <div class="step-label">基本情報</div>
+                    <div class="step-connector"></div>
+                </div>
+                <div class="step-item" data-step="3">
+                    <div class="step-circle">3</div>
+                    <div class="step-label">価格</div>
+                    <div class="step-connector"></div>
+                </div>
+                <div class="step-item" data-step="4">
+                    <div class="step-circle">4</div>
+                    <div class="step-label">車両情報</div>
+                </div>
+            </div>
+        </div>
+
+        <main class="max-w-2xl mx-auto px-4 pb-8">
+            <form id="listing-form" class="space-y-5">
+
+                <!-- ===== 1. 画像アップロード ===== -->
+                <div class="section-card">
+                    <div class="section-header">
+                        <div class="section-header-icon bg-red-50 text-red-500">
                             <i class="fas fa-camera"></i>
-                            <span class="text-sm">カメラで撮影</span>
-                        </button>
-                        <button type="button" onclick="productForm.openGallery()" 
-                                class="flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                            <i class="fas fa-image"></i>
-                            <span class="text-sm">ギャラリーから選択</span>
-                        </button>
-                    </div>
-                    
-                    <div id="image-previews" class="grid grid-cols-3 md:grid-cols-5 gap-3 mt-4">
-                        <!-- プレビュー画像 -->
-                    </div>
-                </div>
-
-                <!-- 基本情報セクション -->
-                <div class="bg-white rounded-xl shadow-sm p-6">
-                    <h2 class="text-lg font-bold text-gray-900 mb-4">
-                        <i class="fas fa-info-circle text-red-500 mr-2"></i>基本情報
-                    </h2>
-                    
-                    <div class="space-y-4">
-                        <div>
-                            <label class="form-label">商品名 <span class="text-red-500">*</span></label>
-                            <input type="text" id="product-title" required
-                                   class="form-input"
-                                   placeholder="例: トヨタ プリウス 30系 フロントドア 左側">
                         </div>
-
                         <div>
-                            <label class="form-label">商品説明 <span class="text-red-500">*</span></label>
-                            <textarea id="product-description" required rows="5"
-                                      class="form-input resize-none"
-                                      placeholder="商品の状態、特徴、付属品などを詳しく記載してください"></textarea>
-                            <p class="mt-2 text-sm text-gray-500">購入者が安心できるよう、詳しく記載しましょう</p>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="form-label">カテゴリ <span class="text-red-500">*</span></label>
-                                <select id="category-select" required class="form-input">
-                                    <option value="">選択してください</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="form-label">サブカテゴリ</label>
-                                <select id="subcategory-select" class="form-input">
-                                    <option value="">カテゴリを選択してください</option>
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <label class="form-label">商品の状態 <span class="text-red-500">*</span></label>
-                            <select id="condition-select" required class="form-input">
-                                <option value="">選択してください</option>
-                                <option value="new">新品、未使用</option>
-                                <option value="like_new">未使用に近い</option>
-                                <option value="excellent">目立った傷や汚れなし</option>
-                                <option value="good">やや傷や汚れあり</option>
-                                <option value="acceptable">傷や汚れあり</option>
-                                <option value="junk">全体的に状態が悪い（ジャンク品）</option>
-                            </select>
+                            <div class="font-bold text-sm text-gray-900">商品画像</div>
+                            <div class="text-xs text-gray-400">最大10枚・1枚目がメイン画像</div>
                         </div>
                     </div>
-                </div>
-
-                <!-- 価格設定セクション -->
-                <div class="bg-white rounded-xl shadow-sm p-6">
-                    <h2 class="text-lg font-bold text-gray-900 mb-4">
-                        <i class="fas fa-yen-sign text-red-500 mr-2"></i>価格設定
-                    </h2>
-                    
-                    <div class="space-y-4">
-                        <div>
-                            <label class="form-label">販売価格 <span class="text-red-500">*</span></label>
-                            <div class="relative">
-                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">¥</span>
-                                <input type="number" id="product-price" required min="0"
-                                       class="form-input pl-8"
-                                       placeholder="0">
-                            </div>
-                            <p class="mt-2 text-sm text-gray-500">税込価格を入力してください</p>
+                    <div class="section-body">
+                        <!-- ドロップゾーン -->
+                        <div id="drop-zone" class="image-upload-zone" onclick="document.getElementById('image-input').click()">
+                            <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                            <p class="text-gray-600 text-sm mb-1">クリックまたはドラッグ＆ドロップで画像を追加</p>
+                            <p class="text-xs text-gray-400">JPG, PNG, WEBP（最大10MB）</p>
+                            <input type="file" id="image-input" accept="image/*" multiple class="hidden">
                         </div>
 
-                        <div>
-                            <label class="form-label">在庫数 <span class="text-red-500">*</span></label>
-                            <input type="number" id="stock-quantity" required min="1" value="1"
-                                   class="form-input"
-                                   placeholder="1">
-                        </div>
+                        <!-- 画像プレビューグリッド -->
+                        <div id="image-previews" class="grid grid-cols-4 sm:grid-cols-5 gap-2.5 mt-4"></div>
 
-                        <div>
-                            <label class="form-label">部品番号（任意）</label>
-                            <input type="text" id="part-number"
-                                   class="form-input"
-                                   placeholder="例: 04465-12345">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 適合車両情報セクション -->
-                <div class="bg-white rounded-xl shadow-sm p-6">
-                    <h2 class="text-lg font-bold text-gray-900 mb-4">
-                        <i class="fas fa-car text-red-500 mr-2"></i>適合車両情報（任意）
-                    </h2>
-                    
-                    <div class="space-y-4">
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="form-label">メーカー</label>
-                                <select id="maker-select" class="form-input">
-                                    <option value="">選択してください</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="form-label">車種</label>
-                                <select id="model-select" class="form-input">
-                                    <option value="">メーカーを選択してください</option>
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="form-label">年式（始）</label>
-                                <input type="number" id="year-from" class="form-input" placeholder="例: 2010" min="1900" max="2099">
-                            </div>
-                            <div>
-                                <label class="form-label">年式（終）</label>
-                                <input type="number" id="year-to" class="form-input" placeholder="例: 2015" min="1900" max="2099">
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="form-label">型式</label>
-                                <input type="text" id="model-code" class="form-input" placeholder="例: DAA-ZVW30">
-                            </div>
-                            <div>
-                                <label class="form-label">グレード</label>
-                                <input type="text" id="grade" class="form-input" placeholder="例: S, G, Gツーリングセレクション">
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="form-label">エンジン型式</label>
-                                <input type="text" id="engine-type" class="form-input" placeholder="例: 2ZR-FXE">
-                            </div>
-                            <div>
-                                <label class="form-label">駆動方式</label>
-                                <select id="drive-type" class="form-input">
-                                    <option value="">選択してください</option>
-                                    <option value="2WD">2WD（FF）</option>
-                                    <option value="4WD">4WD</option>
-                                    <option value="FR">FR</option>
-                                    <option value="MR">MR</option>
-                                    <option value="RR">RR</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="form-label">トランスミッション</label>
-                                <select id="transmission-type" class="form-input">
-                                    <option value="">選択してください</option>
-                                    <option value="AT">オートマ（AT）</option>
-                                    <option value="MT">マニュアル（MT）</option>
-                                    <option value="CVT">CVT</option>
-                                    <option value="DCT">DCT</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="form-label">純正部品番号</label>
-                                <input type="text" id="oem-part-number" class="form-input" placeholder="例: 04465-XXXXX">
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="form-label">確認方法</label>
-                            <select id="verification-method" class="form-input">
-                                <option value="">選択してください</option>
-                                <option value="catalog">カタログで確認</option>
-                                <option value="parts_list">部品リストで確認</option>
-                                <option value="actual_vehicle">実車で確認</option>
-                                <option value="dealer">ディーラーに確認</option>
-                                <option value="manufacturer">メーカーに確認</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label class="form-label">適合に関する備考</label>
-                            <textarea id="fitment-notes" rows="3"
-                                      class="form-input resize-none"
-                                      placeholder="適合に関する注意事項があれば記載してください"></textarea>
-                        </div>
-
-                    </div>
-                </div>
-
-                <!-- 代理出品案内セクション -->
-                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl shadow-sm p-6 border border-blue-200">
-                    <div class="flex items-start gap-4">
-                        <div class="flex-shrink-0">
-                            <div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-                                <i class="fas fa-hands-helping text-white text-xl"></i>
-                            </div>
-                        </div>
-                        <div class="flex-1">
-                            <h2 class="text-lg font-bold text-gray-900 mb-2">
-                                出品が難しい場合は、代理出品サービスをご利用ください
-                            </h2>
-                            <p class="text-sm text-gray-600 mb-4">
-                                パーツハブの担当者が出品作業を代行いたします。<br>
-                                2つの方法からお選びいただけます。
-                            </p>
-                            <button type="button" onclick="showProxyListingModal()" 
-                                    class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors shadow-md">
-                                <i class="fas fa-info-circle mr-2"></i>代理出品の詳細を見る
+                        <!-- カメラ・ギャラリーボタン -->
+                        <div class="grid grid-cols-2 gap-2.5 mt-3">
+                            <button type="button" onclick="productForm.openCamera()"
+                                    class="flex items-center justify-center gap-2 px-4 py-2.5 border-2 border-gray-200 rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium text-gray-600">
+                                <i class="fas fa-camera text-red-400"></i>カメラで撮影
+                            </button>
+                            <button type="button" onclick="productForm.openGallery()"
+                                    class="flex items-center justify-center gap-2 px-4 py-2.5 border-2 border-gray-200 rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium text-gray-600">
+                                <i class="fas fa-image text-blue-400"></i>ギャラリーから
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <!-- 出品ボタン -->
-                <div class="sticky bottom-0 bg-white border-t border-gray-200 p-4 -mx-4 shadow-lg">
-                    <button type="button" id="submit-btn" onclick="productForm.submitForm()"
-                            class="w-full bg-gradient-to-r from-red-500 to-red-600 text-white py-4 rounded-lg font-bold hover:from-red-600 hover:to-red-700 transition-all shadow-lg text-lg">
-                        <i class="fas fa-check mr-2"></i>出品する
-                    </button>
+                <!-- ===== 2. 基本情報 ===== -->
+                <div class="section-card">
+                    <div class="section-header">
+                        <div class="section-header-icon bg-blue-50 text-blue-500">
+                            <i class="fas fa-edit"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-sm text-gray-900">基本情報</div>
+                            <div class="text-xs text-gray-400">商品の概要を入力</div>
+                        </div>
+                    </div>
+                    <div class="section-body space-y-5">
+                        <!-- 商品名 -->
+                        <div>
+                            <label class="form-label">商品名 <span class="required">必須</span></label>
+                            <input type="text" id="product-title" required
+                                   class="form-input"
+                                   placeholder="例: トヨタ プリウス 30系 フロントドア 左側">
+                            <div class="form-helper">ブランド名・車種・部品名を含めると検索されやすくなります</div>
+                        </div>
+
+                        <!-- 商品説明 -->
+                        <div>
+                            <label class="form-label">商品説明 <span class="required">必須</span></label>
+                            <textarea id="product-description" required rows="5"
+                                      class="form-input" style="resize: vertical; min-height: 120px;"
+                                      placeholder="商品の状態、特徴、付属品などを詳しく記載してください"></textarea>
+                            <div class="flex justify-between mt-1">
+                                <span class="form-helper">購入者が安心できるよう、詳しく記載しましょう</span>
+                                <span class="text-xs text-gray-400" id="desc-count">0/2000</span>
+                            </div>
+                        </div>
+
+                        <!-- カテゴリ（フル幅） -->
+                        <div>
+                            <label class="form-label">カテゴリ <span class="required">必須</span></label>
+                            <select id="category-select" required class="form-input">
+                                <option value="">選択してください</option>
+                            </select>
+                        </div>
+
+                        <!-- サブカテゴリ（フル幅） -->
+                        <div>
+                            <label class="form-label">サブカテゴリ <span class="optional">任意</span></label>
+                            <select id="subcategory-select" class="form-input">
+                                <option value="">カテゴリを選択してください</option>
+                            </select>
+                        </div>
+
+                        <!-- 商品の状態（チップ選択） -->
+                        <div>
+                            <label class="form-label">商品の状態 <span class="required">必須</span></label>
+                            <input type="hidden" id="condition-select" value="">
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mt-1" id="condition-chips">
+                                <div class="condition-chip" data-value="new" onclick="selectCondition(this)">
+                                    <i class="fas fa-star text-yellow-400"></i>新品・未使用
+                                </div>
+                                <div class="condition-chip" data-value="like_new" onclick="selectCondition(this)">
+                                    未使用に近い
+                                </div>
+                                <div class="condition-chip" data-value="excellent" onclick="selectCondition(this)">
+                                    目立った傷なし
+                                </div>
+                                <div class="condition-chip" data-value="good" onclick="selectCondition(this)">
+                                    やや傷あり
+                                </div>
+                                <div class="condition-chip" data-value="acceptable" onclick="selectCondition(this)">
+                                    傷・汚れあり
+                                </div>
+                                <div class="condition-chip" data-value="junk" onclick="selectCondition(this)">
+                                    ジャンク品
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+
+                <!-- ===== 3. 価格設定 ===== -->
+                <div class="section-card">
+                    <div class="section-header">
+                        <div class="section-header-icon bg-green-50 text-green-500">
+                            <i class="fas fa-yen-sign"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-sm text-gray-900">価格設定</div>
+                            <div class="text-xs text-gray-400">税込価格で入力</div>
+                        </div>
+                    </div>
+                    <div class="section-body space-y-5">
+                        <!-- 販売価格 -->
+                        <div>
+                            <label class="form-label">販売価格 <span class="required">必須</span></label>
+                            <div class="relative">
+                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-bold text-gray-400">¥</span>
+                                <input type="number" id="product-price" required min="0"
+                                       class="form-input text-right text-xl font-bold" style="padding-left: 36px;"
+                                       placeholder="0">
+                            </div>
+                            <div class="flex items-center justify-between mt-2">
+                                <span class="form-helper">税込価格を入力してください</span>
+                                <span class="text-xs text-green-600 font-medium bg-green-50 px-2 py-0.5 rounded" id="fee-display">販売手数料 10%：¥0</span>
+                            </div>
+                        </div>
+
+                        <!-- 在庫数・部品番号 -->
+                        <div class="field-row">
+                            <div>
+                                <label class="form-label">在庫数 <span class="required">必須</span></label>
+                                <input type="number" id="stock-quantity" required min="1" value="1"
+                                       class="form-input">
+                            </div>
+                            <div>
+                                <label class="form-label">部品番号 <span class="optional">任意</span></label>
+                                <input type="text" id="part-number"
+                                       class="form-input"
+                                       placeholder="例: 04465-12345">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== 4. 適合車両情報（アコーディオン） ===== -->
+                <div class="section-card">
+                    <div class="section-header accordion-toggle" onclick="toggleAccordion(this)">
+                        <div class="section-header-icon bg-purple-50 text-purple-500">
+                            <i class="fas fa-car"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-bold text-sm text-gray-900">適合車両情報</div>
+                            <div class="text-xs text-gray-400">入力すると検索されやすくなります</div>
+                        </div>
+                        <i class="fas fa-chevron-down text-gray-400 accordion-arrow"></i>
+                    </div>
+                    <div class="accordion-content" id="vehicle-accordion">
+                        <div class="section-body space-y-5">
+                            <!-- メーカー・車種 -->
+                            <div class="field-row stack-mobile">
+                                <div>
+                                    <label class="form-label">メーカー <span class="optional">任意</span></label>
+                                    <select id="maker-select" class="form-input">
+                                        <option value="">選択してください</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="form-label">車種 <span class="optional">任意</span></label>
+                                    <select id="model-select" class="form-input">
+                                        <option value="">メーカーを選択</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- 年式 -->
+                            <div class="field-row">
+                                <div>
+                                    <label class="form-label">年式（始） <span class="optional">任意</span></label>
+                                    <input type="number" id="year-from" class="form-input" placeholder="例: 2010" min="1900" max="2099">
+                                </div>
+                                <div>
+                                    <label class="form-label">年式（終） <span class="optional">任意</span></label>
+                                    <input type="number" id="year-to" class="form-input" placeholder="例: 2015" min="1900" max="2099">
+                                </div>
+                            </div>
+
+                            <!-- 型式・グレード -->
+                            <div class="field-row stack-mobile">
+                                <div>
+                                    <label class="form-label">型式 <span class="optional">任意</span></label>
+                                    <input type="text" id="model-code" class="form-input" placeholder="例: DAA-ZVW30">
+                                </div>
+                                <div>
+                                    <label class="form-label">グレード <span class="optional">任意</span></label>
+                                    <input type="text" id="grade" class="form-input" placeholder="例: S, G">
+                                </div>
+                            </div>
+
+                            <!-- エンジン型式・駆動方式 -->
+                            <div class="field-row stack-mobile">
+                                <div>
+                                    <label class="form-label">エンジン型式 <span class="optional">任意</span></label>
+                                    <input type="text" id="engine-type" class="form-input" placeholder="例: 2ZR-FXE">
+                                </div>
+                                <div>
+                                    <label class="form-label">駆動方式 <span class="optional">任意</span></label>
+                                    <select id="drive-type" class="form-input">
+                                        <option value="">選択してください</option>
+                                        <option value="2WD">2WD（FF）</option>
+                                        <option value="4WD">4WD</option>
+                                        <option value="FR">FR</option>
+                                        <option value="MR">MR</option>
+                                        <option value="RR">RR</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- トランスミッション・純正部品番号 -->
+                            <div class="field-row stack-mobile">
+                                <div>
+                                    <label class="form-label">トランスミッション <span class="optional">任意</span></label>
+                                    <select id="transmission-type" class="form-input">
+                                        <option value="">選択してください</option>
+                                        <option value="AT">オートマ（AT）</option>
+                                        <option value="MT">マニュアル（MT）</option>
+                                        <option value="CVT">CVT</option>
+                                        <option value="DCT">DCT</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="form-label">純正部品番号 <span class="optional">任意</span></label>
+                                    <input type="text" id="oem-part-number" class="form-input" placeholder="例: 04465-XXXXX">
+                                </div>
+                            </div>
+
+                            <!-- 確認方法 -->
+                            <div>
+                                <label class="form-label">確認方法 <span class="optional">任意</span></label>
+                                <select id="verification-method" class="form-input">
+                                    <option value="">選択してください</option>
+                                    <option value="catalog">カタログで確認</option>
+                                    <option value="parts_list">部品リストで確認</option>
+                                    <option value="actual_vehicle">実車で確認</option>
+                                    <option value="dealer">ディーラーに確認</option>
+                                    <option value="manufacturer">メーカーに確認</option>
+                                </select>
+                            </div>
+
+                            <!-- 適合備考 -->
+                            <div>
+                                <label class="form-label">適合に関する備考 <span class="optional">任意</span></label>
+                                <textarea id="fitment-notes" rows="2"
+                                          class="form-input" style="resize: vertical; min-height: 70px;"
+                                          placeholder="適合に関する注意事項があれば記載してください"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== 代理出品案内 ===== -->
+                <div class="section-card" style="background: linear-gradient(135deg, #eff6ff, #eef2ff); border: 1px solid #bfdbfe;">
+                    <div class="section-body">
+                        <div class="flex items-start gap-3">
+                            <div class="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-hands-helping text-white"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="font-bold text-sm text-gray-900 mb-1">出品が難しい場合は代理出品サービスへ</div>
+                                <p class="text-xs text-gray-500 mb-3 leading-relaxed">担当者が出品作業を代行します。出張 or 郵送の2パターン。</p>
+                                <button type="button" onclick="showProxyListingModal()"
+                                        class="bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors">
+                                    <i class="fas fa-info-circle mr-1.5"></i>詳細を見る
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </form>
         </main>
+
+        <!-- 出品ボタン（固定フッター） -->
+        <div class="submit-footer">
+            <div class="max-w-2xl mx-auto">
+                <button type="button" id="submit-btn" onclick="productForm.submitForm()" class="submit-btn">
+                    <i class="fas fa-check mr-2"></i>出品する
+                </button>
+                <div class="text-center mt-1.5">
+                    <span class="text-xs text-gray-400">出品手数料は販売時に10%のみ</span>
+                </div>
+            </div>
+        </div>
 
         <!-- 代理出品モーダル -->
         <div id="proxy-listing-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
@@ -2746,38 +2952,35 @@ app.get('/listing', (c) => {
                     <div class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-200">
                         <div class="flex items-start gap-4 mb-4">
                             <div class="flex-shrink-0">
-                                <div class="w-16 h-16 bg-purple-500 rounded-full flex items-center justify-center">
-                                    <i class="fas fa-truck text-white text-2xl"></i>
+                                <div class="w-14 h-14 bg-purple-500 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-truck text-white text-xl"></i>
                                 </div>
                             </div>
                             <div>
-                                <h4 class="text-xl font-bold text-gray-900 mb-2">パターン1: 出張代理出品</h4>
-                                <p class="text-gray-600">パーツハブ担当者がお客様の整備工場に出向いて、その場で出品作業を行います。</p>
+                                <h4 class="text-lg font-bold text-gray-900 mb-1">パターン1: 出張代理出品</h4>
+                                <p class="text-sm text-gray-600">担当者がお客様の整備工場に出向いて出品作業を行います。</p>
                             </div>
                         </div>
-
-                        <div class="space-y-3">
-                            <div class="bg-white rounded-lg p-4">
-                                <h5 class="font-semibold text-gray-900 mb-2"><i class="fas fa-yen-sign text-purple-500 mr-2"></i>料金体系</h5>
-                                <ul class="space-y-2 text-sm text-gray-700">
-                                    <li class="flex items-start gap-2">
-                                        <i class="fas fa-check text-green-500 mt-1"></i>
-                                        <span><strong>出張費用:</strong> 距離により発生（お見積りいたします）</span>
-                                    </li>
-                                    <li class="flex items-start gap-2">
-                                        <i class="fas fa-check text-green-500 mt-1"></i>
-                                        <span><strong>出品点数:</strong> 20点まで無料</span>
-                                    </li>
-                                    <li class="flex items-start gap-2">
-                                        <i class="fas fa-check text-green-500 mt-1"></i>
-                                        <span><strong>21点以上:</strong> 1点につき330円（税込）</span>
-                                    </li>
-                                    <li class="flex items-start gap-2">
-                                        <i class="fas fa-exclamation-triangle text-orange-500 mt-1"></i>
-                                        <span><strong>売買手数料:</strong> 10%（商品価格の10%）</span>
-                                    </li>
-                                </ul>
-                            </div>
+                        <div class="bg-white rounded-lg p-4">
+                            <h5 class="font-semibold text-gray-900 mb-2 text-sm"><i class="fas fa-yen-sign text-purple-500 mr-2"></i>料金体系</h5>
+                            <ul class="space-y-2 text-sm text-gray-700">
+                                <li class="flex items-start gap-2">
+                                    <i class="fas fa-check text-green-500 mt-0.5 flex-shrink-0"></i>
+                                    <span><strong>出張費用:</strong> 距離により発生（お見積り）</span>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <i class="fas fa-check text-green-500 mt-0.5 flex-shrink-0"></i>
+                                    <span><strong>出品点数:</strong> 20点まで無料</span>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <i class="fas fa-check text-green-500 mt-0.5 flex-shrink-0"></i>
+                                    <span><strong>21点以上:</strong> 1点につき330円（税込）</span>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <i class="fas fa-exclamation-triangle text-orange-500 mt-0.5 flex-shrink-0"></i>
+                                    <span><strong>売買手数料:</strong> 10%</span>
+                                </li>
+                            </ul>
                         </div>
                     </div>
 
@@ -2785,99 +2988,77 @@ app.get('/listing', (c) => {
                     <div class="bg-gradient-to-r from-green-50 to-teal-50 rounded-xl p-6 border border-green-200">
                         <div class="flex items-start gap-4 mb-4">
                             <div class="flex-shrink-0">
-                                <div class="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center">
-                                    <i class="fas fa-box text-white text-2xl"></i>
+                                <div class="w-14 h-14 bg-green-500 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-box text-white text-xl"></i>
                                 </div>
                             </div>
                             <div>
-                                <h4 class="text-xl font-bold text-gray-900 mb-2">パターン2: 郵送代理出品（おすすめ）</h4>
-                                <p class="text-gray-600">商品をパーツハブに郵送いただき、当社で出品作業を代行します。</p>
+                                <h4 class="text-lg font-bold text-gray-900 mb-1">パターン2: 郵送代理出品（おすすめ）</h4>
+                                <p class="text-sm text-gray-600">商品をパーツハブに郵送、当社で出品作業を代行します。</p>
                             </div>
                         </div>
-
                         <div class="space-y-3">
                             <div class="bg-white rounded-lg p-4">
-                                <h5 class="font-semibold text-gray-900 mb-2"><i class="fas fa-yen-sign text-green-500 mr-2"></i>料金体系</h5>
+                                <h5 class="font-semibold text-gray-900 mb-2 text-sm"><i class="fas fa-yen-sign text-green-500 mr-2"></i>料金体系</h5>
                                 <ul class="space-y-2 text-sm text-gray-700">
                                     <li class="flex items-start gap-2">
-                                        <i class="fas fa-check text-green-500 mt-1"></i>
+                                        <i class="fas fa-check text-green-500 mt-0.5 flex-shrink-0"></i>
                                         <span><strong>出張費用:</strong> 無料</span>
                                     </li>
                                     <li class="flex items-start gap-2">
-                                        <i class="fas fa-check text-green-500 mt-1"></i>
+                                        <i class="fas fa-check text-green-500 mt-0.5 flex-shrink-0"></i>
                                         <span><strong>出品作業費:</strong> すべて無料（点数制限なし）</span>
                                     </li>
                                     <li class="flex items-start gap-2">
-                                        <i class="fas fa-exclamation-triangle text-orange-500 mt-1"></i>
-                                        <span><strong>売買手数料:</strong> 10%（商品価格の10%）</span>
+                                        <i class="fas fa-exclamation-triangle text-orange-500 mt-0.5 flex-shrink-0"></i>
+                                        <span><strong>売買手数料:</strong> 10%</span>
                                     </li>
                                     <li class="flex items-start gap-2">
-                                        <i class="fas fa-info-circle text-blue-500 mt-1"></i>
+                                        <i class="fas fa-info-circle text-blue-500 mt-0.5 flex-shrink-0"></i>
                                         <span><strong>送料:</strong> お客様負担</span>
                                     </li>
                                 </ul>
                             </div>
-
-                            <div class="bg-green-100 border border-green-300 rounded-lg p-4">
+                            <div class="bg-green-100 border border-green-300 rounded-lg p-3">
                                 <p class="text-sm text-green-800 font-semibold">
-                                    <i class="fas fa-star text-yellow-500 mr-2"></i>
-                                    郵送代理出品なら、出張費用と1点あたりの出品作業費（330円）が無料です！
+                                    <i class="fas fa-star text-yellow-500 mr-1"></i>
+                                    郵送なら出張費用＆出品作業費が完全無料！
                                 </p>
                             </div>
                         </div>
                     </div>
 
                     <!-- 比較表 -->
-                    <div class="bg-gray-50 rounded-xl p-6">
-                        <h4 class="text-lg font-bold text-gray-900 mb-4">料金比較表</h4>
+                    <div class="bg-gray-50 rounded-xl p-5">
+                        <h4 class="font-bold text-gray-900 mb-3 text-sm">料金比較表</h4>
                         <div class="overflow-x-auto">
                             <table class="w-full text-sm">
                                 <thead>
-                                    <tr class="border-b border-gray-300">
-                                        <th class="text-left py-3 px-2 font-semibold text-gray-700">項目</th>
-                                        <th class="text-center py-3 px-2 font-semibold text-purple-700">出張代理出品</th>
-                                        <th class="text-center py-3 px-2 font-semibold text-green-700">郵送代理出品</th>
+                                    <tr class="border-b-2 border-gray-300">
+                                        <th class="text-left py-2.5 px-2 font-semibold text-gray-700">項目</th>
+                                        <th class="text-center py-2.5 px-2 font-semibold text-purple-700">出張</th>
+                                        <th class="text-center py-2.5 px-2 font-semibold text-green-700">郵送</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-200">
-                                    <tr>
-                                        <td class="py-3 px-2 text-gray-700">出張費用</td>
-                                        <td class="py-3 px-2 text-center text-orange-600">距離により発生</td>
-                                        <td class="py-3 px-2 text-center text-green-600 font-semibold">無料</td>
-                                    </tr>
-                                    <tr>
-                                        <td class="py-3 px-2 text-gray-700">出品作業費（20点まで）</td>
-                                        <td class="py-3 px-2 text-center text-green-600">無料</td>
-                                        <td class="py-3 px-2 text-center text-green-600 font-semibold">無料</td>
-                                    </tr>
-                                    <tr>
-                                        <td class="py-3 px-2 text-gray-700">出品作業費（21点以上）</td>
-                                        <td class="py-3 px-2 text-center text-orange-600">1点につき330円</td>
-                                        <td class="py-3 px-2 text-center text-green-600 font-semibold">無料</td>
-                                    </tr>
-                                    <tr>
-                                        <td class="py-3 px-2 text-gray-700">売買手数料</td>
-                                        <td class="py-3 px-2 text-center text-gray-700">10%</td>
-                                        <td class="py-3 px-2 text-center text-gray-700">10%</td>
-                                    </tr>
-                                    <tr>
-                                        <td class="py-3 px-2 text-gray-700">送料</td>
-                                        <td class="py-3 px-2 text-center text-gray-400">-</td>
-                                        <td class="py-3 px-2 text-center text-gray-700">お客様負担</td>
-                                    </tr>
+                                    <tr><td class="py-2.5 px-2 text-gray-700">出張費用</td><td class="py-2.5 px-2 text-center text-orange-600">距離により発生</td><td class="py-2.5 px-2 text-center text-green-600 font-semibold">無料</td></tr>
+                                    <tr><td class="py-2.5 px-2 text-gray-700">作業費(20点まで)</td><td class="py-2.5 px-2 text-center text-green-600">無料</td><td class="py-2.5 px-2 text-center text-green-600 font-semibold">無料</td></tr>
+                                    <tr><td class="py-2.5 px-2 text-gray-700">作業費(21点〜)</td><td class="py-2.5 px-2 text-center text-orange-600">330円/点</td><td class="py-2.5 px-2 text-center text-green-600 font-semibold">無料</td></tr>
+                                    <tr><td class="py-2.5 px-2 text-gray-700">売買手数料</td><td class="py-2.5 px-2 text-center">10%</td><td class="py-2.5 px-2 text-center">10%</td></tr>
+                                    <tr><td class="py-2.5 px-2 text-gray-700">送料</td><td class="py-2.5 px-2 text-center text-gray-400">-</td><td class="py-2.5 px-2 text-center">お客様負担</td></tr>
                                 </tbody>
                             </table>
                         </div>
                     </div>
 
                     <!-- お問い合わせボタン -->
-                    <div class="flex gap-3">
-                        <a href="/contact?type=proxy_onsite" 
-                           class="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-4 rounded-lg font-bold text-center transition-colors">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <a href="/contact?type=proxy_onsite"
+                           class="bg-purple-500 hover:bg-purple-600 text-white py-3.5 rounded-xl font-bold text-center transition-colors text-sm">
                             <i class="fas fa-truck mr-2"></i>出張代理出品を依頼
                         </a>
-                        <a href="/contact?type=proxy_shipping" 
-                           class="flex-1 bg-green-500 hover:bg-green-600 text-white py-4 rounded-lg font-bold text-center transition-colors">
+                        <a href="/contact?type=proxy_shipping"
+                           class="bg-green-500 hover:bg-green-600 text-white py-3.5 rounded-xl font-bold text-center transition-colors text-sm">
                             <i class="fas fa-box mr-2"></i>郵送代理出品を依頼
                         </a>
                     </div>
@@ -2892,21 +3073,105 @@ app.get('/listing', (c) => {
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="/static/listing.js"></script>
         <script>
-            // 代理出品モーダル制御
+            // 状態チップ選択
+            function selectCondition(el) {
+                document.querySelectorAll('.condition-chip').forEach(function(c) {
+                    c.classList.remove('selected');
+                    // アイコンを除去してテキストのみに
+                    var icon = c.querySelector('.chip-check');
+                    if (icon) icon.remove();
+                });
+                el.classList.add('selected');
+                // チェックアイコンを先頭に追加
+                if (!el.querySelector('.chip-check')) {
+                    var check = document.createElement('i');
+                    check.className = 'fas fa-check-circle chip-check';
+                    el.insertBefore(check, el.firstChild);
+                }
+                document.getElementById('condition-select').value = el.getAttribute('data-value');
+            }
+
+            // アコーディオン
+            function toggleAccordion(el) {
+                var content = el.nextElementSibling;
+                var arrow = el.querySelector('.accordion-arrow');
+                content.classList.toggle('open');
+                arrow.classList.toggle('open');
+            }
+
+            // 代理出品モーダル
             function showProxyListingModal() {
                 document.getElementById('proxy-listing-modal').classList.remove('hidden');
                 document.body.style.overflow = 'hidden';
             }
-
             function closeProxyListingModal() {
                 document.getElementById('proxy-listing-modal').classList.add('hidden');
                 document.body.style.overflow = 'auto';
             }
+            document.getElementById('proxy-listing-modal').addEventListener('click', function(e) {
+                if (e.target === this) closeProxyListingModal();
+            });
 
-            // モーダル外クリックで閉じる
-            document.getElementById('proxy-listing-modal')?.addEventListener('click', function(e) {
-                if (e.target === this) {
-                    closeProxyListingModal();
+            // 販売手数料リアルタイム表示
+            var priceInput = document.getElementById('product-price');
+            if (priceInput) {
+                priceInput.addEventListener('input', function() {
+                    var price = parseInt(this.value) || 0;
+                    var fee = Math.floor(price * 0.1);
+                    document.getElementById('fee-display').textContent =
+                        '販売手数料 10%：¥' + fee.toLocaleString();
+                });
+            }
+
+            // 説明文字数カウント
+            var descInput = document.getElementById('product-description');
+            if (descInput) {
+                descInput.addEventListener('input', function() {
+                    document.getElementById('desc-count').textContent =
+                        this.value.length + '/2000';
+                });
+            }
+
+            // ステップインジケーター自動更新
+            function updateStepIndicator() {
+                var steps = document.querySelectorAll('.step-item');
+                var hasImages = productForm && productForm.uploadedImages && productForm.uploadedImages.length > 0;
+                var hasBasicInfo = document.getElementById('product-title').value &&
+                                  document.getElementById('product-description').value &&
+                                  document.getElementById('condition-select').value &&
+                                  document.getElementById('category-select').value;
+                var hasPrice = document.getElementById('product-price').value;
+
+                steps.forEach(function(s) {
+                    s.classList.remove('active', 'completed');
+                });
+
+                if (hasImages) {
+                    steps[0].classList.add('completed');
+                    steps[0].querySelector('.step-circle').innerHTML = '<i class="fas fa-check text-xs"></i>';
+                }
+                if (hasBasicInfo) {
+                    steps[1].classList.add('completed');
+                    steps[1].querySelector('.step-circle').innerHTML = '<i class="fas fa-check text-xs"></i>';
+                }
+                if (hasPrice) {
+                    steps[2].classList.add('completed');
+                    steps[2].querySelector('.step-circle').innerHTML = '<i class="fas fa-check text-xs"></i>';
+                }
+
+                // 現在のアクティブステップ
+                if (!hasImages) { steps[0].classList.add('active'); steps[0].querySelector('.step-circle').textContent = '1'; }
+                else if (!hasBasicInfo) { steps[1].classList.add('active'); steps[1].querySelector('.step-circle').textContent = '2'; }
+                else if (!hasPrice) { steps[2].classList.add('active'); steps[2].querySelector('.step-circle').textContent = '3'; }
+                else { steps[3].classList.add('active'); steps[3].querySelector('.step-circle').textContent = '4'; }
+            }
+
+            // 各入力のchangeでステップ更新
+            ['product-title', 'product-description', 'product-price', 'category-select'].forEach(function(id) {
+                var el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input', updateStepIndicator);
+                    el.addEventListener('change', updateStepIndicator);
                 }
             });
         </script>

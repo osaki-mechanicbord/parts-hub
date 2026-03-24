@@ -110,22 +110,41 @@ class ProductListingForm {
     const container = document.getElementById('image-previews')
     if (!container) return
 
-    container.innerHTML = this.uploadedImages.map((img, index) => `
-      <div class="relative group">
-        <img src="${img.preview}" alt="商品画像 ${index + 1}" 
-             class="w-full h-32 object-cover rounded-lg border-2 border-gray-300">
-        <button type="button" 
-                onclick="productForm.removeImage(${index})"
-                class="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 
-                       opacity-0 group-hover:opacity-100 transition-opacity">
+    const previews = this.uploadedImages.map((img, index) => `
+      <div class="image-preview-item" style="position:relative;border-radius:12px;overflow:hidden;aspect-ratio:1;background:#f3f4f6;">
+        <img src="${img.preview || img.url || ''}" alt="商品画像 ${index + 1}"
+             style="width:100%;height:100%;object-fit:cover;">
+        ${index === 0 ? '<span style="position:absolute;top:4px;left:4px;background:#ef4444;color:#fff;font-size:10px;padding:1px 6px;border-radius:4px;font-weight:600;">メイン</span>' : ''}
+        <button type="button" onclick="productForm.removeImage(${index})"
+                style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.6);color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer;border:none;">
           <i class="fas fa-times"></i>
         </button>
-        <div class="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
-          ${index + 1}枚目
-        </div>
-        ${!img.uploaded ? '<div class="absolute inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center"><div class="text-white text-xs">アップロード待ち</div></div>' : ''}
       </div>
     `).join('')
+
+    // 追加ボタン（10枚未満の場合）
+    const addBtn = this.uploadedImages.length < this.maxImages ? `
+      <div onclick="document.getElementById('image-input').click()"
+           style="position:relative;border-radius:12px;overflow:hidden;aspect-ratio:1;background:#fafbfc;border:2px dashed #d1d5db;display:flex;align-items:center;justify-content:center;cursor:pointer;"
+           onmouseover="this.style.borderColor='#fca5a5';this.style.background='#fef7f7'"
+           onmouseout="this.style.borderColor='#d1d5db';this.style.background='#fafbfc'">
+        <div style="text-align:center;">
+          <i class="fas fa-plus" style="color:#9ca3af;font-size:18px;"></i>
+          <div style="font-size:11px;color:#9ca3af;margin-top:4px;">追加</div>
+        </div>
+      </div>
+    ` : ''
+
+    container.innerHTML = previews + addBtn
+
+    // ドロップゾーンの表示切替
+    const dropZone = document.getElementById('drop-zone')
+    if (dropZone) {
+      dropZone.style.display = this.uploadedImages.length > 0 ? 'none' : 'block'
+    }
+
+    // ステップインジケーター更新
+    if (typeof updateStepIndicator === 'function') updateStepIndicator()
   }
 
   // 画像削除
