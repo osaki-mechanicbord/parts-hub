@@ -80,7 +80,57 @@ app.use('/api/*', cors())
 
 // 静的ファイル配信
 app.use('/static/*', serveStatic({ root: './public' }))
-app.use('/icons/*', serveStatic({ root: './public' }))
+
+// SVGアイコンを直接配信（Cloudflare Pagesではpublic/iconsのserveStaticが動作しないため）
+app.get('/icons/icon.svg', (c) => {
+  return c.body(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" fill="#2563eb" rx="80"/>
+  <g fill="#ffffff">
+    <path d="M120 200 L150 150 L362 150 L392 200 Z" stroke="#ffffff" stroke-width="4" fill="none"/>
+    <rect x="100" y="200" width="312" height="120" rx="20" stroke="#ffffff" stroke-width="4" fill="none"/>
+    <circle cx="160" cy="340" r="30" fill="#ffffff"/>
+    <circle cx="352" cy="340" r="30" fill="#ffffff"/>
+    <text x="256" y="280" font-size="48" font-weight="bold" text-anchor="middle" fill="#ffffff">部品</text>
+  </g>
+</svg>`, 200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=86400' });
+})
+
+app.get('/icons/logo.svg', (c) => {
+  return c.body(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff4757;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ff6b95;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <circle cx="100" cy="100" r="95" fill="url(#gradient1)"/>
+  <g fill="#ffffff">
+    <rect x="95" y="10" width="10" height="25" rx="2"/>
+    <rect x="95" y="165" width="10" height="25" rx="2"/>
+    <rect x="10" y="95" width="25" height="10" rx="2"/>
+    <rect x="165" y="95" width="25" height="10" rx="2"/>
+    <rect x="145" y="35" width="25" height="10" rx="2" transform="rotate(45 157.5 40)"/>
+    <rect x="30" y="35" width="25" height="10" rx="2" transform="rotate(-45 42.5 40)"/>
+    <rect x="145" y="155" width="25" height="10" rx="2" transform="rotate(-45 157.5 160)"/>
+    <rect x="30" y="155" width="25" height="10" rx="2" transform="rotate(45 42.5 160)"/>
+  </g>
+  <circle cx="100" cy="100" r="45" fill="#ffffff"/>
+  <g stroke="#ff4757" stroke-width="3" fill="none">
+    <line x1="100" y1="100" x2="100" y2="65"/>
+    <line x1="100" y1="100" x2="100" y2="135"/>
+    <line x1="100" y1="100" x2="65" y2="100"/>
+    <line x1="100" y1="100" x2="135" y2="100"/>
+  </g>
+  <g fill="#ff4757">
+    <circle cx="100" cy="65" r="5"/>
+    <circle cx="100" cy="135" r="5"/>
+    <circle cx="65" cy="100" r="5"/>
+    <circle cx="135" cy="100" r="5"/>
+  </g>
+  <circle cx="100" cy="100" r="15" fill="#ff4757"/>
+  <circle cx="100" cy="100" r="8" fill="#ffffff"/>
+</svg>`, 200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=86400' });
+})
 
 // robots.txt, sitemap.xml, manifest.json, sw.js配信
 app.get('/robots.txt', async (c) => {
@@ -1292,7 +1342,7 @@ app.get('/news/:category/:year/:month/:slug', (c) => {
             async function loadArticle() {
                 try {
                     const response = await axios.get(\`/api/articles/\${fullSlug}\`);
-                    const article = response.data;
+                    const article = response.data.article || response.data;
                     
                     // メタタグを動的に更新
                     document.title = \`\${article.title} - PARTS HUBニュース\`;

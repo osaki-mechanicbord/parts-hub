@@ -1184,4 +1184,64 @@ adminRoutes.post('/articles/auto-generate-with-image', async (c) => {
   }
 });
 
+// 古い記事の画像をR2に再アップロード
+adminRoutes.post('/articles/:id/fix-image', async (c) => {
+  const { env } = c;
+  const id = c.req.param('id');
+  
+  try {
+    const article = await env.DB.prepare('SELECT * FROM articles WHERE id = ?').bind(id).first();
+    if (!article) {
+      return c.json({ error: '記事が見つかりません' }, 404);
+    }
+
+    // OpenAIの一時URLかどうかチェック
+    const thumbnailUrl = article.thumbnail_url as string;
+    if (thumbnailUrl && thumbnailUrl.includes('images.parts-hub-tci.com')) {
+      return c.json({ message: '画像は既にR2に保存されています', thumbnail_url: thumbnailUrl });
+    }
+
+    // 新しい画像を生成
+    const imagePrompt = `Professional automotive parts photograph related to: ${article.title}. High quality, clean background, studio lighting, detailed product shot.`;
+    
+    const imageResponse = await fetch('https://api.openai.com/v1/images/generations', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${env.OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'dall-e-3',
+        prompt: imagePrompt,
+        n: 1,
+        size: '1792x1024',
+        quality: 'standard'
+      })
+    });
+
+    const imageData = await imageResponse.json() as any;
+    const tempImageUrl = imageData.data[0].url;
+
+    // R2にアップロード
+    const imgResponse = await fetch(tempImageUrl);
+    const imageBuffer = await imgResponse.arrayBuffer();
+    const imageKey = `articles/${id}-${Date.now()}.png`;
+    
+    await env.R2.put(imageKey, imageBuffer, {
+      httpMetadata: { contentType: 'image/png' }
+    });
+
+    const permanentUrl = `${env.R2_PUBLIC_URL}/${imageKey}`;
+
+    // データベース更新
+    await env.DB.prepare('UPDATE articles SET thumbnail_url = ? WHERE id = ?')
+      .bind(permanentUrl, id).run();
+
+    return c.json({ success: true, thumbnail_url: permanentUrl, message: '画像をR2に保存しました' });
+  } catch (error) {
+    console.error('画像修正エラー:', error);
+    return c.json({ error: '画像の修正に失敗しました: ' + (error as Error).message }, 500);
+  }
+});
+
 export default adminRoutes
