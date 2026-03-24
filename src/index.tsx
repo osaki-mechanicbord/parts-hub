@@ -921,10 +921,16 @@ app.get('/login', (c) => {
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>
             .form-input {
-                @apply w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors;
+                @apply w-full px-4 py-4 text-base border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors;
+                min-height: 48px;
+                font-size: 16px;
             }
             .form-input:focus {
                 border-color: #ef4444;
+                box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+            }
+            .form-label {
+                @apply block text-base font-semibold text-gray-700 mb-2;
             }
         </style>
     </head>
@@ -959,7 +965,7 @@ app.get('/login', (c) => {
             <div class="bg-white rounded-xl shadow-sm p-6 md:p-8">
                 <form id="login-form" class="space-y-5">
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">メールアドレス</label>
+                        <label class="form-label">メールアドレス</label>
                         <input type="email" id="email" required
                                class="form-input"
                                placeholder="example@email.com"
@@ -967,7 +973,7 @@ app.get('/login', (c) => {
                     </div>
 
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">パスワード</label>
+                        <label class="form-label">パスワード</label>
                         <input type="password" id="password" required
                                class="form-input"
                                placeholder="パスワードを入力"
@@ -975,19 +981,19 @@ app.get('/login', (c) => {
                     </div>
 
                     <div class="flex items-center justify-between text-sm">
-                        <label class="flex items-center">
+                        <label class="flex items-center cursor-pointer">
                             <input type="checkbox" id="remember" 
-                                   class="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500">
-                            <span class="ml-2 text-gray-600">ログイン状態を保持</span>
+                                   class="w-5 h-5 text-red-500 border-gray-300 rounded focus:ring-red-500 cursor-pointer">
+                            <span class="ml-2 text-gray-600 text-base">ログイン状態を保持</span>
                         </label>
-                        <a href="/password-reset" class="text-red-500 hover:text-red-600 font-medium">
+                        <a href="/password-reset" class="text-red-500 hover:text-red-600 font-medium text-base">
                             パスワードを忘れた？
                         </a>
                     </div>
 
                     <div class="pt-2">
                         <button type="submit"
-                                class="w-full bg-gradient-to-r from-red-500 to-red-600 text-white py-4 rounded-lg font-bold hover:from-red-600 hover:to-red-700 transition-all shadow-lg text-lg">
+                                class="w-full bg-gradient-to-r from-red-500 to-red-600 text-white py-4 rounded-lg font-bold hover:from-red-600 hover:to-red-700 transition-all shadow-lg text-lg min-h-[56px]">
                             ログイン
                         </button>
                     </div>
@@ -1079,13 +1085,19 @@ app.get('/register', (c) => {
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>
             .form-input {
-                @apply w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors;
+                @apply w-full px-4 py-4 text-base border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors;
+                min-height: 48px;
+                font-size: 16px;
             }
             .form-input:focus {
                 border-color: #ef4444;
+                box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+            }
+            .form-label {
+                @apply block text-base font-semibold text-gray-700 mb-2;
             }
             .step-indicator {
-                @apply flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold;
+                @apply flex items-center justify-center w-10 h-10 rounded-full text-base font-bold;
             }
             .step-active {
                 @apply bg-red-500 text-white;
@@ -1137,31 +1149,34 @@ app.get('/register', (c) => {
                         <h2 class="text-xl font-bold text-gray-900 mb-6">基本情報を入力</h2>
                         
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">メールアドレス</label>
+                            <label class="form-label">メールアドレス</label>
                             <input type="email" id="email" required
                                    class="form-input"
-                                   placeholder="example@email.com">
-                            <p class="mt-1 text-xs text-gray-500">ログイン時に使用します</p>
+                                   placeholder="example@email.com"
+                                   autocomplete="email">
+                            <p class="mt-2 text-sm text-gray-500">ログイン時に使用します</p>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">パスワード</label>
+                            <label class="form-label">パスワード</label>
                             <input type="password" id="password" required minlength="8"
                                    class="form-input"
-                                   placeholder="8文字以上の英数字">
-                            <p class="mt-1 text-xs text-gray-500">8文字以上で設定してください</p>
+                                   placeholder="8文字以上の英数字"
+                                   autocomplete="new-password">
+                            <p class="mt-2 text-sm text-gray-500">8文字以上で設定してください</p>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">パスワード（確認）</label>
+                            <label class="form-label">パスワード（確認）</label>
                             <input type="password" id="password-confirm" required minlength="8"
                                    class="form-input"
-                                   placeholder="もう一度入力してください">
+                                   placeholder="もう一度入力してください"
+                                   autocomplete="new-password">
                         </div>
 
                         <div class="pt-4">
                             <button type="button" onclick="goToStep2()"
-                                    class="w-full bg-gradient-to-r from-red-500 to-red-600 text-white py-4 rounded-lg font-bold hover:from-red-600 hover:to-red-700 transition-all shadow-lg text-lg">
+                                    class="w-full bg-gradient-to-r from-red-500 to-red-600 text-white py-4 rounded-lg font-bold hover:from-red-600 hover:to-red-700 transition-all shadow-lg text-lg min-h-[56px]">
                                 次へ進む
                             </button>
                         </div>
@@ -1172,14 +1187,14 @@ app.get('/register', (c) => {
                         <h2 class="text-xl font-bold text-gray-900 mb-6">店舗情報を入力</h2>
                         
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">店舗名・屋号</label>
+                            <label class="form-label">店舗名・屋号</label>
                             <input type="text" id="shop-name" required
                                    class="form-input"
                                    placeholder="例: 山田自動車整備工場">
                         </div>
 
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">業態</label>
+                            <label class="form-label">業態</label>
                             <select id="shop-type" required
                                     class="form-input">
                                 <option value="">選択してください</option>
@@ -1192,22 +1207,22 @@ app.get('/register', (c) => {
                         </div>
 
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">電話番号</label>
+                            <label class="form-label">電話番号</label>
                             <input type="tel" id="phone"
                                    class="form-input"
                                    placeholder="03-1234-5678">
-                            <p class="mt-1 text-xs text-gray-500">ハイフンありで入力</p>
+                            <p class="mt-2 text-sm text-gray-500">ハイフンありで入力</p>
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-2">郵便番号</label>
+                                <label class="form-label">郵便番号</label>
                                 <input type="text" id="postal-code"
                                        class="form-input"
                                        placeholder="123-4567">
                             </div>
                             <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-2">都道府県</label>
+                                <label class="form-label">都道府県</label>
                                 <input type="text" id="prefecture"
                                        class="form-input"
                                        placeholder="東京都">
@@ -1215,14 +1230,14 @@ app.get('/register', (c) => {
                         </div>
 
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">市区町村</label>
+                            <label class="form-label">市区町村</label>
                             <input type="text" id="city"
                                    class="form-input"
                                    placeholder="渋谷区神南">
                         </div>
 
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">番地・建物名</label>
+                            <label class="form-label">番地・建物名</label>
                             <input type="text" id="address"
                                    class="form-input"
                                    placeholder="1-2-3 ビル名 101号室">
@@ -1230,8 +1245,8 @@ app.get('/register', (c) => {
 
                         <div class="flex items-start pt-2">
                             <input type="checkbox" id="terms" required 
-                                   class="mt-1 mr-3 w-5 h-5 text-red-500 border-gray-300 rounded focus:ring-red-500">
-                            <label for="terms" class="text-sm text-gray-600 leading-relaxed">
+                                   class="mt-1 mr-3 w-5 h-5 text-red-500 border-gray-300 rounded focus:ring-red-500 cursor-pointer">
+                            <label for="terms" class="text-base text-gray-600 leading-relaxed cursor-pointer">
                                 <a href="/terms" target="_blank" class="text-red-500 hover:text-red-600 font-medium underline">利用規約</a>および
                                 <a href="/privacy" target="_blank" class="text-red-500 hover:text-red-600 font-medium underline">プライバシーポリシー</a>に同意します
                             </label>
@@ -1239,11 +1254,11 @@ app.get('/register', (c) => {
 
                         <div class="grid grid-cols-2 gap-3 pt-4">
                             <button type="button" onclick="goToStep1()"
-                                    class="w-full bg-white border-2 border-gray-300 text-gray-700 py-4 rounded-lg font-bold hover:bg-gray-50 transition-all">
+                                    class="w-full bg-white border-2 border-gray-300 text-gray-700 py-4 rounded-lg font-bold hover:bg-gray-50 transition-all min-h-[56px]">
                                 戻る
                             </button>
                             <button type="submit"
-                                    class="w-full bg-gradient-to-r from-red-500 to-red-600 text-white py-4 rounded-lg font-bold hover:from-red-600 hover:to-red-700 transition-all shadow-lg">
+                                    class="w-full bg-gradient-to-r from-red-500 to-red-600 text-white py-4 rounded-lg font-bold hover:from-red-600 hover:to-red-700 transition-all shadow-lg min-h-[56px]">
                                 <i class="fas fa-user-plus mr-2"></i>登録する
                             </button>
                         </div>
