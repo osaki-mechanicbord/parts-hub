@@ -32,14 +32,19 @@ const app = new Hono<{ Bindings: Bindings }>()
 const Footer = () => `
 <footer class="bg-gray-900 text-white mt-16">
     <div class="max-w-6xl mx-auto px-4 py-8">
-        <div class="grid md:grid-cols-4 gap-8 mb-8">
+        <!-- ロゴ＆説明 -->
+        <div class="text-center mb-6">
+            <a href="/" class="inline-block">
+                <h3 class="font-bold text-xl">PARTS HUB</h3>
+            </a>
+            <p class="text-xs text-gray-400 mt-1">自動車部品のフリーマーケット</p>
+        </div>
+
+        <!-- リンクグリッド：スマホ2列 / PC4列 -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-6 mb-8 text-sm">
             <div>
-                <h3 class="font-bold text-lg mb-4">PARTS HUB</h3>
-                <p class="text-sm text-gray-400">自動車部品の<br>フリーマーケット</p>
-            </div>
-            <div>
-                <h4 class="font-semibold mb-3">サービス</h4>
-                <ul class="space-y-2 text-sm text-gray-400">
+                <h4 class="font-semibold text-gray-300 mb-2 text-xs uppercase tracking-wider">サービス</h4>
+                <ul class="space-y-1.5 text-gray-400">
                     <li><a href="/" class="hover:text-white transition-colors">商品を探す</a></li>
                     <li><a href="/listing" class="hover:text-white transition-colors">出品する</a></li>
                     <li><a href="/search" class="hover:text-white transition-colors">検索</a></li>
@@ -47,28 +52,36 @@ const Footer = () => `
                 </ul>
             </div>
             <div>
-                <h4 class="font-semibold mb-3">サポート</h4>
-                <ul class="space-y-2 text-sm text-gray-400">
+                <h4 class="font-semibold text-gray-300 mb-2 text-xs uppercase tracking-wider">サポート</h4>
+                <ul class="space-y-1.5 text-gray-400">
                     <li><a href="/faq" class="hover:text-white transition-colors">よくある質問</a></li>
                     <li><a href="/contact" class="hover:text-white transition-colors">お問い合わせ</a></li>
                     <li><a href="/mypage" class="hover:text-white transition-colors">マイページ</a></li>
-                    <li><a href="/notifications" class="hover:text-white transition-colors">通知</a></li>
-                    <li><a href="/favorites" class="hover:text-white transition-colors">お気に入り</a></li>
                 </ul>
             </div>
             <div>
-                <h4 class="font-semibold mb-3">法的情報</h4>
-                <ul class="space-y-2 text-sm text-gray-400">
+                <h4 class="font-semibold text-gray-300 mb-2 text-xs uppercase tracking-wider">マイメニュー</h4>
+                <ul class="space-y-1.5 text-gray-400">
+                    <li><a href="/notifications" class="hover:text-white transition-colors">通知</a></li>
+                    <li><a href="/favorites" class="hover:text-white transition-colors">お気に入り</a></li>
+                    <li><a href="/news" class="hover:text-white transition-colors">ニュース</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="font-semibold text-gray-300 mb-2 text-xs uppercase tracking-wider">法的情報</h4>
+                <ul class="space-y-1.5 text-gray-400">
                     <li><a href="/terms" class="hover:text-white transition-colors">利用規約</a></li>
-                    <li><a href="/privacy" class="hover:text-white transition-colors">プライバシーポリシー</a></li>
-                    <li><a href="/security" class="hover:text-white transition-colors">セキュリティポリシー</a></li>
-                    <li><a href="/legal" class="hover:text-white transition-colors">特定商取引法に基づく表記</a></li>
+                    <li><a href="/privacy" class="hover:text-white transition-colors">プライバシー</a></li>
+                    <li><a href="/security" class="hover:text-white transition-colors">セキュリティ</a></li>
+                    <li><a href="/legal" class="hover:text-white transition-colors">特商法表記</a></li>
                 </ul>
             </div>
         </div>
-        <div class="border-t border-gray-800 pt-6 text-center">
-            <p class="text-sm text-gray-400 mb-2">&copy; 2026 PARTS HUB. All rights reserved.</p>
-            <p class="text-xs text-gray-500">運営：株式会社TCI / 大阪府大阪市淀川区新高1-5-4 / TEL: 06-6151-3697</p>
+
+        <!-- 区切り線＆コピーライト -->
+        <div class="border-t border-gray-800 pt-5 text-center">
+            <p class="text-xs text-gray-400 mb-1">&copy; 2026 PARTS HUB. All rights reserved.</p>
+            <p class="text-xs text-gray-500 leading-relaxed">運営：株式会社TCI<span class="hidden sm:inline"> / </span><br class="sm:hidden">大阪府大阪市淀川区新高1-5-4<span class="hidden sm:inline"> / </span><br class="sm:hidden">TEL: 06-6151-3697</p>
         </div>
     </div>
 </footer>
@@ -1435,17 +1448,29 @@ function getArticleDetailBody() {
             </div>
             <div id="related-articles" class="mt-12"></div>
         </main>
-        <footer class="bg-gray-900 text-gray-400 py-8 mt-16">
-            <div class="max-w-5xl mx-auto px-4 text-center">
-                <a href="/" class="text-white font-bold text-lg">PARTS HUB</a>
-                <p class="text-sm mt-2">自動車パーツの個人間売買プラットフォーム</p>
-                <div class="flex justify-center gap-6 mt-4 text-sm">
+        <footer class="bg-gray-900 text-white py-8 mt-16">
+            <div class="max-w-5xl mx-auto px-4">
+                <div class="text-center mb-5">
+                    <a href="/" class="font-bold text-lg">PARTS HUB</a>
+                    <p class="text-xs text-gray-400 mt-1">自動車部品のフリーマーケット</p>
+                </div>
+                <div class="flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-gray-400 mb-5">
+                    <a href="/" class="hover:text-white transition-colors">トップ</a>
                     <a href="/news" class="hover:text-white transition-colors">ニュース</a>
-                    <a href="/products" class="hover:text-white transition-colors">パーツ検索</a>
+                    <a href="/search" class="hover:text-white transition-colors">パーツ検索</a>
                     <a href="/listing" class="hover:text-white transition-colors">出品する</a>
                     <a href="/faq" class="hover:text-white transition-colors">FAQ</a>
+                    <a href="/contact" class="hover:text-white transition-colors">お問い合わせ</a>
                 </div>
-                <p class="text-xs mt-4 text-gray-500">&copy; 2026 PARTS HUB All rights reserved.</p>
+                <div class="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-gray-500 mb-4">
+                    <a href="/terms" class="hover:text-gray-300 transition-colors">利用規約</a>
+                    <a href="/privacy" class="hover:text-gray-300 transition-colors">プライバシー</a>
+                    <a href="/legal" class="hover:text-gray-300 transition-colors">特商法表記</a>
+                </div>
+                <div class="border-t border-gray-800 pt-4 text-center">
+                    <p class="text-xs text-gray-500">&copy; 2026 PARTS HUB. All rights reserved.</p>
+                    <p class="text-xs text-gray-600 mt-1">運営：株式会社TCI<span class="hidden sm:inline"> / </span><br class="sm:hidden">大阪府大阪市淀川区新高1-5-4</p>
+                </div>
             </div>
         </footer>`;
 }
