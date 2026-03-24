@@ -2043,8 +2043,8 @@ app.get('/listing', (c) => {
                                     </tr>
                                     <tr>
                                         <td class="py-3 px-2 text-gray-700">売買手数料</td>
-                                        <td class="py-3 px-2 text-center text-gray-700">30%</td>
-                                        <td class="py-3 px-2 text-center text-gray-700">30%</td>
+                                        <td class="py-3 px-2 text-center text-gray-700">10%</td>
+                                        <td class="py-3 px-2 text-center text-gray-700">10%</td>
                                     </tr>
                                     <tr>
                                         <td class="py-3 px-2 text-gray-700">送料</td>
