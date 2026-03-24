@@ -1595,11 +1595,11 @@ app.get('/products/:id', (c) => {
                 </div>
                 <div class="p-6 space-y-4">
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">現在の価格</label>
+                        <label class="form-label">現在の価格</label>
                         <div class="text-2xl font-bold text-gray-900" id="modal-current-price">¥0</div>
                     </div>
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">希望価格 *</label>
+                        <label class="form-label">希望価格 *</label>
                         <div class="relative">
                             <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">¥</span>
                             <input type="number" id="offer-price" 
@@ -1608,7 +1608,7 @@ app.get('/products/:id', (c) => {
                         </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">メッセージ（任意）</label>
+                        <label class="form-label">メッセージ（任意）</label>
                         <textarea id="offer-message" rows="3"
                                   class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none resize-none"
                                   placeholder="値下げの理由など"></textarea>
@@ -1646,10 +1646,16 @@ app.get('/listing', (c) => {
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>
             .form-input {
-                @apply w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors;
+                @apply w-full px-4 py-4 text-base border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors;
+                min-height: 48px;
+                font-size: 16px;
             }
             .form-input:focus {
                 border-color: #ef4444;
+                box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+            }
+            .form-label {
+                @apply block text-base font-semibold text-gray-700 mb-2;
             }
             .image-upload-area {
                 border: 2px dashed #d1d5db;
@@ -1719,29 +1725,29 @@ app.get('/listing', (c) => {
                     
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">商品名 <span class="text-red-500">*</span></label>
+                            <label class="form-label">商品名 <span class="text-red-500">*</span></label>
                             <input type="text" id="product-title" required
                                    class="form-input"
                                    placeholder="例: トヨタ プリウス 30系 フロントドア 左側">
                         </div>
 
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">商品説明 <span class="text-red-500">*</span></label>
+                            <label class="form-label">商品説明 <span class="text-red-500">*</span></label>
                             <textarea id="product-description" required rows="5"
                                       class="form-input resize-none"
                                       placeholder="商品の状態、特徴、付属品などを詳しく記載してください"></textarea>
-                            <p class="mt-1 text-xs text-gray-500">購入者が安心できるよう、詳しく記載しましょう</p>
+                            <p class="mt-2 text-sm text-gray-500">購入者が安心できるよう、詳しく記載しましょう</p>
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-2">カテゴリ <span class="text-red-500">*</span></label>
+                                <label class="form-label">カテゴリ <span class="text-red-500">*</span></label>
                                 <select id="category-select" required class="form-input">
                                     <option value="">選択してください</option>
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-2">サブカテゴリ</label>
+                                <label class="form-label">サブカテゴリ</label>
                                 <select id="subcategory-select" class="form-input">
                                     <option value="">カテゴリを選択してください</option>
                                 </select>
@@ -1749,7 +1755,7 @@ app.get('/listing', (c) => {
                         </div>
                         
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">商品の状態 <span class="text-red-500">*</span></label>
+                            <label class="form-label">商品の状態 <span class="text-red-500">*</span></label>
                             <select id="condition-select" required class="form-input">
                                 <option value="">選択してください</option>
                                 <option value="new">新品、未使用</option>
@@ -1771,25 +1777,25 @@ app.get('/listing', (c) => {
                     
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">販売価格 <span class="text-red-500">*</span></label>
+                            <label class="form-label">販売価格 <span class="text-red-500">*</span></label>
                             <div class="relative">
                                 <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">¥</span>
                                 <input type="number" id="product-price" required min="0"
                                        class="form-input pl-8"
                                        placeholder="0">
                             </div>
-                            <p class="mt-1 text-xs text-gray-500">税込価格を入力してください</p>
+                            <p class="mt-2 text-sm text-gray-500">税込価格を入力してください</p>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">在庫数 <span class="text-red-500">*</span></label>
+                            <label class="form-label">在庫数 <span class="text-red-500">*</span></label>
                             <input type="number" id="stock-quantity" required min="1" value="1"
                                    class="form-input"
                                    placeholder="1">
                         </div>
 
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">部品番号（任意）</label>
+                            <label class="form-label">部品番号（任意）</label>
                             <input type="text" id="part-number"
                                    class="form-input"
                                    placeholder="例: 04465-12345">
@@ -1806,13 +1812,13 @@ app.get('/listing', (c) => {
                     <div class="space-y-4">
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-2">メーカー</label>
+                                <label class="form-label">メーカー</label>
                                 <select id="maker-select" class="form-input">
                                     <option value="">選択してください</option>
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-2">車種</label>
+                                <label class="form-label">車種</label>
                                 <select id="model-select" class="form-input">
                                     <option value="">メーカーを選択してください</option>
                                 </select>
@@ -1821,33 +1827,33 @@ app.get('/listing', (c) => {
                         
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-2">年式（始）</label>
+                                <label class="form-label">年式（始）</label>
                                 <input type="number" id="year-from" class="form-input" placeholder="例: 2010" min="1900" max="2099">
                             </div>
                             <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-2">年式（終）</label>
+                                <label class="form-label">年式（終）</label>
                                 <input type="number" id="year-to" class="form-input" placeholder="例: 2015" min="1900" max="2099">
                             </div>
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-2">型式</label>
+                                <label class="form-label">型式</label>
                                 <input type="text" id="model-code" class="form-input" placeholder="例: DAA-ZVW30">
                             </div>
                             <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-2">グレード</label>
+                                <label class="form-label">グレード</label>
                                 <input type="text" id="grade" class="form-input" placeholder="例: S, G, Gツーリングセレクション">
                             </div>
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-2">エンジン型式</label>
+                                <label class="form-label">エンジン型式</label>
                                 <input type="text" id="engine-type" class="form-input" placeholder="例: 2ZR-FXE">
                             </div>
                             <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-2">駆動方式</label>
+                                <label class="form-label">駆動方式</label>
                                 <select id="drive-type" class="form-input">
                                     <option value="">選択してください</option>
                                     <option value="2WD">2WD（FF）</option>
@@ -1861,7 +1867,7 @@ app.get('/listing', (c) => {
 
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-2">トランスミッション</label>
+                                <label class="form-label">トランスミッション</label>
                                 <select id="transmission-type" class="form-input">
                                     <option value="">選択してください</option>
                                     <option value="AT">オートマ（AT）</option>
@@ -1871,13 +1877,13 @@ app.get('/listing', (c) => {
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-2">純正部品番号</label>
+                                <label class="form-label">純正部品番号</label>
                                 <input type="text" id="oem-part-number" class="form-input" placeholder="例: 04465-XXXXX">
                             </div>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">確認方法</label>
+                            <label class="form-label">確認方法</label>
                             <select id="verification-method" class="form-input">
                                 <option value="">選択してください</option>
                                 <option value="catalog">カタログで確認</option>
@@ -1889,7 +1895,7 @@ app.get('/listing', (c) => {
                         </div>
 
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">適合に関する備考</label>
+                            <label class="form-label">適合に関する備考</label>
                             <textarea id="fitment-notes" rows="3"
                                       class="form-input resize-none"
                                       placeholder="適合に関する注意事項があれば記載してください"></textarea>
@@ -2843,12 +2849,12 @@ app.get('/profile/edit', (c) => {
                     
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">店舗名・工場名<span class="text-red-500">*</span></label>
+                            <label class="form-label">店舗名・工場名<span class="text-red-500">*</span></label>
                             <input type="text" id="shop-name" required class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors" placeholder="山田自動車整備工場">
                         </div>
 
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">店舗種別<span class="text-red-500">*</span></label>
+                            <label class="form-label">店舗種別<span class="text-red-500">*</span></label>
                             <select id="shop-type" required class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors">
                                 <option value="">選択してください</option>
                                 <option value="factory">整備工場</option>
@@ -2860,17 +2866,17 @@ app.get('/profile/edit', (c) => {
                         </div>
 
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">電話番号<span class="text-red-500">*</span></label>
+                            <label class="form-label">電話番号<span class="text-red-500">*</span></label>
                             <input type="tel" id="phone" required class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors" placeholder="03-1234-5678">
                         </div>
 
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">メールアドレス<span class="text-red-500">*</span></label>
+                            <label class="form-label">メールアドレス<span class="text-red-500">*</span></label>
                             <input type="email" id="email" required class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors" placeholder="info@example.com">
                         </div>
 
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">自己紹介</label>
+                            <label class="form-label">自己紹介</label>
                             <textarea id="bio" rows="4" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors resize-none" placeholder="創業50年の老舗整備工場です。国産車全般の修理・整備を承っております。"></textarea>
                         </div>
                     </div>
@@ -2882,12 +2888,12 @@ app.get('/profile/edit', (c) => {
                     
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">郵便番号</label>
+                            <label class="form-label">郵便番号</label>
                             <input type="text" id="postal-code" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors" placeholder="123-4567" maxlength="8">
                         </div>
 
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">都道府県</label>
+                            <label class="form-label">都道府県</label>
                             <select id="prefecture" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors">
                                 <option value="">選択してください</option>
                                 <option value="東京都">東京都</option>
@@ -2899,12 +2905,12 @@ app.get('/profile/edit', (c) => {
                         </div>
 
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">市区町村</label>
+                            <label class="form-label">市区町村</label>
                             <input type="text" id="city" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors" placeholder="渋谷区">
                         </div>
 
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">番地・建物名</label>
+                            <label class="form-label">番地・建物名</label>
                             <input type="text" id="address" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors" placeholder="神南1-2-3 ビル4F">
                         </div>
                     </div>
@@ -2917,17 +2923,17 @@ app.get('/profile/edit', (c) => {
                     
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">銀行名</label>
+                            <label class="form-label">銀行名</label>
                             <input type="text" id="bank-name" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors" placeholder="みずほ銀行">
                         </div>
 
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">支店名</label>
+                            <label class="form-label">支店名</label>
                             <input type="text" id="branch-name" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors" placeholder="渋谷支店">
                         </div>
 
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">口座種別</label>
+                            <label class="form-label">口座種別</label>
                             <select id="account-type" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors">
                                 <option value="">選択してください</option>
                                 <option value="普通">普通</option>
@@ -2936,12 +2942,12 @@ app.get('/profile/edit', (c) => {
                         </div>
 
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">口座番号</label>
+                            <label class="form-label">口座番号</label>
                             <input type="text" id="account-number" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors" placeholder="1234567" maxlength="7">
                         </div>
 
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">口座名義（カタカナ）</label>
+                            <label class="form-label">口座名義（カタカナ）</label>
                             <input type="text" id="account-holder" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors" placeholder="ヤマダジドウシャセイビコウジョウ">
                         </div>
                     </div>
@@ -3042,7 +3048,7 @@ app.get('/reviews/new', (c) => {
                 <!-- 評価項目（任意） -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">商品の状態</label>
+                        <label class="form-label">商品の状態</label>
                         <select id="product-condition-rating" class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none">
                             <option value="">-</option>
                             <option value="5">とても良い</option>
@@ -3053,7 +3059,7 @@ app.get('/reviews/new', (c) => {
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">対応・コミュニケーション</label>
+                        <label class="form-label">対応・コミュニケーション</label>
                         <select id="communication-rating" class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none">
                             <option value="">-</option>
                             <option value="5">とても良い</option>
@@ -3064,7 +3070,7 @@ app.get('/reviews/new', (c) => {
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">配送</label>
+                        <label class="form-label">配送</label>
                         <select id="shipping-rating" class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none">
                             <option value="">-</option>
                             <option value="5">とても良い</option>
@@ -3247,7 +3253,7 @@ app.get('/contact', (c) => {
             <form id="contact-form" class="bg-white rounded-xl shadow-sm p-6 space-y-6">
                 <!-- お問い合わせ種別 -->
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">お問い合わせ種別<span class="text-red-500">*</span></label>
+                    <label class="form-label">お問い合わせ種別<span class="text-red-500">*</span></label>
                     <select id="inquiry-type" required class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none">
                         <option value="">選択してください</option>
                         <option value="proxy_onsite" ${type === 'proxy_onsite' ? 'selected' : ''}>代理出品（出張）</option>
@@ -3261,31 +3267,31 @@ app.get('/contact', (c) => {
 
                 <!-- お名前 -->
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">お名前<span class="text-red-500">*</span></label>
+                    <label class="form-label">お名前<span class="text-red-500">*</span></label>
                     <input type="text" id="name" required class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none" placeholder="山田太郎">
                 </div>
 
                 <!-- メールアドレス -->
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">メールアドレス<span class="text-red-500">*</span></label>
+                    <label class="form-label">メールアドレス<span class="text-red-500">*</span></label>
                     <input type="email" id="email" required class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none" placeholder="example@email.com">
                 </div>
 
                 <!-- 電話番号 -->
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">電話番号</label>
+                    <label class="form-label">電話番号</label>
                     <input type="tel" id="phone" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none" placeholder="090-1234-5678">
                 </div>
 
                 <!-- 件名 -->
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">件名<span class="text-red-500">*</span></label>
+                    <label class="form-label">件名<span class="text-red-500">*</span></label>
                     <input type="text" id="subject" required class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none" placeholder="お問い合わせ内容を簡潔に">
                 </div>
 
                 <!-- お問い合わせ内容 -->
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">お問い合わせ内容<span class="text-red-500">*</span></label>
+                    <label class="form-label">お問い合わせ内容<span class="text-red-500">*</span></label>
                     <textarea id="message" required rows="8" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none resize-none" placeholder="詳しくお書きください"></textarea>
                 </div>
 
@@ -3547,7 +3553,7 @@ app.get('/search', (c) => {
             <div class="max-w-6xl mx-auto px-4 py-4 space-y-4">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">価格帯</label>
+                        <label class="form-label">価格帯</label>
                         <div class="flex gap-2 items-center">
                             <input type="number" id="price-min" placeholder="最小" class="flex-1 px-3 py-2 border rounded-lg text-sm">
                             <span class="text-sm">〜</span>
@@ -3555,7 +3561,7 @@ app.get('/search', (c) => {
                         </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">商品状態</label>
+                        <label class="form-label">商品状態</label>
                         <select id="condition-select" class="w-full px-3 py-2 border rounded-lg">
                             <option value="">すべて</option>
                             <option value="new">新品</option>
@@ -4133,7 +4139,7 @@ app.get('/password-reset', (c) => {
 
                     <form id="reset-form" class="space-y-4">
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">メールアドレス</label>
+                            <label class="form-label">メールアドレス</label>
                             <div class="relative">
                                 <input type="email" id="email" required
                                        class="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-500"
