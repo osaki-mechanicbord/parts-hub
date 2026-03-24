@@ -5,6 +5,457 @@ import { AdminLayout } from '../admin-layout'
 
 const adminPagesRoutes = new Hono()
 
+// ダッシュボード（トップページ）
+adminPagesRoutes.get('/', (c) => {
+  const content = `
+    <div class="mb-8">
+        <h2 class="text-2xl font-bold text-gray-800 mb-2">ダッシュボード</h2>
+        <p class="text-gray-600">Parts Hub 管理画面へようこそ</p>
+    </div>
+
+    <!-- 統計カード -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <p class="text-sm opacity-90">総売上</p>
+                    <h3 class="text-3xl font-bold" id="total-sales">¥0</h3>
+                </div>
+                <div class="bg-white bg-opacity-20 rounded-full p-3">
+                    <i class="fas fa-yen-sign text-2xl"></i>
+                </div>
+            </div>
+            <p class="text-sm opacity-90">
+                <span id="sales-growth" class="font-semibold">0%</span> vs 先月
+            </p>
+        </div>
+
+        <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-lg shadow-lg p-6 text-white">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <p class="text-sm opacity-90">総ユーザー数</p>
+                    <h3 class="text-3xl font-bold" id="total-users">0</h3>
+                </div>
+                <div class="bg-white bg-opacity-20 rounded-full p-3">
+                    <i class="fas fa-users text-2xl"></i>
+                </div>
+            </div>
+            <p class="text-sm opacity-90">
+                <span id="users-growth" class="font-semibold">+0</span> 新規（今月）
+            </p>
+        </div>
+
+        <div class="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <p class="text-sm opacity-90">総商品数</p>
+                    <h3 class="text-3xl font-bold" id="total-products">0</h3>
+                </div>
+                <div class="bg-white bg-opacity-20 rounded-full p-3">
+                    <i class="fas fa-box text-2xl"></i>
+                </div>
+            </div>
+            <p class="text-sm opacity-90">出品中の商品</p>
+        </div>
+
+        <div class="bg-gradient-to-r from-red-500 to-red-600 rounded-lg shadow-lg p-6 text-white">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <p class="text-sm opacity-90">総取引数</p>
+                    <h3 class="text-3xl font-bold" id="total-transactions">0</h3>
+                </div>
+                <div class="bg-white bg-opacity-20 rounded-full p-3">
+                    <i class="fas fa-exchange-alt text-2xl"></i>
+                </div>
+            </div>
+            <p class="text-sm opacity-90">
+                <span id="transactions-growth" class="font-semibold">0%</span> vs 先月
+            </p>
+        </div>
+    </div>
+
+    <!-- グラフエリア -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">月次売上推移</h3>
+            <canvas id="sales-chart" height="250"></canvas>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">新規ユーザー推移</h3>
+            <canvas id="users-chart" height="250"></canvas>
+        </div>
+    </div>
+
+    <!-- 最近のアクティビティ -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">最近の取引</h3>
+            <div id="recent-transactions" class="space-y-3">
+                <p class="text-gray-500 text-center py-4">読み込み中...</p>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">新規登録ユーザー</h3>
+            <div id="recent-users" class="space-y-3">
+                <p class="text-gray-500 text-center py-4">読み込み中...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    <script>
+        let salesChart, usersChart;
+
+        async function loadDashboard() {
+            try {
+                // 統計データ取得
+                const statsRes = await axios.get('/api/admin/stats');
+                const stats = statsRes.data;
+
+                // 統計カード更新
+                document.getElementById('total-sales').textContent = '¥' + stats.totalSales.toLocaleString();
+                document.getElementById('sales-growth').textContent = (stats.salesGrowth >= 0 ? '+' : '') + stats.salesGrowth + '%';
+                document.getElementById('total-users').textContent = stats.totalUsers || 0;
+                document.getElementById('users-growth').textContent = '+' + (stats.newUsers || 0);
+                document.getElementById('total-products').textContent = stats.totalProducts || 0;
+                document.getElementById('total-transactions').textContent = stats.totalTransactions || 0;
+                document.getElementById('transactions-growth').textContent = (stats.transactionsGrowth >= 0 ? '+' : '') + stats.transactionsGrowth + '%';
+
+                // グラフ初期化
+                initCharts(stats);
+
+                // 最近のアクティビティ
+                await loadRecentActivity();
+
+            } catch (error) {
+                console.error('ダッシュボード読み込みエラー:', error);
+                alert('データの読み込みに失敗しました。');
+            }
+        }
+
+        function initCharts(stats) {
+            // 売上グラフ
+            const salesCtx = document.getElementById('sales-chart').getContext('2d');
+            salesChart = new Chart(salesCtx, {
+                type: 'line',
+                data: {
+                    labels: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
+                    datasets: [{
+                        label: '売上（円）',
+                        data: stats.monthlySales || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                        borderColor: 'rgb(59, 130, 246)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+
+            // ユーザーグラフ
+            const usersCtx = document.getElementById('users-chart').getContext('2d');
+            usersChart = new Chart(usersCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
+                    datasets: [{
+                        label: '新規ユーザー',
+                        data: stats.monthlyUsers || [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
+                        backgroundColor: 'rgba(34, 197, 94, 0.8)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { stepSize: 1 } }
+                    }
+                }
+            });
+        }
+
+        async function loadRecentActivity() {
+            try {
+                // 最近の取引
+                const txRes = await axios.get('/api/admin/transactions?limit=5');
+                const transactions = txRes.data.transactions || [];
+                const txHtml = transactions.length === 0 
+                    ? '<p class="text-gray-500 text-center py-4">取引がありません</p>'
+                    : transactions.map(tx => \`
+                        <div class="flex items-center justify-between border-b pb-3">
+                            <div>
+                                <p class="font-medium text-gray-900">\${tx.product_title || '商品名不明'}</p>
+                                <p class="text-sm text-gray-500">¥\${tx.amount.toLocaleString()}</p>
+                            </div>
+                            <span class="px-2 py-1 text-xs rounded bg-green-100 text-green-700">\${tx.status}</span>
+                        </div>
+                    \`).join('');
+                document.getElementById('recent-transactions').innerHTML = txHtml;
+
+                // 新規ユーザー
+                const usersRes = await axios.get('/api/admin/users?limit=5');
+                const users = usersRes.data.users || [];
+                const usersHtml = users.length === 0
+                    ? '<p class="text-gray-500 text-center py-4">ユーザーがいません</p>'
+                    : users.map(user => \`
+                        <div class="flex items-center justify-between border-b pb-3">
+                            <div>
+                                <p class="font-medium text-gray-900">\${user.name}</p>
+                                <p class="text-sm text-gray-500">\${user.email}</p>
+                            </div>
+                            <p class="text-xs text-gray-400">\${new Date(user.created_at).toLocaleDateString('ja-JP')}</p>
+                        </div>
+                    \`).join('');
+                document.getElementById('recent-users').innerHTML = usersHtml;
+
+            } catch (error) {
+                console.error('アクティビティ読み込みエラー:', error);
+            }
+        }
+
+        // ページ読み込み時に実行
+        document.addEventListener('DOMContentLoaded', loadDashboard);
+    </script>
+  `;
+
+  return c.html(AdminLayout('dashboard', 'ダッシュボード', content));
+});
+
+// ユーザー管理ページ
+adminPagesRoutes.get('/users', (c) => {
+  const content = `
+    <h2 class="text-2xl font-bold text-gray-800 mb-6">ユーザー管理</h2>
+    
+    <div class="bg-white p-4 rounded-lg shadow mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <input type="text" id="search-input" placeholder="ユーザー名またはメールで検索..." class="px-4 py-2 border rounded-lg">
+            <select id="status-filter" class="px-4 py-2 border rounded-lg">
+                <option value="">すべてのステータス</option>
+                <option value="active">有効</option>
+                <option value="suspended">停止中</option>
+                <option value="banned">禁止</option>
+            </select>
+            <select id="sort" class="px-4 py-2 border rounded-lg">
+                <option value="created_desc">登録日（新しい順）</option>
+                <option value="created_asc">登録日（古い順）</option>
+                <option value="products_desc">商品数（多い順）</option>
+            </select>
+            <button onclick="searchUsers()" class="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600">
+                <i class="fas fa-search mr-2"></i>検索
+            </button>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow">
+        <div class="overflow-x-auto">
+            <table class="min-w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">名前</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">メールアドレス</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">電話番号</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">会社名</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">商品数</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">取引数</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ステータス</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">登録日</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="users-table-body" class="bg-white divide-y divide-gray-200">
+                    <tr>
+                        <td colspan="10" class="px-6 py-4 text-center">
+                            <i class="fas fa-spinner fa-spin text-gray-400 text-2xl"></i>
+                            <p class="text-gray-500 mt-2">読み込み中...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="px-6 py-4 border-t">
+            <div id="pagination" class="flex justify-center space-x-2"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentPage = 1;
+        let currentStatus = '';
+        let currentSearch = '';
+        let currentSort = 'created_desc';
+
+        async function loadUsers(page = 1) {
+            currentPage = page;
+            try {
+                const params = new URLSearchParams({
+                    page: page.toString(),
+                    limit: '20',
+                    status: currentStatus,
+                    search: currentSearch,
+                    sort: currentSort
+                });
+                
+                const response = await fetch('/api/admin/users?' + params);
+                const data = await response.json();
+                
+                if (!data.users) {
+                    throw new Error('Invalid response format');
+                }
+                
+                renderUsers(data.users);
+                renderPagination(data.page, data.totalPages);
+            } catch (error) {
+                console.error('ユーザー読み込みエラー:', error);
+                document.getElementById('users-table-body').innerHTML = 
+                    '<tr><td colspan="10" class="px-6 py-4 text-center text-red-500">読み込みに失敗しました</td></tr>';
+            }
+        }
+
+        function renderUsers(users) {
+            const tbody = document.getElementById('users-table-body');
+            
+            if (users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" class="px-6 py-4 text-center text-gray-500">ユーザーが見つかりませんでした</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = users.map(user => \`
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">\${user.id}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">\${user.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">\${user.email}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">\${user.phone || '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">\${user.company_name || '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">\${user.products_count || 0}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">\${user.transactions_count || 0}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 py-1 text-xs rounded \${
+                            user.status === 'active' ? 'bg-green-100 text-green-700' :
+                            user.status === 'suspended' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-red-100 text-red-700'
+                        }">
+                            \${user.status === 'active' ? '有効' : 
+                              user.status === 'suspended' ? '停止中' : '禁止'}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        \${new Date(user.created_at).toLocaleDateString('ja-JP')}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <button onclick="viewUser(\${user.id})" class="text-blue-500 hover:underline mr-2">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button onclick="toggleUserStatus(\${user.id}, '\${user.status}')" 
+                                class="text-\${user.status === 'active' ? 'yellow' : 'green'}-500 hover:underline">
+                            <i class="fas fa-\${user.status === 'active' ? 'pause' : 'play'}"></i>
+                        </button>
+                    </td>
+                </tr>
+            \`).join('');
+        }
+
+        function renderPagination(page, totalPages) {
+            const pagination = document.getElementById('pagination');
+            
+            if (totalPages <= 1) {
+                pagination.innerHTML = '';
+                return;
+            }
+            
+            let html = '';
+            
+            if (page > 1) {
+                html += \`<button onclick="loadUsers(\${page - 1})" 
+                        class="px-3 py-1 border rounded hover:bg-gray-100">前へ</button>\`;
+            }
+            
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === page) {
+                    html += \`<button class="px-3 py-1 bg-red-500 text-white rounded">\${i}</button>\`;
+                } else if (i === 1 || i === totalPages || (i >= page - 2 && i <= page + 2)) {
+                    html += \`<button onclick="loadUsers(\${i})" 
+                            class="px-3 py-1 border rounded hover:bg-gray-100">\${i}</button>\`;
+                } else if (i === page - 3 || i === page + 3) {
+                    html += \`<span class="px-3 py-1">...</span>\`;
+                }
+            }
+            
+            if (page < totalPages) {
+                html += \`<button onclick="loadUsers(\${page + 1})" 
+                        class="px-3 py-1 border rounded hover:bg-gray-100">次へ</button>\`;
+            }
+            
+            pagination.innerHTML = html;
+        }
+
+        function searchUsers() {
+            currentStatus = document.getElementById('status-filter').value;
+            currentSearch = document.getElementById('search-input').value;
+            currentSort = document.getElementById('sort').value;
+            loadUsers(1);
+        }
+
+        function viewUser(id) {
+            window.location.href = \`/admin/users/\${id}\`;
+        }
+
+        async function toggleUserStatus(id, currentStatus) {
+            const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
+            const action = newStatus === 'active' ? '有効化' : '停止';
+            
+            if (!confirm(\`このユーザーを\${action}しますか？\`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(\`/api/admin/users/\${id}/status\`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                
+                if (response.ok) {
+                    alert(\`ユーザーを\${action}しました\`);
+                    loadUsers(currentPage);
+                } else {
+                    throw new Error('Status update failed');
+                }
+            } catch (error) {
+                console.error('ステータス更新エラー:', error);
+                alert('ステータスの更新に失敗しました');
+            }
+        }
+
+        // 検索フィルターの変更を監視
+        document.getElementById('status-filter').addEventListener('change', searchUsers);
+        document.getElementById('sort').addEventListener('change', searchUsers);
+        document.getElementById('search-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchUsers();
+        });
+
+        // ページ読み込み時に実行
+        document.addEventListener('DOMContentLoaded', () => loadUsers(1));
+    </script>
+  `;
+
+  return c.html(AdminLayout('users', 'ユーザー管理', content));
+});
+
 // 商品管理ページ
 adminPagesRoutes.get('/products', (c) => {
   const content = `

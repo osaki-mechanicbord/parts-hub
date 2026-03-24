@@ -67,17 +67,49 @@ adminRoutes.get('/stats', async (c) => {
       WHERE created_at >= ? AND created_at < ?
     `).bind(firstDayOfLastMonth.toISOString(), firstDayOfMonth.toISOString()).first();
 
+    // 総ユーザー数
+    const totalUsers = await env.DB.prepare(`
+      SELECT COUNT(*) as count FROM users
+    `).first();
+
+    // 月次売上データ（過去12ヶ月）
+    const monthlySalesData = [];
+    const monthlyUsersData = [];
+    for (let i = 11; i >= 0; i--) {
+      const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+      
+      const monthSales = await env.DB.prepare(`
+        SELECT COALESCE(SUM(amount), 0) as total
+        FROM transactions
+        WHERE status = 'completed'
+        AND created_at >= ? AND created_at < ?
+      `).bind(monthStart.toISOString(), monthEnd.toISOString()).first();
+      
+      const monthUsers = await env.DB.prepare(`
+        SELECT COUNT(*) as count
+        FROM users
+        WHERE created_at >= ? AND created_at < ?
+      `).bind(monthStart.toISOString(), monthEnd.toISOString()).first();
+      
+      monthlySalesData.push(monthSales?.total || 0);
+      monthlyUsersData.push(monthUsers?.count || 0);
+    }
+
     return c.json({
       totalSales: currentMonthSales?.total || 0,
       salesGrowth: lastMonthSales?.total ? 
         ((currentMonthSales?.total - lastMonthSales?.total) / lastMonthSales?.total * 100).toFixed(1) : 0,
+      totalUsers: totalUsers?.count || 0,
       newUsers: newUsers?.count || 0,
       usersGrowth: lastMonthNewUsers?.count ?
         ((newUsers?.count - lastMonthNewUsers?.count) / lastMonthNewUsers?.count * 100).toFixed(1) : 0,
       totalProducts: totalProducts?.count || 0,
       totalTransactions: totalTransactions?.count || 0,
       transactionsGrowth: lastMonthTransactions?.count ?
-        ((totalTransactions?.count - lastMonthTransactions?.count) / lastMonthTransactions?.count * 100).toFixed(1) : 0
+        ((totalTransactions?.count - lastMonthTransactions?.count) / lastMonthTransactions?.count * 100).toFixed(1) : 0,
+      monthlySales: monthlySalesData,
+      monthlyUsers: monthlyUsersData
     });
   } catch (error) {
     console.error('統計データ取得エラー:', error);
@@ -272,7 +304,7 @@ adminRoutes.get('/products', async (c) => {
       FROM products p
       LEFT JOIN users u ON p.user_id = u.id
       LEFT JOIN favorites f ON p.id = f.product_id
-      LEFT JOIN comments c ON p.id = c.product_id
+      LEFT JOIN product_comments c ON p.id = c.product_id
     `;
 
     if (status) {
