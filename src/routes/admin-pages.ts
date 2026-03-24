@@ -1143,9 +1143,12 @@ adminPagesRoutes.get('/articles', (c) => {
                 <option value="published">公開中</option>
                 <option value="archived">アーカイブ</option>
             </select>
-            <div class="md:col-span-2"></div>
+            <div class="md:col-span-1"></div>
             <button onclick="showGenerateModal()" class="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600">
                 <i class="fas fa-magic mr-2"></i>AI自動生成
+            </button>
+            <button onclick="autoGenerateWithImage()" class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600">
+                <i class="fas fa-image mr-2"></i>自動生成（画像付き）
             </button>
         </div>
     </div>
@@ -1504,6 +1507,35 @@ adminPagesRoutes.get('/articles', (c) => {
             } catch (error) {
                 console.error('削除エラー:', error);
                 alert('削除に失敗しました');
+            }
+        }
+
+        async function autoGenerateWithImage() {
+            if (!confirm('AIが自動で記事とアイキャッチ画像を生成し、即座に公開します。よろしいですか？\n\n※この機能はOpenAI APIを使用し、約$0.05のコストがかかります。')) {
+                return;
+            }
+            
+            const button = event.target;
+            const originalText = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>生成中...';
+            
+            try {
+                const response = await axios.post('/api/admin/articles/auto-generate-with-image');
+                
+                if (response.data.success) {
+                    const article = response.data.article;
+                    alert(\`記事が生成され、公開されました！\n\nタイトル: \${article.title}\nカテゴリ: \${article.category}\n\nトップページに表示されます。\`);
+                    loadArticles(currentPage);
+                } else {
+                    alert('自動生成に失敗しました');
+                }
+            } catch (error) {
+                console.error('自動生成エラー:', error);
+                alert('自動生成に失敗しました: ' + (error.response?.data?.error || error.message));
+            } finally {
+                button.disabled = false;
+                button.innerHTML = originalText;
             }
         }
 
