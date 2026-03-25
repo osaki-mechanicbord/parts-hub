@@ -822,9 +822,9 @@ app.get('/', (c) => {
                             <p class="text-gray-500 text-sm">読み込み中...</p>
                         </div>
                     </div>
-                    <!-- スクロールインジケーター -->
-                    <div id="slider-dots" class="flex justify-center gap-1.5 mt-3"></div>
                 </div>
+                <!-- スクロールインジケーター（スライダーの外側に配置） -->
+                <div id="slider-dots" class="md:hidden flex justify-center gap-2 mt-4"></div>
 
                 <!-- すべて見るリンク（セクション下部） -->
                 <div class="mt-8 text-center">
@@ -1184,8 +1184,17 @@ app.get('/', (c) => {
                     // スクロールドットインジケーター
                     if (mobileArticles.length > 1) {
                         dotsContainer.innerHTML = mobileArticles.map(function(_, i) {
-                            return '<div class="slider-dot w-1.5 h-1.5 rounded-full ' + (i === 0 ? 'bg-red-500' : 'bg-gray-300') + ' transition-colors" data-index="' + i + '"></div>';
+                            return '<div class="slider-dot rounded-full transition-all duration-300 cursor-pointer ' + (i === 0 ? 'bg-red-500 w-6 h-2' : 'bg-gray-300 w-2 h-2') + '" data-index="' + i + '"></div>';
                         }).join('');
+
+                        // ドットタップでスクロール
+                        dotsContainer.querySelectorAll('.slider-dot').forEach(function(dot) {
+                            dot.addEventListener('click', function() {
+                                var idx = parseInt(dot.getAttribute('data-index'));
+                                var slider = document.getElementById('articles-slider');
+                                slider.scrollTo({ left: idx * (280 + 16), behavior: 'smooth' });
+                            });
+                        });
 
                         // スクロール時にドット更新
                         var slider = document.getElementById('articles-slider');
@@ -1194,8 +1203,11 @@ app.get('/', (c) => {
                             var cardWidth = 280 + 16; // カード幅 + gap
                             var activeIndex = Math.round(scrollLeft / cardWidth);
                             document.querySelectorAll('.slider-dot').forEach(function(dot, i) {
-                                dot.classList.toggle('bg-red-500', i === activeIndex);
-                                dot.classList.toggle('bg-gray-300', i !== activeIndex);
+                                if (i === activeIndex) {
+                                    dot.className = 'slider-dot rounded-full transition-all duration-300 cursor-pointer bg-red-500 w-6 h-2';
+                                } else {
+                                    dot.className = 'slider-dot rounded-full transition-all duration-300 cursor-pointer bg-gray-300 w-2 h-2';
+                                }
                             });
                         });
                     }
