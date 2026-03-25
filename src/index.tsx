@@ -1773,122 +1773,263 @@ app.get('/login', (c) => {
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
         <style>
+            * { font-family: 'Noto Sans JP', sans-serif; }
+            .login-bg {
+                background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+                min-height: 100vh;
+            }
+            .login-card {
+                background: rgba(255,255,255,0.98);
+                border-radius: 20px;
+                box-shadow: 0 25px 60px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.1);
+                backdrop-filter: blur(10px);
+            }
             .form-input {
-                @apply w-full px-4 py-4 text-base border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors;
-                min-height: 48px;
+                width: 100%;
+                padding: 14px 16px;
                 font-size: 16px;
+                border: 2px solid #e5e7eb;
+                border-radius: 12px;
+                outline: none;
+                transition: all 0.3s ease;
+                background: #f9fafb;
+                color: #111827;
+                box-sizing: border-box;
             }
             .form-input:focus {
                 border-color: #ef4444;
-                box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+                box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
+                background: #fff;
+            }
+            .form-input::placeholder {
+                color: #9ca3af;
             }
             .form-label {
-                @apply block text-base font-semibold text-gray-700 mb-2;
+                display: block;
+                font-size: 14px;
+                font-weight: 600;
+                color: #374151;
+                margin-bottom: 8px;
+            }
+            .btn-login {
+                width: 100%;
+                padding: 16px;
+                font-size: 17px;
+                font-weight: 700;
+                color: #fff;
+                background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                border: none;
+                border-radius: 12px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+            }
+            .btn-login:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5);
+            }
+            .btn-login:active {
+                transform: translateY(0);
+            }
+            .btn-login:disabled {
+                opacity: 0.7;
+                cursor: not-allowed;
+                transform: none;
+            }
+            .logo-icon {
+                width: 48px; height: 48px;
+                background: linear-gradient(135deg, #ef4444, #dc2626);
+                border-radius: 14px;
+                display: flex; align-items: center; justify-content: center;
+                box-shadow: 0 4px 12px rgba(239,68,68,0.3);
+            }
+            .divider {
+                display: flex; align-items: center; gap: 12px;
+                color: #9ca3af; font-size: 13px;
+            }
+            .divider::before, .divider::after {
+                content: ''; flex: 1; height: 1px; background: #e5e7eb;
+            }
+            .floating-shapes {
+                position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+                overflow: hidden; pointer-events: none;
+            }
+            .floating-shapes div {
+                position: absolute; border-radius: 50%;
+                background: rgba(255,255,255,0.03);
+            }
+            .shape-1 { width: 300px; height: 300px; top: -100px; right: -80px; }
+            .shape-2 { width: 200px; height: 200px; bottom: -60px; left: -60px; }
+            .shape-3 { width: 150px; height: 150px; top: 40%; left: 10%; }
+            @media (max-width: 640px) {
+                .login-card { border-radius: 16px; margin: 0 12px; }
             }
         </style>
     </head>
-    <body class="bg-gray-50 min-h-screen">
-        <!-- シンプルヘッダー -->
-        <header class="bg-white border-b border-gray-200">
-            <div class="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
-                <a href="/" class="text-gray-600 hover:text-gray-900 flex items-center">
-                    <i class="fas fa-arrow-left mr-2"></i>戻る
-                </a>
-                <div class="text-red-500 font-bold text-lg">PARTS HUB</div>
-                <div class="w-16"></div>
-            </div>
-        </header>
+    <body class="login-bg">
+        <div class="floating-shapes">
+            <div class="shape-1"></div>
+            <div class="shape-2"></div>
+            <div class="shape-3"></div>
+        </div>
 
-        <main class="max-w-md mx-auto px-4 py-12">
-            <!-- タイトル -->
-            <div class="text-center mb-8">
-                <h1 class="text-3xl font-bold text-gray-900 mb-2">ログイン</h1>
-                <p class="text-gray-600">メールアドレスとパスワードを入力</p>
-            </div>
-
-            <!-- 登録成功メッセージ（URLパラメータで表示） -->
-            <div id="success-message" class="hidden mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                <div class="flex items-center text-green-800">
-                    <i class="fas fa-check-circle mr-2"></i>
-                    <span class="text-sm font-medium">アカウント作成完了！ログインしてください。</span>
+        <div style="min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px 16px; position:relative; z-index:1;">
+            <!-- ロゴ & ヘッダー -->
+            <div style="text-align:center; margin-bottom:32px;">
+                <div style="display:inline-flex; align-items:center; gap:12px; margin-bottom:8px;">
+                    <div class="logo-icon">
+                        <i class="fas fa-cog text-white text-xl"></i>
+                    </div>
+                    <span style="font-size:28px; font-weight:800; color:#fff; letter-spacing:-0.5px;">PARTS HUB</span>
                 </div>
+                <p style="color:rgba(255,255,255,0.6); font-size:14px;">自動車パーツ売買プラットフォーム</p>
             </div>
 
-            <!-- ログインフォーム -->
-            <div class="bg-white rounded-xl shadow-sm p-6 md:p-8">
-                <form id="login-form" class="space-y-5">
-                    <div>
-                        <label class="form-label">メールアドレス</label>
+            <!-- メインカード -->
+            <div class="login-card" style="width:100%; max-width:460px; padding:36px 32px;">
+                <!-- タイトル -->
+                <div style="text-align:center; margin-bottom:28px;">
+                    <h1 style="font-size:24px; font-weight:700; color:#111827; margin:0 0 6px 0;">ログイン</h1>
+                    <p style="font-size:14px; color:#6b7280; margin:0;">メールアドレスとパスワードを入力してください</p>
+                </div>
+
+                <!-- 登録成功メッセージ -->
+                <div id="success-message" class="hidden" style="margin-bottom:20px; padding:14px 16px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px;">
+                    <div style="display:flex; align-items:center; color:#166534; font-size:14px; font-weight:500;">
+                        <i class="fas fa-check-circle" style="margin-right:8px; font-size:16px;"></i>
+                        アカウント作成完了！ログインしてください。
+                    </div>
+                </div>
+
+                <!-- エラーメッセージ -->
+                <div id="error-message" class="hidden" style="margin-bottom:20px; padding:14px 16px; background:#fef2f2; border:1px solid #fecaca; border-radius:12px;">
+                    <div style="display:flex; align-items:center; color:#991b1b; font-size:14px; font-weight:500;">
+                        <i class="fas fa-exclamation-circle" style="margin-right:8px; font-size:16px;"></i>
+                        <span id="error-text"></span>
+                    </div>
+                </div>
+
+                <!-- ログインフォーム -->
+                <form id="login-form">
+                    <div style="margin-bottom:20px;">
+                        <label class="form-label">
+                            <i class="fas fa-envelope" style="margin-right:6px; color:#9ca3af; font-size:13px;"></i>
+                            メールアドレス
+                        </label>
                         <input type="email" id="email" required
                                class="form-input"
                                placeholder="example@email.com"
                                autocomplete="email">
                     </div>
 
-                    <div>
-                        <label class="form-label">パスワード</label>
-                        <input type="password" id="password" required
-                               class="form-input"
-                               placeholder="パスワードを入力"
-                               autocomplete="current-password">
+                    <div style="margin-bottom:16px;">
+                        <label class="form-label">
+                            <i class="fas fa-lock" style="margin-right:6px; color:#9ca3af; font-size:13px;"></i>
+                            パスワード
+                        </label>
+                        <div style="position:relative;">
+                            <input type="password" id="password" required
+                                   class="form-input"
+                                   placeholder="パスワードを入力"
+                                   autocomplete="current-password"
+                                   style="padding-right:48px;">
+                            <button type="button" id="toggle-password"
+                                    style="position:absolute; right:14px; top:50%; transform:translateY(-50%); background:none; border:none; color:#9ca3af; cursor:pointer; padding:4px;">
+                                <i class="fas fa-eye" id="eye-icon"></i>
+                            </button>
+                        </div>
                     </div>
 
-                    <div class="flex items-center justify-between text-sm">
-                        <label class="flex items-center cursor-pointer">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:24px;">
+                        <label style="display:flex; align-items:center; cursor:pointer; gap:8px;">
                             <input type="checkbox" id="remember" 
-                                   class="w-5 h-5 text-red-500 border-gray-300 rounded focus:ring-red-500 cursor-pointer">
-                            <span class="ml-2 text-gray-600 text-base">ログイン状態を保持</span>
+                                   style="width:18px; height:18px; accent-color:#ef4444; cursor:pointer; border-radius:4px;">
+                            <span style="font-size:14px; color:#6b7280;">ログイン状態を保持</span>
                         </label>
-                        <a href="/password-reset" class="text-red-500 hover:text-red-600 font-medium text-base">
-                            パスワードを忘れた？
+                        <a href="/password-reset" style="font-size:14px; color:#ef4444; text-decoration:none; font-weight:500;">
+                            パスワードを忘れた方
                         </a>
                     </div>
 
-                    <div class="pt-2">
-                        <button type="submit"
-                                class="w-full bg-gradient-to-r from-red-500 to-red-600 text-white py-4 rounded-lg font-bold hover:from-red-600 hover:to-red-700 transition-all shadow-lg text-lg min-h-[56px]">
-                            ログイン
-                        </button>
-                    </div>
+                    <button type="submit" class="btn-login" id="submit-btn">
+                        ログイン
+                    </button>
                 </form>
 
+                <!-- 区切り -->
+                <div class="divider" style="margin:28px 0;">または</div>
+
                 <!-- 新規登録リンク -->
-                <div class="mt-8 pt-6 border-t border-gray-200 text-center">
-                    <p class="text-gray-600">
-                        アカウントをお持ちでない方
-                    </p>
-                    <a href="/register" class="inline-block mt-2 text-red-500 hover:text-red-600 font-semibold">
-                        新規会員登録はこちら <i class="fas fa-arrow-right ml-1"></i>
-                    </a>
-                </div>
+                <a href="/register" style="display:block; width:100%; padding:14px; font-size:15px; font-weight:600; color:#374151; background:#f3f4f6; border:2px solid #e5e7eb; border-radius:12px; text-align:center; text-decoration:none; transition:all 0.3s ease; box-sizing:border-box;"
+                   onmouseover="this.style.borderColor='#ef4444'; this.style.color='#ef4444'; this.style.background='#fef2f2';"
+                   onmouseout="this.style.borderColor='#e5e7eb'; this.style.color='#374151'; this.style.background='#f3f4f6';">
+                    <i class="fas fa-user-plus" style="margin-right:8px;"></i>
+                    新規会員登録はこちら
+                </a>
             </div>
 
-            <!-- デモアカウント情報（開発用） -->
-            <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <div class="text-sm text-blue-800">
-                    <p class="font-semibold mb-1"><i class="fas fa-info-circle mr-1"></i>テストアカウント</p>
-                    <p class="text-xs">メール: test@example.com</p>
-                    <p class="text-xs">パスワード: test1234</p>
+            <!-- フッターリンク -->
+            <div style="margin-top:24px; text-align:center;">
+                <a href="/" style="color:rgba(255,255,255,0.5); font-size:13px; text-decoration:none;">
+                    <i class="fas fa-arrow-left" style="margin-right:4px;"></i>トップページに戻る
+                </a>
+            </div>
+
+            <!-- テストアカウント（開発用） -->
+            <div style="margin-top:16px; padding:12px 20px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.1); border-radius:12px; max-width:460px; width:100%;">
+                <div style="color:rgba(255,255,255,0.5); font-size:12px; text-align:center;">
+                    <span style="font-weight:600;"><i class="fas fa-info-circle" style="margin-right:4px;"></i>テストアカウント</span>
+                    <span style="margin:0 8px;">|</span>
+                    メール: test@example.com
+                    <span style="margin:0 8px;">|</span>
+                    パスワード: test1234
                 </div>
             </div>
-        </main>
+        </div>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script>
+            // パスワード表示切替
+            document.getElementById('toggle-password').addEventListener('click', function() {
+                const passwordInput = document.getElementById('password');
+                const eyeIcon = document.getElementById('eye-icon');
+                if (passwordInput.type === 'password') {
+                    passwordInput.type = 'text';
+                    eyeIcon.className = 'fas fa-eye-slash';
+                } else {
+                    passwordInput.type = 'password';
+                    eyeIcon.className = 'fas fa-eye';
+                }
+            });
+
             // 登録成功メッセージの表示
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('registered') === 'true') {
                 document.getElementById('success-message').classList.remove('hidden');
             }
 
+            // エラーメッセージ表示関数
+            function showError(message) {
+                const errorDiv = document.getElementById('error-message');
+                document.getElementById('error-text').textContent = message;
+                errorDiv.classList.remove('hidden');
+                errorDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+
+            function hideError() {
+                document.getElementById('error-message').classList.add('hidden');
+            }
+
             // ログインフォーム送信
             document.getElementById('login-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
+                hideError();
                 
-                const submitButton = e.target.querySelector('button[type="submit"]');
+                const submitButton = document.getElementById('submit-btn');
                 submitButton.disabled = true;
-                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>ログイン中...';
+                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:8px;"></i>ログイン中...';
                 
                 const email = document.getElementById('email').value;
                 const password = document.getElementById('password').value;
@@ -1897,28 +2038,28 @@ app.get('/login', (c) => {
                     const response = await axios.post('/api/auth/login', { email, password });
                     
                     if (response.data.success) {
-                        // トークンとユーザー情報を保存
                         localStorage.setItem('token', response.data.data.token);
                         localStorage.setItem('user', JSON.stringify(response.data.data.user));
                         
-                        // 成功メッセージ
-                        const successMsg = document.createElement('div');
-                        successMsg.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-4 rounded-lg shadow-xl z-50';
-                        successMsg.innerHTML = '<i class="fas fa-check-circle mr-2"></i>ログイン成功！';
-                        document.body.appendChild(successMsg);
+                        submitButton.innerHTML = '<i class="fas fa-check" style="margin-right:8px;"></i>ログイン成功！';
+                        submitButton.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
                         
                         setTimeout(() => {
                             window.location.href = '/';
-                        }, 1000);
+                        }, 800);
                     }
                 } catch (error) {
                     submitButton.disabled = false;
                     submitButton.innerHTML = 'ログイン';
                     
                     const errorMsg = error.response?.data?.error || 'ログインに失敗しました。メールアドレスとパスワードを確認してください。';
-                    alert(errorMsg);
+                    showError(errorMsg);
                 }
             });
+
+            // 入力時にエラーをクリア
+            document.getElementById('email').addEventListener('input', hideError);
+            document.getElementById('password').addEventListener('input', hideError);
         </script>
     </body>
     </html>
@@ -1937,120 +2078,175 @@ app.get('/register', (c) => {
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
         <style>
+            * { font-family: 'Noto Sans JP', sans-serif; }
+            .register-bg {
+                background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+                min-height: 100vh;
+            }
+            .register-card {
+                background: rgba(255,255,255,0.98);
+                border-radius: 20px;
+                box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+            }
             .form-input {
-                @apply w-full px-4 py-4 text-base border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors;
-                min-height: 48px;
+                width: 100%;
+                padding: 14px 16px;
                 font-size: 16px;
+                border: 2px solid #e5e7eb;
+                border-radius: 12px;
+                outline: none;
+                transition: all 0.3s ease;
+                background: #f9fafb;
+                color: #111827;
+                box-sizing: border-box;
             }
             .form-input:focus {
                 border-color: #ef4444;
-                box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+                box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
+                background: #fff;
             }
+            .form-input::placeholder { color: #9ca3af; }
             .form-label {
-                @apply block text-base font-semibold text-gray-700 mb-2;
+                display: block;
+                font-size: 14px;
+                font-weight: 600;
+                color: #374151;
+                margin-bottom: 8px;
             }
-            .step-indicator {
-                @apply flex items-center justify-center w-10 h-10 rounded-full text-base font-bold;
+            .btn-primary {
+                width: 100%;
+                padding: 16px;
+                font-size: 16px;
+                font-weight: 700;
+                color: #fff;
+                background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                border: none;
+                border-radius: 12px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
             }
-            .step-active {
-                @apply bg-red-500 text-white;
+            .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5); }
+            .btn-primary:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+            .btn-secondary {
+                width: 100%;
+                padding: 16px;
+                font-size: 16px;
+                font-weight: 700;
+                color: #374151;
+                background: #fff;
+                border: 2px solid #d1d5db;
+                border-radius: 12px;
+                cursor: pointer;
+                transition: all 0.3s ease;
             }
-            .step-inactive {
-                @apply bg-gray-200 text-gray-500;
+            .btn-secondary:hover { border-color: #9ca3af; background: #f9fafb; }
+            .step-dot {
+                width: 36px; height: 36px;
+                border-radius: 50%;
+                display: flex; align-items: center; justify-content: center;
+                font-size: 14px; font-weight: 700;
+                transition: all 0.3s ease;
+            }
+            .step-active { background: #ef4444; color: #fff; box-shadow: 0 2px 8px rgba(239,68,68,0.4); }
+            .step-inactive { background: #e5e7eb; color: #9ca3af; }
+            .step-done { background: #22c55e; color: #fff; }
+            .step-line { height: 3px; width: 60px; border-radius: 2px; transition: background 0.3s ease; }
+            .floating-shapes {
+                position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+                overflow: hidden; pointer-events: none;
+            }
+            .floating-shapes div { position: absolute; border-radius: 50%; background: rgba(255,255,255,0.03); }
+            .shape-1 { width: 300px; height: 300px; top: -100px; right: -80px; }
+            .shape-2 { width: 200px; height: 200px; bottom: -60px; left: -60px; }
+            .hint-text { font-size: 13px; color: #9ca3af; margin-top: 6px; }
+            .grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+            @media (max-width: 480px) {
+                .grid-2col { grid-template-columns: 1fr; }
+                .register-card { border-radius: 16px; margin: 0 4px; }
             }
         </style>
     </head>
-    <body class="bg-gray-50 min-h-screen">
-        <!-- シンプルヘッダー -->
-        <header class="bg-white border-b border-gray-200">
-            <div class="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
-                <a href="/" class="text-gray-600 hover:text-gray-900 flex items-center">
-                    <i class="fas fa-arrow-left mr-2"></i>戻る
-                </a>
-                <div class="text-red-500 font-bold text-lg">PARTS HUB</div>
-                <div class="w-16"></div>
-            </div>
-        </header>
+    <body class="register-bg">
+        <div class="floating-shapes">
+            <div class="shape-1"></div>
+            <div class="shape-2"></div>
+        </div>
 
-        <main class="max-w-2xl mx-auto px-4 py-8">
-            <!-- タイトル -->
-            <div class="text-center mb-8">
-                <h1 class="text-3xl font-bold text-gray-900 mb-2">会員登録</h1>
-                <p class="text-gray-600">自動車パーツの売買を始めましょう</p>
-            </div>
-
-            <!-- ステップインジケーター -->
-            <div class="mb-8">
-                <div class="flex items-center justify-center space-x-4">
-                    <div class="flex items-center">
-                        <div id="step-1" class="step-indicator step-active">1</div>
-                        <span class="ml-2 text-sm font-medium text-gray-700">基本情報</span>
+        <div style="min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px 16px; position:relative; z-index:1;">
+            <!-- ロゴ -->
+            <div style="text-align:center; margin-bottom:24px;">
+                <div style="display:inline-flex; align-items:center; gap:12px; margin-bottom:6px;">
+                    <div style="width:44px; height:44px; background:linear-gradient(135deg,#ef4444,#dc2626); border-radius:12px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(239,68,68,0.3);">
+                        <i class="fas fa-cog text-white text-lg"></i>
                     </div>
-                    <div class="w-12 h-0.5 bg-gray-300"></div>
-                    <div class="flex items-center">
-                        <div id="step-2" class="step-indicator step-inactive">2</div>
-                        <span class="ml-2 text-sm font-medium text-gray-500">店舗情報</span>
+                    <span style="font-size:26px; font-weight:800; color:#fff; letter-spacing:-0.5px;">PARTS HUB</span>
+                </div>
+                <p style="color:rgba(255,255,255,0.6); font-size:13px;">自動車パーツ売買プラットフォーム</p>
+            </div>
+
+            <!-- メインカード -->
+            <div class="register-card" style="width:100%; max-width:520px; padding:32px 28px;">
+                <!-- タイトル -->
+                <div style="text-align:center; margin-bottom:24px;">
+                    <h1 style="font-size:22px; font-weight:700; color:#111827; margin:0 0 6px 0;">新規会員登録</h1>
+                    <p style="font-size:14px; color:#6b7280; margin:0;">自動車パーツの売買を始めましょう</p>
+                </div>
+
+                <!-- ステップインジケーター -->
+                <div style="display:flex; align-items:center; justify-content:center; gap:0; margin-bottom:28px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <div id="step-1" class="step-dot step-active">1</div>
+                        <span id="step-1-label" style="font-size:13px; font-weight:600; color:#374151;">基本情報</span>
+                    </div>
+                    <div id="step-line" class="step-line" style="background:#e5e7eb; margin:0 16px;"></div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <div id="step-2" class="step-dot step-inactive">2</div>
+                        <span id="step-2-label" style="font-size:13px; font-weight:600; color:#9ca3af;">店舗情報</span>
                     </div>
                 </div>
-            </div>
 
-            <!-- 登録フォーム -->
-            <div class="bg-white rounded-xl shadow-sm p-6 md:p-8">
+                <!-- エラーメッセージ -->
+                <div id="error-message" class="hidden" style="margin-bottom:20px; padding:14px 16px; background:#fef2f2; border:1px solid #fecaca; border-radius:12px;">
+                    <div style="display:flex; align-items:center; color:#991b1b; font-size:14px; font-weight:500;">
+                        <i class="fas fa-exclamation-circle" style="margin-right:8px;"></i>
+                        <span id="error-text"></span>
+                    </div>
+                </div>
+
                 <form id="register-form">
-                    <!-- ステップ1: 基本情報 -->
-                    <div id="step-1-content" class="space-y-5">
-                        <h2 class="text-xl font-bold text-gray-900 mb-6">基本情報を入力</h2>
-                        
-                        <div>
-                            <label class="form-label">メールアドレス</label>
-                            <input type="email" id="email" required
-                                   class="form-input"
-                                   placeholder="example@email.com"
-                                   autocomplete="email">
-                            <p class="mt-2 text-sm text-gray-500">ログイン時に使用します</p>
+                    <!-- ステップ1 -->
+                    <div id="step-1-content">
+                        <div style="margin-bottom:20px;">
+                            <label class="form-label"><i class="fas fa-envelope" style="margin-right:6px; color:#9ca3af; font-size:13px;"></i>メールアドレス</label>
+                            <input type="email" id="email" required class="form-input" placeholder="example@email.com" autocomplete="email">
+                            <p class="hint-text">ログイン時に使用します</p>
                         </div>
-
-                        <div>
-                            <label class="form-label">パスワード</label>
-                            <input type="password" id="password" required minlength="8"
-                                   class="form-input"
-                                   placeholder="8文字以上の英数字"
-                                   autocomplete="new-password">
-                            <p class="mt-2 text-sm text-gray-500">8文字以上で設定してください</p>
+                        <div style="margin-bottom:20px;">
+                            <label class="form-label"><i class="fas fa-lock" style="margin-right:6px; color:#9ca3af; font-size:13px;"></i>パスワード</label>
+                            <input type="password" id="password" required minlength="8" class="form-input" placeholder="8文字以上の英数字" autocomplete="new-password">
+                            <p class="hint-text">8文字以上で設定してください</p>
                         </div>
-
-                        <div>
-                            <label class="form-label">パスワード（確認）</label>
-                            <input type="password" id="password-confirm" required minlength="8"
-                                   class="form-input"
-                                   placeholder="もう一度入力してください"
-                                   autocomplete="new-password">
+                        <div style="margin-bottom:24px;">
+                            <label class="form-label"><i class="fas fa-lock" style="margin-right:6px; color:#9ca3af; font-size:13px;"></i>パスワード（確認）</label>
+                            <input type="password" id="password-confirm" required minlength="8" class="form-input" placeholder="もう一度入力してください" autocomplete="new-password">
                         </div>
-
-                        <div class="pt-4">
-                            <button type="button" onclick="goToStep2()"
-                                    class="w-full bg-gradient-to-r from-red-500 to-red-600 text-white py-4 rounded-lg font-bold hover:from-red-600 hover:to-red-700 transition-all shadow-lg text-lg min-h-[56px]">
-                                次へ進む
-                            </button>
-                        </div>
+                        <button type="button" onclick="goToStep2()" class="btn-primary">
+                            次へ進む <i class="fas fa-arrow-right" style="margin-left:8px;"></i>
+                        </button>
                     </div>
 
-                    <!-- ステップ2: 店舗情報 -->
-                    <div id="step-2-content" class="space-y-5 hidden">
-                        <h2 class="text-xl font-bold text-gray-900 mb-6">店舗情報を入力</h2>
-                        
-                        <div>
-                            <label class="form-label">店舗名・屋号</label>
-                            <input type="text" id="shop-name" required
-                                   class="form-input"
-                                   placeholder="例: 山田自動車整備工場">
+                    <!-- ステップ2 -->
+                    <div id="step-2-content" class="hidden">
+                        <div style="margin-bottom:20px;">
+                            <label class="form-label"><i class="fas fa-store" style="margin-right:6px; color:#9ca3af; font-size:13px;"></i>店舗名・屋号</label>
+                            <input type="text" id="shop-name" required class="form-input" placeholder="例: 山田自動車整備工場">
                         </div>
-
-                        <div>
-                            <label class="form-label">業態</label>
-                            <select id="shop-type" required
-                                    class="form-input">
+                        <div style="margin-bottom:20px;">
+                            <label class="form-label"><i class="fas fa-briefcase" style="margin-right:6px; color:#9ca3af; font-size:13px;"></i>業態</label>
+                            <select id="shop-type" required class="form-input">
                                 <option value="">選択してください</option>
                                 <option value="factory">整備工場</option>
                                 <option value="dealer">ディーラー</option>
@@ -2059,130 +2255,131 @@ app.get('/register', (c) => {
                                 <option value="individual">個人</option>
                             </select>
                         </div>
-
-                        <div>
-                            <label class="form-label">電話番号</label>
-                            <input type="tel" id="phone"
-                                   class="form-input"
-                                   placeholder="03-1234-5678">
-                            <p class="mt-2 text-sm text-gray-500">ハイフンありで入力</p>
+                        <div style="margin-bottom:20px;">
+                            <label class="form-label"><i class="fas fa-phone" style="margin-right:6px; color:#9ca3af; font-size:13px;"></i>電話番号</label>
+                            <input type="tel" id="phone" class="form-input" placeholder="03-1234-5678">
+                            <p class="hint-text">ハイフンありで入力</p>
                         </div>
-
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid-2col" style="margin-bottom:20px;">
                             <div>
                                 <label class="form-label">郵便番号</label>
-                                <input type="text" id="postal-code"
-                                       class="form-input"
-                                       placeholder="123-4567">
+                                <input type="text" id="postal-code" class="form-input" placeholder="123-4567">
                             </div>
                             <div>
                                 <label class="form-label">都道府県</label>
-                                <input type="text" id="prefecture"
-                                       class="form-input"
-                                       placeholder="東京都">
+                                <input type="text" id="prefecture" class="form-input" placeholder="東京都">
                             </div>
                         </div>
-
-                        <div>
+                        <div style="margin-bottom:20px;">
                             <label class="form-label">市区町村</label>
-                            <input type="text" id="city"
-                                   class="form-input"
-                                   placeholder="渋谷区神南">
+                            <input type="text" id="city" class="form-input" placeholder="渋谷区神南">
                         </div>
-
-                        <div>
+                        <div style="margin-bottom:20px;">
                             <label class="form-label">番地・建物名</label>
-                            <input type="text" id="address"
-                                   class="form-input"
-                                   placeholder="1-2-3 ビル名 101号室">
+                            <input type="text" id="address" class="form-input" placeholder="1-2-3 ビル名 101号室">
                         </div>
 
-                        <div class="flex items-start pt-2">
+                        <div style="display:flex; align-items:flex-start; gap:10px; margin-bottom:24px; padding:14px; background:#f9fafb; border-radius:12px;">
                             <input type="checkbox" id="terms" required 
-                                   class="mt-1 mr-3 w-5 h-5 text-red-500 border-gray-300 rounded focus:ring-red-500 cursor-pointer">
-                            <label for="terms" class="text-base text-gray-600 leading-relaxed cursor-pointer">
-                                <a href="/terms" target="_blank" class="text-red-500 hover:text-red-600 font-medium underline">利用規約</a>および
-                                <a href="/privacy" target="_blank" class="text-red-500 hover:text-red-600 font-medium underline">プライバシーポリシー</a>に同意します
+                                   style="width:20px; height:20px; margin-top:2px; accent-color:#ef4444; cursor:pointer; flex-shrink:0;">
+                            <label for="terms" style="font-size:14px; color:#4b5563; line-height:1.6; cursor:pointer;">
+                                <a href="/terms" target="_blank" style="color:#ef4444; font-weight:600; text-decoration:underline;">利用規約</a>および
+                                <a href="/privacy" target="_blank" style="color:#ef4444; font-weight:600; text-decoration:underline;">プライバシーポリシー</a>に同意します
                             </label>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-3 pt-4">
-                            <button type="button" onclick="goToStep1()"
-                                    class="w-full bg-white border-2 border-gray-300 text-gray-700 py-4 rounded-lg font-bold hover:bg-gray-50 transition-all min-h-[56px]">
-                                戻る
+                        <div class="grid-2col">
+                            <button type="button" onclick="goToStep1()" class="btn-secondary">
+                                <i class="fas fa-arrow-left" style="margin-right:6px;"></i>戻る
                             </button>
-                            <button type="submit"
-                                    class="w-full bg-gradient-to-r from-red-500 to-red-600 text-white py-4 rounded-lg font-bold hover:from-red-600 hover:to-red-700 transition-all shadow-lg min-h-[56px]">
-                                <i class="fas fa-user-plus mr-2"></i>登録する
+                            <button type="submit" id="submit-btn" class="btn-primary">
+                                <i class="fas fa-user-plus" style="margin-right:6px;"></i>登録する
                             </button>
                         </div>
                     </div>
                 </form>
 
                 <!-- ログインリンク -->
-                <div class="mt-8 pt-6 border-t border-gray-200 text-center">
-                    <p class="text-gray-600">
-                        すでにアカウントをお持ちの方
-                    </p>
-                    <a href="/login" class="inline-block mt-2 text-red-500 hover:text-red-600 font-semibold">
-                        ログインはこちら <i class="fas fa-arrow-right ml-1"></i>
+                <div style="margin-top:24px; padding-top:20px; border-top:1px solid #e5e7eb; text-align:center;">
+                    <p style="font-size:14px; color:#6b7280; margin:0 0 6px 0;">すでにアカウントをお持ちの方</p>
+                    <a href="/login" style="font-size:15px; color:#ef4444; font-weight:600; text-decoration:none;">
+                        ログインはこちら <i class="fas fa-arrow-right" style="margin-left:4px;"></i>
                     </a>
                 </div>
             </div>
-        </main>
+
+            <!-- フッターリンク -->
+            <div style="margin-top:24px; text-align:center;">
+                <a href="/" style="color:rgba(255,255,255,0.5); font-size:13px; text-decoration:none;">
+                    <i class="fas fa-arrow-left" style="margin-right:4px;"></i>トップページに戻る
+                </a>
+            </div>
+        </div>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script>
-            // ステップ管理
+            function showError(message) {
+                var errorDiv = document.getElementById('error-message');
+                document.getElementById('error-text').textContent = message;
+                errorDiv.classList.remove('hidden');
+                errorDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+            function hideError() {
+                document.getElementById('error-message').classList.add('hidden');
+            }
+
             function goToStep2() {
-                const email = document.getElementById('email').value;
-                const password = document.getElementById('password').value;
-                const passwordConfirm = document.getElementById('password-confirm').value;
+                hideError();
+                var email = document.getElementById('email').value;
+                var password = document.getElementById('password').value;
+                var passwordConfirm = document.getElementById('password-confirm').value;
 
                 if (!email || !password || !passwordConfirm) {
-                    alert('すべての項目を入力してください');
+                    showError('すべての項目を入力してください');
                     return;
                 }
-
                 if (password !== passwordConfirm) {
-                    alert('パスワードが一致しません');
+                    showError('パスワードが一致しません');
                     return;
                 }
-
                 if (password.length < 8) {
-                    alert('パスワードは8文字以上で設定してください');
+                    showError('パスワードは8文字以上で設定してください');
                     return;
                 }
 
-                // ステップ2に進む
                 document.getElementById('step-1-content').classList.add('hidden');
                 document.getElementById('step-2-content').classList.remove('hidden');
-                document.getElementById('step-1').classList.remove('step-active');
-                document.getElementById('step-1').classList.add('step-inactive');
-                document.getElementById('step-2').classList.remove('step-inactive');
-                document.getElementById('step-2').classList.add('step-active');
+                document.getElementById('step-1').className = 'step-dot step-done';
+                document.getElementById('step-1').innerHTML = '<i class="fas fa-check" style="font-size:14px;"></i>';
+                document.getElementById('step-2').className = 'step-dot step-active';
+                document.getElementById('step-1-label').style.color = '#22c55e';
+                document.getElementById('step-2-label').style.color = '#374151';
+                document.getElementById('step-line').style.background = '#22c55e';
                 window.scrollTo(0, 0);
             }
 
             function goToStep1() {
+                hideError();
                 document.getElementById('step-2-content').classList.add('hidden');
                 document.getElementById('step-1-content').classList.remove('hidden');
-                document.getElementById('step-2').classList.remove('step-active');
-                document.getElementById('step-2').classList.add('step-inactive');
-                document.getElementById('step-1').classList.remove('step-inactive');
-                document.getElementById('step-1').classList.add('step-active');
+                document.getElementById('step-1').className = 'step-dot step-active';
+                document.getElementById('step-1').innerHTML = '1';
+                document.getElementById('step-2').className = 'step-dot step-inactive';
+                document.getElementById('step-1-label').style.color = '#374151';
+                document.getElementById('step-2-label').style.color = '#9ca3af';
+                document.getElementById('step-line').style.background = '#e5e7eb';
                 window.scrollTo(0, 0);
             }
 
-            // フォーム送信
-            document.getElementById('register-form').addEventListener('submit', async (e) => {
+            document.getElementById('register-form').addEventListener('submit', async function(e) {
                 e.preventDefault();
+                hideError();
                 
-                const submitButton = e.target.querySelector('button[type="submit"]');
+                var submitButton = document.getElementById('submit-btn');
                 submitButton.disabled = true;
-                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>登録中...';
+                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:8px;"></i>登録中...';
                 
-                const data = {
+                var data = {
                     email: document.getElementById('email').value,
                     password: document.getElementById('password').value,
                     shop_name: document.getElementById('shop-name').value,
@@ -2195,25 +2392,22 @@ app.get('/register', (c) => {
                 };
                 
                 try {
-                    const response = await axios.post('/api/auth/register', data);
+                    var response = await axios.post('/api/auth/register', data);
                     
                     if (response.data.success) {
-                        // 成功メッセージ
-                        const successMsg = document.createElement('div');
-                        successMsg.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-4 rounded-lg shadow-xl z-50 animate-bounce';
-                        successMsg.innerHTML = '<i class="fas fa-check-circle mr-2"></i>アカウント作成完了！ログインページへ移動します...';
-                        document.body.appendChild(successMsg);
+                        submitButton.innerHTML = '<i class="fas fa-check" style="margin-right:8px;"></i>登録完了！';
+                        submitButton.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
                         
-                        setTimeout(() => {
+                        setTimeout(function() {
                             window.location.href = '/login?registered=true';
-                        }, 2000);
+                        }, 1500);
                     }
                 } catch (error) {
                     submitButton.disabled = false;
-                    submitButton.innerHTML = '<i class="fas fa-user-plus mr-2"></i>登録する';
+                    submitButton.innerHTML = '<i class="fas fa-user-plus" style="margin-right:6px;"></i>登録する';
                     
-                    const errorMsg = error.response?.data?.error || '登録に失敗しました。もう一度お試しください。';
-                    alert(errorMsg);
+                    var errorMsg = error.response && error.response.data ? error.response.data.error : '登録に失敗しました。もう一度お試しください。';
+                    showError(errorMsg);
                 }
             });
         </script>
