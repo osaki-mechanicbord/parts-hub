@@ -124,7 +124,7 @@ auth.post('/login', async (c) => {
 
     // ユーザー検索
     const user = await c.env.DB.prepare(`
-      SELECT id, name, email, password_hash, phone, company_name, status
+      SELECT id, name, email, password_hash, phone, company_name, nickname, status
       FROM users
       WHERE email = ?
     `).bind(email).first()
@@ -177,6 +177,7 @@ auth.post('/login', async (c) => {
       user: {
         id: user.id,
         name: user.name,
+        nickname: user.nickname || user.name,
         email: user.email,
         phone: user.phone,
         company_name: user.company_name,

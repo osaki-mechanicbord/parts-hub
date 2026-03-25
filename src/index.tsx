@@ -1977,14 +1977,11 @@ app.get('/login', (c) => {
                 </a>
             </div>
 
-            <!-- テストアカウント（開発用） -->
-            <div style="margin-top:16px; padding:12px 20px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.1); border-radius:12px; max-width:460px; width:100%;">
-                <div style="color:rgba(255,255,255,0.5); font-size:12px; text-align:center;">
-                    <span style="font-weight:600;"><i class="fas fa-info-circle" style="margin-right:4px;"></i>テストアカウント</span>
-                    <span style="margin:0 8px;">|</span>
-                    メール: test@example.com
-                    <span style="margin:0 8px;">|</span>
-                    パスワード: test1234
+            <!-- セキュリティ情報 -->
+            <div style="margin-top:16px; padding:12px 20px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); border-radius:12px; max-width:460px; width:100%;">
+                <div style="color:rgba(255,255,255,0.4); font-size:12px; text-align:center;">
+                    <i class="fas fa-shield-alt" style="margin-right:4px;"></i>
+                    SSL暗号化通信で安全にログインできます
                 </div>
             </div>
         </div>
@@ -2038,8 +2035,8 @@ app.get('/login', (c) => {
                     const response = await axios.post('/api/auth/login', { email, password });
                     
                     if (response.data.success) {
-                        localStorage.setItem('token', response.data.data.token);
-                        localStorage.setItem('user', JSON.stringify(response.data.data.user));
+                        localStorage.setItem('token', response.data.token);
+                        localStorage.setItem('user', JSON.stringify(response.data.user));
                         
                         submitButton.innerHTML = '<i class="fas fa-check" style="margin-right:8px;"></i>ログイン成功！';
                         submitButton.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
