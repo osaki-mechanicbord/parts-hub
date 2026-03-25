@@ -198,7 +198,7 @@ class ProductListingForm {
         maker_id: parseInt(document.getElementById('maker-select').value) || null,
         model_id: parseInt(document.getElementById('model-select').value) || null,
         part_number: document.getElementById('part-number').value || null,
-        compatible_models: document.getElementById('compatible-models').value || null,
+        compatible_models: (document.getElementById('compatible-models') || {}).value || null,
         condition: document.getElementById('condition-select').value,
         stock_quantity: parseInt(document.getElementById('stock-quantity').value),
         status: 'active',
