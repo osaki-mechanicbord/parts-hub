@@ -17,7 +17,7 @@ const auth = new Hono<{ Bindings: Bindings }>()
 // ユーザー登録
 auth.post('/register', async (c) => {
   try {
-    const { name, email, password, phone, company_name } = await c.req.json()
+    const { name, email, password, phone, company_name, nickname, shop_name, shop_type, postal_code, prefecture, city, address } = await c.req.json()
 
     // バリデーション
     if (!name || !email || !password) {
@@ -57,11 +57,13 @@ auth.post('/register', async (c) => {
     // パスワードハッシュ化
     const passwordHash = await hashPassword(password)
 
-    // ユーザー作成
+    // ユーザー作成（nickname, shop_name等を含む）
+    const displayName = nickname || name
+    const companyOrShop = company_name || shop_name || null
     const result = await c.env.DB.prepare(`
-      INSERT INTO users (name, email, password_hash, phone, company_name, status, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, 'active', datetime('now'), datetime('now'))
-    `).bind(name, email, passwordHash, phone || null, company_name || null).run()
+      INSERT INTO users (name, email, password_hash, phone, company_name, nickname, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, 'active', datetime('now'), datetime('now'))
+    `).bind(name, email, passwordHash, phone || null, companyOrShop, displayName).run()
 
     const userId = result.meta.last_row_id
 
@@ -91,9 +93,10 @@ auth.post('/register', async (c) => {
       user: {
         id: userId,
         name: name,
+        nickname: displayName,
         email: email,
         phone: phone,
-        company_name: company_name
+        company_name: companyOrShop
       }
     }, 201)
 

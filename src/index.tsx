@@ -2217,15 +2217,35 @@ app.get('/register', (c) => {
                 </div>
 
                 <form id="register-form">
-                    <!-- ステップ1 -->
+                    <!-- ステップ1: 基本情報 -->
                     <div id="step-1-content">
                         <div style="margin-bottom:20px;">
-                            <label class="form-label"><i class="fas fa-envelope" style="margin-right:6px; color:#9ca3af; font-size:13px;"></i>メールアドレス</label>
+                            <label class="form-label">
+                                <i class="fas fa-user" style="margin-right:6px; color:#9ca3af; font-size:13px;"></i>お名前（実名）
+                                <span style="background:#ef4444; color:#fff; font-size:11px; padding:2px 6px; border-radius:4px; margin-left:6px;">必須</span>
+                            </label>
+                            <input type="text" id="fullname" required class="form-input" placeholder="例: 山田 太郎" autocomplete="name">
+                            <p class="hint-text">取引時の本人確認に使用します（他のユーザーには表示されません）</p>
+                        </div>
+                        <div style="margin-bottom:20px;">
+                            <label class="form-label">
+                                <i class="fas fa-id-badge" style="margin-right:6px; color:#9ca3af; font-size:13px;"></i>ニックネーム（表示名）
+                                <span style="background:#9ca3af; color:#fff; font-size:11px; padding:2px 6px; border-radius:4px; margin-left:6px;">任意</span>
+                            </label>
+                            <input type="text" id="nickname" class="form-input" placeholder="例: ヤマダパーツ">
+                            <p class="hint-text">他のユーザーに表示される名前です。未入力の場合はお名前の一部が表示されます</p>
+                        </div>
+                        <div style="margin-bottom:20px;">
+                            <label class="form-label"><i class="fas fa-envelope" style="margin-right:6px; color:#9ca3af; font-size:13px;"></i>メールアドレス
+                                <span style="background:#ef4444; color:#fff; font-size:11px; padding:2px 6px; border-radius:4px; margin-left:6px;">必須</span>
+                            </label>
                             <input type="email" id="email" required class="form-input" placeholder="example@email.com" autocomplete="email">
                             <p class="hint-text">ログイン時に使用します</p>
                         </div>
                         <div style="margin-bottom:20px;">
-                            <label class="form-label"><i class="fas fa-lock" style="margin-right:6px; color:#9ca3af; font-size:13px;"></i>パスワード</label>
+                            <label class="form-label"><i class="fas fa-lock" style="margin-right:6px; color:#9ca3af; font-size:13px;"></i>パスワード
+                                <span style="background:#ef4444; color:#fff; font-size:11px; padding:2px 6px; border-radius:4px; margin-left:6px;">必須</span>
+                            </label>
                             <input type="password" id="password" required minlength="8" class="form-input" placeholder="8文字以上の英数字" autocomplete="new-password">
                             <p class="hint-text">8文字以上で設定してください</p>
                         </div>
@@ -2330,12 +2350,13 @@ app.get('/register', (c) => {
 
             function goToStep2() {
                 hideError();
+                var fullname = document.getElementById('fullname').value.trim();
                 var email = document.getElementById('email').value;
                 var password = document.getElementById('password').value;
                 var passwordConfirm = document.getElementById('password-confirm').value;
 
-                if (!email || !password || !passwordConfirm) {
-                    showError('すべての項目を入力してください');
+                if (!fullname || !email || !password || !passwordConfirm) {
+                    showError('お名前、メールアドレス、パスワードは必須です');
                     return;
                 }
                 if (password !== passwordConfirm) {
@@ -2380,6 +2401,8 @@ app.get('/register', (c) => {
                 submitButton.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:8px;"></i>登録中...';
                 
                 var data = {
+                    name: document.getElementById('fullname').value.trim(),
+                    nickname: document.getElementById('nickname').value.trim() || null,
                     email: document.getElementById('email').value,
                     password: document.getElementById('password').value,
                     shop_name: document.getElementById('shop-name').value,
