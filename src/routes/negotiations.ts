@@ -16,8 +16,8 @@ negotiations.get('/product/:productId', async (c) => {
     const { results } = await DB.prepare(`
       SELECT 
         pn.*,
-        buyer.shop_name as buyer_name,
-        buyer.is_verified as buyer_verified
+        COALESCE(buyer.company_name, buyer.nickname, buyer.name) as buyer_name,
+        0 as buyer_verified
       FROM price_negotiations pn
       JOIN users buyer ON pn.buyer_id = buyer.id
       WHERE pn.product_id = ?
@@ -44,25 +44,29 @@ negotiations.get('/user/:userId', async (c) => {
         p.title as product_title,
         p.price as current_price,
         (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as product_image,
-        buyer.shop_name as buyer_name,
-        seller.shop_name as seller_name
+        COALESCE(buyer.company_name, buyer.nickname, buyer.name) as buyer_name,
+        COALESCE(seller.company_name, seller.nickname, seller.name) as seller_name
       FROM price_negotiations pn
       JOIN products p ON pn.product_id = p.id
       JOIN users buyer ON pn.buyer_id = buyer.id
       JOIN users seller ON pn.seller_id = seller.id
       WHERE `
     
+    let binds: any[] = []
     if (type === 'sent') {
       query += `pn.buyer_id = ?`
+      binds = [userId]
     } else if (type === 'received') {
       query += `pn.seller_id = ?`
+      binds = [userId]
     } else {
       query += `(pn.buyer_id = ? OR pn.seller_id = ?)`
+      binds = [userId, userId]
     }
     
     query += ` ORDER BY pn.created_at DESC`
 
-    const { results } = await DB.prepare(query).bind(userId, userId).all()
+    const { results } = await DB.prepare(query).bind(...binds).all()
 
     return c.json({ success: true, data: results })
   } catch (error) {
@@ -84,7 +88,7 @@ negotiations.post('/', async (c) => {
 
     // 商品情報取得
     const product = await DB.prepare(`
-      SELECT seller_id, price FROM products WHERE id = ?
+      SELECT user_id as seller_id, price FROM products WHERE id = ?
     `).bind(product_id).first()
 
     if (!product) {

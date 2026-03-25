@@ -178,7 +178,7 @@ api.get('/products', async (c) => {
         c.name as category_name,
         m.name as maker_name,
         mo.name as model_name,
-        u.shop_name as seller_name,
+        COALESCE(u.company_name, u.nickname, u.name) as seller_name,
         u.rating as seller_rating,
         (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as main_image,
         (SELECT COUNT(*) FROM product_compatibility WHERE product_id = p.id) as compatibility_count,
@@ -187,7 +187,7 @@ api.get('/products', async (c) => {
       LEFT JOIN categories c ON p.category_id = c.id
       LEFT JOIN car_makers m ON p.maker_id = m.id
       LEFT JOIN car_models mo ON p.model_id = mo.id
-      LEFT JOIN users u ON p.seller_id = u.id
+      LEFT JOIN users u ON p.user_id = u.id
       WHERE ${whereClause}
       ORDER BY ${orderBy}
       LIMIT ? OFFSET ?
@@ -226,7 +226,7 @@ api.get('/products/:id', async (c) => {
         m.name as maker_name,
         mo.name as model_name,
         u.id as seller_id,
-        u.shop_name as seller_name,
+        COALESCE(u.company_name, u.nickname, u.name) as seller_name,
         u.rating as seller_rating,
         u.total_sales as seller_total_sales
       FROM products p
@@ -234,7 +234,7 @@ api.get('/products/:id', async (c) => {
       LEFT JOIN subcategories sc ON p.subcategory_id = sc.id
       LEFT JOIN car_makers m ON p.maker_id = m.id
       LEFT JOIN car_models mo ON p.model_id = mo.id
-      LEFT JOIN users u ON p.seller_id = u.id
+      LEFT JOIN users u ON p.user_id = u.id
       WHERE p.id = ?
     `).bind(id).first()
 

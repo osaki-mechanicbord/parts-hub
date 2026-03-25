@@ -136,7 +136,7 @@ fitment.get('/products/:id/compatibility', async (c) => {
       SELECT 
         fc.fits, fc.fit_quality, fc.notes, fc.helpful_count,
         fc.created_at,
-        u.shop_name as user_name,
+        COALESCE(u.company_name, u.nickname, u.name) as user_name,
         v.nickname as vehicle_nickname,
         m.name as maker_name,
         mo.name as model_name,
@@ -202,14 +202,14 @@ fitment.post('/match', async (c) => {
           pc.year_from, pc.year_to,
           m.name as maker_name,
           mo.name as model_name,
-          u.shop_name as seller_name,
+          COALESCE(u.company_name, u.nickname, u.name) as seller_name,
           (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as main_image,
           (SELECT COUNT(*) FROM fitment_confirmations WHERE product_id = p.id AND fits = 1) as fit_count
         FROM products p
         LEFT JOIN product_compatibility pc ON p.id = pc.product_id
         LEFT JOIN car_makers m ON p.maker_id = m.id
         LEFT JOIN car_models mo ON p.model_id = mo.id
-        LEFT JOIN users u ON p.seller_id = u.id
+        LEFT JOIN users u ON p.user_id = u.id
         WHERE p.status = 'active'
           AND pc.maker_id = ?
           AND pc.model_id = ?

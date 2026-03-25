@@ -22,8 +22,8 @@ chat.get('/rooms', async (c) => {
         cr.*,
         p.title as product_title,
         p.price as product_price,
-        buyer.shop_name as buyer_name,
-        seller.shop_name as seller_name,
+        COALESCE(buyer.company_name, buyer.nickname, buyer.name) as buyer_name,
+        COALESCE(seller.company_name, seller.nickname, seller.name) as seller_name,
         (SELECT message_text FROM chat_messages WHERE room_id = cr.id ORDER BY created_at DESC LIMIT 1) as last_message,
         (SELECT COUNT(*) FROM chat_messages WHERE room_id = cr.id AND sender_id != ? AND is_read = 0) as unread_count
       FROM chat_rooms cr
@@ -87,7 +87,7 @@ chat.get('/rooms/:roomId/messages', async (c) => {
     let query = `
       SELECT 
         cm.*,
-        u.shop_name as sender_name,
+        COALESCE(u.company_name, u.nickname, u.name) as sender_name,
         u.is_verified as sender_verified
       FROM chat_messages cm
       JOIN users u ON cm.sender_id = u.id

@@ -16,7 +16,7 @@ comments.get('/:productId', async (c) => {
     const { results } = await DB.prepare(`
       SELECT 
         pc.*,
-        u.shop_name as user_name,
+        COALESCE(u.company_name, u.nickname, u.name) as user_name,
         u.shop_type,
         u.is_verified,
         (SELECT COUNT(*) FROM product_comments WHERE parent_comment_id = pc.id AND deleted_at IS NULL) as reply_count
@@ -44,7 +44,7 @@ comments.get('/:productId/:commentId/replies', async (c) => {
     const { results } = await DB.prepare(`
       SELECT 
         pc.*,
-        u.shop_name as user_name,
+        COALESCE(u.company_name, u.nickname, u.name) as user_name,
         u.shop_type,
         u.is_verified
       FROM product_comments pc

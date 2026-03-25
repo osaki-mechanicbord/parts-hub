@@ -39,7 +39,7 @@ reviews.post('/', async (c) => {
     const transaction = await DB.prepare(`
       SELECT 
         t.*,
-        p.seller_id,
+        p.user_id as seller_id,
         p.title as product_title
       FROM transactions t
       JOIN products p ON t.product_id = p.id
@@ -130,7 +130,7 @@ reviews.get('/user/:userId/received', async (c) => {
     const { results } = await DB.prepare(`
       SELECT 
         r.*,
-        reviewer.shop_name as reviewer_name,
+        COALESCE(reviewer.company_name, reviewer.nickname, reviewer.name) as reviewer_name,
         reviewer.profile_image_url as reviewer_image,
         p.title as product_title,
         (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as product_image
@@ -159,7 +159,7 @@ reviews.get('/user/:userId/written', async (c) => {
     const { results } = await DB.prepare(`
       SELECT 
         r.*,
-        reviewed.shop_name as reviewed_user_name,
+        COALESCE(reviewed.company_name, reviewed.nickname, reviewed.name) as reviewed_user_name,
         reviewed.profile_image_url as reviewed_user_image,
         p.title as product_title,
         (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as product_image
@@ -187,9 +187,9 @@ reviews.get('/:reviewId', async (c) => {
     const review = await DB.prepare(`
       SELECT 
         r.*,
-        reviewer.shop_name as reviewer_name,
+        COALESCE(reviewer.company_name, reviewer.nickname, reviewer.name) as reviewer_name,
         reviewer.profile_image_url as reviewer_image,
-        reviewed.shop_name as reviewed_user_name,
+        COALESCE(reviewed.company_name, reviewed.nickname, reviewed.name) as reviewed_user_name,
         p.title as product_title,
         (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as product_image
       FROM reviews r

@@ -29,7 +29,7 @@ mypage.get('/stats/:userId', async (c) => {
     try {
       const result = await DB.prepare(`
         SELECT COUNT(*) as count FROM products 
-        WHERE seller_id = ? AND status = 'active'
+        WHERE user_id = ? AND status = 'active'
       `).bind(userId).first()
       listing_count = result?.count || 0
     } catch (error) {
@@ -62,7 +62,7 @@ mypage.get('/stats/:userId', async (c) => {
     // 総売上
     try {
       const result = await DB.prepare(`
-        SELECT COALESCE(SUM(total_amount), 0) as total FROM transactions 
+        SELECT COALESCE(SUM(amount), 0) as total FROM transactions 
         WHERE seller_id = ? AND status = 'completed'
       `).bind(userId).first()
       total_sales = result?.total || 0
@@ -73,7 +73,7 @@ mypage.get('/stats/:userId', async (c) => {
     // 手数料合計
     try {
       const result = await DB.prepare(`
-        SELECT COALESCE(SUM(platform_fee), 0) as total FROM transactions 
+        SELECT COALESCE(SUM(fee), 0) as total FROM transactions 
         WHERE seller_id = ? AND status = 'completed'
       `).bind(userId).first()
       total_fees = result?.total || 0
@@ -130,9 +130,9 @@ mypage.get('/stats/:userId', async (c) => {
     let shop_name = '整備工場';
     try {
       const user = await DB.prepare(`
-        SELECT shop_name FROM users WHERE id = ?
+        SELECT company_name, nickname, name FROM users WHERE id = ?
       `).bind(userId).first()
-      shop_name = user?.shop_name || '整備工場'
+      shop_name = user?.company_name || user?.nickname || user?.name || '整備工場'
     } catch (error) {
       console.error('user info error:', error)
     }
@@ -173,7 +173,7 @@ mypage.get('/listings/:userId', async (c) => {
         (SELECT COUNT(*) FROM favorites WHERE product_id = p.id) as favorite_count,
         (SELECT COUNT(*) FROM product_comments WHERE product_id = p.id AND deleted_at IS NULL) as comment_count
       FROM products p
-      WHERE p.seller_id = ?
+      WHERE p.user_id = ?
     `
     
     if (status === 'active') {
@@ -205,11 +205,11 @@ mypage.get('/purchases/:userId', async (c) => {
       SELECT 
         t.id as transaction_id,
         t.product_id,
-        t.total_amount as total_price,
+        t.amount as total_price,
         t.status,
-        t.completed_at as purchased_at,
+        t.updated_at as purchased_at,
         p.title as product_title,
-        u.shop_name as seller_name,
+        COALESCE(u.company_name, u.nickname, u.name) as seller_name,
         (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as product_image,
         CASE 
           WHEN EXISTS (SELECT 1 FROM reviews WHERE transaction_id = t.id AND reviewer_id = ?) THEN 1
@@ -239,20 +239,20 @@ mypage.get('/sales/:userId', async (c) => {
       SELECT 
         t.id as transaction_id,
         t.product_id,
-        t.total_amount as sale_price,
-        t.platform_fee as commission_fee,
-        t.seller_amount as seller_revenue,
-        t.completed_at as sold_at,
+        t.amount as sale_price,
+        t.fee as commission_fee,
+        (t.amount - t.fee) as seller_revenue,
+        t.updated_at as sold_at,
         t.status,
         p.title as product_title,
-        u.shop_name as buyer_name,
+        COALESCE(u.company_name, u.nickname, u.name) as buyer_name,
         (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as product_image,
         'pending' as withdrawal_status
       FROM transactions t
       JOIN products p ON t.product_id = p.id
       JOIN users u ON t.buyer_id = u.id
       WHERE t.seller_id = ? AND t.status = 'completed'
-      ORDER BY t.completed_at DESC
+      ORDER BY t.updated_at DESC
     `).bind(userId).all()
 
     return c.json({ success: true, data: results })
@@ -270,14 +270,14 @@ mypage.get('/sales-summary/:userId', async (c) => {
 
     const { results } = await DB.prepare(`
       SELECT 
-        strftime('%Y-%m', completed_at) as month,
+        strftime('%Y-%m', updated_at) as month,
         COUNT(*) as transaction_count,
-        SUM(total_amount) as total_sales,
-        SUM(platform_fee) as total_fees,
-        SUM(total_amount - platform_fee) as net_income
+        SUM(amount) as total_sales,
+        SUM(fee) as total_fees,
+        SUM(amount - fee) as net_income
       FROM transactions
       WHERE seller_id = ? AND status = 'completed'
-      GROUP BY strftime('%Y-%m', completed_at)
+      GROUP BY strftime('%Y-%m', updated_at)
       ORDER BY month DESC
       LIMIT 12
     `).bind(userId).all()
@@ -341,7 +341,7 @@ mypage.put('/listings/:productId/status', async (c) => {
 
     // 商品の所有者確認
     const product = await DB.prepare(`
-      SELECT seller_id FROM products WHERE id = ?
+      SELECT user_id as seller_id FROM products WHERE id = ?
     `).bind(productId).first()
 
     if (!product || product.seller_id !== seller_id) {
@@ -371,7 +371,7 @@ mypage.delete('/listings/:productId', async (c) => {
 
     // 商品の所有者確認
     const product = await DB.prepare(`
-      SELECT seller_id, status FROM products WHERE id = ?
+      SELECT user_id as seller_id, status FROM products WHERE id = ?
     `).bind(productId).first()
 
     if (!product || product.seller_id !== seller_id) {
@@ -411,8 +411,8 @@ mypage.post('/withdrawal', async (c) => {
     // 振込可能額チェック
     const stats = await DB.prepare(`
       SELECT 
-        COALESCE(SUM(total_amount), 0) as total_sales,
-        COALESCE(SUM(platform_fee), 0) as total_fees
+        COALESCE(SUM(amount), 0) as total_sales,
+        COALESCE(SUM(fee), 0) as total_fees
       FROM transactions 
       WHERE seller_id = ? AND status = 'completed'
     `).bind(user_id).first()

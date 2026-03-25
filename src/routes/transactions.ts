@@ -18,10 +18,10 @@ transactions.get('/:transactionId', async (c) => {
         t.*,
         p.title as product_title,
         p.price as product_price,
-        buyer.shop_name as buyer_name,
+        COALESCE(buyer.company_name, buyer.nickname, buyer.name) as buyer_name,
         buyer.email as buyer_email,
         buyer.phone as buyer_phone,
-        seller.shop_name as seller_name,
+        COALESCE(seller.company_name, seller.nickname, seller.name) as seller_name,
         seller.email as seller_email,
         seller.phone as seller_phone,
         (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as product_image

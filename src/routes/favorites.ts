@@ -20,12 +20,12 @@ favorites.get('/user/:userId', async (c) => {
         p.price,
         p.condition,
         p.status as product_status,
-        p.seller_id,
-        u.shop_name as seller_name,
+        p.user_id as seller_id,
+        COALESCE(u.company_name, u.nickname, u.name) as seller_name,
         (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as image_url
       FROM favorites f
       JOIN products p ON f.product_id = p.id
-      JOIN users u ON p.seller_id = u.id
+      JOIN users u ON p.user_id = u.id
       WHERE f.user_id = ?
       ORDER BY f.created_at DESC
     `).bind(userId).all()

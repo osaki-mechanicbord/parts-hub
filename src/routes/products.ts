@@ -433,7 +433,7 @@ app.get('/:slugOrId', async (c) => {
       product = await DB.prepare(`
         SELECT 
           p.*,
-          u.shop_name,
+          COALESCE(u.company_name, u.nickname, u.name) as shop_name,
           u.shop_type,
           u.rating,
           u.is_verified,
@@ -441,7 +441,7 @@ app.get('/:slugOrId', async (c) => {
           m.name as maker_name,
           mo.name as model_name
         FROM products p
-        LEFT JOIN users u ON p.seller_id = u.id
+        LEFT JOIN users u ON p.user_id = u.id
         LEFT JOIN categories c ON p.category_id = c.id
         LEFT JOIN car_makers m ON p.maker_id = m.id
         LEFT JOIN car_models mo ON p.model_id = mo.id
@@ -454,7 +454,7 @@ app.get('/:slugOrId', async (c) => {
       product = await DB.prepare(`
         SELECT 
           p.*,
-          u.shop_name,
+          COALESCE(u.company_name, u.nickname, u.name) as shop_name,
           u.shop_type,
           u.rating,
           u.is_verified,
@@ -462,7 +462,7 @@ app.get('/:slugOrId', async (c) => {
           m.name as maker_name,
           mo.name as model_name
         FROM products p
-        LEFT JOIN users u ON p.seller_id = u.id
+        LEFT JOIN users u ON p.user_id = u.id
         LEFT JOIN categories c ON p.category_id = c.id
         LEFT JOIN car_makers m ON p.maker_id = m.id
         LEFT JOIN car_models mo ON p.model_id = mo.id
