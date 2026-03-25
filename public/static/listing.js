@@ -1,4 +1,14 @@
-// 商品出品フォーム管理
+// 商品出品フォーム管理 v2
+// 安全にDOM要素の値を取得するヘルパー
+function getVal(id) {
+  var el = document.getElementById(id);
+  return el ? el.value : '';
+}
+function getIntVal(id) {
+  var v = getVal(id);
+  return v ? parseInt(v) : null;
+}
+
 class ProductListingForm {
   constructor() {
     this.images = []
@@ -10,52 +20,51 @@ class ProductListingForm {
 
   // カメラ起動
   openCamera() {
-    const input = document.getElementById('image-input')
-    input.setAttribute('capture', 'environment') // リアカメラを優先
+    var input = document.getElementById('image-input')
+    if (!input) return
+    input.setAttribute('capture', 'environment')
     input.click()
   }
 
   // ファイル選択（ギャラリー）
   openGallery() {
-    const input = document.getElementById('image-input')
+    var input = document.getElementById('image-input')
+    if (!input) return
     input.removeAttribute('capture')
     input.click()
   }
 
   // 画像プレビューとアップロード処理
   async handleImageUpload(files) {
-    const fileArray = Array.from(files)
+    var fileArray = Array.from(files)
     
     if (this.uploadedImages.length + fileArray.length > this.maxImages) {
-      alert(`画像は最大${this.maxImages}枚までです`)
+      alert('画像は最大' + this.maxImages + '枚までです')
       return
     }
 
-    for (const file of fileArray) {
-      // ファイルサイズチェック (10MB)
+    for (var file of fileArray) {
       if (file.size > 10 * 1024 * 1024) {
-        alert(`${file.name} はサイズが大きすぎます（最大10MB）`)
+        alert(file.name + ' はサイズが大きすぎます（最大10MB）')
         continue
       }
 
-      // 画像形式チェック
       if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
-        alert(`${file.name} は対応していない形式です`)
+        alert(file.name + ' は対応していない画像形式です（JPEG/PNG/WebPのみ）')
         continue
       }
 
-      // 画像圧縮（モバイル対応）
-      const compressedFile = await this.compressImage(file)
+      var compressedFile = await this.compressImage(file)
 
-      // プレビュー表示用にDataURLを作成
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        this.uploadedImages.push({
+      var reader = new FileReader()
+      var self = this
+      reader.onload = function(e) {
+        self.uploadedImages.push({
           file: compressedFile,
           preview: e.target.result,
           uploaded: false
         })
-        this.renderImagePreviews()
+        self.renderImagePreviews()
       }
       reader.readAsDataURL(compressedFile)
     }
@@ -63,17 +72,16 @@ class ProductListingForm {
 
   // 画像圧縮（クライアント側）
   async compressImage(file) {
-    return new Promise((resolve) => {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const img = new Image()
-        img.onload = () => {
-          const canvas = document.createElement('canvas')
-          let width = img.width
-          let height = img.height
+    return new Promise(function(resolve) {
+      var reader = new FileReader()
+      reader.onload = function(e) {
+        var img = new Image()
+        img.onload = function() {
+          var canvas = document.createElement('canvas')
+          var width = img.width
+          var height = img.height
 
-          // 最大サイズを1920pxに制限
-          const maxSize = 1920
+          var maxSize = 1920
           if (width > height && width > maxSize) {
             height = (height * maxSize) / width
             width = maxSize
@@ -85,18 +93,18 @@ class ProductListingForm {
           canvas.width = width
           canvas.height = height
 
-          const ctx = canvas.getContext('2d')
+          var ctx = canvas.getContext('2d')
           ctx.drawImage(img, 0, 0, width, height)
 
           canvas.toBlob(
-            (blob) => {
+            function(blob) {
               resolve(new File([blob], file.name, {
                 type: 'image/jpeg',
                 lastModified: Date.now()
               }))
             },
             'image/jpeg',
-            0.85 // 画質85%
+            0.85
           )
         }
         img.src = e.target.result
@@ -107,43 +115,33 @@ class ProductListingForm {
 
   // 画像プレビュー描画
   renderImagePreviews() {
-    const container = document.getElementById('image-previews')
+    var container = document.getElementById('image-previews')
     if (!container) return
 
-    const previews = this.uploadedImages.map((img, index) => `
-      <div class="image-preview-item" style="position:relative;border-radius:12px;overflow:hidden;aspect-ratio:1;background:#f3f4f6;">
-        <img src="${img.preview || img.url || ''}" alt="商品画像 ${index + 1}"
-             style="width:100%;height:100%;object-fit:cover;">
-        ${index === 0 ? '<span style="position:absolute;top:4px;left:4px;background:#ef4444;color:#fff;font-size:10px;padding:1px 6px;border-radius:4px;font-weight:600;">メイン</span>' : ''}
-        <button type="button" onclick="productForm.removeImage(${index})"
-                style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.6);color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer;border:none;">
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
-    `).join('')
+    var self = this
+    var previews = this.uploadedImages.map(function(img, index) {
+      return '<div class="image-preview-item" style="position:relative;border-radius:12px;overflow:hidden;aspect-ratio:1;background:#f3f4f6;">' +
+        '<img src="' + (img.preview || img.url || '') + '" alt="商品画像 ' + (index + 1) + '"' +
+        ' style="width:100%;height:100%;object-fit:cover;">' +
+        (index === 0 ? '<span style="position:absolute;top:4px;left:4px;background:#ef4444;color:#fff;font-size:10px;padding:1px 6px;border-radius:4px;font-weight:600;">メイン</span>' : '') +
+        '<button type="button" onclick="productForm.removeImage(' + index + ')"' +
+        ' style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.6);color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer;border:none;">' +
+        '<i class="fas fa-times"></i></button></div>'
+    }).join('')
 
-    // 追加ボタン（10枚未満の場合）
-    const addBtn = this.uploadedImages.length < this.maxImages ? `
-      <div onclick="document.getElementById('image-input').click()"
-           style="position:relative;border-radius:12px;overflow:hidden;aspect-ratio:1;background:#fafbfc;border:2px dashed #d1d5db;display:flex;align-items:center;justify-content:center;cursor:pointer;"
-           onmouseover="this.style.borderColor='#fca5a5';this.style.background='#fef7f7'"
-           onmouseout="this.style.borderColor='#d1d5db';this.style.background='#fafbfc'">
-        <div style="text-align:center;">
-          <i class="fas fa-plus" style="color:#9ca3af;font-size:18px;"></i>
-          <div style="font-size:11px;color:#9ca3af;margin-top:4px;">追加</div>
-        </div>
-      </div>
-    ` : ''
+    var addBtn = this.uploadedImages.length < this.maxImages ?
+      '<div onclick="document.getElementById(\'image-input\').click()"' +
+      ' style="position:relative;border-radius:12px;overflow:hidden;aspect-ratio:1;background:#fafbfc;border:2px dashed #d1d5db;display:flex;align-items:center;justify-content:center;cursor:pointer;">' +
+      '<div style="text-align:center;"><i class="fas fa-plus" style="color:#9ca3af;font-size:18px;"></i>' +
+      '<div style="font-size:11px;color:#9ca3af;margin-top:4px;">追加</div></div></div>' : ''
 
     container.innerHTML = previews + addBtn
 
-    // ドロップゾーンの表示切替
-    const dropZone = document.getElementById('drop-zone')
+    var dropZone = document.getElementById('drop-zone')
     if (dropZone) {
       dropZone.style.display = this.uploadedImages.length > 0 ? 'none' : 'block'
     }
 
-    // ステップインジケーター更新
     if (typeof updateStepIndicator === 'function') updateStepIndicator()
   }
 
@@ -153,31 +151,29 @@ class ProductListingForm {
     this.renderImagePreviews()
   }
 
-  // 実際のR2へのアップロード（商品作成時）
+  // R2アップロード
   async uploadImagesToR2(productId) {
-    const uploadPromises = this.uploadedImages.map(async (img, index) => {
+    var self = this
+    var uploadPromises = this.uploadedImages.map(async function(img, index) {
       if (img.uploaded) return img.key
 
-      const formData = new FormData()
+      var formData = new FormData()
       formData.append('image', img.file)
       formData.append('product_id', productId)
       formData.append('display_order', index + 1)
 
       try {
-        const response = await axios.post('/api/products/images/upload', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
+        var response = await axios.post('/api/products/images/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
         })
-
         if (response.data.success) {
           img.uploaded = true
           img.key = response.data.data.key
           return response.data.data.key
         }
       } catch (error) {
-        console.error('Image upload failed:', error)
-        throw new Error(`画像${index + 1}のアップロードに失敗しました`)
+        console.error('画像アップロード失敗:', error)
+        throw new Error('画像' + (index + 1) + 'のアップロードに失敗しました')
       }
     })
 
@@ -187,168 +183,217 @@ class ProductListingForm {
   // フォーム送信
   async submitForm() {
     try {
-      // フォームデータ収集
-      const formData = {
-        seller_id: 1, // TODO: ログインユーザーIDを使用
-        title: document.getElementById('product-title').value,
-        description: document.getElementById('product-description').value,
-        price: parseInt(document.getElementById('product-price').value),
-        category_id: parseInt(document.getElementById('category-select').value),
-        subcategory_id: parseInt(document.getElementById('subcategory-select').value) || null,
-        maker_id: parseInt(document.getElementById('maker-select').value) || null,
-        model_id: parseInt(document.getElementById('model-select').value) || null,
-        part_number: document.getElementById('part-number').value || null,
-        compatible_models: (document.getElementById('compatible-models') || {}).value || null,
-        condition: document.getElementById('condition-select').value,
-        stock_quantity: parseInt(document.getElementById('stock-quantity').value),
+      // ログインユーザー情報を取得
+      var userStr = localStorage.getItem('user')
+      var token = localStorage.getItem('token')
+      if (!userStr || !token) {
+        alert('出品するにはログインが必要です。ログインページに移動します。')
+        window.location.href = '/login'
+        return
+      }
+      var user = JSON.parse(userStr)
+
+      // フォームデータ収集（null安全）
+      var formData = {
+        seller_id: user.id,
+        title: getVal('product-title'),
+        description: getVal('product-description'),
+        price: getIntVal('product-price'),
+        category_id: getIntVal('category-select'),
+        subcategory_id: getIntVal('subcategory-select'),
+        maker_id: getIntVal('maker-select'),
+        model_id: getIntVal('model-select'),
+        part_number: getVal('part-number') || null,
+        compatible_models: getVal('compatible-models') || null,
+        condition: getVal('condition-select'),
+        stock_quantity: getIntVal('stock-quantity') || 1,
         status: 'active',
         compatibility: {
-          year_from: parseInt(document.getElementById('year-from').value) || null,
-          year_to: parseInt(document.getElementById('year-to').value) || null,
-          model_code: document.getElementById('model-code').value || null,
-          grade: document.getElementById('grade').value || null,
-          engine_type: document.getElementById('engine-type').value || null,
-          drive_type: document.getElementById('drive-type').value || null,
-          transmission_type: document.getElementById('transmission-type').value || null,
-          oem_part_number: document.getElementById('oem-part-number').value || null,
-          verification_method: document.getElementById('verification-method').value,
-          fitment_notes: document.getElementById('fitment-notes').value || null,
+          year_from: getIntVal('year-from'),
+          year_to: getIntVal('year-to'),
+          model_code: getVal('model-code') || null,
+          grade: getVal('grade') || null,
+          engine_type: getVal('engine-type') || null,
+          drive_type: getVal('drive-type') || null,
+          transmission_type: getVal('transmission-type') || null,
+          oem_part_number: getVal('oem-part-number') || null,
+          verification_method: getVal('verification-method') || null,
+          fitment_notes: getVal('fitment-notes') || null,
           confidence_level: 4
         }
       }
 
-      // バリデーション
-      if (!formData.title || !formData.description || !formData.price || !formData.category_id || !formData.condition) {
-        alert('必須項目を入力してください')
+      // バリデーション（日本語メッセージ）
+      if (!formData.title) {
+        alert('商品タイトルを入力してください')
         return
       }
-
+      if (!formData.description) {
+        alert('商品説明を入力してください')
+        return
+      }
+      if (!formData.price || formData.price <= 0) {
+        alert('価格を正しく入力してください')
+        return
+      }
+      if (!formData.category_id) {
+        alert('カテゴリを選択してください')
+        return
+      }
+      if (!formData.condition) {
+        alert('商品の状態を選択してください')
+        return
+      }
       if (this.uploadedImages.length === 0) {
-        alert('商品画像を最低1枚アップロードしてください')
+        alert('商品画像を最低1枚追加してください')
         return
       }
 
       // ローディング表示
-      const submitBtn = document.getElementById('submit-btn')
-      const originalText = submitBtn.innerHTML
-      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>出品中...'
-      submitBtn.disabled = true
-
-      // 商品作成
-      const response = await axios.post('/api/products', formData)
-
-      if (!response.data.success) {
-        throw new Error(response.data.error || '商品登録に失敗しました')
+      var submitBtn = document.getElementById('submit-btn')
+      var originalText = submitBtn ? submitBtn.innerHTML : ''
+      if (submitBtn) {
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:8px;"></i>出品処理中...'
+        submitBtn.disabled = true
       }
 
-      const productId = response.data.data.id
+      // 商品作成API呼び出し
+      var response = await axios.post('/api/products', formData, {
+        headers: { 'Authorization': 'Bearer ' + token }
+      })
+
+      if (!response.data.success) {
+        throw new Error(response.data.error || '商品の登録に失敗しました')
+      }
+
+      var productId = response.data.data.id
 
       // 画像アップロード
-      await this.uploadImagesToR2(productId)
+      if (this.uploadedImages.some(function(img) { return !img.uploaded })) {
+        await this.uploadImagesToR2(productId)
+      }
 
-      // 成功メッセージ
-      alert('商品を出品しました！')
-      window.location.href = `/products/${productId}`
+      // 成功表示
+      if (submitBtn) {
+        submitBtn.innerHTML = '<i class="fas fa-check" style="margin-right:8px;"></i>出品完了！'
+        submitBtn.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)'
+      }
+
+      // 成功メッセージ表示後、マイページ出品一覧に遷移
+      var successBanner = document.createElement('div')
+      successBanner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#22c55e;color:#fff;text-align:center;padding:16px;font-size:16px;font-weight:700;z-index:9999;'
+      successBanner.innerHTML = '<i class="fas fa-check-circle" style="margin-right:8px;"></i>商品を出品しました！マイページに移動します...'
+      document.body.appendChild(successBanner)
+
+      setTimeout(function() {
+        window.location.href = '/mypage#listings'
+      }, 1500)
 
     } catch (error) {
-      console.error('Submit error:', error)
-      alert(error.message || '出品に失敗しました')
+      console.error('出品エラー:', error)
+      var msg = '出品に失敗しました。'
+      if (error.response && error.response.data && error.response.data.error) {
+        msg = error.response.data.error
+      } else if (error.message) {
+        msg = error.message
+      }
+      alert(msg)
       
-      // ボタンを元に戻す
-      const submitBtn = document.getElementById('submit-btn')
-      submitBtn.innerHTML = '<i class="fas fa-check mr-2"></i>出品する'
-      submitBtn.disabled = false
+      var submitBtn = document.getElementById('submit-btn')
+      if (submitBtn) {
+        submitBtn.innerHTML = '<i class="fas fa-check" style="margin-right:8px;"></i>出品する'
+        submitBtn.disabled = false
+      }
     }
   }
 
-  // カテゴリ選択時にサブカテゴリをロード
+  // カテゴリ変更 → サブカテゴリ読込
   async loadSubcategories(categoryId) {
+    var el = document.getElementById('subcategory-select')
+    if (!el) return
     if (!categoryId) {
-      document.getElementById('subcategory-select').innerHTML = '<option value="">サブカテゴリを選択</option>'
+      el.innerHTML = '<option value="">サブカテゴリを選択</option>'
       return
     }
 
     try {
-      const response = await axios.get(`/api/categories/${categoryId}/subcategories`)
-      const subcategories = response.data.data || []
-      
-      const select = document.getElementById('subcategory-select')
-      select.innerHTML = '<option value="">サブカテゴリを選択</option>' + 
-        subcategories.map(sub => `<option value="${sub.id}">${sub.name}</option>`).join('')
+      var response = await axios.get('/api/categories/' + categoryId + '/subcategories')
+      var subcategories = response.data.data || []
+      el.innerHTML = '<option value="">サブカテゴリを選択</option>' + 
+        subcategories.map(function(sub) { return '<option value="' + sub.id + '">' + sub.name + '</option>' }).join('')
     } catch (error) {
-      console.error('Failed to load subcategories:', error)
+      console.error('サブカテゴリの読み込みに失敗:', error)
     }
   }
 
-  // メーカー選択時に車種をロード
+  // メーカー変更 → 車種読込
   async loadModels(makerId) {
+    var el = document.getElementById('model-select')
+    if (!el) return
     if (!makerId) {
-      document.getElementById('model-select').innerHTML = '<option value="">車種を選択</option>'
+      el.innerHTML = '<option value="">車種を選択</option>'
       return
     }
 
     try {
-      const response = await axios.get(`/api/makers/${makerId}/models`)
-      const models = response.data.data || []
-      
-      const select = document.getElementById('model-select')
-      select.innerHTML = '<option value="">車種を選択</option>' + 
-        models.map(model => `<option value="${model.id}">${model.name}</option>`).join('')
+      var response = await axios.get('/api/makers/' + makerId + '/models')
+      var models = response.data.data || []
+      el.innerHTML = '<option value="">車種を選択</option>' + 
+        models.map(function(model) { return '<option value="' + model.id + '">' + model.name + '</option>' }).join('')
     } catch (error) {
-      console.error('Failed to load models:', error)
+      console.error('車種の読み込みに失敗:', error)
     }
   }
 }
 
 // グローバルインスタンス
-const productForm = new ProductListingForm()
+var productForm = new ProductListingForm()
 
 // ページ読み込み時の初期化
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', async function() {
   // カテゴリとメーカーのロード
   try {
-    const [categoriesRes, makersRes] = await Promise.all([
+    var results = await Promise.all([
       axios.get('/api/categories'),
       axios.get('/api/makers')
     ])
+    var categoriesRes = results[0]
+    var makersRes = results[1]
 
-    // カテゴリ選択肢を設定
-    const categorySelect = document.getElementById('category-select')
-    if (categorySelect) {
+    var categorySelect = document.getElementById('category-select')
+    if (categorySelect && categoriesRes.data.categories) {
       categorySelect.innerHTML = '<option value="">カテゴリを選択 *</option>' +
-        categoriesRes.data.categories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('')
+        categoriesRes.data.categories.map(function(cat) { return '<option value="' + cat.id + '">' + cat.name + '</option>' }).join('')
     }
 
-    // メーカー選択肢を設定
-    const makerSelect = document.getElementById('maker-select')
-    if (makerSelect) {
+    var makerSelect = document.getElementById('maker-select')
+    if (makerSelect && makersRes.data.makers) {
       makerSelect.innerHTML = '<option value="">メーカーを選択</option>' +
-        makersRes.data.makers.map(maker => `<option value="${maker.id}">${maker.name}</option>`).join('')
+        makersRes.data.makers.map(function(maker) { return '<option value="' + maker.id + '">' + maker.name + '</option>' }).join('')
     }
   } catch (error) {
-    console.error('Failed to load initial data:', error)
+    console.error('初期データの読み込みに失敗:', error)
   }
 
   // 画像アップロードエリアのイベント設定
-  const imageInput = document.getElementById('image-input')
-  const dropZone = document.getElementById('drop-zone')
+  var imageInput = document.getElementById('image-input')
+  var dropZone = document.getElementById('drop-zone')
 
-  if (imageInput && dropZone) {
-    imageInput.addEventListener('change', (e) => {
+  if (imageInput) {
+    imageInput.addEventListener('change', function(e) {
       productForm.handleImageUpload(e.target.files)
     })
+  }
 
-    // ドラッグ&ドロップ対応
-    dropZone.addEventListener('dragover', (e) => {
+  if (dropZone) {
+    dropZone.addEventListener('dragover', function(e) {
       e.preventDefault()
       dropZone.classList.add('border-blue-500', 'bg-blue-50')
     })
-
-    dropZone.addEventListener('dragleave', () => {
+    dropZone.addEventListener('dragleave', function() {
       dropZone.classList.remove('border-blue-500', 'bg-blue-50')
     })
-
-    dropZone.addEventListener('drop', (e) => {
+    dropZone.addEventListener('drop', function(e) {
       e.preventDefault()
       dropZone.classList.remove('border-blue-500', 'bg-blue-50')
       productForm.handleImageUpload(e.dataTransfer.files)
@@ -356,22 +401,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // カテゴリ変更イベント
-  const categorySelect = document.getElementById('category-select')
+  var categorySelect = document.getElementById('category-select')
   if (categorySelect) {
-    categorySelect.addEventListener('change', (e) => {
+    categorySelect.addEventListener('change', function(e) {
       productForm.loadSubcategories(e.target.value)
     })
   }
 
   // メーカー変更イベント
-  const makerSelect = document.getElementById('maker-select')
+  var makerSelect = document.getElementById('maker-select')
   if (makerSelect) {
-    makerSelect.addEventListener('change', (e) => {
+    makerSelect.addEventListener('change', function(e) {
       productForm.loadModels(e.target.value)
     })
   }
 
-  // 編集モードの場合、商品データを読み込み
+  // 編集モードの場合
   if (window.EDIT_MODE && window.PRODUCT_ID) {
     loadProductForEdit(window.PRODUCT_ID)
   }
@@ -380,82 +425,72 @@ document.addEventListener('DOMContentLoaded', async () => {
 // 編集モード：商品データを読み込んで表示
 async function loadProductForEdit(productId) {
   try {
-    const response = await axios.get(`/api/products/${productId}`)
+    var response = await axios.get('/api/products/' + productId)
     
     if (response.data.success) {
-      const product = response.data.data
+      var product = response.data.data
       
-      // フォームに値を設定
-      document.getElementById('product-title').value = product.title || ''
-      document.getElementById('product-description').value = product.description || ''
-      document.getElementById('product-price').value = product.price || ''
-      document.getElementById('stock-quantity').value = product.stock_quantity || 1
-      document.getElementById('part-number').value = product.part_number || ''
+      var el
+      el = document.getElementById('product-title'); if (el) el.value = product.title || ''
+      el = document.getElementById('product-description'); if (el) el.value = product.description || ''
+      el = document.getElementById('product-price'); if (el) el.value = product.price || ''
+      el = document.getElementById('stock-quantity'); if (el) el.value = product.stock_quantity || 1
+      el = document.getElementById('part-number'); if (el) el.value = product.part_number || ''
       
-      // カテゴリ
       if (product.category_id) {
-        document.getElementById('category-select').value = product.category_id
+        el = document.getElementById('category-select'); if (el) el.value = product.category_id
         if (product.subcategory_id) {
           await productForm.loadSubcategories(product.category_id)
-          document.getElementById('subcategory-select').value = product.subcategory_id
+          el = document.getElementById('subcategory-select'); if (el) el.value = product.subcategory_id
         }
       }
       
-      // 状態
       if (product.condition) {
-        document.getElementById('condition-select').value = product.condition
+        el = document.getElementById('condition-select'); if (el) el.value = product.condition
       }
       
-      // メーカー・車種
       if (product.maker_id) {
-        document.getElementById('maker-select').value = product.maker_id
+        el = document.getElementById('maker-select'); if (el) el.value = product.maker_id
         if (product.model_id) {
           await productForm.loadModels(product.maker_id)
-          document.getElementById('model-select').value = product.model_id
+          el = document.getElementById('model-select'); if (el) el.value = product.model_id
         }
       }
       
-      // 適合情報
-      const compatibility = product.compatibility || {}
-      document.getElementById('year-from').value = compatibility.year_from || ''
-      document.getElementById('year-to').value = compatibility.year_to || ''
-      document.getElementById('model-code').value = compatibility.model_code || ''
-      document.getElementById('grade').value = compatibility.grade || ''
-      document.getElementById('engine-type').value = compatibility.engine_type || ''
-      document.getElementById('drive-type').value = compatibility.drive_type || ''
+      var compat = product.compatibility || {}
+      el = document.getElementById('year-from'); if (el) el.value = compat.year_from || ''
+      el = document.getElementById('year-to'); if (el) el.value = compat.year_to || ''
+      el = document.getElementById('model-code'); if (el) el.value = compat.model_code || ''
+      el = document.getElementById('grade'); if (el) el.value = compat.grade || ''
+      el = document.getElementById('engine-type'); if (el) el.value = compat.engine_type || ''
+      el = document.getElementById('drive-type'); if (el) el.value = compat.drive_type || ''
       
-      // 画像を読み込み
       if (product.images && product.images.length > 0) {
-        productForm.uploadedImages = product.images.map(img => ({
-          url: img.image_url,
-          display_order: img.display_order
-        }))
+        productForm.uploadedImages = product.images.map(function(img) {
+          return { url: img.image_url, display_order: img.display_order }
+        })
         productForm.renderImagePreviews()
       }
       
-      // ローディング非表示、フォーム表示
-      document.getElementById('loading').style.display = 'none'
-      document.getElementById('form-content').classList.remove('hidden')
+      el = document.getElementById('loading'); if (el) el.style.display = 'none'
+      el = document.getElementById('form-content'); if (el) el.classList.remove('hidden')
       
-      // 送信ボタンのテキストを変更
-      const submitBtn = document.getElementById('submit-btn')
+      var submitBtn = document.getElementById('submit-btn')
       if (submitBtn) {
-        submitBtn.innerHTML = '<i class="fas fa-save mr-2"></i>変更を保存'
+        submitBtn.innerHTML = '<i class="fas fa-save" style="margin-right:8px;"></i>変更を保存'
       }
       
     } else {
       throw new Error(response.data.error || '商品情報の取得に失敗しました')
     }
   } catch (error) {
-    console.error('Failed to load product:', error)
-    document.getElementById('loading').innerHTML = `
-      <div class="text-center py-12 text-red-500">
-        <i class="fas fa-exclamation-circle text-4xl mb-4"></i>
-        <p>${error.message || '商品情報の読み込みに失敗しました'}</p>
-        <button onclick="window.history.back()" class="mt-4 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-semibold">
-          戻る
-        </button>
-      </div>
-    `
+    console.error('商品読み込みエラー:', error)
+    var loadingEl = document.getElementById('loading')
+    if (loadingEl) {
+      loadingEl.innerHTML = '<div style="text-align:center;padding:48px 0;color:#ef4444;">' +
+        '<i class="fas fa-exclamation-circle" style="font-size:36px;margin-bottom:16px;display:block;"></i>' +
+        '<p>' + (error.message || '商品情報の読み込みに失敗しました') + '</p>' +
+        '<button onclick="window.history.back()" style="margin-top:16px;background:#f3f4f6;color:#374151;padding:8px 24px;border-radius:8px;font-weight:600;border:none;cursor:pointer;">戻る</button></div>'
+    }
   }
 }

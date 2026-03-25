@@ -3346,7 +3346,7 @@ app.get('/listing', (c) => {
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-        <script src="/static/listing.js"></script>
+        <script src="/static/listing.js?v=20260325"></script>
         <script>
             // 状態チップ選択
             function selectCondition(el) {
@@ -4539,7 +4539,7 @@ app.get('/listing/edit/:id', (c) => {
             window.EDIT_MODE = true;
             window.PRODUCT_ID = ${productId};
         </script>
-        <script src="/static/listing.js"></script>
+        <script src="/static/listing.js?v=20260325"></script>
     </body>
     </html>
   `)
