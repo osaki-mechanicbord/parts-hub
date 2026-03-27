@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { verifyToken } from '../auth'
 
 type Bindings = {
   DB: D1Database
@@ -7,26 +8,29 @@ type Bindings = {
 
 const profile = new Hono<{ Bindings: Bindings }>()
 
+// 認証ヘッダーからユーザーIDを取得するヘルパー
+async function getUserIdFromToken(c: any): Promise<number | null> {
+  const authHeader = c.req.header('Authorization')
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return null
+  }
+  const token = authHeader.substring(7)
+  const secret = (c.env as any)?.JWT_SECRET
+  const payload = await verifyToken(token, secret)
+  if (!payload || !payload.sub) {
+    return null
+  }
+  return payload.sub as number
+}
+
 // ログインユーザーのプロフィール取得（認証トークンから）
 profile.get('/me', async (c) => {
   try {
     const { DB } = c.env
 
-    // Authorization ヘッダーからユーザーID取得
-    const authHeader = c.req.header('Authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const userId = await getUserIdFromToken(c)
+    if (!userId) {
       return c.json({ success: false, error: 'ログインが必要です' }, 401)
-    }
-    const token = authHeader.substring(7)
-
-    // JWTデコード（hono/jwtを使わずペイロード部分を直接読む）
-    let userId: number
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]))
-      userId = payload.userId || payload.id || payload.sub
-      if (!userId) throw new Error('Invalid token payload')
-    } catch (e) {
-      return c.json({ success: false, error: '無効なトークンです' }, 401)
     }
 
     const user = await DB.prepare(`
@@ -82,20 +86,9 @@ profile.put('/me', async (c) => {
   try {
     const { DB } = c.env
 
-    // Authorization ヘッダーからユーザーID取得
-    const authHeader = c.req.header('Authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const userId = await getUserIdFromToken(c)
+    if (!userId) {
       return c.json({ success: false, error: 'ログインが必要です' }, 401)
-    }
-    const token = authHeader.substring(7)
-
-    let userId: number
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]))
-      userId = payload.userId || payload.id || payload.sub
-      if (!userId) throw new Error('Invalid token payload')
-    } catch (e) {
-      return c.json({ success: false, error: '無効なトークンです' }, 401)
     }
 
     const body = await c.req.json()
