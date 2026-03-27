@@ -6799,8 +6799,14 @@ app.get('/admin/login', (c) => {
   `)
 })
 
-// 管理画面トップ（ダッシュボード）
-app.get('/admin', (c) => {
+// 管理画面はadmin-pages.tsに統一（AdminLayout経由で認証チェック付き）
+// /admin, /admin/users 等は admin-pages.ts の AdminLayout で提供
+
+export default app
+
+// ===== 以下は admin-pages.ts に移行済みのため未使用 =====
+/*
+app.get('/admin-old-unused', (c) => {
   return c.html(`
     <!DOCTYPE html>
     <html lang="ja">
@@ -7435,5 +7441,4 @@ app.get('/admin/users', (c) => {
   
   return c.html(AdminLayout('users', 'ユーザー管理', content));
 })
-
-export default app
+*/
