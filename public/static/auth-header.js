@@ -65,12 +65,49 @@
     
     authContainer.innerHTML = btnHtml;
 
+    // 言語切替ボタンを追加
+    var langBtn = document.createElement('div');
+    langBtn.className = 'relative flex-shrink-0';
+    langBtn.style.cssText = 'margin-right:2px;';
+    var currentLang = localStorage.getItem('parts_hub_lang') || 'ja';
+    var flags = { ja: '🇯🇵', en: '🇺🇸', zh: '🇨🇳', ko: '🇰🇷' };
+    langBtn.innerHTML =
+        '<button onclick="event.stopPropagation();var m=this.nextElementSibling;m.classList.toggle(\'hidden\')" class="p-1 text-gray-400 hover:text-primary transition-colors" title="Language" style="font-size:14px;">' +
+            '<i class="fas fa-globe"></i>' +
+        '</button>' +
+        '<div class="hidden absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden" style="min-width:130px;" id="auth-header-lang-menu">' +
+            [['ja','🇯🇵','日本語'],['en','🇺🇸','English'],['zh','🇨🇳','中文'],['ko','🇰🇷','한국어']].map(function(l) {
+                return '<button data-lang="' + l[0] + '" style="display:flex;align-items:center;gap:6px;width:100%;padding:8px 12px;border:none;background:' + (l[0]===currentLang?'#fef2f2':'#fff') + ';cursor:pointer;font-size:13px;color:#374151;text-align:left;">' + l[1] + ' ' + l[2] + (l[0]===currentLang?' <span style="margin-left:auto;color:#ef4444;">✓</span>':'') + '</button>';
+            }).join('') +
+        '</div>';
+    // 言語メニュークリックイベント
+    setTimeout(function() {
+        var lm = document.getElementById('auth-header-lang-menu');
+        if (!lm) return;
+        lm.querySelectorAll('button').forEach(function(b) {
+            b.onclick = function(e) {
+                e.stopPropagation();
+                var lang = this.getAttribute('data-lang');
+                if (lang !== currentLang) {
+                    localStorage.setItem('parts_hub_lang', lang);
+                    location.reload();
+                }
+            };
+        });
+        document.addEventListener('click', function() { lm.classList.add('hidden'); });
+    }, 0);
+
     // 挿入位置を決定
     if (spacer) {
-        // スペーサーがあれば置換
-        spacer.parentNode.replaceChild(authContainer, spacer);
+        // スペーサーがあれば置換（言語+認証をまとめたコンテナで）
+        var wrapper = document.createElement('div');
+        wrapper.className = 'flex items-center gap-1 flex-shrink-0';
+        wrapper.appendChild(langBtn);
+        wrapper.appendChild(authContainer);
+        spacer.parentNode.replaceChild(wrapper, spacer);
     } else {
-        // 最後の子要素として追加（flex + justify-betweenの場合は最後に来る）
+        // 最後の子要素として追加
+        headerInner.appendChild(langBtn);
         headerInner.appendChild(authContainer);
     }
 

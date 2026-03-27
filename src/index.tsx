@@ -86,6 +86,7 @@ const Footer = () => `
     </div>
 </footer>
 <script src="/static/i18n-en.js"></script>
+<script src="/static/i18n-zh.js"></script>
 <script src="/static/i18n.js"></script>
 `
 
@@ -638,6 +639,15 @@ app.get('/', (c) => {
                     
                     <!-- アクションボタン -->
                     <div class="flex items-center space-x-3">
+                        <!-- 言語切替 -->
+                        <div class="relative" id="header-lang-switcher">
+                            <button onclick="toggleHeaderLang(event)" class="px-2 py-2 text-gray-500 hover:text-primary transition-all rounded-lg hover:bg-gray-100" title="Language">
+                                <i class="fas fa-globe text-lg"></i>
+                            </button>
+                            <div id="header-lang-menu" class="hidden absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 min-w-[140px] overflow-hidden">
+                            </div>
+                        </div>
+
                         <button onclick="window.location.href='/listing'" 
                                 class="px-4 py-2 bg-primary text-white rounded-lg font-semibold hover:bg-primary-dark transition-all shadow-sm hover:shadow-md">
                             <i class="fas fa-plus mr-1"></i>
@@ -911,6 +921,7 @@ app.get('/', (c) => {
         <!-- スクリプト -->
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="/static/i18n-en.js"></script>
+<script src="/static/i18n-zh.js"></script>
         <script src="/static/i18n.js"></script>
         <script>
             // ==========================================
@@ -969,6 +980,43 @@ app.get('/', (c) => {
             })();
             
             // ログアウト処理
+            // ヘッダー言語切替
+            function toggleHeaderLang(e) {
+                e.stopPropagation();
+                var menu = document.getElementById('header-lang-menu');
+                if (!menu) return;
+                menu.classList.toggle('hidden');
+            }
+            (function() {
+                var langs = [
+                    { code: 'ja', flag: '🇯🇵', name: '日本語' },
+                    { code: 'en', flag: '🇺🇸', name: 'English' },
+                    { code: 'zh', flag: '🇨🇳', name: '中文' },
+                    { code: 'ko', flag: '🇰🇷', name: '한국어' }
+                ];
+                var current = localStorage.getItem('parts_hub_lang') || 'ja';
+                var menu = document.getElementById('header-lang-menu');
+                if (!menu) return;
+                menu.innerHTML = langs.map(function(l) {
+                    return '<button data-lang="' + l.code + '" style="display:flex;align-items:center;gap:8px;width:100%;padding:10px 16px;border:none;background:' + (l.code === current ? '#fef2f2' : '#fff') + ';cursor:pointer;font-size:14px;color:#374151;text-align:left;">' + l.flag + ' ' + l.name + (l.code === current ? ' <span style="margin-left:auto;color:#ef4444;">✓</span>' : '') + '</button>';
+                }).join('');
+                menu.querySelectorAll('button').forEach(function(btn) {
+                    var origBg = btn.getAttribute('data-lang') === current ? '#fef2f2' : '#fff';
+                    btn.onmouseover = function() { this.style.background = '#f9fafb'; };
+                    btn.onmouseout = function() { this.style.background = origBg; };
+                    btn.onclick = function() {
+                        var lang = this.getAttribute('data-lang');
+                        if (lang !== current) {
+                            localStorage.setItem('parts_hub_lang', lang);
+                            location.reload();
+                        }
+                    };
+                });
+                document.addEventListener('click', function() {
+                    menu.classList.add('hidden');
+                });
+            })();
+
             function handleLogout() {
                 var token = localStorage.getItem('token');
                 if (token) {
@@ -1386,6 +1434,7 @@ app.get('/news', (c) => {
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="/static/i18n-en.js"></script>
+<script src="/static/i18n-zh.js"></script>
         <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
         <script>
@@ -1823,6 +1872,7 @@ app.get('/news/:category/:year/:month/:slug', (c) => {
         
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="/static/i18n-en.js"></script>
+<script src="/static/i18n-zh.js"></script>
         <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
         <script>
@@ -1868,6 +1918,7 @@ app.get('/news/:slug', (c) => {
         
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="/static/i18n-en.js"></script>
+<script src="/static/i18n-zh.js"></script>
         <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
         <script>
@@ -2121,6 +2172,7 @@ app.get('/login', (c) => {
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="/static/i18n-en.js"></script>
+<script src="/static/i18n-zh.js"></script>
         <script src="/static/i18n.js"></script>
         <script>
             // パスワード表示切替
@@ -2475,6 +2527,7 @@ app.get('/register', (c) => {
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="/static/i18n-en.js"></script>
+<script src="/static/i18n-zh.js"></script>
         <script src="/static/i18n.js"></script>
         <script>
             function showError(message) {
@@ -2841,6 +2894,7 @@ app.get('/products/:id', (c) => {
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="/static/i18n-en.js"></script>
+<script src="/static/i18n-zh.js"></script>
         <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
         <script src="/static/product-detail.js"></script>
@@ -3497,6 +3551,7 @@ app.get('/listing', (c) => {
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="/static/i18n-en.js"></script>
+<script src="/static/i18n-zh.js"></script>
         <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
         <script src="/static/listing.js?v=20260325"></script>
@@ -3669,6 +3724,7 @@ app.get('/chat', (c) => {
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="/static/i18n-en.js"></script>
+<script src="/static/i18n-zh.js"></script>
         <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
         <script>
@@ -3882,6 +3938,7 @@ app.get('/chat/:roomId', (c) => {
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="/static/i18n-en.js"></script>
+<script src="/static/i18n-zh.js"></script>
         <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
         <script>
@@ -4327,6 +4384,7 @@ app.get('/mypage', (c) => {
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="/static/i18n-en.js"></script>
+<script src="/static/i18n-zh.js"></script>
         <script src="/static/i18n.js"></script>
         <script src="/static/mypage.js"></script>
     </body>
@@ -4395,6 +4453,7 @@ app.get('/notifications', (c) => {
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="/static/i18n-en.js"></script>
+<script src="/static/i18n-zh.js"></script>
         <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
         <script src="/static/notifications.js"></script>
@@ -4614,6 +4673,7 @@ app.get('/profile/edit', (c) => {
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="/static/i18n-en.js"></script>
+<script src="/static/i18n-zh.js"></script>
         <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
         <script src="/static/profile-edit.js?v=20260327"></script>
@@ -4746,6 +4806,7 @@ app.get('/reviews/new', (c) => {
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="/static/i18n-en.js"></script>
+<script src="/static/i18n-zh.js"></script>
         <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
         <script src="/static/reviews.js"></script>
@@ -4789,6 +4850,7 @@ app.get('/transactions/:id', (c) => {
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="/static/i18n-en.js"></script>
+<script src="/static/i18n-zh.js"></script>
         <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
         <script src="/static/transaction-detail.js"></script>
@@ -4846,6 +4908,7 @@ app.get('/transaction/:id/success', (c) => {
         </main>
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="/static/i18n-en.js"></script>
+<script src="/static/i18n-zh.js"></script>
         <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
         <script>
@@ -5053,6 +5116,7 @@ app.get('/contact', (c) => {
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="/static/i18n-en.js"></script>
+<script src="/static/i18n-zh.js"></script>
         <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
         <script>
@@ -5147,6 +5211,7 @@ app.get('/favorites', (c) => {
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="/static/i18n-en.js"></script>
+<script src="/static/i18n-zh.js"></script>
         <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
         <script>
@@ -5344,6 +5409,7 @@ app.get('/search', (c) => {
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="/static/i18n-en.js"></script>
+<script src="/static/i18n-zh.js"></script>
         <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
         <script>
@@ -5909,6 +5975,7 @@ app.get('/password-reset', (c) => {
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="/static/i18n-en.js"></script>
+<script src="/static/i18n-zh.js"></script>
         <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
         <script>
