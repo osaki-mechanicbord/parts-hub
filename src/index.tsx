@@ -6699,6 +6699,106 @@ app.get('/sitemap.xml', async (c) => {
 // 管理画面（Admin Panel）
 // ========================================
 
+// 管理画面ログインページ
+app.get('/admin/login', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>管理者ログイン - PARTS HUB</title>
+        <meta name="robots" content="noindex, nofollow">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script>tailwind.config={theme:{extend:{colors:{primary:'#ff4757','primary-dark':'#ee3b4c'}}}}</script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    </head>
+    <body class="bg-gray-100 min-h-screen flex items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-shield-alt text-3xl text-red-500"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-800">PARTS HUB 管理画面</h1>
+                <p class="text-gray-500 text-sm mt-1">管理者アカウントでログインしてください</p>
+            </div>
+            
+            <div id="error-msg" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm"></div>
+            
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">ログイン名</label>
+                    <div class="relative">
+                        <i class="fas fa-user absolute left-3 top-3.5 text-gray-400"></i>
+                        <input type="text" id="username" name="username" required autocomplete="username"
+                               class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                               placeholder="ユーザー名">
+                    </div>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">パスワード</label>
+                    <div class="relative">
+                        <i class="fas fa-lock absolute left-3 top-3.5 text-gray-400"></i>
+                        <input type="password" id="password" name="password" required autocomplete="current-password"
+                               class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                               placeholder="パスワード">
+                    </div>
+                </div>
+                <button type="submit" id="login-btn"
+                        class="w-full py-3 bg-red-500 text-white rounded-lg font-bold hover:bg-red-600 transition-all">
+                    <i class="fas fa-sign-in-alt mr-2"></i>ログイン
+                </button>
+            </form>
+            
+            <div class="mt-6 text-center">
+                <a href="/" class="text-sm text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-arrow-left mr-1"></i>サイトに戻る
+                </a>
+            </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script>
+            // 既にログイン済みならリダイレクト
+            if (localStorage.getItem('admin_token')) {
+                window.location.href = '/admin';
+            }
+
+            async function handleLogin(e) {
+                e.preventDefault();
+                const errorMsg = document.getElementById('error-msg');
+                const loginBtn = document.getElementById('login-btn');
+                errorMsg.classList.add('hidden');
+                loginBtn.disabled = true;
+                loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>ログイン中...';
+
+                try {
+                    const res = await axios.post('/api/admin/login', {
+                        username: document.getElementById('username').value,
+                        password: document.getElementById('password').value
+                    });
+
+                    if (res.data.success) {
+                        localStorage.setItem('admin_token', res.data.token);
+                        localStorage.setItem('admin_username', res.data.username);
+                        window.location.href = '/admin';
+                    } else {
+                        throw new Error(res.data.error);
+                    }
+                } catch (err) {
+                    const msg = err.response?.data?.error || err.message || 'ログインに失敗しました';
+                    errorMsg.textContent = msg;
+                    errorMsg.classList.remove('hidden');
+                    loginBtn.disabled = false;
+                    loginBtn.innerHTML = '<i class="fas fa-sign-in-alt mr-2"></i>ログイン';
+                }
+            }
+        </script>
+    </body>
+    </html>
+  `)
+})
+
 // 管理画面トップ（ダッシュボード）
 app.get('/admin', (c) => {
   return c.html(`
@@ -6721,10 +6821,16 @@ app.get('/admin', (c) => {
                     <h1 class="text-xl font-bold text-gray-800">PARTS HUB 管理画面</h1>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <span class="text-sm text-gray-600">管理者: 尾崎俊行</span>
-                    <a href="/" class="text-sm text-red-500 hover:underline">
-                        <i class="fas fa-home mr-1"></i>サイトへ
+                    <span class="text-sm text-gray-600" id="admin-name">管理者</span>
+                    <button onclick="showPasswordModal()" class="text-sm text-gray-500 hover:text-gray-700" title="設定変更">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                    <a href="/" class="text-sm text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-home mr-1"></i>サイト
                     </a>
+                    <button onclick="adminLogout()" class="text-sm text-red-500 hover:text-red-700 font-semibold">
+                        <i class="fas fa-sign-out-alt mr-1"></i>ログアウト
+                    </button>
                 </div>
             </div>
         </header>
@@ -6875,8 +6981,153 @@ app.get('/admin', (c) => {
             </main>
         </div>
 
+        <!-- パスワード変更モーダル -->
+        <div id="password-modal" class="fixed inset-0 bg-black bg-opacity-50 z-[100] hidden flex items-center justify-center">
+            <div class="bg-white rounded-xl p-6 w-full max-w-md mx-4">
+                <h3 class="text-lg font-bold text-gray-800 mb-4"><i class="fas fa-cog mr-2"></i>管理者設定変更</h3>
+                <div id="pw-error" class="hidden bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded mb-3 text-sm"></div>
+                <div id="pw-success" class="hidden bg-green-50 border border-green-200 text-green-700 px-3 py-2 rounded mb-3 text-sm"></div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">新しいログイン名（変更する場合のみ）</label>
+                        <input type="text" id="new-username" class="w-full px-3 py-2 border rounded-lg" placeholder="現在のログイン名のまま">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">現在のパスワード <span class="text-red-500">*</span></label>
+                        <input type="password" id="current-password" class="w-full px-3 py-2 border rounded-lg" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">新しいパスワード（変更する場合のみ）</label>
+                        <input type="password" id="new-password" class="w-full px-3 py-2 border rounded-lg" placeholder="8文字以上">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">新しいパスワード（確認）</label>
+                        <input type="password" id="new-password-confirm" class="w-full px-3 py-2 border rounded-lg">
+                    </div>
+                </div>
+                <div class="flex space-x-3 mt-6">
+                    <button onclick="closePasswordModal()" class="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50">キャンセル</button>
+                    <button onclick="changePassword()" id="pw-save-btn" class="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-semibold">保存</button>
+                </div>
+            </div>
+        </div>
+
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script>
+            // ===== 管理者認証チェック =====
+            const adminToken = localStorage.getItem('admin_token');
+            if (!adminToken) {
+                window.location.href = '/admin/login';
+            }
+
+            // axios にデフォルトで認証ヘッダーを付与
+            axios.defaults.headers.common['Authorization'] = 'Bearer ' + adminToken;
+            
+            // 401エラー時に自動リダイレクト
+            axios.interceptors.response.use(
+                response => response,
+                error => {
+                    if (error.response && error.response.status === 401) {
+                        localStorage.removeItem('admin_token');
+                        localStorage.removeItem('admin_username');
+                        window.location.href = '/admin/login';
+                    }
+                    return Promise.reject(error);
+                }
+            );
+
+            // ユーザー名表示
+            const adminUsername = localStorage.getItem('admin_username') || '管理者';
+            document.getElementById('admin-name').textContent = '管理者: ' + adminUsername;
+
+            // ログアウト
+            function adminLogout() {
+                if (confirm('ログアウトしますか？')) {
+                    localStorage.removeItem('admin_token');
+                    localStorage.removeItem('admin_username');
+                    window.location.href = '/admin/login';
+                }
+            }
+
+            // パスワード変更モーダル
+            function showPasswordModal() {
+                document.getElementById('password-modal').classList.remove('hidden');
+                document.getElementById('pw-error').classList.add('hidden');
+                document.getElementById('pw-success').classList.add('hidden');
+            }
+            function closePasswordModal() {
+                document.getElementById('password-modal').classList.add('hidden');
+                document.getElementById('current-password').value = '';
+                document.getElementById('new-password').value = '';
+                document.getElementById('new-password-confirm').value = '';
+                document.getElementById('new-username').value = '';
+            }
+            async function changePassword() {
+                const errEl = document.getElementById('pw-error');
+                const sucEl = document.getElementById('pw-success');
+                errEl.classList.add('hidden');
+                sucEl.classList.add('hidden');
+
+                const currentPw = document.getElementById('current-password').value;
+                const newPw = document.getElementById('new-password').value;
+                const newPwConfirm = document.getElementById('new-password-confirm').value;
+                const newUsername = document.getElementById('new-username').value;
+
+                if (!currentPw) {
+                    errEl.textContent = '現在のパスワードを入力してください';
+                    errEl.classList.remove('hidden');
+                    return;
+                }
+                if (newPw && newPw !== newPwConfirm) {
+                    errEl.textContent = '新しいパスワードが一致しません';
+                    errEl.classList.remove('hidden');
+                    return;
+                }
+                if (newPw && newPw.length < 8) {
+                    errEl.textContent = 'パスワードは8文字以上にしてください';
+                    errEl.classList.remove('hidden');
+                    return;
+                }
+                if (!newPw && !newUsername) {
+                    errEl.textContent = '変更する項目を入力してください';
+                    errEl.classList.remove('hidden');
+                    return;
+                }
+
+                const btn = document.getElementById('pw-save-btn');
+                btn.disabled = true;
+                btn.textContent = '保存中...';
+
+                try {
+                    const body = { current_password: currentPw };
+                    if (newPw) body.new_password = newPw;
+                    if (newUsername) body.new_username = newUsername;
+
+                    const res = await axios.post('/api/admin/change-password', body);
+                    if (res.data.success) {
+                        sucEl.textContent = res.data.message;
+                        sucEl.classList.remove('hidden');
+                        if (newUsername) {
+                            localStorage.setItem('admin_username', newUsername);
+                            document.getElementById('admin-name').textContent = '管理者: ' + newUsername;
+                        }
+                        // パスワード変更時は再ログインを推奨
+                        if (newPw) {
+                            setTimeout(() => {
+                                localStorage.removeItem('admin_token');
+                                localStorage.removeItem('admin_username');
+                                window.location.href = '/admin/login';
+                            }, 2000);
+                        }
+                    }
+                } catch (err) {
+                    errEl.textContent = err.response?.data?.error || '設定変更に失敗しました';
+                    errEl.classList.remove('hidden');
+                }
+                btn.disabled = false;
+                btn.textContent = '保存';
+            }
+
             // ダッシュボードデータ読み込み
             async function loadDashboard() {
                 try {

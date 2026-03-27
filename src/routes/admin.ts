@@ -1,10 +1,224 @@
 import { Hono } from 'hono'
+import { sign, verify } from 'hono/jwt'
+import * as bcrypt from 'bcryptjs'
+import type { Context, Next } from 'hono'
 
 type Bindings = {
   DB: D1Database;
+  ADMIN_API_KEY?: string;
+  [key: string]: any;
 }
 
 const adminRoutes = new Hono<{ Bindings: Bindings }>()
+
+// ===== 管理者認証ヘルパー =====
+
+function getAdminJWTSecret(c: Context): string {
+  return (c.env as any)?.JWT_SECRET || 'parts-hub-admin-secret-2026'
+}
+
+async function generateAdminToken(username: string, secret: string): Promise<string> {
+  const payload = {
+    sub: username,
+    role: 'admin',
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + (60 * 60 * 12), // 12時間有効
+  }
+  return await sign(payload, secret, 'HS256')
+}
+
+// 管理者認証ミドルウェア
+async function adminAuthMiddleware(c: Context, next: Next) {
+  // Cron Trigger / API Key認証（外部自動実行用）
+  const apiKey = c.req.header('X-Admin-API-Key')
+  if (apiKey && (c.env as any)?.ADMIN_API_KEY && apiKey === (c.env as any).ADMIN_API_KEY) {
+    await next()
+    return
+  }
+
+  // JWT認証（管理画面からのアクセス）
+  const authHeader = c.req.header('Authorization')
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return c.json({ success: false, error: '管理者認証が必要です' }, 401)
+  }
+
+  const token = authHeader.substring(7)
+  const secret = getAdminJWTSecret(c)
+
+  try {
+    const payload = await verify(token, secret, 'HS256')
+    if (payload.role !== 'admin') {
+      return c.json({ success: false, error: '管理者権限がありません' }, 403)
+    }
+    c.set('adminUser', payload.sub)
+    await next()
+  } catch (error) {
+    return c.json({ success: false, error: '管理者トークンが無効または期限切れです' }, 401)
+  }
+}
+
+// ===== 認証不要エンドポイント =====
+
+// 管理者ログイン
+adminRoutes.post('/login', async (c) => {
+  try {
+    const { username, password } = await c.req.json()
+
+    if (!username || !password) {
+      return c.json({ success: false, error: 'ユーザー名とパスワードを入力してください' }, 400)
+    }
+
+    // DB から管理者情報を取得
+    const storedUsername = await c.env.DB.prepare(
+      `SELECT value FROM admin_settings WHERE key = 'admin_username'`
+    ).first()
+    const storedPasswordHash = await c.env.DB.prepare(
+      `SELECT value FROM admin_settings WHERE key = 'admin_password_hash'`
+    ).first()
+
+    if (!storedUsername || !storedPasswordHash) {
+      return c.json({ success: false, error: '管理者設定が初期化されていません' }, 500)
+    }
+
+    // ユーザー名チェック
+    if (username !== storedUsername.value) {
+      return c.json({ success: false, error: 'ユーザー名またはパスワードが正しくありません' }, 401)
+    }
+
+    // パスワードチェック
+    const hashValue = storedPasswordHash.value as string
+    let passwordValid = false
+
+    if (hashValue.startsWith('__INITIAL_PLAIN__')) {
+      // 初期パスワード（プレーンテキスト）
+      const initialPassword = hashValue.replace('__INITIAL_PLAIN__', '')
+      if (password === initialPassword) {
+        passwordValid = true
+        // 初回ログイン時にbcryptハッシュに移行
+        const salt = await bcrypt.genSalt(10)
+        const newHash = await bcrypt.hash(password, salt)
+        await c.env.DB.prepare(
+          `UPDATE admin_settings SET value = ?, updated_at = datetime('now') WHERE key = 'admin_password_hash'`
+        ).bind(newHash).run()
+        await c.env.DB.prepare(
+          `UPDATE admin_settings SET value = 'true', updated_at = datetime('now') WHERE key = 'admin_initialized'`
+        ).bind().run()
+      }
+    } else {
+      // bcryptハッシュで検証
+      passwordValid = await bcrypt.compare(password, hashValue)
+    }
+
+    if (!passwordValid) {
+      return c.json({ success: false, error: 'ユーザー名またはパスワードが正しくありません' }, 401)
+    }
+
+    // JWTトークン生成
+    const secret = getAdminJWTSecret(c)
+    const token = await generateAdminToken(username, secret)
+
+    return c.json({
+      success: true,
+      token,
+      username,
+      message: 'ログインしました'
+    })
+  } catch (error: any) {
+    console.error('Admin login error:', error)
+    return c.json({ success: false, error: 'ログインに失敗しました' }, 500)
+  }
+})
+
+// ===== 以下、全て認証必須 =====
+adminRoutes.use('/*', async (c, next) => {
+  // login エンドポイントはスキップ
+  const path = new URL(c.req.url).pathname
+  if (path.endsWith('/admin/login') || path.endsWith('/login')) {
+    await next()
+    return
+  }
+  return adminAuthMiddleware(c, next)
+})
+
+// 管理者パスワード変更
+adminRoutes.post('/change-password', async (c) => {
+  try {
+    const { current_password, new_password, new_username } = await c.req.json()
+
+    if (!current_password) {
+      return c.json({ success: false, error: '現在のパスワードを入力してください' }, 400)
+    }
+
+    // 現在のパスワードを検証
+    const storedHash = await c.env.DB.prepare(
+      `SELECT value FROM admin_settings WHERE key = 'admin_password_hash'`
+    ).first()
+
+    if (!storedHash) {
+      return c.json({ success: false, error: '管理者設定が見つかりません' }, 500)
+    }
+
+    const hashValue = storedHash.value as string
+    let currentValid = false
+
+    if (hashValue.startsWith('__INITIAL_PLAIN__')) {
+      currentValid = current_password === hashValue.replace('__INITIAL_PLAIN__', '')
+    } else {
+      currentValid = await bcrypt.compare(current_password, hashValue)
+    }
+
+    if (!currentValid) {
+      return c.json({ success: false, error: '現在のパスワードが正しくありません' }, 401)
+    }
+
+    // ユーザー名変更
+    if (new_username && new_username.length >= 3) {
+      await c.env.DB.prepare(
+        `UPDATE admin_settings SET value = ?, updated_at = datetime('now') WHERE key = 'admin_username'`
+      ).bind(new_username).run()
+    }
+
+    // パスワード変更
+    if (new_password) {
+      if (new_password.length < 8) {
+        return c.json({ success: false, error: 'パスワードは8文字以上で設定してください' }, 400)
+      }
+      const salt = await bcrypt.genSalt(10)
+      const newHash = await bcrypt.hash(new_password, salt)
+      await c.env.DB.prepare(
+        `UPDATE admin_settings SET value = ?, updated_at = datetime('now') WHERE key = 'admin_password_hash'`
+      ).bind(newHash).run()
+    }
+
+    return c.json({
+      success: true,
+      message: '管理者設定を変更しました。次回ログイン時から新しい設定が有効になります。'
+    })
+  } catch (error: any) {
+    console.error('Change password error:', error)
+    return c.json({ success: false, error: '設定変更に失敗しました' }, 500)
+  }
+})
+
+// 管理者設定取得
+adminRoutes.get('/settings', async (c) => {
+  try {
+    const username = await c.env.DB.prepare(
+      `SELECT value FROM admin_settings WHERE key = 'admin_username'`
+    ).first()
+    const initialized = await c.env.DB.prepare(
+      `SELECT value FROM admin_settings WHERE key = 'admin_initialized'`
+    ).first()
+
+    return c.json({
+      success: true,
+      username: username?.value || 'admin',
+      initialized: initialized?.value === 'true'
+    })
+  } catch (error) {
+    return c.json({ success: false, error: '設定取得に失敗しました' }, 500)
+  }
+})
 
 // 統計データ取得
 adminRoutes.get('/stats', async (c) => {
