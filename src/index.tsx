@@ -2074,8 +2074,12 @@ app.get('/login', (c) => {
                         submitButton.innerHTML = '<i class="fas fa-check" style="margin-right:8px;"></i>ログイン成功！';
                         submitButton.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
                         
+                        // redirectパラメータがあればその先に遷移、なければTOPへ
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const redirectTo = urlParams.get('redirect') || '/';
+                        
                         setTimeout(() => {
-                            window.location.href = '/';
+                            window.location.href = redirectTo;
                         }, 800);
                     }
                 } catch (error) {

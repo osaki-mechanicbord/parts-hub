@@ -20,11 +20,14 @@ async function getCurrentUser() {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         if (response.data.success) {
-            currentUser = response.data.data;
+            // APIは response.data.user を返す
+            currentUser = response.data.user || response.data.data;
             return currentUser;
         }
     } catch (error) {
         console.log('Not logged in');
+        // トークンが無効な場合は削除
+        localStorage.removeItem('token');
     }
     return null;
 }
