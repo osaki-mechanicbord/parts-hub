@@ -641,11 +641,29 @@ app.get('/', (c) => {
                             <i class="fas fa-plus mr-1"></i>
                             <span class="hidden sm:inline">出品する</span>
                         </button>
-                        <button onclick="window.location.href='/login'" 
-                                class="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:border-primary hover:text-primary transition-all">
-                            <i class="fas fa-user mr-1"></i>
-                            <span class="hidden sm:inline">ログイン</span>
-                        </button>
+                        
+                        <!-- 未ログイン時 -->
+                        <div id="header-guest" class="flex items-center space-x-2">
+                            <button onclick="window.location.href='/login'" 
+                                    class="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:border-primary hover:text-primary transition-all">
+                                <i class="fas fa-sign-in-alt mr-1"></i>
+                                <span class="hidden sm:inline">ログイン</span>
+                            </button>
+                        </div>
+                        
+                        <!-- ログイン済み -->
+                        <div id="header-user" class="hidden flex items-center space-x-2">
+                            <a href="/mypage" 
+                               class="px-4 py-2 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-lg font-semibold hover:from-red-600 hover:to-pink-600 transition-all shadow-sm hover:shadow-md flex items-center">
+                                <i class="fas fa-user-circle mr-1.5"></i>
+                                <span class="hidden sm:inline" id="header-user-name">マイページ</span>
+                                <span class="sm:hidden">MY</span>
+                            </a>
+                            <button onclick="handleLogout()" 
+                                    class="px-3 py-2 border-2 border-gray-300 text-gray-500 rounded-lg hover:border-red-400 hover:text-red-500 transition-all" title="ログアウト">
+                                <i class="fas fa-sign-out-alt"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -874,13 +892,16 @@ app.get('/', (c) => {
                     </div>
                     <span class="text-xs mt-1">出品</span>
                 </a>
-                <a href="/favorites" class="flex flex-col items-center justify-center text-gray-500">
-                    <i class="far fa-heart text-xl mb-1"></i>
-                    <span class="text-xs">お気に入り</span>
+                <a href="/notifications" class="flex flex-col items-center justify-center text-gray-500 relative" id="mobile-nav-notifications">
+                    <i class="fas fa-bell text-xl mb-1"></i>
+                    <span class="text-xs">通知</span>
+                    <span id="mobile-notif-badge" class="hidden absolute -top-0.5 right-2 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center font-bold" style="font-size:10px;"></span>
                 </a>
-                <a href="/mypage" class="flex flex-col items-center justify-center text-gray-500">
-                    <i class="fas fa-user text-xl mb-1"></i>
-                    <span class="text-xs">マイページ</span>
+                <a href="/mypage" class="flex flex-col items-center justify-center text-gray-500" id="mobile-nav-mypage">
+                    <div class="relative">
+                        <i class="fas fa-user-circle text-xl mb-1" id="mobile-user-icon"></i>
+                    </div>
+                    <span class="text-xs" id="mobile-mypage-label">マイページ</span>
                 </a>
             </div>
         </nav>
@@ -888,6 +909,72 @@ app.get('/', (c) => {
         <!-- スクリプト -->
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script>
+            // ==========================================
+            // ログイン状態の検出とヘッダーUI切り替え
+            // ==========================================
+            (function() {
+                var token = localStorage.getItem('token');
+                var user = null;
+                try { user = JSON.parse(localStorage.getItem('user') || 'null'); } catch(e) {}
+                
+                var guestEl = document.getElementById('header-guest');
+                var userEl = document.getElementById('header-user');
+                var userNameEl = document.getElementById('header-user-name');
+                var mobileMypage = document.getElementById('mobile-nav-mypage');
+                var mobileIcon = document.getElementById('mobile-user-icon');
+                var mobileLabel = document.getElementById('mobile-mypage-label');
+                
+                if (token && user) {
+                    // ログイン済み: ヘッダー切り替え
+                    if (guestEl) guestEl.classList.add('hidden');
+                    if (userEl) { userEl.classList.remove('hidden'); userEl.classList.add('flex'); }
+                    if (userNameEl) {
+                        var name = user.nickname || user.company_name || user.name || 'マイページ';
+                        userNameEl.textContent = name.length > 8 ? name.substring(0, 8) + '…' : name;
+                    }
+                    // モバイル: マイページアイコンをアクティブカラーに
+                    if (mobileMypage) mobileMypage.classList.replace('text-gray-500', 'text-primary');
+                    if (mobileIcon) mobileIcon.classList.add('text-red-500');
+                } else if (token) {
+                    // トークンはあるがuser情報がない場合、APIで取得
+                    if (guestEl) guestEl.classList.add('hidden');
+                    if (userEl) { userEl.classList.remove('hidden'); userEl.classList.add('flex'); }
+                    // バックグラウンドでuser情報を取得
+                    axios.get('/api/auth/me', { headers: { Authorization: 'Bearer ' + token } })
+                        .then(function(res) {
+                            if (res.data.success) {
+                                var u = res.data.user || res.data.data;
+                                if (u) {
+                                    localStorage.setItem('user', JSON.stringify(u));
+                                    if (userNameEl) {
+                                        var n = u.nickname || u.company_name || u.name || 'マイページ';
+                                        userNameEl.textContent = n.length > 8 ? n.substring(0, 8) + '…' : n;
+                                    }
+                                }
+                            }
+                        })
+                        .catch(function(err) {
+                            if (err?.response?.status === 401) {
+                                localStorage.removeItem('token');
+                                localStorage.removeItem('user');
+                                if (guestEl) guestEl.classList.remove('hidden');
+                                if (userEl) { userEl.classList.add('hidden'); userEl.classList.remove('flex'); }
+                            }
+                        });
+                }
+            })();
+            
+            // ログアウト処理
+            function handleLogout() {
+                var token = localStorage.getItem('token');
+                if (token) {
+                    axios.post('/api/auth/logout', {}, { headers: { Authorization: 'Bearer ' + token } }).catch(function(){});
+                }
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                window.location.href = '/';
+            }
+
             let currentPage = 1;
             let currentFilters = {};
             
@@ -1294,6 +1381,7 @@ app.get('/news', (c) => {
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/auth-header.js"></script>
         <script>
             let currentPage = 1;
             
@@ -1728,6 +1816,7 @@ app.get('/news/:category/:year/:month/:slug', (c) => {
         ${getArticleDetailBody()}
         
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/auth-header.js"></script>
         <script>
             var articleSlug = '${fullSlug}';
             ${getArticleDetailScript()}
@@ -1770,6 +1859,7 @@ app.get('/news/:slug', (c) => {
         ${getArticleDetailBody()}
         
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/auth-header.js"></script>
         <script>
             var articleSlug = '${slug}';
             ${getArticleDetailScript()}
@@ -2736,6 +2826,7 @@ app.get('/products/:id', (c) => {
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/auth-header.js"></script>
         <script src="/static/product-detail.js"></script>
         <script src="/static/comments.js"></script>
     </body>
@@ -3389,6 +3480,7 @@ app.get('/listing', (c) => {
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/auth-header.js"></script>
         <script src="/static/listing.js?v=20260325"></script>
         <script>
             // 状態チップ選択
@@ -3558,6 +3650,7 @@ app.get('/chat', (c) => {
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/auth-header.js"></script>
         <script>
             let currentUserId = null;
             let token = null;
@@ -3768,6 +3861,7 @@ app.get('/chat/:roomId', (c) => {
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/auth-header.js"></script>
         <script>
             const roomId = ${roomId};
             let currentUserId = null;
@@ -4276,6 +4370,7 @@ app.get('/notifications', (c) => {
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/auth-header.js"></script>
         <script src="/static/notifications.js"></script>
     </body>
     </html>
@@ -4492,6 +4587,7 @@ app.get('/profile/edit', (c) => {
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/auth-header.js"></script>
         <script src="/static/profile-edit.js?v=20260327"></script>
     </body>
     </html>
@@ -4621,6 +4717,7 @@ app.get('/reviews/new', (c) => {
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/auth-header.js"></script>
         <script src="/static/reviews.js"></script>
     </body>
     </html>
@@ -4661,6 +4758,7 @@ app.get('/transactions/:id', (c) => {
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/auth-header.js"></script>
         <script src="/static/transaction-detail.js"></script>
     </body>
     </html>
@@ -4715,6 +4813,7 @@ app.get('/transaction/:id/success', (c) => {
             </div>
         </main>
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/auth-header.js"></script>
         <script>
             (async function() {
                 const token = localStorage.getItem('token');
@@ -4914,6 +5013,7 @@ app.get('/contact', (c) => {
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/auth-header.js"></script>
         <script>
             document.getElementById('contact-form').addEventListener('submit', async (e) => {
                 e.preventDefault()
@@ -5005,6 +5105,7 @@ app.get('/favorites', (c) => {
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/auth-header.js"></script>
         <script>
             const currentUserId = 1; // TODO: 実際のログインユーザーID
             
@@ -5199,6 +5300,7 @@ app.get('/search', (c) => {
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/auth-header.js"></script>
         <script>
             let searchTimeout;
             
@@ -5761,6 +5863,7 @@ app.get('/password-reset', (c) => {
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/auth-header.js"></script>
         <script>
             document.getElementById('reset-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
