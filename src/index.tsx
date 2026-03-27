@@ -691,9 +691,9 @@ app.get('/', (c) => {
                             PARTS HUB
                         </h1>
                     </div>
-                    <p class="text-lg sm:text-xl md:text-2xl mb-2 sm:mb-3 font-semibold drop-shadow-lg">自動車パーツの売買がもっと簡単に</p>
+                    <p class="text-lg sm:text-xl md:text-2xl mb-2 sm:mb-3 font-semibold drop-shadow-lg">倉庫のデッドストック<br class="sm:hidden">そろそろ現金化しませんか？</p>
                     <p class="text-sm sm:text-base md:text-lg text-white/95 mb-6 sm:mb-8 md:mb-10 max-w-3xl mx-auto drop-shadow-md px-4">
-                        整備工場専門のパーツマーケットプレイス。純正部品から工具まで、手軽に売買できます。
+                        車体番号から適合部品を検索して<br class="sm:hidden">手軽に適合検索しながら売買できます。
                     </p>
                     
                     <!-- 検索バー -->
