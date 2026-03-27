@@ -4158,7 +4158,7 @@ app.get('/mypage', (c) => {
 
             <!-- クイックアクション（モバイル対応） -->
             <div class="grid grid-cols-3 gap-2 sm:gap-3 mb-6">
-                <a href="/listing/new" class="flex flex-col items-center bg-white rounded-xl shadow-sm p-3 sm:p-4 hover:shadow-md transition-shadow">
+                <a href="/listing" class="flex flex-col items-center bg-white rounded-xl shadow-sm p-3 sm:p-4 hover:shadow-md transition-shadow">
                     <div class="w-10 h-10 sm:w-12 sm:h-12 bg-red-50 rounded-full flex items-center justify-center mb-1.5">
                         <i class="fas fa-plus text-red-500 text-base sm:text-lg"></i>
                     </div>
@@ -4886,6 +4886,11 @@ app.get('/transaction/:id/cancel', (c) => {
 })
 
 // 商品編集ページ（出品ページを再利用し、編集モードで動作）
+// /listing/new は /listing へリダイレクト（出品ページ）
+app.get('/listing/new', (c) => {
+  return c.redirect('/listing')
+})
+
 app.get('/listing/edit/:id', (c) => {
   const productId = c.req.param('id')
   return c.redirect(`/listing?edit=${productId}`)
