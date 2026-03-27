@@ -4483,6 +4483,125 @@ app.get('/transactions/:id', (c) => {
   `)
 })
 
+// 決済成功ページ
+app.get('/transaction/:id/success', (c) => {
+  const transactionId = c.req.param('id')
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>購入完了 - PARTS HUB（パーツハブ）</title>
+        <meta name="theme-color" content="#ff4757">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script>tailwind.config={theme:{extend:{colors:{primary:'#ff4757','primary-dark':'#ee3b4c'}}}}</script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    </head>
+    <body class="bg-gray-50 min-h-screen">
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+            <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-center">
+                <a href="/" class="text-red-500 font-bold text-lg">PARTS HUB</a>
+            </div>
+        </header>
+        <main class="max-w-2xl mx-auto px-4 py-12">
+            <div class="bg-white rounded-2xl shadow-lg p-8 text-center">
+                <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <i class="fas fa-check-circle text-4xl text-green-500"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-800 mb-2">購入が完了しました！</h1>
+                <p class="text-gray-600 mb-6">ご購入ありがとうございます。出品者に通知されました。</p>
+                <div id="transaction-info" class="bg-gray-50 rounded-lg p-4 mb-6 text-left">
+                    <p class="text-sm text-gray-500">読み込み中...</p>
+                </div>
+                <div class="space-y-3">
+                    <a href="/transactions/${transactionId}" 
+                       class="block w-full px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-all text-center font-semibold">
+                        <i class="fas fa-receipt mr-2"></i>取引詳細を見る
+                    </a>
+                    <a href="/mypage" 
+                       class="block w-full px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all text-center">
+                        <i class="fas fa-user mr-2"></i>マイページに戻る
+                    </a>
+                    <a href="/" 
+                       class="block w-full px-6 py-3 text-gray-500 hover:text-gray-700 text-center">
+                        トップページに戻る
+                    </a>
+                </div>
+            </div>
+        </main>
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script>
+            (async function() {
+                const token = localStorage.getItem('token');
+                if (!token) return;
+                try {
+                    const res = await axios.get('/api/payment/transaction/${transactionId}/status', {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    if (res.data.success) {
+                        const tx = res.data.transaction;
+                        document.getElementById('transaction-info').innerHTML = 
+                            '<div class="space-y-2">' +
+                            '<div class="flex justify-between"><span class="text-gray-600">商品</span><span class="font-semibold">' + tx.product_title + '</span></div>' +
+                            '<div class="flex justify-between"><span class="text-gray-600">金額</span><span class="font-semibold">¥' + Number(tx.amount).toLocaleString() + '</span></div>' +
+                            '<div class="flex justify-between"><span class="text-gray-600">出品者</span><span>' + tx.seller_name + '</span></div>' +
+                            '<div class="flex justify-between"><span class="text-gray-600">ステータス</span><span class="text-green-600 font-semibold">支払い完了</span></div>' +
+                            '</div>';
+                    }
+                } catch (e) { console.error(e); }
+            })();
+        </script>
+    </body>
+    </html>
+  `)
+})
+
+// 決済キャンセルページ
+app.get('/transaction/:id/cancel', (c) => {
+  const transactionId = c.req.param('id')
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>決済キャンセル - PARTS HUB（パーツハブ）</title>
+        <meta name="theme-color" content="#ff4757">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script>tailwind.config={theme:{extend:{colors:{primary:'#ff4757','primary-dark':'#ee3b4c'}}}}</script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    </head>
+    <body class="bg-gray-50 min-h-screen">
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+            <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-center">
+                <a href="/" class="text-red-500 font-bold text-lg">PARTS HUB</a>
+            </div>
+        </header>
+        <main class="max-w-2xl mx-auto px-4 py-12">
+            <div class="bg-white rounded-2xl shadow-lg p-8 text-center">
+                <div class="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <i class="fas fa-times-circle text-4xl text-yellow-500"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-800 mb-2">決済がキャンセルされました</h1>
+                <p class="text-gray-600 mb-6">決済は完了していません。商品は引き続き購入可能です。</p>
+                <div class="space-y-3">
+                    <button onclick="window.history.go(-2)" 
+                       class="block w-full px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-all text-center font-semibold cursor-pointer">
+                        <i class="fas fa-redo mr-2"></i>商品ページに戻る
+                    </button>
+                    <a href="/" 
+                       class="block w-full px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all text-center">
+                        トップページに戻る
+                    </a>
+                </div>
+            </div>
+        </main>
+    </body>
+    </html>
+  `)
+})
+
 // 商品編集ページ（出品ページを再利用し、編集モードで動作）
 app.get('/listing/edit/:id', (c) => {
   const productId = c.req.param('id')
