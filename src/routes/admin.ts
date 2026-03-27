@@ -501,6 +501,7 @@ adminRoutes.get('/products', async (c) => {
   const { env } = c;
   const page = parseInt(c.req.query('page') || '1');
   const status = c.req.query('status');
+  const search = c.req.query('search');
   const limit = 50;
   const offset = (page - 1) * limit;
   
@@ -521,8 +522,24 @@ adminRoutes.get('/products', async (c) => {
       LEFT JOIN product_comments c ON p.id = c.product_id
     `;
 
+    const conditions: string[] = [];
+    const bindings: any[] = [];
+
     if (status) {
-      query += ` WHERE p.status = ?`;
+      conditions.push('p.status = ?');
+      bindings.push(status);
+    } else {
+      // デフォルトで「削除済み」は除外
+      conditions.push("p.status != 'deleted'");
+    }
+
+    if (search) {
+      conditions.push('p.title LIKE ?');
+      bindings.push(`%${search}%`);
+    }
+
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
     }
 
     query += `
@@ -530,20 +547,33 @@ adminRoutes.get('/products', async (c) => {
       ORDER BY p.created_at DESC
       LIMIT ? OFFSET ?
     `;
+    bindings.push(limit, offset);
 
-    const stmt = env.DB.prepare(query);
-    const products = status ? 
-      await stmt.bind(status, limit, offset).all() :
-      await stmt.bind(limit, offset).all();
+    const products = await env.DB.prepare(query).bind(...bindings).all();
 
     let countQuery = 'SELECT COUNT(*) as count FROM products';
+    const countBindings: any[] = [];
+    const countConditions: string[] = [];
+
     if (status) {
-      countQuery += ' WHERE status = ?';
+      countConditions.push('status = ?');
+      countBindings.push(status);
+    } else {
+      countConditions.push("status != 'deleted'");
     }
-    const countStmt = env.DB.prepare(countQuery);
-    const total = status ? 
-      await countStmt.bind(status).first() :
-      await countStmt.first();
+
+    if (search) {
+      countConditions.push('title LIKE ?');
+      countBindings.push(`%${search}%`);
+    }
+
+    if (countConditions.length > 0) {
+      countQuery += ' WHERE ' + countConditions.join(' AND ');
+    }
+
+    const total = countBindings.length > 0 ?
+      await env.DB.prepare(countQuery).bind(...countBindings).first() :
+      await env.DB.prepare(countQuery).first();
 
     return c.json({
       products: products.results || [],
@@ -655,6 +685,57 @@ adminRoutes.delete('/products/:id', async (c) => {
   const productId = c.req.param('id');
   
   try {
+    // 関連テーブルのデータを先に削除（外部キー制約対応）
+    const relatedTables = [
+      'product_images',
+      'product_compatibility',
+      'favorites',
+      'product_comments',
+      'chat_messages',
+      'price_negotiations',
+      'price_history',
+      'fitment_confirmations',
+      'universal_parts',
+    ];
+
+    for (const table of relatedTables) {
+      try {
+        await env.DB.prepare(`DELETE FROM ${table} WHERE product_id = ?`).bind(productId).run();
+      } catch (e) {
+        // テーブルが存在しない場合はスキップ
+        console.log(`テーブル ${table} の削除をスキップ:`, e);
+      }
+    }
+
+    // chat_rooms は product_id カラムがある場合のみ
+    try {
+      await env.DB.prepare(`DELETE FROM chat_rooms WHERE product_id = ?`).bind(productId).run();
+    } catch (e) {
+      console.log('chat_rooms の削除をスキップ:', e);
+    }
+
+    // notifications は product_id がある場合
+    try {
+      await env.DB.prepare(`DELETE FROM notifications WHERE product_id = ?`).bind(productId).run();
+    } catch (e) {
+      // product_id カラムがない場合はスキップ
+    }
+
+    // transactions は外部キー制約があるが、取引データは保持すべきなので product_id を NULL に
+    try {
+      await env.DB.prepare(`UPDATE transactions SET product_id = NULL WHERE product_id = ?`).bind(productId).run();
+    } catch (e) {
+      console.log('transactions の更新をスキップ:', e);
+    }
+
+    // reports の product_id を NULL に
+    try {
+      await env.DB.prepare(`UPDATE reports SET product_id = NULL WHERE product_id = ?`).bind(productId).run();
+    } catch (e) {
+      console.log('reports の更新をスキップ:', e);
+    }
+
+    // 商品本体を削除
     await env.DB.prepare(`
       DELETE FROM products
       WHERE id = ?

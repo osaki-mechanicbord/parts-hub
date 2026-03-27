@@ -675,6 +675,7 @@ adminPagesRoutes.get('/products', (c) => {
                 <option value="sold">売却済み</option>
                 <option value="pending">承認待ち</option>
                 <option value="suspended">停止中</option>
+                <option value="deleted">削除済み</option>
             </select>
             <select id="sort" class="px-4 py-2 border rounded-lg">
                 <option value="created_desc">登録日（新しい順）</option>
@@ -751,20 +752,22 @@ adminPagesRoutes.get('/products', (c) => {
                     <td class="px-6 py-4">
                         <span class="px-2 py-1 text-xs rounded \${
                             p.status === 'active' ? 'bg-green-100 text-green-700' :
-                            p.status === 'sold' ? 'bg-gray-100 text-gray-700' :
+                            p.status === 'sold' ? 'bg-blue-100 text-blue-700' :
                             p.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                            p.status === 'deleted' ? 'bg-gray-200 text-gray-500 line-through' :
                             'bg-red-100 text-red-700'
                         }">
-                            \${p.status === 'active' ? '出品中' : p.status === 'sold' ? '売却済み' : p.status === 'pending' ? '承認待ち' : '停止中'}
+                            \${p.status === 'active' ? '出品中' : p.status === 'sold' ? '売却済み' : p.status === 'pending' ? '承認待ち' : p.status === 'deleted' ? '削除済み' : '停止中'}
                         </span>
                     </td>
                     <td class="px-6 py-4 text-sm text-gray-900">\${p.favorites_count || 0}</td>
                     <td class="px-6 py-4 text-sm text-gray-900">\${p.comments_count || 0}</td>
                     <td class="px-6 py-4 text-sm text-gray-600">\${new Date(p.created_at).toLocaleDateString('ja-JP')}</td>
                     <td class="px-6 py-4 text-sm">
-                        <a href="/products/\${p.id}" target="_blank" class="text-blue-600 hover:text-blue-800 mr-3" title="表示">
+                        <a href="/admin/products/\${p.id}" class="text-blue-600 hover:text-blue-800 mr-3" title="詳細">
                             <i class="fas fa-eye"></i>
                         </a>
+                        \${p.status === 'deleted' ? '<span class="text-gray-400 text-xs">削除済み</span>' : \`
                         \${p.status === 'pending' ?
                             \`<button onclick="approveProduct(\${p.id})" class="text-green-600 hover:text-green-800 mr-3" title="承認">
                                 <i class="fas fa-check"></i>
@@ -778,6 +781,7 @@ adminPagesRoutes.get('/products', (c) => {
                         <button onclick="deleteProduct(\${p.id})" class="text-red-600 hover:text-red-800" title="削除">
                             <i class="fas fa-trash"></i>
                         </button>
+                        \`}
                     </td>
                 </tr>
             \`).join('');
