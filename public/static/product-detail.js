@@ -10,6 +10,17 @@ function getIdFromUrl() {
     return pathParts[pathParts.length - 1];
 }
 
+// 認証ヘッダーを取得
+function getAuthHeaders() {
+    const token = localStorage.getItem('token');
+    return token ? { headers: { 'Authorization': `Bearer ${token}` } } : {};
+}
+
+// ログインページにリダイレクト
+function redirectToLogin() {
+    window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
+}
+
 // ログイン中のユーザー情報を取得
 async function getCurrentUser() {
     const token = localStorage.getItem('token');
@@ -20,16 +31,29 @@ async function getCurrentUser() {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         if (response.data.success) {
-            // APIは response.data.user を返す
             currentUser = response.data.user || response.data.data;
             return currentUser;
         }
     } catch (error) {
-        console.log('Not logged in');
-        // トークンが無効な場合は削除
-        localStorage.removeItem('token');
+        console.warn('認証確認失敗:', error?.response?.status || error.message);
+        // 401の場合のみトークンを削除（ネットワークエラー等では保持）
+        if (error?.response?.status === 401) {
+            localStorage.removeItem('token');
+        }
     }
     return null;
+}
+
+// ログインチェック（必要に応じて再取得を試みる）
+async function ensureLoggedIn() {
+    const token = localStorage.getItem('token');
+    if (!token) return false;
+    
+    if (currentUser) return true;
+    
+    // currentUserがnullの場合、再取得を試みる
+    const user = await getCurrentUser();
+    return !!user;
 }
 
 // 商品データを読み込み
@@ -103,11 +127,8 @@ function updateActionButtons() {
 async function checkFavoriteStatus() {
     if (!currentUser || !product) return;
     
-    const token = localStorage.getItem('token');
     try {
-        const response = await axios.get('/api/favorites', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const response = await axios.get('/api/favorites', getAuthHeaders());
         if (response.data.success) {
             const favorites = response.data.data || [];
             const isFavorited = favorites.some(f => f.product_id == product.id);
@@ -393,17 +414,19 @@ async function purchaseProduct() {
         return;
     }
     
-    // ログインチェック
+    // ログインチェック（トークンがあるが currentUser が null の場合は再取得を試みる）
+    const loggedIn = await ensureLoggedIn();
     const token = localStorage.getItem('token');
-    if (!token || !currentUser) {
+    
+    if (!loggedIn || !token) {
         if (confirm('購入するにはログインが必要です。ログインページに移動しますか？')) {
-            window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
+            redirectToLogin();
         }
         return;
     }
     
     // 自分の商品チェック
-    if (product.user_id == currentUser.id) {
+    if (currentUser && product.user_id == currentUser.id) {
         alert('自分の出品した商品は購入できません');
         return;
     }
@@ -455,6 +478,19 @@ async function purchaseProduct() {
         }
     } catch (error) {
         console.error('Purchase error:', error);
+        
+        // 認証エラーの場合はログインページにリダイレクト
+        if (error?.response?.status === 401) {
+            localStorage.removeItem('token');
+            currentUser = null;
+            if (confirm('ログインセッションが切れました。再度ログインしますか？')) {
+                redirectToLogin();
+            } else {
+                resetPurchaseButton();
+            }
+            return;
+        }
+        
         const errorMsg = error.response?.data?.error || '決済の準備に失敗しました。しばらく経ってから再度お試しください。';
         alert(errorMsg);
         resetPurchaseButton();
@@ -474,10 +510,12 @@ async function addToFavorites() {
     if (!product) return;
     
     // ログインチェック
+    const loggedIn = await ensureLoggedIn();
     const token = localStorage.getItem('token');
-    if (!token || !currentUser) {
+    
+    if (!loggedIn || !token) {
         if (confirm('お気に入りに追加するにはログインが必要です。ログインページに移動しますか？')) {
-            window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
+            redirectToLogin();
         }
         return;
     }
@@ -503,6 +541,14 @@ async function addToFavorites() {
         }
     } catch (error) {
         console.error('Favorite error:', error);
+        if (error?.response?.status === 401) {
+            localStorage.removeItem('token');
+            currentUser = null;
+            if (confirm('ログインセッションが切れました。再度ログインしますか？')) {
+                redirectToLogin();
+            }
+            return;
+        }
         const errorMsg = error.response?.data?.error || 'お気に入りの操作に失敗しました';
         alert(errorMsg);
     }
@@ -516,16 +562,18 @@ async function contactSeller() {
     }
     
     // ログインチェック
+    const loggedIn = await ensureLoggedIn();
     const token = localStorage.getItem('token');
-    if (!token || !currentUser) {
+    
+    if (!loggedIn || !token) {
         if (confirm('出品者に問い合わせるにはログインが必要です。ログインページに移動しますか？')) {
-            window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
+            redirectToLogin();
         }
         return;
     }
     
     // 自分の商品チェック
-    if (product.user_id == currentUser.id) {
+    if (currentUser && product.user_id == currentUser.id) {
         alert('自分の商品には問い合わせできません');
         return;
     }
@@ -553,6 +601,14 @@ async function contactSeller() {
         }
     } catch (error) {
         console.error('Failed to create chat room:', error);
+        if (error?.response?.status === 401) {
+            localStorage.removeItem('token');
+            currentUser = null;
+            if (confirm('ログインセッションが切れました。再度ログインしますか？')) {
+                redirectToLogin();
+            }
+            return;
+        }
         alert('チャットルームの作成に失敗しました');
         resetContactButton();
     }

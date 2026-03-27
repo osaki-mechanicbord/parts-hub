@@ -28,7 +28,7 @@ export function getStripeClient(c: Context): Stripe {
   }
   
   return new Stripe(secretKey, {
-    apiVersion: '2024-11-20.acacia', // 最新APIバージョン
+    apiVersion: '2026-02-25.clover', // Stripe SDK v20.x対応
     typescript: true
   })
 }
@@ -91,7 +91,7 @@ export function verifyWebhookSignature(
   secret: string
 ): Stripe.Event | null {
   const stripe = new Stripe(secret, {
-    apiVersion: '2024-11-20.acacia'
+    apiVersion: '2026-02-25.clover'
   })
   
   try {
