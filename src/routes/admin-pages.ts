@@ -78,12 +78,16 @@ adminPagesRoutes.get('/', (c) => {
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <div class="bg-white rounded-lg shadow p-6">
             <h3 class="text-lg font-bold text-gray-800 mb-4">月次売上推移</h3>
-            <canvas id="sales-chart" height="250"></canvas>
+            <div style="position:relative;height:250px;width:100%">
+                <canvas id="sales-chart"></canvas>
+            </div>
         </div>
 
         <div class="bg-white rounded-lg shadow p-6">
             <h3 class="text-lg font-bold text-gray-800 mb-4">新規ユーザー推移</h3>
-            <canvas id="users-chart" height="250"></canvas>
+            <div style="position:relative;height:250px;width:100%">
+                <canvas id="users-chart"></canvas>
+            </div>
         </div>
     </div>
 
