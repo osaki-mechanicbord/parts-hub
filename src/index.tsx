@@ -3579,14 +3579,15 @@ app.get('/chat', (c) => {
                 try {
                     const res = await axios.get('/api/auth/me', getAuthHeaders());
                     if (res.data.success) {
-                        currentUserId = res.data.data.id;
+                        currentUserId = res.data.data?.id || res.data.user?.id;
                         loadChatRooms();
                     } else {
                         throw new Error('auth failed');
                     }
                 } catch (e) {
-                    alert('ログインセッションが切れました。再ログインしてください。');
-                    localStorage.removeItem('token');
+                    if (e?.response?.status === 401) {
+                        localStorage.removeItem('token');
+                    }
                     window.location.href = '/login?redirect=' + encodeURIComponent('/chat');
                 }
             });
@@ -3791,13 +3792,14 @@ app.get('/chat/:roomId', (c) => {
                 try {
                     const res = await axios.get('/api/auth/me', getAuthHeaders());
                     if (res.data.success) {
-                        currentUserId = res.data.data.id;
+                        currentUserId = res.data.data?.id || res.data.user?.id;
                     } else {
                         throw new Error('auth failed');
                     }
                 } catch (e) {
-                    alert('ログインセッションが切れました。再ログインしてください。');
-                    localStorage.removeItem('token');
+                    if (e?.response?.status === 401) {
+                        localStorage.removeItem('token');
+                    }
                     window.location.href = '/login?redirect=' + encodeURIComponent('/chat/' + roomId);
                     return;
                 }
@@ -4787,75 +4789,7 @@ app.get('/transaction/:id/cancel', (c) => {
 // 商品編集ページ（出品ページを再利用し、編集モードで動作）
 app.get('/listing/edit/:id', (c) => {
   const productId = c.req.param('id')
-  return c.html(`
-    <!DOCTYPE html>
-    <html lang="ja">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>商品を編集 - PARTS HUB（パーツハブ）</title>
-        <meta name="theme-color" content="#ff4757">
-        <script src="https://cdn.tailwindcss.com"></script>
-        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-        <style>
-            .form-input {
-                border: 2px solid #e5e7eb;
-                transition: border-color 0.2s;
-            }
-            .form-input:focus {
-                border-color: #ef4444;
-                outline: none;
-            }
-            .image-upload-area {
-                border: 2px dashed #d1d5db;
-                background: #f9fafb;
-                transition: all 0.3s;
-            }
-            .image-upload-area:hover {
-                border-color: #ef4444;
-                background: #fef2f2;
-            }
-        </style>
-    </head>
-    <body class="bg-gray-50">
-        <!-- ヘッダー -->
-        <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
-            <div class="max-w-6xl mx-auto px-4 py-4">
-                <div class="flex items-center justify-between">
-                    <button onclick="window.history.back()" class="text-gray-600 hover:text-gray-800">
-                        <i class="fas fa-arrow-left mr-2"></i>戻る
-                    </button>
-                    <h1 class="text-red-500 font-bold text-lg">商品を編集</h1>
-                    <div class="w-16"></div>
-                </div>
-            </div>
-        </header>
-
-        <main class="max-w-4xl mx-auto px-4 py-6">
-            <form id="listing-form" class="space-y-6">
-                <input type="hidden" id="product-id" value="${productId}">
-                
-                <!-- 読み込み中表示 -->
-                <div id="loading" class="text-center py-12">
-                    <i class="fas fa-spinner fa-spin text-4xl text-gray-400 mb-4"></i>
-                    <p class="text-gray-500">商品情報を読み込み中...</p>
-                </div>
-
-                <!-- フォーム本体（JavaScriptで動的生成） -->
-                <div id="form-content" class="hidden"></div>
-            </form>
-        </main>
-
-        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-        <script>
-            // 商品編集モード
-            window.EDIT_MODE = true;
-            window.PRODUCT_ID = ${productId};
-        </script>
-        <script src="/static/listing.js?v=20260325"></script>
-    </body>
-    </html>
-  `)
+  return c.redirect(`/listing?edit=${productId}`)
 })
 
 // お問い合わせページ

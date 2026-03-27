@@ -426,8 +426,22 @@ document.addEventListener('DOMContentLoaded', async function() {
     })
   }
 
+  // URLパラメータから編集モードを検出（/listing?edit=123）
+  var urlParams = new URLSearchParams(window.location.search)
+  var editId = urlParams.get('edit')
+  if (editId) {
+    window.EDIT_MODE = true
+    window.PRODUCT_ID = parseInt(editId)
+  }
+
   // 編集モードの場合
   if (window.EDIT_MODE && window.PRODUCT_ID) {
+    // ヘッダーのタイトルを変更
+    var headerTitle = document.querySelector('header .font-bold.text-base')
+    if (headerTitle) headerTitle.textContent = '商品を編集'
+    // 出品ボタンのテキスト変更
+    var submitBtn = document.getElementById('submit-btn')
+    if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-save mr-2"></i>変更を保存'
     loadProductForEdit(window.PRODUCT_ID)
   }
 })
@@ -438,7 +452,8 @@ async function loadProductForEdit(productId) {
     var response = await axios.get('/api/products/' + productId)
     
     if (response.data.success) {
-      var product = response.data.data
+      var product = response.data.product || response.data.data || response.data
+      var images = response.data.images || product.images || []
       
       var el
       el = document.getElementById('product-title'); if (el) el.value = product.title || ''
@@ -475,19 +490,36 @@ async function loadProductForEdit(productId) {
       el = document.getElementById('engine-type'); if (el) el.value = compat.engine_type || ''
       el = document.getElementById('drive-type'); if (el) el.value = compat.drive_type || ''
       
-      if (product.images && product.images.length > 0) {
-        productForm.uploadedImages = product.images.map(function(img) {
-          return { url: img.image_url, display_order: img.display_order }
+      if (images && images.length > 0) {
+        productForm.uploadedImages = images.map(function(img) {
+          var imgUrl = img.image_url || img.url || ''
+          // R2キーの場合は/r2/プレフィックスを付与
+          if (imgUrl && !imgUrl.startsWith('http') && !imgUrl.startsWith('/r2/')) {
+            imgUrl = '/r2/' + imgUrl
+          }
+          return { url: imgUrl, display_order: img.display_order, uploaded: true }
         })
         productForm.renderImagePreviews()
       }
       
-      el = document.getElementById('loading'); if (el) el.style.display = 'none'
-      el = document.getElementById('form-content'); if (el) el.classList.remove('hidden')
+      // 編集モードではローディングの代わりにフォームを表示
+      // (リダイレクト方式ではform-contentは不要)
       
       var submitBtn = document.getElementById('submit-btn')
       if (submitBtn) {
         submitBtn.innerHTML = '<i class="fas fa-save" style="margin-right:8px;"></i>変更を保存'
+      }
+
+      // 編集モードでconditionをチップ選択に反映
+      if (product.condition) {
+        var conditionChips = document.querySelectorAll('.condition-chip')
+        conditionChips.forEach(function(chip) {
+          if (chip.getAttribute('data-value') === product.condition) {
+            chip.classList.add('selected')
+          }
+        })
+        var conditionInput = document.getElementById('condition-select')
+        if (conditionInput) conditionInput.value = product.condition
       }
       
     } else {

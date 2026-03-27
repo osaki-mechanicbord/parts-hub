@@ -183,7 +183,7 @@ mypage.get('/listings/:userId', async (c) => {
         (SELECT COUNT(*) FROM favorites WHERE product_id = p.id) as favorite_count,
         (SELECT COUNT(*) FROM product_comments WHERE product_id = p.id AND deleted_at IS NULL) as comment_count
       FROM products p
-      WHERE p.user_id = ?
+      WHERE p.user_id = ? AND p.status != 'deleted'
     `
     
     if (status === 'active') {
@@ -375,7 +375,7 @@ mypage.put('/listings/:productId/status', async (c) => {
       SELECT user_id as seller_id FROM products WHERE id = ?
     `).bind(productId).first()
 
-    if (!product || product.seller_id !== seller_id) {
+    if (!product || Number(product.seller_id) !== Number(seller_id)) {
       return c.json({ success: false, error: '権限がありません' }, 403)
     }
 
@@ -405,7 +405,7 @@ mypage.delete('/listings/:productId', async (c) => {
       SELECT user_id as seller_id, status FROM products WHERE id = ?
     `).bind(productId).first()
 
-    if (!product || product.seller_id !== seller_id) {
+    if (!product || Number(product.seller_id) !== Number(seller_id)) {
       return c.json({ success: false, error: '権限がありません' }, 403)
     }
 

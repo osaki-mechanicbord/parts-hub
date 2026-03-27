@@ -49,7 +49,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             throw new Error('auth failed');
         }
     } catch (e) {
-        localStorage.removeItem('token');
+        console.error('Auth check failed:', e);
+        // 401の場合のみトークンを削除（ネットワークエラー等では保持）
+        if (e?.response?.status === 401) {
+            localStorage.removeItem('token');
+        }
         window.location.href = '/login?redirect=' + encodeURIComponent('/mypage');
         return;
     }
@@ -243,6 +247,16 @@ function editProduct(productId) {
     window.location.href = `/listing/edit/${productId}`;
 }
 
+// トースト通知
+function showToast(message, type = 'success') {
+    var toast = document.createElement('div');
+    toast.className = 'fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-lg shadow-lg text-white text-sm font-semibold transition-all';
+    toast.style.cssText = type === 'success' ? 'background:#22c55e;' : 'background:#ef4444;';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(function() { toast.remove(); }, 2500);
+}
+
 // 商品を停止
 async function pauseProduct(productId) {
     if (!confirm('この商品の出品を停止しますか？')) return;
@@ -254,12 +268,12 @@ async function pauseProduct(productId) {
         }, getAuthHeaders());
         
         if (response.data.success) {
-            alert('商品を停止しました');
+            showToast('商品を停止しました');
             loadListings();
         }
     } catch (error) {
         console.error('Failed to pause product:', error);
-        alert('商品の停止に失敗しました');
+        showToast('商品の停止に失敗しました', 'error');
     }
 }
 
@@ -272,12 +286,12 @@ async function resumeProduct(productId) {
         }, getAuthHeaders());
         
         if (response.data.success) {
-            alert('商品を再開しました');
+            showToast('商品を再開しました');
             loadListings();
         }
     } catch (error) {
         console.error('Failed to resume product:', error);
-        alert('商品の再開に失敗しました');
+        showToast('商品の再開に失敗しました', 'error');
     }
 }
 
@@ -292,13 +306,15 @@ async function deleteProduct(productId) {
         });
         
         if (response.data.success) {
-            alert('商品を削除しました');
+            showToast('商品を削除しました');
             loadListings();
             loadUserStats();
+        } else {
+            showToast(response.data.error || '商品の削除に失敗しました', 'error');
         }
     } catch (error) {
         console.error('Failed to delete product:', error);
-        alert('商品の削除に失敗しました');
+        showToast(error?.response?.data?.error || '商品の削除に失敗しました', 'error');
     }
 }
 

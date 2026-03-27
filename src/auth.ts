@@ -30,7 +30,7 @@ export async function generateToken(userId: number, email: string, secret?: stri
     sub: userId,
     email: email,
     iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7), // 7日間有効
+    exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 30), // 30日間有効
   }
   return await sign(payload, JWT_SECRET, 'HS256')
 }
