@@ -85,6 +85,8 @@ const Footer = () => `
         </div>
     </div>
 </footer>
+<script src="/static/i18n-en.js"></script>
+<script src="/static/i18n.js"></script>
 `
 
 // ミドルウェア
@@ -908,6 +910,8 @@ app.get('/', (c) => {
 
         <!-- スクリプト -->
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/i18n-en.js"></script>
+        <script src="/static/i18n.js"></script>
         <script>
             // ==========================================
             // ログイン状態の検出とヘッダーUI切り替え
@@ -1381,6 +1385,8 @@ app.get('/news', (c) => {
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/i18n-en.js"></script>
+        <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
         <script>
             let currentPage = 1;
@@ -1816,6 +1822,8 @@ app.get('/news/:category/:year/:month/:slug', (c) => {
         ${getArticleDetailBody()}
         
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/i18n-en.js"></script>
+        <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
         <script>
             var articleSlug = '${fullSlug}';
@@ -1859,6 +1867,8 @@ app.get('/news/:slug', (c) => {
         ${getArticleDetailBody()}
         
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/i18n-en.js"></script>
+        <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
         <script>
             var articleSlug = '${slug}';
@@ -2110,6 +2120,8 @@ app.get('/login', (c) => {
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/i18n-en.js"></script>
+        <script src="/static/i18n.js"></script>
         <script>
             // パスワード表示切替
             document.getElementById('toggle-password').addEventListener('click', function() {
@@ -2462,6 +2474,8 @@ app.get('/register', (c) => {
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/i18n-en.js"></script>
+        <script src="/static/i18n.js"></script>
         <script>
             function showError(message) {
                 var errorDiv = document.getElementById('error-message');
@@ -2826,6 +2840,8 @@ app.get('/products/:id', (c) => {
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/i18n-en.js"></script>
+        <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
         <script src="/static/product-detail.js"></script>
         <script src="/static/comments.js"></script>
@@ -3480,6 +3496,8 @@ app.get('/listing', (c) => {
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/i18n-en.js"></script>
+        <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
         <script src="/static/listing.js?v=20260325"></script>
         <script>
@@ -3650,6 +3668,8 @@ app.get('/chat', (c) => {
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/i18n-en.js"></script>
+        <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
         <script>
             let currentUserId = null;
@@ -3861,6 +3881,8 @@ app.get('/chat/:roomId', (c) => {
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/i18n-en.js"></script>
+        <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
         <script>
             const roomId = ${roomId};
@@ -4304,6 +4326,8 @@ app.get('/mypage', (c) => {
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/i18n-en.js"></script>
+        <script src="/static/i18n.js"></script>
         <script src="/static/mypage.js"></script>
     </body>
     </html>
@@ -4370,6 +4394,8 @@ app.get('/notifications', (c) => {
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/i18n-en.js"></script>
+        <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
         <script src="/static/notifications.js"></script>
     </body>
@@ -4587,6 +4613,8 @@ app.get('/profile/edit', (c) => {
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/i18n-en.js"></script>
+        <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
         <script src="/static/profile-edit.js?v=20260327"></script>
     </body>
@@ -4717,6 +4745,8 @@ app.get('/reviews/new', (c) => {
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/i18n-en.js"></script>
+        <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
         <script src="/static/reviews.js"></script>
     </body>
@@ -4758,6 +4788,8 @@ app.get('/transactions/:id', (c) => {
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/i18n-en.js"></script>
+        <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
         <script src="/static/transaction-detail.js"></script>
     </body>
@@ -4813,6 +4845,8 @@ app.get('/transaction/:id/success', (c) => {
             </div>
         </main>
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/i18n-en.js"></script>
+        <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
         <script>
             (async function() {
@@ -5018,6 +5052,8 @@ app.get('/contact', (c) => {
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/i18n-en.js"></script>
+        <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
         <script>
             document.getElementById('contact-form').addEventListener('submit', async (e) => {
@@ -5110,6 +5146,8 @@ app.get('/favorites', (c) => {
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/i18n-en.js"></script>
+        <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
         <script>
             const currentUserId = 1; // TODO: 実際のログインユーザーID
@@ -5305,6 +5343,8 @@ app.get('/search', (c) => {
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/i18n-en.js"></script>
+        <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
         <script>
             let searchTimeout;
@@ -5868,6 +5908,8 @@ app.get('/password-reset', (c) => {
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/i18n-en.js"></script>
+        <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
         <script>
             document.getElementById('reset-form').addEventListener('submit', async (e) => {
