@@ -57,13 +57,20 @@ auth.post('/register', async (c) => {
     // パスワードハッシュ化
     const passwordHash = await hashPassword(password)
 
-    // ユーザー作成（nickname, shop_name等を含む）
+    // ユーザー作成
     const displayName = nickname || name
     const companyOrShop = company_name || shop_name || null
     const result = await c.env.DB.prepare(`
-      INSERT INTO users (name, email, password_hash, phone, company_name, nickname, status, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, 'active', datetime('now'), datetime('now'))
-    `).bind(name, email, passwordHash, phone || null, companyOrShop, displayName).run()
+      INSERT INTO users (
+        name, email, password_hash, phone, company_name, nickname,
+        shop_type, postal_code, prefecture, city, address,
+        status, created_at, updated_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', datetime('now'), datetime('now'))
+    `).bind(
+      name, email, passwordHash, phone || null, companyOrShop, displayName,
+      shop_type || 'individual', postal_code || null, prefecture || null, city || null, address || null
+    ).run()
 
     const userId = result.meta.last_row_id
 
@@ -163,7 +170,7 @@ auth.post('/login', async (c) => {
 
     // 最終ログイン時刻を更新
     await c.env.DB.prepare(`
-      UPDATE users SET updated_at = datetime('now') WHERE id = ?
+      UPDATE users SET last_login_at = datetime('now'), updated_at = datetime('now') WHERE id = ?
     `).bind(user.id).run()
 
     // JWTトークン生成
@@ -228,7 +235,8 @@ auth.get('/me', authMiddleware, async (c) => {
     const userId = c.get('userId')
 
     const user = await c.env.DB.prepare(`
-      SELECT id, name, email, phone, company_name, status, created_at
+      SELECT id, name, email, phone, company_name, nickname, shop_type, rating,
+             is_verified, total_sales, bio, profile_image_url, status, created_at
       FROM users
       WHERE id = ?
     `).bind(userId).first()
@@ -245,9 +253,16 @@ auth.get('/me', authMiddleware, async (c) => {
       user: {
         id: user.id,
         name: user.name,
+        nickname: user.nickname || user.name,
         email: user.email,
         phone: user.phone,
         company_name: user.company_name,
+        shop_type: user.shop_type,
+        rating: user.rating,
+        is_verified: user.is_verified,
+        total_sales: user.total_sales,
+        bio: user.bio,
+        profile_image_url: user.profile_image_url,
         status: user.status,
         created_at: user.created_at
       }

@@ -11,19 +11,14 @@ api.get('/health', (c) => {
 // カテゴリ一覧
 api.get('/categories', async (c) => {
   try {
-    // ハードコードされたカテゴリデータ（DBテーブル未作成のため）
-    const categories = [
-      { id: 1, name: 'エンジンパーツ', slug: 'engine', icon: 'fa-cog', display_order: 1 },
-      { id: 2, name: 'ブレーキパーツ', slug: 'brake', icon: 'fa-circle-stop', display_order: 2 },
-      { id: 3, name: 'サスペンション', slug: 'suspension', icon: 'fa-spring', display_order: 3 },
-      { id: 4, name: '電装パーツ', slug: 'electric', icon: 'fa-bolt', display_order: 4 },
-      { id: 5, name: '外装パーツ', slug: 'exterior', icon: 'fa-car', display_order: 5 },
-      { id: 6, name: '内装パーツ', slug: 'interior', icon: 'fa-seat', display_order: 6 },
-      { id: 7, name: 'ホイール・タイヤ', slug: 'wheel', icon: 'fa-tire', display_order: 7 },
-      { id: 8, name: '排気系パーツ', slug: 'exhaust', icon: 'fa-wind', display_order: 8 }
-    ]
+    const { results } = await c.env.DB.prepare(`
+      SELECT id, name, slug, icon, display_order
+      FROM categories
+      WHERE is_active = 1
+      ORDER BY display_order ASC
+    `).all()
 
-    return c.json({ success: true, categories })
+    return c.json({ success: true, categories: results })
   } catch (error) {
     console.error('Category fetch error:', error)
     return c.json({ success: false, error: 'カテゴリの取得に失敗しました' }, 500)
@@ -66,19 +61,14 @@ api.get('/categories/:id', async (c) => {
 // メーカー一覧
 api.get('/makers', async (c) => {
   try {
-    // ハードコードされたメーカーデータ（DBテーブル未作成のため）
-    const makers = [
-      { id: 1, name: 'トヨタ', name_en: 'TOYOTA', display_order: 1 },
-      { id: 2, name: 'ホンダ', name_en: 'HONDA', display_order: 2 },
-      { id: 3, name: '日産', name_en: 'NISSAN', display_order: 3 },
-      { id: 4, name: 'マツダ', name_en: 'MAZDA', display_order: 4 },
-      { id: 5, name: 'スバル', name_en: 'SUBARU', display_order: 5 },
-      { id: 6, name: 'スズキ', name_en: 'SUZUKI', display_order: 6 },
-      { id: 7, name: 'ダイハツ', name_en: 'DAIHATSU', display_order: 7 },
-      { id: 8, name: '三菱', name_en: 'MITSUBISHI', display_order: 8 }
-    ]
+    const { results } = await c.env.DB.prepare(`
+      SELECT id, name, name_en, country, display_order
+      FROM car_makers
+      WHERE is_active = 1
+      ORDER BY display_order ASC
+    `).all()
 
-    return c.json({ success: true, makers })
+    return c.json({ success: true, makers: results })
   } catch (error) {
     console.error('Maker fetch error:', error)
     return c.json({ success: false, error: 'メーカーの取得に失敗しました' }, 500)
@@ -123,8 +113,8 @@ api.get('/products', async (c) => {
     let params: any[] = ['active']
 
     if (query) {
-      conditions.push('(p.title LIKE ? OR p.part_number LIKE ? OR p.compatible_models LIKE ?)')
-      params.push(`%${query}%`, `%${query}%`, `%${query}%`)
+      conditions.push('(p.title LIKE ? OR p.description LIKE ? OR p.part_number LIKE ? OR p.compatible_models LIKE ?)')
+      params.push(`%${query}%`, `%${query}%`, `%${query}%`, `%${query}%`)
     }
 
     if (categoryId) {
@@ -213,12 +203,13 @@ api.get('/products', async (c) => {
   }
 })
 
-// 商品詳細
-api.get('/products/:id', async (c) => {
+// 商品詳細（IDまたはスラッグ対応）
+api.get('/products/:slugOrId', async (c) => {
   try {
-    const id = c.req.param('id')
+    const slugOrId = c.req.param('slugOrId')
+    const isNumeric = !isNaN(Number(slugOrId))
 
-    const product = await c.env.DB.prepare(`
+    const baseQuery = `
       SELECT 
         p.*,
         c.name as category_name,
@@ -228,15 +219,19 @@ api.get('/products/:id', async (c) => {
         u.id as seller_id,
         COALESCE(u.company_name, u.nickname, u.name) as seller_name,
         u.rating as seller_rating,
-        u.total_sales as seller_total_sales
+        u.total_sales as seller_total_sales,
+        u.is_verified as seller_verified,
+        u.shop_type as seller_shop_type
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       LEFT JOIN subcategories sc ON p.subcategory_id = sc.id
       LEFT JOIN car_makers m ON p.maker_id = m.id
       LEFT JOIN car_models mo ON p.model_id = mo.id
       LEFT JOIN users u ON p.user_id = u.id
-      WHERE p.id = ?
-    `).bind(id).first()
+      WHERE ${isNumeric ? 'p.id = ?' : 'p.slug = ?'}
+    `
+
+    const product = await c.env.DB.prepare(baseQuery).bind(slugOrId).first()
 
     if (!product) {
       return c.json({ success: false, error: '商品が見つかりません' }, 404)
@@ -248,16 +243,25 @@ api.get('/products/:id', async (c) => {
       FROM product_images
       WHERE product_id = ?
       ORDER BY display_order ASC
-    `).bind(id).all()
+    `).bind(product.id).all()
+
+    // 適合情報取得
+    const compatibility = await c.env.DB.prepare(`
+      SELECT * FROM product_compatibility WHERE product_id = ?
+    `).bind(product.id).first()
 
     // 閲覧数更新
     await c.env.DB.prepare(`
       UPDATE products SET view_count = view_count + 1 WHERE id = ?
-    `).bind(id).run()
+    `).bind(product.id).run()
 
     return c.json({
       success: true,
-      product,
+      product: {
+        ...product,
+        images,
+        compatibility
+      },
       images
     })
   } catch (error) {

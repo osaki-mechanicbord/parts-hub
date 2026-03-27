@@ -161,35 +161,34 @@ app.post('/', async (c) => {
     const body = await c.req.json()
 
     // 必須フィールドのバリデーション
-    const required = ['seller_id', 'title', 'description', 'price', 'category_id', 'condition', 'stock_quantity']
-    for (const field of required) {
-      if (!body[field]) {
-        return c.json({ success: false, error: `${field}は必須です` }, 400)
-      }
+    const userId = body.seller_id || body.user_id
+    if (!userId || !body.title || !body.price || !body.condition) {
+      return c.json({ success: false, error: '出品者ID、タイトル、価格、状態は必須です' }, 400)
     }
 
     // 商品登録
     const result = await DB.prepare(`
       INSERT INTO products (
-        seller_id, title, description, price, category_id, subcategory_id,
+        user_id, seller_id, title, description, price, category_id, subcategory_id,
         maker_id, model_id, part_number, compatible_models, condition,
         stock_quantity, status, is_proxy
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
-      body.seller_id,
+      userId,
+      userId,
       body.title,
-      body.description,
+      body.description || '',
       body.price,
-      body.category_id,
+      body.category_id || null,
       body.subcategory_id || null,
       body.maker_id || null,
       body.model_id || null,
       body.part_number || null,
       body.compatible_models || null,
       body.condition,
-      body.stock_quantity,
-      body.status || 'draft',
-      body.is_proxy || false
+      body.stock_quantity || 1,
+      body.status || 'active',
+      body.is_proxy ? 1 : 0
     ).run()
 
     const productId = result.meta.last_row_id
@@ -258,33 +257,33 @@ app.put('/:id', async (c) => {
     // 商品更新
     await DB.prepare(`
       UPDATE products SET
-        title = ?,
-        description = ?,
-        price = ?,
+        title = COALESCE(?, title),
+        description = COALESCE(?, description),
+        price = COALESCE(?, price),
         category_id = ?,
         subcategory_id = ?,
         maker_id = ?,
         model_id = ?,
         part_number = ?,
         compatible_models = ?,
-        condition = ?,
-        stock_quantity = ?,
-        status = ?,
+        condition = COALESCE(?, condition),
+        stock_quantity = COALESCE(?, stock_quantity),
+        status = COALESCE(?, status),
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).bind(
-      body.title,
-      body.description,
-      body.price,
-      body.category_id,
+      body.title || null,
+      body.description || null,
+      body.price || null,
+      body.category_id || null,
       body.subcategory_id || null,
       body.maker_id || null,
       body.model_id || null,
       body.part_number || null,
       body.compatible_models || null,
-      body.condition,
-      body.stock_quantity,
-      body.status,
+      body.condition || null,
+      body.stock_quantity || null,
+      body.status || null,
       productId
     ).run()
 

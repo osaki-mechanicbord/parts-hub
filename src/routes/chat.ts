@@ -88,7 +88,7 @@ chat.get('/rooms/:roomId/messages', async (c) => {
       SELECT 
         cm.*,
         COALESCE(u.company_name, u.nickname, u.name) as sender_name,
-        u.is_verified as sender_verified
+        COALESCE(u.is_verified, 0) as sender_verified
       FROM chat_messages cm
       JOIN users u ON cm.sender_id = u.id
       WHERE cm.room_id = ?

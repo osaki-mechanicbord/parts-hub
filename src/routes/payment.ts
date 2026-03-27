@@ -16,6 +16,43 @@ type Bindings = {
 
 const payment = new Hono<{ Bindings: Bindings }>()
 
+// Stripe設定確認
+payment.get('/config', async (c) => {
+  try {
+    const hasStripeKey = !!(c.env as any)?.STRIPE_SECRET_KEY
+    return c.json({
+      success: true,
+      stripe_configured: hasStripeKey,
+      platform_fee_percentage: STRIPE_CONFIG.PLATFORM_FEE_PERCENTAGE * 100,
+      min_transaction_amount: STRIPE_CONFIG.MIN_TRANSACTION_AMOUNT,
+      max_transaction_amount: STRIPE_CONFIG.MAX_TRANSACTION_AMOUNT,
+      currency: STRIPE_CONFIG.CURRENCY
+    })
+  } catch (error: any) {
+    console.error('Payment config error:', error)
+    return c.json({ success: false, error: '決済設定の取得に失敗しました' }, 500)
+  }
+})
+
+// 手数料計算
+payment.get('/calculate-fees', async (c) => {
+  try {
+    const amount = parseInt(c.req.query('amount') || '0')
+    if (!amount) {
+      return c.json({ success: false, error: '金額を指定してください' }, 400)
+    }
+    const validation = validateAmount(amount)
+    if (!validation.valid) {
+      return c.json({ success: false, error: validation.error }, 400)
+    }
+    const fees = calculateFees(amount)
+    return c.json({ success: true, fees })
+  } catch (error: any) {
+    console.error('Fee calc error:', error)
+    return c.json({ success: false, error: '手数料計算に失敗しました' }, 500)
+  }
+})
+
 // Checkout Session作成
 payment.post('/create-checkout-session', authMiddleware, async (c) => {
   try {
