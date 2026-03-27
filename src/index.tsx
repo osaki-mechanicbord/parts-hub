@@ -2539,20 +2539,21 @@ app.get('/products/:id', (c) => {
                         
                         <!-- アクションボタン -->
                         <div class="space-y-3 mb-6">
-                            <button onclick="purchaseProduct()" 
+                            <button id="purchase-btn" onclick="purchaseProduct()" 
                                     class="w-full px-6 py-4 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg font-bold text-lg hover:from-red-600 hover:to-red-700 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
-                                購入手続きへ
+                                <i class="fas fa-shopping-cart mr-2"></i>購入手続きへ
                             </button>
-                            <button onclick="addToFavorites()" 
+                            <div id="fee-info"></div>
+                            <button id="favorite-btn" onclick="addToFavorites()" data-favorited="false"
                                     class="w-full px-6 py-4 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:border-gray-400 hover:bg-gray-50 transition-all flex items-center justify-center">
-                                <i class="far fa-heart mr-2"></i>いいね
+                                <i class="far fa-heart mr-2"></i>お気に入り
                             </button>
                             <button onclick="openPriceOfferModal()" 
                                     class="w-full px-6 py-4 border-2 border-blue-500 text-blue-600 rounded-lg font-semibold hover:bg-blue-50 transition-all flex items-center justify-center">
                                 <i class="fas fa-tag mr-2"></i>値下げ交渉
                             </button>
                         </div>
-                        <button onclick="contactSeller()" 
+                        <button id="contact-btn" onclick="contactSeller()" 
                                 class="w-full px-6 py-4 bg-white border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-all flex items-center justify-center">
                             <i class="fas fa-comment-dots mr-2"></i>出品者に質問
                         </button>

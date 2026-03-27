@@ -41,7 +41,16 @@ async function loadProduct() {
         ]);
         
         if (productResponse.data.success) {
-            product = productResponse.data.data;
+            product = productResponse.data.product || productResponse.data.data;
+            // APIレスポンスのキー名を統一
+            if (product) {
+                product.shop_name = product.shop_name || product.seller_name;
+                product.shop_type = product.shop_type || product.seller_shop_type;
+                product.rating = product.rating || product.seller_rating;
+                product.is_verified = product.is_verified || product.seller_verified;
+                // images配列がなければ空配列
+                product.images = product.images || [];
+            }
             renderProduct();
             updateActionButtons();
             checkFavoriteStatus();
@@ -336,7 +345,7 @@ function renderSellerInfo() {
     const rating = document.getElementById('seller-rating');
     const verified = document.getElementById('seller-verified');
     
-    if (shopName) shopName.textContent = product.shop_name || product.seller_name || '未設定';
+    if (shopName) shopName.textContent = product.shop_name || product.seller_name || product.company_name || '未設定';
     if (shopType) shopType.textContent = getShopTypeLabel(product.shop_type);
     if (rating) rating.textContent = product.rating ? Number(product.rating).toFixed(1) : '新規出品者';
     
