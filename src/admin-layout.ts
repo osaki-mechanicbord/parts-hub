@@ -95,40 +95,9 @@ export const AdminPasswordModal = () => `
 </div>
 `;
 
-// 管理者認証チェック・共通JS
+// 管理者認証チェック・共通JS（body末尾用：ログアウト・パスワード変更のみ）
 export const AdminAuthScript = () => `
 <script>
-    // ===== 管理者認証チェック =====
-    (function() {
-        const adminToken = localStorage.getItem('admin_token');
-        if (!adminToken) {
-            window.location.href = '/admin/login';
-            return;
-        }
-
-        // axios にデフォルトで認証ヘッダーを付与
-        axios.defaults.headers.common['Authorization'] = 'Bearer ' + adminToken;
-
-        // 401エラー時に自動リダイレクト
-        axios.interceptors.response.use(
-            response => response,
-            error => {
-                if (error.response && error.response.status === 401) {
-                    localStorage.removeItem('admin_token');
-                    localStorage.removeItem('admin_username');
-                    window.location.href = '/admin/login';
-                }
-                return Promise.reject(error);
-            }
-        );
-
-        // ユーザー名表示
-        const el = document.getElementById('admin-name');
-        if (el) {
-            el.textContent = '管理者: ' + (localStorage.getItem('admin_username') || 'admin');
-        }
-    })();
-
     // ログアウト
     function adminLogout() {
         if (confirm('ログアウトしますか？')) {
@@ -228,9 +197,47 @@ export const AdminLayout = (currentPage: string, title: string, content: string)
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${title} - PARTS HUB 管理画面</title>
     <meta name="robots" content="noindex, nofollow">
+    <script>
+        // 認証チェック（ページ描画前に実行 - 最優先）
+        (function() {
+            var t = localStorage.getItem('admin_token');
+            if (!t) {
+                document.documentElement.style.display = 'none';
+                window.location.replace('/admin/login');
+                throw new Error('not authenticated');
+            }
+        })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    <script>
+        // axios認証ヘッダーとインターセプター設定（DOMContentLoadedより前に実行）
+        (function() {
+            var adminToken = localStorage.getItem('admin_token');
+            if (!adminToken) return;
+            axios.defaults.headers.common['Authorization'] = 'Bearer ' + adminToken;
+            // 401エラー時にトークン削除してリダイレクト（1回だけ）
+            var redirecting = false;
+            axios.interceptors.response.use(
+                function(response) { return response; },
+                function(error) {
+                    if (error.response && error.response.status === 401 && !redirecting) {
+                        redirecting = true;
+                        localStorage.removeItem('admin_token');
+                        localStorage.removeItem('admin_username');
+                        window.location.replace('/admin/login');
+                    }
+                    return Promise.reject(error);
+                }
+            );
+            // ユーザー名を後から表示
+            document.addEventListener('DOMContentLoaded', function() {
+                var el = document.getElementById('admin-name');
+                if (el) el.textContent = '管理者: ' + (localStorage.getItem('admin_username') || 'admin');
+            });
+        })();
+    </script>
 </head>
 <body class="bg-gray-100">
     ${AdminHeader(currentPage)}

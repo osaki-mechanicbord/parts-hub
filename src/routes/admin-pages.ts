@@ -105,7 +105,7 @@ adminPagesRoutes.get('/', (c) => {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    <!-- axiosはAdminLayoutの<head>で読み込み済み。ここで再読み込みすると認証ヘッダーが消えるので不要 -->
     <script>
         let salesChart, usersChart;
 
@@ -132,7 +132,10 @@ adminPagesRoutes.get('/', (c) => {
 
             } catch (error) {
                 console.error('ダッシュボード読み込みエラー:', error);
-                alert('データの読み込みに失敗しました。');
+                // 401の場合はaxiosインターセプターがリダイレクトするのでalertは出さない
+                if (error.response && error.response.status === 401) return;
+                // それ以外のエラーのみ表示
+                console.warn('データの読み込みに失敗しました');
             }
         }
 

@@ -6759,10 +6759,37 @@ app.get('/admin/login', (c) => {
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script>
-            // 既にログイン済みならリダイレクト
-            if (localStorage.getItem('admin_token')) {
-                window.location.href = '/admin';
-            }
+            // 既にログイン済みならトークンを検証してリダイレクト
+            // 注: ループ防止のため、リダイレクト中フラグを使用
+            (async function() {
+                const t = localStorage.getItem('admin_token');
+                if (!t) return;
+                // ループ防止: 短時間に連続リダイレクトしない
+                const lastRedirect = sessionStorage.getItem('admin_login_redirect_ts');
+                if (lastRedirect && (Date.now() - parseInt(lastRedirect)) < 3000) {
+                    // 3秒以内の連続リダイレクト → トークン無効とみなしクリア
+                    localStorage.removeItem('admin_token');
+                    localStorage.removeItem('admin_username');
+                    sessionStorage.removeItem('admin_login_redirect_ts');
+                    return;
+                }
+                try {
+                    const r = await axios.get('/api/admin/settings', {
+                        headers: { 'Authorization': 'Bearer ' + t },
+                        timeout: 5000
+                    });
+                    if (r.data.success) {
+                        sessionStorage.setItem('admin_login_redirect_ts', Date.now().toString());
+                        window.location.replace('/admin');
+                    } else {
+                        localStorage.removeItem('admin_token');
+                        localStorage.removeItem('admin_username');
+                    }
+                } catch(e) {
+                    localStorage.removeItem('admin_token');
+                    localStorage.removeItem('admin_username');
+                }
+            })();
 
             async function handleLogin(e) {
                 e.preventDefault();
