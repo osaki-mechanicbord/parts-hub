@@ -180,24 +180,45 @@ function renderListings() {
     }
     
     container.innerHTML = listingsData.map(product => `
-        <a href="/products/${product.slug || product.id}" class="block bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-            <div class="relative">
-                <img src="${product.image_url || 'https://placehold.co/400x300/e2e8f0/64748b?text=No+Image'}" 
-                     alt="${product.title}" 
-                     class="w-full aspect-square object-cover"
-                     onerror="this.src='https://placehold.co/400x300/e2e8f0/64748b?text=No+Image'">
-                ${renderStatusBadge(product.status)}
-            </div>
-            <div class="p-3">
-                <h4 class="font-semibold text-gray-900 text-sm mb-1 line-clamp-2">${product.title}</h4>
-                <div class="text-red-500 font-bold text-lg">¥${formatPrice(product.price)}</div>
-                <div class="mt-2 flex items-center justify-between text-xs text-gray-400">
-                    <span><i class="far fa-eye mr-1"></i>${product.view_count || 0}</span>
-                    <span><i class="far fa-heart mr-1"></i>${product.favorite_count || 0}</span>
-                    <span><i class="far fa-comment mr-1"></i>${product.comment_count || 0}</span>
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+            <a href="/products/${product.slug || product.id}" class="block">
+                <div class="relative">
+                    <img src="${product.image_url || 'https://placehold.co/400x300/e2e8f0/64748b?text=No+Image'}" 
+                         alt="${product.title}" 
+                         class="w-full aspect-square object-cover"
+                         onerror="this.src='https://placehold.co/400x300/e2e8f0/64748b?text=No+Image'">
+                    ${renderStatusBadge(product.status)}
                 </div>
+                <div class="p-3 pb-1">
+                    <h4 class="font-semibold text-gray-900 text-sm mb-1 line-clamp-2">${product.title}</h4>
+                    <div class="text-red-500 font-bold text-lg">¥${formatPrice(product.price)}</div>
+                    <div class="mt-1 flex items-center justify-between text-xs text-gray-400">
+                        <span><i class="far fa-eye mr-1"></i>${product.view_count || 0}</span>
+                        <span><i class="far fa-heart mr-1"></i>${product.favorite_count || 0}</span>
+                        <span><i class="far fa-comment mr-1"></i>${product.comment_count || 0}</span>
+                    </div>
+                </div>
+            </a>
+            <div class="px-3 pb-3 pt-2 border-t border-gray-100 flex gap-2">
+                <button onclick="editProduct(${product.id})" class="flex-1 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 py-2 px-2 rounded-lg font-semibold transition-colors">
+                    <i class="fas fa-edit mr-1"></i>編集
+                </button>
+                ${product.status === 'active' ? `
+                    <button onclick="pauseProduct(${product.id})" class="flex-1 text-xs bg-yellow-50 text-yellow-600 hover:bg-yellow-100 py-2 px-2 rounded-lg font-semibold transition-colors">
+                        <i class="fas fa-pause mr-1"></i>停止
+                    </button>
+                ` : product.status === 'paused' ? `
+                    <button onclick="resumeProduct(${product.id})" class="flex-1 text-xs bg-green-50 text-green-600 hover:bg-green-100 py-2 px-2 rounded-lg font-semibold transition-colors">
+                        <i class="fas fa-play mr-1"></i>再開
+                    </button>
+                ` : ''}
+                ${product.status !== 'sold' ? `
+                    <button onclick="deleteProduct(${product.id})" class="flex-1 text-xs bg-red-50 text-red-600 hover:bg-red-100 py-2 px-2 rounded-lg font-semibold transition-colors">
+                        <i class="fas fa-trash mr-1"></i>削除
+                    </button>
+                ` : ''}
             </div>
-        </a>
+        </div>
     `).join('');
 }
 

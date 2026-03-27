@@ -257,32 +257,42 @@ class ProductListingForm {
         submitBtn.disabled = true
       }
 
-      // 商品作成API呼び出し
-      var response = await axios.post('/api/products', formData, {
-        headers: { 'Authorization': 'Bearer ' + token }
-      })
+      // 商品作成 or 更新 API呼び出し
+      var response;
+      if (window.EDIT_MODE && window.PRODUCT_ID) {
+        // 編集モード: PUT で更新
+        response = await axios.put('/api/products/' + window.PRODUCT_ID, formData, {
+          headers: { 'Authorization': 'Bearer ' + token }
+        })
+      } else {
+        // 新規作成モード: POST
+        response = await axios.post('/api/products', formData, {
+          headers: { 'Authorization': 'Bearer ' + token }
+        })
+      }
 
       if (!response.data.success) {
         throw new Error(response.data.error || '商品の登録に失敗しました')
       }
 
-      var productId = response.data.data.id
+      var productId = window.EDIT_MODE ? window.PRODUCT_ID : response.data.data.id
 
-      // 画像アップロード
+      // 画像アップロード（新規画像がある場合のみ）
       if (this.uploadedImages.some(function(img) { return !img.uploaded })) {
         await this.uploadImagesToR2(productId)
       }
 
       // 成功表示
+      var successMsg = window.EDIT_MODE ? '変更を保存しました！' : '出品完了！'
       if (submitBtn) {
-        submitBtn.innerHTML = '<i class="fas fa-check" style="margin-right:8px;"></i>出品完了！'
+        submitBtn.innerHTML = '<i class="fas fa-check" style="margin-right:8px;"></i>' + successMsg
         submitBtn.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)'
       }
 
       // 成功メッセージ表示後、マイページ出品一覧に遷移
       var successBanner = document.createElement('div')
       successBanner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#22c55e;color:#fff;text-align:center;padding:16px;font-size:16px;font-weight:700;z-index:9999;'
-      successBanner.innerHTML = '<i class="fas fa-check-circle" style="margin-right:8px;"></i>商品を出品しました！マイページに移動します...'
+      successBanner.innerHTML = '<i class="fas fa-check-circle" style="margin-right:8px;"></i>' + (window.EDIT_MODE ? '商品を更新しました！マイページに移動します...' : '商品を出品しました！マイページに移動します...')
       document.body.appendChild(successBanner)
 
       setTimeout(function() {
