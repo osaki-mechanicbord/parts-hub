@@ -3498,15 +3498,21 @@ app.get('/chat', (c) => {
         <!-- ヘッダー -->
         <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
             <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-                <button onclick="window.location.href='/'" class="text-gray-600 hover:text-gray-900 flex items-center">
-                    <i class="fas fa-arrow-left mr-2"></i>戻る
+                <button onclick="window.location.href='/mypage'" class="text-gray-600 hover:text-gray-900 flex items-center">
+                    <i class="fas fa-arrow-left mr-2"></i>マイページ
                 </button>
                 <h1 class="text-red-500 font-bold text-lg">メッセージ</h1>
                 <div class="w-16"></div>
             </div>
         </header>
 
-        <main class="max-w-4xl mx-auto px-4 py-6">
+        <!-- ローディング -->
+        <div id="loading-state" class="max-w-4xl mx-auto px-4 py-12 text-center">
+            <i class="fas fa-spinner fa-spin text-red-500 text-3xl mb-4"></i>
+            <p class="text-gray-600">読み込み中...</p>
+        </div>
+
+        <main id="main-content" class="max-w-4xl mx-auto px-4 py-6 hidden">
             <!-- チャットルーム一覧 -->
             <div id="chat-rooms-container" class="space-y-3">
                 <!-- JavaScriptで動的に生成 -->
@@ -3527,24 +3533,56 @@ app.get('/chat', (c) => {
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script>
-            let currentUserId = 1; // TODO: 実際のログインユーザーID
+            let currentUserId = null;
+            let token = null;
 
-            // ページ読み込み時にチャットルーム一覧をロード
-            document.addEventListener('DOMContentLoaded', () => {
-                loadChatRooms();
+            function getAuthHeaders() {
+                return { headers: { 'Authorization': 'Bearer ' + token } };
+            }
+
+            // ページ読み込み時
+            document.addEventListener('DOMContentLoaded', async () => {
+                token = localStorage.getItem('token');
+                if (!token) {
+                    alert('ログインが必要です');
+                    window.location.href = '/login?redirect=' + encodeURIComponent('/chat');
+                    return;
+                }
+
+                // ログインユーザー情報を取得
+                try {
+                    const res = await axios.get('/api/auth/me', getAuthHeaders());
+                    if (res.data.success) {
+                        currentUserId = res.data.data.id;
+                        loadChatRooms();
+                    } else {
+                        throw new Error('auth failed');
+                    }
+                } catch (e) {
+                    alert('ログインセッションが切れました。再ログインしてください。');
+                    localStorage.removeItem('token');
+                    window.location.href = '/login?redirect=' + encodeURIComponent('/chat');
+                }
             });
 
             // チャットルーム一覧をロード
             async function loadChatRooms() {
                 try {
-                    const response = await axios.get(\`/api/chat/rooms?user_id=\${currentUserId}\`);
+                    const response = await axios.get('/api/chat/rooms', getAuthHeaders());
                     
+                    document.getElementById('loading-state').classList.add('hidden');
+                    document.getElementById('main-content').classList.remove('hidden');
+
                     if (response.data.success) {
                         const rooms = response.data.data;
                         renderChatRooms(rooms);
                     }
                 } catch (error) {
                     console.error('Failed to load chat rooms:', error);
+                    document.getElementById('loading-state').classList.add('hidden');
+                    document.getElementById('main-content').classList.remove('hidden');
+                    document.getElementById('chat-rooms-container').classList.add('hidden');
+                    document.getElementById('empty-state').classList.remove('hidden');
                 }
             }
 
@@ -3563,8 +3601,9 @@ app.get('/chat', (c) => {
                 emptyState.classList.add('hidden');
                 
                 container.innerHTML = rooms.map(room => {
-                    const isMe = room.buyer_id === currentUserId;
-                    const otherUserName = isMe ? room.seller_name : room.buyer_name;
+                    const isBuyer = room.buyer_id == currentUserId;
+                    const otherUserName = isBuyer ? room.seller_name : room.buyer_name;
+                    const roleLabel = isBuyer ? '出品者' : '購入者';
                     const lastMessage = room.last_message || 'まだメッセージがありません';
                     const lastMessageTime = room.last_message_at 
                         ? new Date(room.last_message_at).toLocaleString('ja-JP', { 
@@ -3579,20 +3618,24 @@ app.get('/chat', (c) => {
                         <a href="/chat/\${room.id}" class="block bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow p-4">
                             <div class="flex items-start gap-4">
                                 <div class="flex-shrink-0">
-                                    <div class="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center">
-                                        <i class="fas fa-user text-gray-600"></i>
-                                    </div>
+                                    \${room.product_image 
+                                        ? \`<img src="\${room.product_image}" class="w-14 h-14 rounded-lg object-cover">\`
+                                        : \`<div class="w-14 h-14 bg-gray-200 rounded-lg flex items-center justify-center"><i class="fas fa-box text-gray-400"></i></div>\`
+                                    }
                                 </div>
                                 <div class="flex-1 min-w-0">
                                     <div class="flex items-center justify-between mb-1">
-                                        <h3 class="font-semibold text-gray-900 truncate">\${otherUserName}</h3>
+                                        <div class="flex items-center gap-2 min-w-0">
+                                            <h3 class="font-semibold text-gray-900 truncate">\${otherUserName}</h3>
+                                            <span class="text-xs text-gray-400 flex-shrink-0">\${roleLabel}</span>
+                                        </div>
                                         \${room.unread_count > 0 ? \`
-                                            <span class="unread-badge bg-red-500 text-white text-xs font-bold rounded-full px-2">
+                                            <span class="unread-badge bg-red-500 text-white text-xs font-bold rounded-full px-2 ml-2">
                                                 \${room.unread_count}
                                             </span>
                                         \` : ''}
                                     </div>
-                                    <p class="text-sm text-gray-600 mb-2 truncate">\${room.product_title}</p>
+                                    <p class="text-sm text-gray-600 mb-1 truncate">\${room.product_title}</p>
                                     <div class="flex items-center justify-between">
                                         <p class="text-sm text-gray-500 truncate flex-1 mr-2">\${lastMessage}</p>
                                         <span class="text-xs text-gray-400 flex-shrink-0">\${lastMessageTime}</span>
@@ -3658,9 +3701,9 @@ app.get('/chat/:roomId', (c) => {
                     <button onclick="window.location.href='/chat'" class="text-gray-600 hover:text-gray-900">
                         <i class="fas fa-arrow-left text-xl"></i>
                     </button>
-                    <div class="flex-shrink-0">
-                        <div class="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
-                            <i class="fas fa-user text-gray-600"></i>
+                    <div id="header-product-image" class="flex-shrink-0">
+                        <div class="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-box text-gray-400"></i>
                         </div>
                     </div>
                     <div class="flex-1 min-w-0">
@@ -3675,7 +3718,9 @@ app.get('/chat/:roomId', (c) => {
             <div class="message-container">
                 <!-- メッセージ一覧 -->
                 <div id="messages-list" class="messages-list space-y-3">
-                    <!-- JavaScriptで動的に生成 -->
+                    <div class="text-center py-8">
+                        <i class="fas fa-spinner fa-spin text-red-500 text-2xl"></i>
+                    </div>
                 </div>
 
                 <!-- 送信フォーム -->
@@ -3686,7 +3731,7 @@ app.get('/chat/:roomId', (c) => {
                                   class="flex-1 px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none resize-none"
                                   placeholder="メッセージを入力..."
                                   onkeydown="handleKeyDown(event)"></textarea>
-                        <button onclick="sendMessage()" 
+                        <button id="send-btn" onclick="sendMessage()" 
                                 class="bg-gradient-to-r from-red-500 to-red-600 text-white p-3 rounded-lg hover:from-red-600 hover:to-red-700 transition-all">
                             <i class="fas fa-paper-plane"></i>
                         </button>
@@ -3698,12 +3743,39 @@ app.get('/chat/:roomId', (c) => {
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script>
             const roomId = ${roomId};
-            let currentUserId = 1; // TODO: 実際のログインユーザーID
+            let currentUserId = null;
+            let token = null;
             let pollingInterval = null;
             let lastMessageId = null;
 
+            function getAuthHeaders() {
+                return { headers: { 'Authorization': 'Bearer ' + token } };
+            }
+
             // ページ読み込み時
-            document.addEventListener('DOMContentLoaded', () => {
+            document.addEventListener('DOMContentLoaded', async () => {
+                token = localStorage.getItem('token');
+                if (!token) {
+                    alert('ログインが必要です');
+                    window.location.href = '/login?redirect=' + encodeURIComponent('/chat/' + roomId);
+                    return;
+                }
+
+                // ログインユーザー情報を取得
+                try {
+                    const res = await axios.get('/api/auth/me', getAuthHeaders());
+                    if (res.data.success) {
+                        currentUserId = res.data.data.id;
+                    } else {
+                        throw new Error('auth failed');
+                    }
+                } catch (e) {
+                    alert('ログインセッションが切れました。再ログインしてください。');
+                    localStorage.removeItem('token');
+                    window.location.href = '/login?redirect=' + encodeURIComponent('/chat/' + roomId);
+                    return;
+                }
+
                 loadRoomInfo();
                 loadMessages();
                 markAsRead();
@@ -3724,16 +3796,22 @@ app.get('/chat/:roomId', (c) => {
             // ルーム情報をロード
             async function loadRoomInfo() {
                 try {
-                    const response = await axios.get(\`/api/chat/rooms?user_id=\${currentUserId}\`);
+                    const response = await axios.get('/api/chat/rooms', getAuthHeaders());
                     
                     if (response.data.success) {
-                        const room = response.data.data.find(r => r.id === roomId);
+                        const room = response.data.data.find(r => r.id == roomId);
                         if (room) {
-                            const isMe = room.buyer_id === currentUserId;
-                            const otherUserName = isMe ? room.seller_name : room.buyer_name;
+                            const isBuyer = room.buyer_id == currentUserId;
+                            const otherUserName = isBuyer ? room.seller_name : room.buyer_name;
                             
                             document.getElementById('other-user-name').textContent = otherUserName;
                             document.getElementById('product-title').textContent = room.product_title;
+
+                            // 商品画像
+                            if (room.product_image) {
+                                document.getElementById('header-product-image').innerHTML = 
+                                    '<img src="' + room.product_image + '" class="w-10 h-10 rounded-lg object-cover">';
+                            }
                         }
                     }
                 } catch (error) {
@@ -3744,7 +3822,7 @@ app.get('/chat/:roomId', (c) => {
             // メッセージ一覧をロード
             async function loadMessages() {
                 try {
-                    const response = await axios.get(\`/api/chat/rooms/\${roomId}/messages?limit=100\`);
+                    const response = await axios.get('/api/chat/rooms/' + roomId + '/messages?limit=100', getAuthHeaders());
                     
                     if (response.data.success) {
                         const messages = response.data.data;
@@ -3756,6 +3834,8 @@ app.get('/chat/:roomId', (c) => {
                     }
                 } catch (error) {
                     console.error('Failed to load messages:', error);
+                    document.getElementById('messages-list').innerHTML = 
+                        '<div class="text-center py-8 text-red-500"><i class="fas fa-exclamation-circle text-4xl mb-3"></i><p>メッセージの読み込みに失敗しました</p></div>';
                 }
             }
 
@@ -3764,7 +3844,7 @@ app.get('/chat/:roomId', (c) => {
                 if (!lastMessageId) return;
                 
                 try {
-                    const response = await axios.get(\`/api/chat/rooms/\${roomId}/messages?limit=50\`);
+                    const response = await axios.get('/api/chat/rooms/' + roomId + '/messages?limit=50', getAuthHeaders());
                     
                     if (response.data.success) {
                         const messages = response.data.data;
@@ -3789,7 +3869,7 @@ app.get('/chat/:roomId', (c) => {
                 if (messages.length === 0) {
                     container.innerHTML = \`
                         <div class="text-center py-8 text-gray-500">
-                            <i class="fas fa-comment-slash text-4xl mb-3"></i>
+                            <i class="fas fa-comment-dots text-4xl mb-3"></i>
                             <p>メッセージを送信して会話を始めましょう</p>
                         </div>
                     \`;
@@ -3802,24 +3882,31 @@ app.get('/chat/:roomId', (c) => {
             // メッセージを追加（新しいメッセージのみ）
             function appendMessages(messages) {
                 const container = document.getElementById('messages-list');
+                // 空状態のメッセージがあれば除去
+                const emptyMsg = container.querySelector('.text-center');
+                if (emptyMsg) emptyMsg.remove();
                 const html = messages.map(msg => createMessageHTML(msg)).join('');
                 container.insertAdjacentHTML('beforeend', html);
             }
 
             // メッセージHTMLを生成
             function createMessageHTML(msg) {
-                const isSent = msg.sender_id === currentUserId;
+                const isSent = msg.sender_id == currentUserId;
                 const bubbleClass = isSent ? 'message-sent' : 'message-received';
                 const timeStr = new Date(msg.created_at).toLocaleString('ja-JP', { 
                     hour: '2-digit', 
                     minute: '2-digit' 
                 });
                 
+                // XSS対策
+                const safeText = msg.message_text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                const safeName = (msg.sender_name || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                
                 return \`
                     <div class="flex \${isSent ? 'justify-end' : 'justify-start'}">
                         <div class="message-bubble \${bubbleClass} rounded-2xl px-4 py-2">
-                            \${!isSent ? \`<p class="text-xs text-gray-500 mb-1">\${msg.sender_name}</p>\` : ''}
-                            <p class="\${isSent ? 'text-white' : 'text-gray-900'}">\${msg.message_text}</p>
+                            \${!isSent ? \`<p class="text-xs text-gray-500 mb-1">\${safeName}</p>\` : ''}
+                            <p class="\${isSent ? 'text-white' : 'text-gray-900'} whitespace-pre-wrap">\${safeText}</p>
                             <p class="text-xs \${isSent ? 'text-red-100' : 'text-gray-400'} mt-1 text-right">
                                 \${timeStr}
                                 \${isSent && msg.is_read ? '<i class="fas fa-check-double ml-1"></i>' : ''}
@@ -3835,13 +3922,16 @@ app.get('/chat/:roomId', (c) => {
                 const text = input.value.trim();
                 
                 if (!text) return;
+
+                const sendBtn = document.getElementById('send-btn');
+                sendBtn.disabled = true;
+                sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
                 
                 try {
-                    const response = await axios.post(\`/api/chat/rooms/\${roomId}/messages\`, {
-                        sender_id: currentUserId,
+                    const response = await axios.post('/api/chat/rooms/' + roomId + '/messages', {
                         message_text: text,
                         message_type: 'text'
-                    });
+                    }, getAuthHeaders());
                     
                     if (response.data.success) {
                         input.value = '';
@@ -3851,15 +3941,16 @@ app.get('/chat/:roomId', (c) => {
                 } catch (error) {
                     console.error('Failed to send message:', error);
                     alert('メッセージの送信に失敗しました');
+                } finally {
+                    sendBtn.disabled = false;
+                    sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
                 }
             }
 
             // メッセージを既読にする
             async function markAsRead() {
                 try {
-                    await axios.put(\`/api/chat/rooms/\${roomId}/read\`, {
-                        user_id: currentUserId
-                    });
+                    await axios.put('/api/chat/rooms/' + roomId + '/read', {}, getAuthHeaders());
                 } catch (error) {
                     console.error('Failed to mark as read:', error);
                 }
