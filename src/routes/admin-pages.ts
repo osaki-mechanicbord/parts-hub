@@ -364,12 +364,15 @@ adminPagesRoutes.get('/users', (c) => {
                         \${new Date(user.created_at).toLocaleDateString('ja-JP')}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm">
-                        <button onclick="viewUser(\${user.id})" class="text-blue-500 hover:underline mr-2">
+                        <button onclick="viewUser(\${user.id})" class="text-blue-500 hover:underline mr-2" title="詳細">
                             <i class="fas fa-eye"></i>
                         </button>
                         <button onclick="toggleUserStatus(\${user.id}, '\${user.status}')" 
-                                class="text-\${user.status === 'active' ? 'yellow' : 'green'}-500 hover:underline">
+                                class="text-\${user.status === 'active' ? 'yellow' : 'green'}-500 hover:underline mr-2" title="\${user.status === 'active' ? '停止' : '有効化'}">
                             <i class="fas fa-\${user.status === 'active' ? 'pause' : 'play'}"></i>
+                        </button>
+                        <button onclick="deleteUser(\${user.id}, '\${user.name}')" class="text-red-500 hover:underline" title="削除">
+                            <i class="fas fa-trash"></i>
                         </button>
                     </td>
                 </tr>
@@ -436,6 +439,18 @@ adminPagesRoutes.get('/users', (c) => {
             } catch (error) {
                 console.error('ステータス更新エラー:', error);
                 alert('ステータスの更新に失敗しました');
+            }
+        }
+
+        async function deleteUser(id, name) {
+            if (!confirm('ユーザー「' + name + '」を完全に削除しますか？\\n\\n関連する出品商品・取引・チャット・レビュー等も全て削除されます。\\nこの操作は元に戻せません。')) return;
+            if (!confirm('本当に削除してよろしいですか？（最終確認）')) return;
+            try {
+                await axios.delete('/api/admin/users/' + id);
+                alert('ユーザー「' + name + '」を削除しました');
+                loadUsers(currentPage);
+            } catch (err) {
+                alert('削除に失敗しました: ' + (err.response?.data?.error || err.message));
             }
         }
 
@@ -509,6 +524,7 @@ adminPagesRoutes.get('/users/:id', (c) => {
         <!-- アクション -->
         <div class="bg-white rounded-lg shadow p-4 mb-6 flex flex-wrap gap-3">
             <button id="btn-toggle-status" onclick="toggleStatus()" class="px-4 py-2 rounded-lg font-semibold text-white"></button>
+            <button onclick="deleteUserDetail()" class="px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700"><i class="fas fa-trash mr-2"></i>アカウント削除</button>
         </div>
 
         <!-- 出品商品 -->
@@ -621,6 +637,20 @@ adminPagesRoutes.get('/users/:id', (c) => {
                 loadUserDetail();
             } catch (err) {
                 alert('ステータス更新に失敗しました');
+            }
+        }
+
+        async function deleteUserDetail() {
+            if (!userData) return;
+            var name = userData.name || 'このユーザー';
+            if (!confirm('ユーザー「' + name + '」を完全に削除しますか？\\n\\n関連する出品商品・取引・チャット・レビュー等も全て削除されます。\\nこの操作は元に戻せません。')) return;
+            if (!confirm('本当に削除してよろしいですか？（最終確認）')) return;
+            try {
+                await axios.delete('/api/admin/users/' + userId);
+                alert('ユーザー「' + name + '」を削除しました');
+                window.location.href = '/admin/users';
+            } catch (err) {
+                alert('削除に失敗しました: ' + (err.response?.data?.error || err.message));
             }
         }
 

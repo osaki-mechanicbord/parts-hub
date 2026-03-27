@@ -743,6 +743,54 @@ adminRoutes.put('/users/:id/status', async (c) => {
   }
 });
 
+// ユーザー削除
+adminRoutes.delete('/users/:id', async (c) => {
+  const { env } = c
+  const userId = c.req.param('id')
+
+  try {
+    // ユーザーの存在確認
+    const user = await env.DB.prepare(`SELECT id, name, email FROM users WHERE id = ?`).bind(userId).first()
+    if (!user) {
+      return c.json({ success: false, error: 'ユーザーが見つかりません' }, 404)
+    }
+
+    // 関連データを削除（外部キー制約対応）
+    const tables = [
+      { table: 'favorites', column: 'user_id' },
+      { table: 'product_images', column: 'product_id', sub: `SELECT id FROM products WHERE user_id = ?` },
+      { table: 'product_compatibility', column: 'product_id', sub: `SELECT id FROM products WHERE user_id = ?` },
+      { table: 'products', column: 'user_id' },
+      { table: 'reviews', column: 'reviewer_id' },
+      { table: 'reviews', column: 'reviewee_id' },
+      { table: 'chat_messages', column: 'sender_id' },
+      { table: 'chat_rooms', column: 'buyer_id' },
+      { table: 'chat_rooms', column: 'seller_id' },
+      { table: 'notifications', column: 'user_id' },
+      { table: 'transactions', column: 'buyer_id' },
+      { table: 'transactions', column: 'seller_id' },
+    ]
+
+    for (const t of tables) {
+      try {
+        if (t.sub) {
+          await env.DB.prepare(`DELETE FROM ${t.table} WHERE ${t.column} IN (${t.sub})`).bind(userId).run()
+        } else {
+          await env.DB.prepare(`DELETE FROM ${t.table} WHERE ${t.column} = ?`).bind(userId).run()
+        }
+      } catch (e) { /* テーブルが存在しない場合はスキップ */ }
+    }
+
+    // ユーザー本体を削除
+    await env.DB.prepare(`DELETE FROM users WHERE id = ?`).bind(userId).run()
+
+    return c.json({ success: true, message: `ユーザー「${(user as any).name}」を削除しました` })
+  } catch (error: any) {
+    console.error('ユーザー削除エラー:', error)
+    return c.json({ success: false, error: 'ユーザーの削除に失敗しました' }, 500)
+  }
+})
+
 // 取引一覧
 adminRoutes.get('/transactions', async (c) => {
   const { env } = c;
