@@ -1,64 +1,48 @@
-import { Resend } from 'resend';
+// メール送信設定（Resend API を fetch で直接呼び出し）
 
-export interface EmailEnv {
-  RESEND_API_KEY?: string;
+export const FROM_EMAIL = 'noreply@parts-hub-tci.com'
+export const FROM_NAME = 'PARTS HUB'
+export const SUPPORT_EMAIL = 'osaki.mf@gmail.com'
+export const SITE_URL = 'https://parts-hub-tci.com'
+
+export interface SendEmailParams {
+  to: string
+  subject: string
+  html: string
 }
 
-export function getResendClient(env: EmailEnv): Resend {
-  const apiKey = env.RESEND_API_KEY;
-  
+// Resend API を fetch で直接呼び出すメール送信関数
+export async function sendEmail(apiKey: string, params: SendEmailParams): Promise<{ success: boolean; id?: string; error?: string }> {
   if (!apiKey) {
-    throw new Error('RESEND_API_KEY is not configured');
+    console.error('RESEND_API_KEY is not configured')
+    return { success: false, error: 'RESEND_API_KEY is not configured' }
   }
-  
-  return new Resend(apiKey);
-}
 
-// メールテンプレート用の型定義
-export interface UserRegistrationEmail {
-  to: string;
-  userName: string;
-  verificationUrl?: string;
-}
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: `${FROM_NAME} <${FROM_EMAIL}>`,
+        to: [params.to],
+        subject: params.subject,
+        html: params.html,
+      }),
+    })
 
-export interface PasswordResetEmail {
-  to: string;
-  userName: string;
-  resetUrl: string;
-  expiresIn: string;
-}
+    const data = await res.json() as any
 
-export interface PurchaseNotificationBuyerEmail {
-  to: string;
-  buyerName: string;
-  productName: string;
-  amount: number;
-  transactionId: number;
-  orderDetailsUrl: string;
-}
+    if (!res.ok) {
+      console.error('Resend API error:', data)
+      return { success: false, error: data?.message || `HTTP ${res.status}` }
+    }
 
-export interface PurchaseNotificationSellerEmail {
-  to: string;
-  sellerName: string;
-  productName: string;
-  amount: number;
-  buyerName: string;
-  transactionId: number;
-  orderDetailsUrl: string;
+    return { success: true, id: data.id }
+  } catch (error: any) {
+    console.error('Email send error:', error)
+    return { success: false, error: error.message }
+  }
 }
-
-export interface TransactionStatusUpdateEmail {
-  to: string;
-  userName: string;
-  productName: string;
-  transactionId: number;
-  status: string;
-  statusText: string;
-  orderDetailsUrl: string;
-}
-
-// メール送信元情報
-export const FROM_EMAIL = 'noreply@parts-hub-tci.com';
-export const FROM_NAME = 'Parts Hub';
-export const SUPPORT_EMAIL = 'support@parts-hub-tci.com';
-export const SITE_URL = 'https://parts-hub-tci.com';

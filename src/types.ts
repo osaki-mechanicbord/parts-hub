@@ -13,6 +13,10 @@ export type Bindings = {
   // Stripe設定（将来実装）
   STRIPE_PUBLIC_KEY?: string
   STRIPE_SECRET_KEY?: string
+  // Resend メール送信
+  RESEND_API_KEY?: string
+  // JWT
+  JWT_SECRET?: string
 }
 
 // ユーザー型

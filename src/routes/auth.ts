@@ -7,9 +7,13 @@ import {
   isStrongPassword,
   authMiddleware 
 } from '../auth'
+import { sendEmail } from '../email-config'
+import * as tpl from '../email-templates'
 
 type Bindings = {
   DB: D1Database
+  RESEND_API_KEY?: string
+  JWT_SECRET?: string
 }
 
 const auth = new Hono<{ Bindings: Bindings }>()
@@ -78,18 +82,29 @@ auth.post('/register', async (c) => {
     const secret = (c.env as any)?.JWT_SECRET
     const token = await generateToken(userId as number, email, secret)
 
-    // 登録確認メール送信（非同期、エラーは無視）
+    // メールアドレス認証トークン生成＆メール送信
     try {
-      const resendKey = (c.env as any)?.RESEND_API_KEY
-      if (resendKey) {
-        await fetch(`${new URL(c.req.url).origin}/api/email/send-registration`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, userName: name })
-        })
+      const apiKey = (c.env as any)?.RESEND_API_KEY
+      if (apiKey) {
+        // 認証トークン生成
+        const verifyToken = crypto.randomUUID()
+        await c.env.DB.prepare(`
+          INSERT INTO auth_tokens (user_id, token, token_type, expires_at, created_at)
+          VALUES (?, ?, 'email_verify', datetime('now', '+24 hours'), datetime('now'))
+        `).bind(userId, verifyToken).run()
+
+        const verifyUrl = `https://parts-hub-tci.com/api/auth/verify-email?token=${verifyToken}`
+
+        // 1) メールアドレス認証メール
+        const verifyEmail = tpl.emailVerification({ userName: name, verifyUrl })
+        await sendEmail(apiKey, { to: email, ...verifyEmail })
+
+        // 2) 会員登録完了メール
+        const regEmail = tpl.registrationComplete({ userName: name })
+        await sendEmail(apiKey, { to: email, ...regEmail })
       }
     } catch (emailError) {
-      console.error('Failed to send registration email:', emailError)
+      console.error('Failed to send registration emails:', emailError)
       // メール送信失敗でも登録は成功とする
     }
 
@@ -118,6 +133,47 @@ auth.post('/register', async (c) => {
       success: false, 
       error: 'ユーザー登録に失敗しました' 
     }, 500)
+  }
+})
+
+// メールアドレス認証エンドポイント
+auth.get('/verify-email', async (c) => {
+  try {
+    const token = c.req.query('token')
+    if (!token) {
+      return c.html('<html><body style="text-align:center;padding:60px;font-family:sans-serif;"><h2>無効なリンクです</h2><p><a href="/">トップページに戻る</a></p></body></html>')
+    }
+
+    // トークン検索
+    const record = await c.env.DB.prepare(`
+      SELECT user_id FROM auth_tokens
+      WHERE token = ? AND token_type = 'email_verify' AND expires_at > datetime('now')
+    `).bind(token).first()
+
+    if (!record) {
+      return c.html('<html><body style="text-align:center;padding:60px;font-family:sans-serif;"><h2>リンクが無効または期限切れです</h2><p><a href="/">トップページに戻る</a></p></body></html>')
+    }
+
+    // メール認証済みに更新
+    await c.env.DB.prepare(`
+      UPDATE users SET is_verified = 1, updated_at = datetime('now') WHERE id = ?
+    `).bind(record.user_id).run()
+
+    // 使用済みトークンを削除
+    await c.env.DB.prepare(`
+      DELETE FROM auth_tokens WHERE token = ? AND token_type = 'email_verify'
+    `).bind(token).run()
+
+    return c.html(`<html><body style="text-align:center;padding:60px;font-family:sans-serif;">
+      <div style="max-width:400px;margin:0 auto;background:#f0fdf4;border:2px solid #22c55e;border-radius:12px;padding:40px;">
+        <h2 style="color:#16a34a;">✅ メールアドレスの認証が完了しました！</h2>
+        <p>ご確認ありがとうございます。</p>
+        <p><a href="/" style="display:inline-block;margin-top:16px;padding:12px 32px;background:#ef4444;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;">PARTS HUBに戻る</a></p>
+      </div>
+    </body></html>`)
+  } catch (error) {
+    console.error('Email verify error:', error)
+    return c.html('<html><body style="text-align:center;padding:60px;font-family:sans-serif;"><h2>認証処理でエラーが発生しました</h2><p><a href="/">トップページに戻る</a></p></body></html>')
   }
 })
 

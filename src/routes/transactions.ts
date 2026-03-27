@@ -1,8 +1,11 @@
 import { Hono } from 'hono'
+import { sendEmail } from '../email-config'
+import * as tpl from '../email-templates'
 
 type Bindings = {
   DB: D1Database
   R2: R2Bucket
+  RESEND_API_KEY?: string
 }
 
 const transactions = new Hono<{ Bindings: Bindings }>()
@@ -149,6 +152,33 @@ transactions.put('/:transactionId/status', async (c) => {
       transactionId,
       `/transactions/${transactionId}`
     ).run()
+
+    // 6) 発送済みの場合、購入者にメール通知
+    if (status === 'shipped' && (c.env as any).RESEND_API_KEY) {
+      try {
+        const txDetail = await DB.prepare(`
+          SELECT 
+            p.title as product_name,
+            buyer.name as buyer_name, buyer.email as buyer_email
+          FROM transactions t
+          JOIN products p ON t.product_id = p.id
+          JOIN users buyer ON t.buyer_id = buyer.id
+          WHERE t.id = ?
+        `).bind(transactionId).first()
+
+        if (txDetail) {
+          const mail = tpl.productShipped({
+            buyerName: txDetail.buyer_name as string,
+            productName: txDetail.product_name as string,
+            transactionId: parseInt(transactionId),
+            trackingNumber: tracking_number || undefined,
+          })
+          await sendEmail((c.env as any).RESEND_API_KEY, { to: txDetail.buyer_email as string, ...mail })
+        }
+      } catch (emailErr) {
+        console.error('Failed to send shipping notification email:', emailErr)
+      }
+    }
 
     return c.json({ success: true })
   } catch (error) {

@@ -7,11 +7,14 @@ import {
   STRIPE_CONFIG 
 } from '../stripe-config'
 import Stripe from 'stripe'
+import { sendEmail } from '../email-config'
+import * as tpl from '../email-templates'
 
 type Bindings = {
   DB: D1Database
   STRIPE_SECRET_KEY: string
   STRIPE_WEBHOOK_SECRET: string
+  RESEND_API_KEY?: string
 }
 
 const payment = new Hono<{ Bindings: Bindings }>()
@@ -308,24 +311,33 @@ payment.post('/webhook', async (c) => {
             WHERE t.id = ?
           `).bind(transactionId).first()
 
-          // 購入完了メール送信（非同期、エラーは無視）
-          if (txData) {
+          // メール送信（非同期、エラーは無視）
+          if (txData && (c.env as any).RESEND_API_KEY) {
             try {
-              await fetch(`${new URL(c.req.url).origin}/api/email/send-purchase-notification`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  buyerEmail: txData.buyer_email,
-                  buyerName: txData.buyer_name,
-                  sellerEmail: txData.seller_email,
-                  sellerName: txData.seller_name,
-                  productName: txData.product_name,
-                  amount: txData.amount,
-                  transactionId: txData.id
-                })
+              const apiKey = (c.env as any).RESEND_API_KEY
+              const txId = txData.id as number
+              const amount = txData.amount as number
+
+              // 3) 出品者向け: 商品が購入されました
+              const sellerMail = tpl.productPurchasedSeller({
+                sellerName: txData.seller_name as string,
+                productName: txData.product_name as string,
+                amount,
+                buyerName: txData.buyer_name as string,
+                transactionId: txId,
               })
+              await sendEmail(apiKey, { to: txData.seller_email as string, ...sellerMail })
+
+              // 4) 購入者向け: 決済完了
+              const buyerMail = tpl.paymentCompleteBuyer({
+                buyerName: txData.buyer_name as string,
+                productName: txData.product_name as string,
+                amount,
+                transactionId: txId,
+              })
+              await sendEmail(apiKey, { to: txData.buyer_email as string, ...buyerMail })
             } catch (emailError) {
-              console.error('Failed to send purchase notification email:', emailError)
+              console.error('Failed to send purchase notification emails:', emailError)
             }
           }
 

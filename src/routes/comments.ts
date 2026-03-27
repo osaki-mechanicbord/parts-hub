@@ -1,8 +1,11 @@
 import { Hono } from 'hono'
+import { sendEmail } from '../email-config'
+import * as tpl from '../email-templates'
 
 type Bindings = {
   DB: D1Database
   R2: R2Bucket
+  RESEND_API_KEY?: string
 }
 
 const comments = new Hono<{ Bindings: Bindings }>()
@@ -101,6 +104,34 @@ comments.post('/:productId', async (c) => {
         'product',
         `/products/${productId}`
       ).run()
+
+      // 5) 質問の場合は出品者にメール通知
+      if (is_question && (c.env as any).RESEND_API_KEY) {
+        try {
+          const seller = await DB.prepare(`
+            SELECT name, email FROM users WHERE id = ?
+          `).bind(product.seller_id).first()
+          const prod = await DB.prepare(`
+            SELECT title FROM products WHERE id = ?
+          `).bind(productId).first()
+          const questioner = await DB.prepare(`
+            SELECT COALESCE(company_name, nickname, name) as display_name FROM users WHERE id = ?
+          `).bind(user_id).first()
+
+          if (seller && prod && questioner) {
+            const mail = tpl.newQuestionToSeller({
+              sellerName: seller.name as string,
+              productName: prod.title as string,
+              productId: parseInt(productId),
+              buyerName: questioner.display_name as string,
+              question: comment_text.substring(0, 500),
+            })
+            await sendEmail((c.env as any).RESEND_API_KEY, { to: seller.email as string, ...mail })
+          }
+        } catch (emailErr) {
+          console.error('Failed to send question notification email:', emailErr)
+        }
+      }
     }
 
     return c.json({ success: true, data: { id: commentId } })
