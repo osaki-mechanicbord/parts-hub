@@ -803,6 +803,191 @@ adminPagesRoutes.get('/products', (c) => {
   return c.html(AdminLayout('products', '商品管理', content));
 })
 
+// 商品詳細ページ
+adminPagesRoutes.get('/products/:id', (c) => {
+  const content = `
+    <div class="mb-6">
+        <a href="/admin/products" class="text-red-500 hover:text-red-700"><i class="fas fa-arrow-left mr-2"></i>商品一覧に戻る</a>
+    </div>
+
+    <div id="loading" class="text-center py-12"><i class="fas fa-spinner fa-spin text-3xl text-gray-400"></i><p class="text-gray-500 mt-3">読み込み中...</p></div>
+    <div id="detail" class="hidden">
+        <!-- 基本情報 -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-2xl font-bold text-gray-800"><i class="fas fa-box mr-2"></i><span id="p-title"></span></h2>
+                <span id="p-status-badge" class="px-3 py-1 text-sm rounded-full font-semibold"></span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                <div><span class="text-gray-500">ID:</span> <span id="p-id" class="font-medium"></span></div>
+                <div><span class="text-gray-500">価格:</span> <span id="p-price" class="font-bold text-red-600"></span></div>
+                <div><span class="text-gray-500">状態:</span> <span id="p-condition" class="font-medium"></span></div>
+                <div><span class="text-gray-500">カテゴリ:</span> <span id="p-category" class="font-medium"></span></div>
+                <div><span class="text-gray-500">メーカー:</span> <span id="p-manufacturer" class="font-medium"></span></div>
+                <div><span class="text-gray-500">品番:</span> <span id="p-part-number" class="font-medium"></span></div>
+                <div><span class="text-gray-500">在庫:</span> <span id="p-stock" class="font-medium"></span></div>
+                <div><span class="text-gray-500">閲覧数:</span> <span id="p-views" class="font-medium"></span></div>
+                <div><span class="text-gray-500">お気に入り:</span> <span id="p-favs" class="font-medium"></span></div>
+                <div><span class="text-gray-500">出品日:</span> <span id="p-created" class="font-medium"></span></div>
+                <div><span class="text-gray-500">更新日:</span> <span id="p-updated" class="font-medium"></span></div>
+            </div>
+            <div id="p-desc-section" class="mt-4">
+                <span class="text-gray-500 text-sm">説明:</span>
+                <p id="p-desc" class="mt-1 text-gray-700 bg-gray-50 p-3 rounded whitespace-pre-wrap"></p>
+            </div>
+        </div>
+
+        <!-- 出品者情報 -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-3"><i class="fas fa-user mr-2"></i>出品者情報</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div><span class="text-gray-500">名前:</span> <a id="p-seller-name" href="#" class="text-blue-500 hover:underline font-medium"></a></div>
+                <div><span class="text-gray-500">メール:</span> <span id="p-seller-email" class="font-medium"></span></div>
+                <div><span class="text-gray-500">会社:</span> <span id="p-seller-company" class="font-medium"></span></div>
+            </div>
+        </div>
+
+        <!-- 商品画像 -->
+        <div id="images-section" class="bg-white rounded-lg shadow mb-6 hidden">
+            <div class="p-4 border-b"><h3 class="text-lg font-bold text-gray-800"><i class="fas fa-images mr-2"></i>商品画像</h3></div>
+            <div id="p-images" class="p-4 flex flex-wrap gap-3"></div>
+        </div>
+
+        <!-- アクション -->
+        <div class="bg-white rounded-lg shadow p-4 mb-6 flex flex-wrap gap-3">
+            <button id="btn-activate" onclick="changeStatus('active')" class="px-4 py-2 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600">出品中にする</button>
+            <button id="btn-suspend" onclick="changeStatus('suspended')" class="px-4 py-2 bg-yellow-500 text-white rounded-lg font-semibold hover:bg-yellow-600">停止する</button>
+            <button id="btn-delete" onclick="deleteProduct()" class="px-4 py-2 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600">削除する</button>
+            <a id="btn-view" href="#" target="_blank" class="px-4 py-2 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600 inline-flex items-center"><i class="fas fa-external-link-alt mr-2"></i>商品ページを見る</a>
+        </div>
+
+        <!-- 適合情報 -->
+        <div id="compat-section" class="bg-white rounded-lg shadow mb-6 hidden">
+            <div class="p-4 border-b"><h3 class="text-lg font-bold text-gray-800"><i class="fas fa-car mr-2"></i>適合情報</h3></div>
+            <div id="p-compat" class="p-4"></div>
+        </div>
+
+        <!-- 取引履歴 -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="p-4 border-b"><h3 class="text-lg font-bold text-gray-800"><i class="fas fa-exchange-alt mr-2"></i>取引履歴</h3></div>
+            <div id="p-transactions" class="p-4">
+                <p class="text-gray-500 text-center py-4">読み込み中...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let productData = null;
+        const productId = window.location.pathname.split('/').pop();
+
+        async function loadProductDetail() {
+            try {
+                const res = await axios.get('/api/admin/products/' + productId);
+                if (!res.data.success) throw new Error(res.data.error);
+                productData = res.data.product;
+                renderDetail(res.data);
+            } catch (err) {
+                console.error(err);
+                document.getElementById('loading').innerHTML =
+                    '<p class="text-red-500"><i class="fas fa-exclamation-circle mr-2"></i>' + (err.response?.data?.error || '商品情報の取得に失敗しました') + '</p>';
+            }
+        }
+
+        function statusBadge(s) {
+            const m = { active: ['出品中','bg-green-100 text-green-700'], sold: ['売却済','bg-blue-100 text-blue-700'], suspended: ['停止中','bg-yellow-100 text-yellow-700'], deleted: ['削除済','bg-red-100 text-red-700'] };
+            return m[s] || [s, 'bg-gray-100 text-gray-700'];
+        }
+
+        function conditionLabel(c) {
+            const m = { new: '新品', like_new: '未使用に近い', good: '目立った傷なし', fair: 'やや傷あり', poor: '状態が悪い' };
+            return m[c] || c || '-';
+        }
+
+        function renderDetail(data) {
+            const p = data.product;
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('detail').classList.remove('hidden');
+
+            document.getElementById('p-title').textContent = p.title;
+            document.getElementById('p-id').textContent = p.id;
+            document.getElementById('p-price').textContent = '¥' + (p.price || 0).toLocaleString();
+            document.getElementById('p-condition').textContent = conditionLabel(p.condition);
+            document.getElementById('p-category').textContent = p.category || '-';
+            document.getElementById('p-manufacturer').textContent = p.manufacturer || '-';
+            document.getElementById('p-part-number').textContent = p.part_number || '-';
+            document.getElementById('p-stock').textContent = (p.stock_quantity != null ? p.stock_quantity : 1) + '個';
+            document.getElementById('p-views').textContent = (p.view_count || p.views || 0) + '回';
+            document.getElementById('p-favs').textContent = (data.favorite_count || 0) + '件';
+            document.getElementById('p-created').textContent = new Date(p.created_at).toLocaleString('ja-JP');
+            document.getElementById('p-updated').textContent = new Date(p.updated_at).toLocaleString('ja-JP');
+            document.getElementById('p-desc').textContent = p.description || '（説明なし）';
+
+            const sb = statusBadge(p.status);
+            const badge = document.getElementById('p-status-badge');
+            badge.textContent = sb[0]; badge.className = 'px-3 py-1 text-sm rounded-full font-semibold ' + sb[1];
+
+            // 出品者
+            document.getElementById('p-seller-name').textContent = p.seller_name || '-';
+            document.getElementById('p-seller-name').href = '/admin/users/' + p.user_id;
+            document.getElementById('p-seller-email').textContent = p.seller_email || '-';
+            document.getElementById('p-seller-company').textContent = p.seller_company || '-';
+
+            // 商品ページリンク
+            document.getElementById('btn-view').href = '/products/' + p.id;
+
+            // 画像
+            const images = data.images || [];
+            if (images.length > 0) {
+                document.getElementById('images-section').classList.remove('hidden');
+                document.getElementById('p-images').innerHTML = images.map(function(img) {
+                    return '<img src="' + img.image_url + '" class="w-32 h-32 object-cover rounded-lg border" onerror="this.style.display=\\'none\\'">';
+                }).join('');
+            }
+
+            // 適合情報
+            const compat = data.compatibility || [];
+            if (compat.length > 0) {
+                document.getElementById('compat-section').classList.remove('hidden');
+                document.getElementById('p-compat').innerHTML = '<table class="w-full text-sm"><thead><tr class="text-left text-gray-500 border-b"><th class="pb-2">メーカー</th><th class="pb-2">車種</th><th class="pb-2">年式</th><th class="pb-2">型式</th><th class="pb-2">OEM品番</th></tr></thead><tbody>' +
+                    compat.map(function(c) { return '<tr class="border-b"><td class="py-2">' + (c.maker_name || c.maker_id || '-') + '</td><td class="py-2">' + (c.model_name || c.model_id || '-') + '</td><td class="py-2">' + (c.year_from || '?') + '-' + (c.year_to || '?') + '</td><td class="py-2">' + (c.model_code || '-') + '</td><td class="py-2">' + (c.oem_part_number || '-') + '</td></tr>'; }).join('') +
+                    '</tbody></table>';
+            }
+
+            // 取引
+            const txs = data.transactions || [];
+            document.getElementById('p-transactions').innerHTML = txs.length === 0
+                ? '<p class="text-gray-500 text-center py-4">取引履歴はありません</p>'
+                : '<table class="w-full text-sm"><thead><tr class="text-left text-gray-500 border-b"><th class="pb-2">ID</th><th class="pb-2">購入者</th><th class="pb-2">金額</th><th class="pb-2">ステータス</th><th class="pb-2">日付</th></tr></thead><tbody>' +
+                  txs.map(function(t) { return '<tr class="border-b hover:bg-gray-50"><td class="py-2">' + t.id + '</td><td class="py-2">' + (t.buyer_name || '-') + '</td><td class="py-2">¥' + t.amount.toLocaleString() + '</td><td class="py-2">' + t.status + '</td><td class="py-2">' + new Date(t.created_at).toLocaleDateString('ja-JP') + '</td></tr>'; }).join('') +
+                  '</tbody></table>';
+        }
+
+        async function changeStatus(newStatus) {
+            const labels = { active: '出品中に', suspended: '停止に' };
+            if (!confirm('この商品を' + (labels[newStatus] || newStatus) + 'しますか？')) return;
+            try {
+                await axios.put('/api/admin/products/' + productId + '/status', { status: newStatus });
+                alert('商品ステータスを更新しました');
+                loadProductDetail();
+            } catch (err) { alert('ステータス更新に失敗しました'); }
+        }
+
+        async function deleteProduct() {
+            if (!confirm('この商品を完全に削除しますか？この操作は元に戻せません。')) return;
+            try {
+                await axios.delete('/api/admin/products/' + productId);
+                alert('商品を削除しました');
+                window.location.href = '/admin/products';
+            } catch (err) { alert('商品の削除に失敗しました'); }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadProductDetail);
+    </script>
+  `;
+
+  return c.html(AdminLayout('products', '商品詳細', content));
+});
+
 // 取引管理ページ
 adminPagesRoutes.get('/transactions', (c) => {
   const content = `

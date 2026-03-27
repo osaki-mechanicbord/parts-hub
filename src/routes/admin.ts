@@ -557,6 +557,78 @@ adminRoutes.get('/products', async (c) => {
   }
 });
 
+// 商品詳細取得
+adminRoutes.get('/products/:id', async (c) => {
+  const { env } = c
+  const productId = c.req.param('id')
+
+  try {
+    const product = await env.DB.prepare(`
+      SELECT p.*, u.name as seller_name, u.email as seller_email, u.company_name as seller_company,
+             u.shop_type as seller_shop_type, u.phone as seller_phone
+      FROM products p
+      LEFT JOIN users u ON p.user_id = u.id
+      WHERE p.id = ?
+    `).bind(productId).first()
+
+    if (!product) {
+      return c.json({ success: false, error: '商品が見つかりません' }, 404)
+    }
+
+    // 商品画像（テーブルが存在しない場合も考慮）
+    let images: any[] = []
+    try {
+      const imgRes = await env.DB.prepare(
+        `SELECT id, image_url, sort_order FROM product_images WHERE product_id = ? ORDER BY sort_order`
+      ).bind(productId).all()
+      images = imgRes.results || []
+    } catch (e) { /* テーブル未作成の場合はスキップ */ }
+
+    // 適合情報
+    let compatibility: any[] = []
+    try {
+      const compatRes = await env.DB.prepare(
+        `SELECT * FROM product_compatibility WHERE product_id = ?`
+      ).bind(productId).all()
+      compatibility = compatRes.results || []
+    } catch (e) { /* テーブル未作成の場合はスキップ */ }
+
+    // お気に入り数
+    let favoriteCount = 0
+    try {
+      const favCount = await env.DB.prepare(
+        `SELECT COUNT(*) as count FROM favorites WHERE product_id = ?`
+      ).bind(productId).first()
+      favoriteCount = (favCount?.count as number) || 0
+    } catch (e) { /* テーブル未作成の場合はスキップ */ }
+
+    // 取引
+    let transactions: any[] = []
+    try {
+      const txRes = await env.DB.prepare(`
+        SELECT t.id, t.amount, t.status, t.created_at, buyer.name as buyer_name
+        FROM transactions t
+        LEFT JOIN users buyer ON t.buyer_id = buyer.id
+        WHERE t.product_id = ?
+        ORDER BY t.created_at DESC
+      `).bind(productId).all()
+      transactions = txRes.results || []
+    } catch (e) { /* テーブル未作成の場合はスキップ */ }
+
+    return c.json({
+      success: true,
+      product,
+      images,
+      compatibility,
+      favorite_count: favoriteCount,
+      transactions
+    })
+  } catch (error: any) {
+    console.error('商品詳細取得エラー:', error)
+    return c.json({ success: false, error: '商品詳細の取得に失敗しました' }, 500)
+  }
+})
+
 // 商品ステータス更新
 adminRoutes.put('/products/:id/status', async (c) => {
   const { env } = c;
