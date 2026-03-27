@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         const res = await axios.get('/api/auth/me', getAuthHeaders());
         if (res.data.success) {
-            userData = res.data.data;
+            userData = res.data.user || res.data.data;
             currentUserId = userData.id;
             
             // ユーザー名を即座に表示
@@ -88,8 +88,13 @@ async function loadUserStats() {
 function renderUserStats() {
     const el = (id) => document.getElementById(id);
     
+    // shop_name: statsDataの値を優先的に使い、なければuserDataの値を維持
     if (el('user-shop-name') && statsData.shop_name) {
         el('user-shop-name').textContent = statsData.shop_name;
+    }
+    // shop_type: statsDataから取得して表示（カテゴリ選択結果を反映）
+    if (el('user-shop-type') && statsData.shop_type) {
+        el('user-shop-type').textContent = getShopTypeLabel(statsData.shop_type);
     }
     if (el('user-rating')) el('user-rating').textContent = statsData.average_rating || '0.0';
     if (el('review-count')) el('review-count').textContent = statsData.review_count || '0';

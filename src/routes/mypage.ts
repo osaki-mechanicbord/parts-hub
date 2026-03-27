@@ -134,12 +134,14 @@ mypage.get('/stats/:userId', async (c) => {
     }
 
     // ユーザー名と店舗情報
-    let shop_name = '整備工場';
+    let shop_name = 'マイショップ';
+    let shop_type = 'individual';
     try {
       const user = await DB.prepare(`
-        SELECT company_name, nickname, name FROM users WHERE id = ?
+        SELECT company_name, nickname, name, shop_type FROM users WHERE id = ?
       `).bind(userId).first()
-      shop_name = user?.company_name || user?.nickname || user?.name || '整備工場'
+      shop_name = user?.company_name || user?.nickname || user?.name || 'マイショップ'
+      shop_type = user?.shop_type || 'individual'
     } catch (error) {
       console.error('user info error:', error)
     }
@@ -148,6 +150,7 @@ mypage.get('/stats/:userId', async (c) => {
       success: true,
       data: {
         shop_name,
+        shop_type,
         listing_count,
         sold_count,
         purchase_count,

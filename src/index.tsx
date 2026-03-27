@@ -2306,6 +2306,7 @@ app.get('/register', (c) => {
                                 <option value="dealer">ディーラー</option>
                                 <option value="parts_shop">パーツショップ</option>
                                 <option value="recycler">リサイクルショップ</option>
+                                <option value="scrapyard">解体業者</option>
                                 <option value="individual">個人</option>
                             </select>
                         </div>
@@ -4371,6 +4372,7 @@ app.get('/profile/edit', (c) => {
                                 <option value="factory">整備工場</option>
                                 <option value="dealer">ディーラー</option>
                                 <option value="parts_shop">パーツショップ</option>
+                                <option value="recycler">リサイクルショップ</option>
                                 <option value="scrapyard">解体業者</option>
                                 <option value="individual">個人</option>
                             </select>

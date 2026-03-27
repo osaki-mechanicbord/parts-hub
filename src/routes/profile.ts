@@ -164,7 +164,7 @@ profile.put('/me', async (c) => {
 
     // 更新後のユーザー情報をlocalStorageと同期するためにレスポンスに含める
     const updated = await DB.prepare(`
-      SELECT id, name, nickname, email, phone, company_name
+      SELECT id, name, nickname, email, phone, company_name, shop_type
       FROM users WHERE id = ?
     `).bind(userId).first()
 
