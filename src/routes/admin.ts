@@ -595,6 +595,62 @@ adminRoutes.delete('/products/:id', async (c) => {
   }
 });
 
+// ユーザー詳細取得
+adminRoutes.get('/users/:id', async (c) => {
+  const { env } = c
+  const userId = c.req.param('id')
+
+  try {
+    const user = await env.DB.prepare(`
+      SELECT 
+        u.*,
+        COUNT(DISTINCT p.id) as products_count,
+        COUNT(DISTINCT CASE WHEN p.status = 'active' THEN p.id END) as active_products_count,
+        COUNT(DISTINCT CASE WHEN p.status = 'sold' THEN p.id END) as sold_products_count,
+        COUNT(DISTINCT t.id) as transactions_count
+      FROM users u
+      LEFT JOIN products p ON u.id = p.user_id
+      LEFT JOIN transactions t ON u.id = t.buyer_id OR u.id = t.seller_id
+      WHERE u.id = ?
+      GROUP BY u.id
+    `).bind(userId).first()
+
+    if (!user) {
+      return c.json({ success: false, error: 'ユーザーが見つかりません' }, 404)
+    }
+
+    // パスワードハッシュを除外
+    delete (user as any).password_hash
+
+    // ユーザーの出品商品を取得
+    const products = await env.DB.prepare(`
+      SELECT id, title, price, status, created_at
+      FROM products WHERE user_id = ?
+      ORDER BY created_at DESC LIMIT 20
+    `).bind(userId).all()
+
+    // ユーザーの取引履歴を取得
+    const transactions = await env.DB.prepare(`
+      SELECT t.id, t.amount, t.status, t.created_at, p.title as product_title,
+             CASE WHEN t.buyer_id = ? THEN '購入' ELSE '販売' END as role
+      FROM transactions t
+      LEFT JOIN products p ON t.product_id = p.id
+      WHERE t.buyer_id = ? OR t.seller_id = ?
+      ORDER BY t.created_at DESC LIMIT 20
+    `).bind(userId, userId, userId).all()
+
+    return c.json({
+      success: true,
+      user,
+      products: products.results || [],
+      transactions: transactions.results || []
+    })
+  } catch (error: any) {
+    console.error('ユーザー詳細取得エラー:', error)
+    return c.json({ success: false, error: 'ユーザー詳細の取得に失敗しました' }, 500)
+  }
+})
+
 // ユーザーステータス更新
 adminRoutes.put('/users/:id/status', async (c) => {
   const { env } = c;

@@ -450,6 +450,183 @@ adminPagesRoutes.get('/users', (c) => {
   return c.html(AdminLayout('users', 'ユーザー管理', content));
 });
 
+// ユーザー詳細ページ
+adminPagesRoutes.get('/users/:id', (c) => {
+  const content = `
+    <div class="mb-6">
+        <a href="/admin/users" class="text-red-500 hover:text-red-700"><i class="fas fa-arrow-left mr-2"></i>ユーザー一覧に戻る</a>
+    </div>
+
+    <div id="user-loading" class="text-center py-12"><i class="fas fa-spinner fa-spin text-3xl text-gray-400"></i><p class="text-gray-500 mt-3">読み込み中...</p></div>
+    <div id="user-detail" class="hidden">
+        <!-- 基本情報 -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-2xl font-bold text-gray-800"><i class="fas fa-user mr-2"></i><span id="u-name"></span></h2>
+                <span id="u-status-badge" class="px-3 py-1 text-sm rounded-full font-semibold"></span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                <div><span class="text-gray-500">メール:</span> <span id="u-email" class="font-medium"></span></div>
+                <div><span class="text-gray-500">電話:</span> <span id="u-phone" class="font-medium"></span></div>
+                <div><span class="text-gray-500">会社名:</span> <span id="u-company" class="font-medium"></span></div>
+                <div><span class="text-gray-500">ショップ種別:</span> <span id="u-shop-type" class="font-medium"></span></div>
+                <div><span class="text-gray-500">都道府県:</span> <span id="u-pref" class="font-medium"></span></div>
+                <div><span class="text-gray-500">評価:</span> <span id="u-rating" class="font-medium"></span></div>
+                <div><span class="text-gray-500">認証:</span> <span id="u-verified" class="font-medium"></span></div>
+                <div><span class="text-gray-500">登録日:</span> <span id="u-created" class="font-medium"></span></div>
+                <div><span class="text-gray-500">更新日:</span> <span id="u-updated" class="font-medium"></span></div>
+            </div>
+            <div id="u-bio-section" class="mt-4 hidden">
+                <span class="text-gray-500 text-sm">自己紹介:</span>
+                <p id="u-bio" class="mt-1 text-gray-700 bg-gray-50 p-3 rounded"></p>
+            </div>
+        </div>
+
+        <!-- 統計カード -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-blue-50 rounded-lg p-4 text-center">
+                <p class="text-2xl font-bold text-blue-600" id="u-products-count">0</p>
+                <p class="text-sm text-gray-600">総出品数</p>
+            </div>
+            <div class="bg-green-50 rounded-lg p-4 text-center">
+                <p class="text-2xl font-bold text-green-600" id="u-active-count">0</p>
+                <p class="text-sm text-gray-600">出品中</p>
+            </div>
+            <div class="bg-purple-50 rounded-lg p-4 text-center">
+                <p class="text-2xl font-bold text-purple-600" id="u-sold-count">0</p>
+                <p class="text-sm text-gray-600">売却済み</p>
+            </div>
+            <div class="bg-orange-50 rounded-lg p-4 text-center">
+                <p class="text-2xl font-bold text-orange-600" id="u-tx-count">0</p>
+                <p class="text-sm text-gray-600">取引数</p>
+            </div>
+        </div>
+
+        <!-- アクション -->
+        <div class="bg-white rounded-lg shadow p-4 mb-6 flex flex-wrap gap-3">
+            <button id="btn-toggle-status" onclick="toggleStatus()" class="px-4 py-2 rounded-lg font-semibold text-white"></button>
+        </div>
+
+        <!-- 出品商品 -->
+        <div class="bg-white rounded-lg shadow mb-6">
+            <div class="p-4 border-b"><h3 class="text-lg font-bold text-gray-800"><i class="fas fa-box mr-2"></i>出品商品</h3></div>
+            <div id="u-products" class="p-4">
+                <p class="text-gray-500 text-center py-4">読み込み中...</p>
+            </div>
+        </div>
+
+        <!-- 取引履歴 -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="p-4 border-b"><h3 class="text-lg font-bold text-gray-800"><i class="fas fa-exchange-alt mr-2"></i>取引履歴</h3></div>
+            <div id="u-transactions" class="p-4">
+                <p class="text-gray-500 text-center py-4">読み込み中...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let userData = null;
+        const userId = window.location.pathname.split('/').pop();
+
+        async function loadUserDetail() {
+            try {
+                const res = await axios.get('/api/admin/users/' + userId);
+                if (!res.data.success) throw new Error(res.data.error);
+                userData = res.data.user;
+                renderUserDetail(res.data);
+            } catch (err) {
+                console.error(err);
+                document.getElementById('user-loading').innerHTML =
+                    '<p class="text-red-500"><i class="fas fa-exclamation-circle mr-2"></i>' + (err.response?.data?.error || 'ユーザー情報の取得に失敗しました') + '</p>';
+            }
+        }
+
+        function renderUserDetail(data) {
+            const u = data.user;
+            document.getElementById('user-loading').classList.add('hidden');
+            document.getElementById('user-detail').classList.remove('hidden');
+
+            document.getElementById('u-name').textContent = u.name;
+            document.getElementById('u-email').textContent = u.email;
+            document.getElementById('u-phone').textContent = u.phone || '-';
+            document.getElementById('u-company').textContent = u.company_name || '-';
+            document.getElementById('u-shop-type').textContent = u.shop_type === 'dealer' ? '販売店' : u.shop_type === 'repair' ? '整備工場' : '個人';
+            document.getElementById('u-pref').textContent = u.prefecture || '-';
+            document.getElementById('u-rating').textContent = u.rating ? u.rating.toFixed(1) + ' / 5.0' : '未評価';
+            document.getElementById('u-verified').textContent = u.is_verified ? '認証済み' : '未認証';
+            document.getElementById('u-created').textContent = new Date(u.created_at).toLocaleString('ja-JP');
+            document.getElementById('u-updated').textContent = new Date(u.updated_at).toLocaleString('ja-JP');
+
+            if (u.bio) {
+                document.getElementById('u-bio').textContent = u.bio;
+                document.getElementById('u-bio-section').classList.remove('hidden');
+            }
+
+            // ステータスバッジ
+            const badge = document.getElementById('u-status-badge');
+            if (u.status === 'active') {
+                badge.textContent = '有効'; badge.className = 'px-3 py-1 text-sm rounded-full font-semibold bg-green-100 text-green-700';
+            } else if (u.status === 'suspended') {
+                badge.textContent = '停止中'; badge.className = 'px-3 py-1 text-sm rounded-full font-semibold bg-yellow-100 text-yellow-700';
+            } else {
+                badge.textContent = '禁止'; badge.className = 'px-3 py-1 text-sm rounded-full font-semibold bg-red-100 text-red-700';
+            }
+
+            // 統計
+            document.getElementById('u-products-count').textContent = u.products_count || 0;
+            document.getElementById('u-active-count').textContent = u.active_products_count || 0;
+            document.getElementById('u-sold-count').textContent = u.sold_products_count || 0;
+            document.getElementById('u-tx-count').textContent = u.transactions_count || 0;
+
+            // アクションボタン
+            const btn = document.getElementById('btn-toggle-status');
+            if (u.status === 'active') {
+                btn.textContent = 'アカウント停止'; btn.className = 'px-4 py-2 rounded-lg font-semibold text-white bg-yellow-500 hover:bg-yellow-600';
+            } else {
+                btn.textContent = 'アカウント有効化'; btn.className = 'px-4 py-2 rounded-lg font-semibold text-white bg-green-500 hover:bg-green-600';
+            }
+
+            // 出品商品
+            const products = data.products || [];
+            document.getElementById('u-products').innerHTML = products.length === 0
+                ? '<p class="text-gray-500 text-center py-4">出品商品はありません</p>'
+                : '<table class="w-full text-sm"><thead><tr class="text-left text-gray-500 border-b"><th class="pb-2">ID</th><th class="pb-2">商品名</th><th class="pb-2">価格</th><th class="pb-2">ステータス</th><th class="pb-2">出品日</th></tr></thead><tbody>' +
+                  products.map(p => '<tr class="border-b hover:bg-gray-50"><td class="py-2">' + p.id + '</td><td class="py-2"><a href="/admin/products/' + p.id + '" class="text-blue-500 hover:underline">' + p.title + '</a></td><td class="py-2">&yen;' + p.price.toLocaleString() + '</td><td class="py-2"><span class="px-2 py-0.5 text-xs rounded ' +
+                    (p.status === 'active' ? 'bg-green-100 text-green-700' : p.status === 'sold' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600') + '">' +
+                    (p.status === 'active' ? '出品中' : p.status === 'sold' ? '売却済' : p.status) + '</span></td><td class="py-2">' + new Date(p.created_at).toLocaleDateString('ja-JP') + '</td></tr>').join('') +
+                  '</tbody></table>';
+
+            // 取引履歴
+            const txs = data.transactions || [];
+            document.getElementById('u-transactions').innerHTML = txs.length === 0
+                ? '<p class="text-gray-500 text-center py-4">取引履歴はありません</p>'
+                : '<table class="w-full text-sm"><thead><tr class="text-left text-gray-500 border-b"><th class="pb-2">ID</th><th class="pb-2">種別</th><th class="pb-2">商品</th><th class="pb-2">金額</th><th class="pb-2">ステータス</th><th class="pb-2">日付</th></tr></thead><tbody>' +
+                  txs.map(t => '<tr class="border-b hover:bg-gray-50"><td class="py-2">' + t.id + '</td><td class="py-2"><span class="px-2 py-0.5 text-xs rounded ' +
+                    (t.role === '購入' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700') + '">' + t.role + '</span></td><td class="py-2">' + (t.product_title || '-') + '</td><td class="py-2">&yen;' + t.amount.toLocaleString() + '</td><td class="py-2">' + t.status + '</td><td class="py-2">' + new Date(t.created_at).toLocaleDateString('ja-JP') + '</td></tr>').join('') +
+                  '</tbody></table>';
+        }
+
+        async function toggleStatus() {
+            if (!userData) return;
+            const newStatus = userData.status === 'active' ? 'suspended' : 'active';
+            const action = newStatus === 'active' ? '有効化' : '停止';
+            if (!confirm('このユーザーを' + action + 'しますか？')) return;
+            try {
+                await axios.put('/api/admin/users/' + userId + '/status', { status: newStatus });
+                alert('ユーザーを' + action + 'しました');
+                loadUserDetail();
+            } catch (err) {
+                alert('ステータス更新に失敗しました');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadUserDetail);
+    </script>
+  `;
+
+  return c.html(AdminLayout('users', 'ユーザー詳細', content));
+});
+
 // 商品管理ページ
 adminPagesRoutes.get('/products', (c) => {
   const content = `
