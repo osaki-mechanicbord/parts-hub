@@ -679,19 +679,50 @@ adminRoutes.put('/products/:id/status', async (c) => {
   }
 });
 
-// 商品削除
+// 商品削除（ソフトデリート → 完全削除の2段階）
 adminRoutes.delete('/products/:id', async (c) => {
   const { env } = c;
   const productId = c.req.param('id');
+  const forceDelete = c.req.query('force') === 'true';
   
   try {
-    // 関連テーブルのデータを先に削除（外部キー制約対応）
+    // 取引データがあるかチェック
+    let hasTransactions = false;
+    try {
+      const txCount = await env.DB.prepare(
+        'SELECT COUNT(*) as count FROM transactions WHERE product_id = ?'
+      ).bind(productId).first();
+      hasTransactions = (txCount?.count as number) > 0;
+    } catch (e) { /* テーブル未作成の場合はスキップ */ }
+
+    if (hasTransactions && !forceDelete) {
+      // 取引データがある場合はソフトデリート（status='deleted'に変更）
+      await env.DB.prepare(`
+        UPDATE products SET status = 'deleted', updated_at = CURRENT_TIMESTAMP WHERE id = ?
+      `).bind(productId).run();
+
+      // 関連するお気に入り・コメント等はクリーンアップ
+      const cleanupTables = [
+        'favorites',
+        'product_comments',
+        'price_negotiations',
+        'price_history',
+      ];
+      for (const table of cleanupTables) {
+        try {
+          await env.DB.prepare(`DELETE FROM ${table} WHERE product_id = ?`).bind(productId).run();
+        } catch (e) { /* スキップ */ }
+      }
+
+      return c.json({ success: true, message: '商品を削除済みにしました（取引履歴があるためソフトデリート）' });
+    }
+
+    // 完全削除：関連テーブルのデータを先に削除（外部キー制約対応）
     const relatedTables = [
       'product_images',
       'product_compatibility',
       'favorites',
       'product_comments',
-      'chat_messages',
       'price_negotiations',
       'price_history',
       'fitment_confirmations',
@@ -702,49 +733,41 @@ adminRoutes.delete('/products/:id', async (c) => {
       try {
         await env.DB.prepare(`DELETE FROM ${table} WHERE product_id = ?`).bind(productId).run();
       } catch (e) {
-        // テーブルが存在しない場合はスキップ
         console.log(`テーブル ${table} の削除をスキップ:`, e);
       }
     }
 
-    // chat_rooms は product_id カラムがある場合のみ
+    // chat_rooms と chat_messages
     try {
-      await env.DB.prepare(`DELETE FROM chat_rooms WHERE product_id = ?`).bind(productId).run();
+      // まず chat_rooms の ID を取得して chat_messages を削除
+      const rooms = await env.DB.prepare('SELECT id FROM chat_rooms WHERE product_id = ?').bind(productId).all();
+      if (rooms.results && rooms.results.length > 0) {
+        for (const room of rooms.results) {
+          await env.DB.prepare('DELETE FROM chat_messages WHERE room_id = ?').bind(room.id).run();
+        }
+      }
+      await env.DB.prepare('DELETE FROM chat_rooms WHERE product_id = ?').bind(productId).run();
     } catch (e) {
-      console.log('chat_rooms の削除をスキップ:', e);
+      console.log('chat関連の削除をスキップ:', e);
     }
 
-    // notifications は product_id がある場合
+    // notifications
     try {
-      await env.DB.prepare(`DELETE FROM notifications WHERE product_id = ?`).bind(productId).run();
-    } catch (e) {
-      // product_id カラムがない場合はスキップ
-    }
+      await env.DB.prepare('DELETE FROM notifications WHERE product_id = ?').bind(productId).run();
+    } catch (e) { /* スキップ */ }
 
-    // transactions は外部キー制約があるが、取引データは保持すべきなので product_id を NULL に
+    // reports の product_id を NULL に（NULLableカラムの場合）
     try {
-      await env.DB.prepare(`UPDATE transactions SET product_id = NULL WHERE product_id = ?`).bind(productId).run();
-    } catch (e) {
-      console.log('transactions の更新をスキップ:', e);
-    }
-
-    // reports の product_id を NULL に
-    try {
-      await env.DB.prepare(`UPDATE reports SET product_id = NULL WHERE product_id = ?`).bind(productId).run();
-    } catch (e) {
-      console.log('reports の更新をスキップ:', e);
-    }
+      await env.DB.prepare('UPDATE reports SET product_id = NULL WHERE product_id = ?').bind(productId).run();
+    } catch (e) { /* スキップ */ }
 
     // 商品本体を削除
-    await env.DB.prepare(`
-      DELETE FROM products
-      WHERE id = ?
-    `).bind(productId).run();
+    await env.DB.prepare('DELETE FROM products WHERE id = ?').bind(productId).run();
 
-    return c.json({ success: true, message: '商品を削除しました' });
+    return c.json({ success: true, message: '商品を完全に削除しました' });
   } catch (error) {
     console.error('商品削除エラー:', error);
-    return c.json({ error: '商品の削除に失敗しました' }, 500);
+    return c.json({ error: '商品の削除に失敗しました: ' + (error as any)?.message }, 500);
   }
 });
 
