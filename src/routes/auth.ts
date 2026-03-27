@@ -103,7 +103,12 @@ auth.post('/register', async (c) => {
         nickname: displayName,
         email: email,
         phone: phone,
-        company_name: companyOrShop
+        company_name: companyOrShop,
+        shop_type: shop_type || 'individual',
+        postal_code: postal_code || null,
+        prefecture: prefecture || null,
+        city: city || null,
+        address: address || null
       }
     }, 201)
 
@@ -131,7 +136,8 @@ auth.post('/login', async (c) => {
 
     // ユーザー検索
     const user = await c.env.DB.prepare(`
-      SELECT id, name, email, password_hash, phone, company_name, nickname, status
+      SELECT id, name, email, password_hash, phone, company_name, nickname, status,
+             shop_type, postal_code, prefecture, city, address
       FROM users
       WHERE email = ?
     `).bind(email).first()
@@ -188,7 +194,12 @@ auth.post('/login', async (c) => {
         email: user.email,
         phone: user.phone,
         company_name: user.company_name,
-        status: user.status
+        status: user.status,
+        shop_type: user.shop_type,
+        postal_code: user.postal_code,
+        prefecture: user.prefecture,
+        city: user.city,
+        address: user.address
       }
     })
 
