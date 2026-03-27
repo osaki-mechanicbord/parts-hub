@@ -313,8 +313,8 @@ adminPagesRoutes.get('/users', (c) => {
                     sort: currentSort
                 });
                 
-                const response = await fetch('/api/admin/users?' + params);
-                const data = await response.json();
+                const response = await axios.get('/api/admin/users?' + params);
+                const data = response.data;
                 
                 if (!data.users) {
                     throw new Error('Invalid response format');
@@ -426,18 +426,9 @@ adminPagesRoutes.get('/users', (c) => {
             }
             
             try {
-                const response = await fetch(\`/api/admin/users/\${id}/status\`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ status: newStatus })
-                });
-                
-                if (response.ok) {
-                    alert(\`ユーザーを\${action}しました\`);
-                    loadUsers(currentPage);
-                } else {
-                    throw new Error('Status update failed');
-                }
+                await axios.put(\`/api/admin/users/\${id}/status\`, { status: newStatus });
+                alert(\`ユーザーを\${action}しました\`);
+                loadUsers(currentPage);
             } catch (error) {
                 console.error('ステータス更新エラー:', error);
                 alert('ステータスの更新に失敗しました');
