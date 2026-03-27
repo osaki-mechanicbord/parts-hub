@@ -3,6 +3,13 @@ import type { Bindings } from '../types'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
+// R2キーを表示用URLに変換するヘルパー
+function toImageUrl(key: string | null | undefined): string | null {
+  if (!key) return null
+  if (key.startsWith('http://') || key.startsWith('https://') || key.startsWith('/r2/')) return key
+  return `/r2/${key}`
+}
+
 // スラッグ生成関数（日本語対応）
 function generateSlug(title: string, id: number): string {
   // 日本語の場合はそのままローマ字表記にせず、英数字部分のみ使用
@@ -144,9 +151,15 @@ app.get('/images/:productId', async (c) => {
       ORDER BY display_order ASC
     `).bind(productId).all()
 
+    // 画像URLを変換
+    const data = results.map((img: any) => ({
+      ...img,
+      image_url: toImageUrl(img.image_url)
+    }))
+
     return c.json({
       success: true,
-      data: results
+      data
     })
   } catch (error) {
     console.error('Get images error:', error)
@@ -475,11 +488,17 @@ app.get('/:slugOrId', async (c) => {
     }
     
     // 画像を取得
-    const { results: images } = await DB.prepare(`
-      SELECT * FROM product_images
+    const { results: rawImages } = await DB.prepare(`
+      SELECT id, image_url, display_order FROM product_images
       WHERE product_id = ?
       ORDER BY display_order ASC
     `).bind(product.id).all()
+    
+    // 画像URLを変換
+    const images = rawImages.map((img: any) => ({
+      ...img,
+      image_url: toImageUrl(img.image_url)
+    }))
     
     // 適合情報を取得
     const compatibility = await DB.prepare(`

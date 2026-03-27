@@ -322,6 +322,27 @@ app.get('/favicon.ico', (c) => {
   return c.redirect('/icons/icon.svg', 301);
 })
 
+// R2画像配信エンドポイント
+app.get('/r2/:key{.+}', async (c) => {
+  try {
+    const key = c.req.param('key')
+    const object = await c.env.R2.get(key)
+    
+    if (!object) {
+      return c.notFound()
+    }
+    
+    const headers = new Headers()
+    headers.set('Content-Type', object.httpMetadata?.contentType || 'image/jpeg')
+    headers.set('Cache-Control', 'public, max-age=31536000, immutable')
+    
+    return new Response(object.body, { headers })
+  } catch (error) {
+    console.error('R2 image serve error:', error)
+    return c.notFound()
+  }
+})
+
 // APIルート
 app.route('/api', apiRoutes)
 app.route('/api/fitment', fitmentRoutes)
@@ -3993,100 +4014,127 @@ app.get('/mypage', (c) => {
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>
+            .scrollbar-hide::-webkit-scrollbar { display: none; }
+            .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        </style>
     </head>
     <body class="bg-gray-50 min-h-screen">
         <!-- ヘッダー -->
         <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
-            <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-                <button onclick="window.location.href='/'" class="text-gray-600 hover:text-gray-900 flex items-center">
-                    <i class="fas fa-arrow-left mr-2"></i>戻る
+            <div class="max-w-6xl mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between">
+                <button onclick="window.location.href='/'" class="text-gray-600 hover:text-gray-900 flex items-center text-sm">
+                    <i class="fas fa-arrow-left mr-1 sm:mr-2"></i>戻る
                 </button>
-                <h1 class="text-red-500 font-bold text-lg">マイページ</h1>
+                <h1 class="text-red-500 font-bold text-base sm:text-lg">マイページ</h1>
                 <button onclick="window.location.href='/notifications'" class="relative">
-                    <i class="far fa-bell text-2xl text-gray-600"></i>
+                    <i class="far fa-bell text-xl sm:text-2xl text-gray-600"></i>
                     <span id="notification-badge" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold"></span>
                 </button>
             </div>
         </header>
 
-        <main class="max-w-6xl mx-auto px-4 py-6">
+        <main class="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
             <!-- ユーザー情報カード -->
-            <div class="bg-gradient-to-r from-red-500 to-pink-500 rounded-xl shadow-lg p-6 mb-6 text-white">
-                <div class="flex items-center gap-4">
-                    <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center">
-                        <i class="fas fa-user text-red-500 text-3xl"></i>
+            <div class="bg-gradient-to-r from-red-500 to-pink-500 rounded-xl shadow-lg p-4 sm:p-6 mb-6 text-white">
+                <div class="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
+                    <div class="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-full flex items-center justify-center flex-shrink-0">
+                        <i class="fas fa-user text-red-500 text-2xl sm:text-3xl"></i>
                     </div>
-                    <div class="flex-1">
-                        <h2 id="user-shop-name" class="text-2xl font-bold mb-1">読み込み中...</h2>
-                        <div class="flex items-center gap-4 text-sm">
+                    <div class="flex-1 text-center sm:text-left min-w-0">
+                        <h2 id="user-shop-name" class="text-lg sm:text-2xl font-bold mb-1 truncate">読み込み中...</h2>
+                        <div id="user-shop-type" class="text-xs text-white/80 mb-1"></div>
+                        <div class="flex items-center justify-center sm:justify-start gap-3 text-xs sm:text-sm">
                             <span><i class="fas fa-star mr-1"></i><span id="user-rating">0.0</span> (<span id="review-count">0</span>)</span>
                             <span><i class="fas fa-box mr-1"></i>出品 <span id="listing-count">0</span>件</span>
                         </div>
                     </div>
-                    <button onclick="window.location.href='/profile/edit'" class="bg-white text-red-500 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
-                        プロフィール編集
+                    <button onclick="window.location.href='/profile/edit'" class="w-full sm:w-auto bg-white text-red-500 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors text-sm mt-2 sm:mt-0 flex-shrink-0">
+                        <i class="fas fa-edit mr-1"></i>プロフィール編集
                     </button>
                 </div>
             </div>
 
+            <!-- クイックアクション（モバイル対応） -->
+            <div class="grid grid-cols-3 gap-2 sm:gap-3 mb-6">
+                <a href="/listing/new" class="flex flex-col items-center bg-white rounded-xl shadow-sm p-3 sm:p-4 hover:shadow-md transition-shadow">
+                    <div class="w-10 h-10 sm:w-12 sm:h-12 bg-red-50 rounded-full flex items-center justify-center mb-1.5">
+                        <i class="fas fa-plus text-red-500 text-base sm:text-lg"></i>
+                    </div>
+                    <span class="text-xs sm:text-sm font-semibold text-gray-700">出品する</span>
+                </a>
+                <a href="/chat" class="flex flex-col items-center bg-white rounded-xl shadow-sm p-3 sm:p-4 hover:shadow-md transition-shadow">
+                    <div class="w-10 h-10 sm:w-12 sm:h-12 bg-blue-50 rounded-full flex items-center justify-center mb-1.5">
+                        <i class="fas fa-comments text-blue-500 text-base sm:text-lg"></i>
+                    </div>
+                    <span class="text-xs sm:text-sm font-semibold text-gray-700">メッセージ</span>
+                </a>
+                <a href="/notifications" class="flex flex-col items-center bg-white rounded-xl shadow-sm p-3 sm:p-4 hover:shadow-md transition-shadow">
+                    <div class="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-50 rounded-full flex items-center justify-center mb-1.5">
+                        <i class="fas fa-bell text-yellow-500 text-base sm:text-lg"></i>
+                    </div>
+                    <span class="text-xs sm:text-sm font-semibold text-gray-700">通知</span>
+                </a>
+            </div>
+
             <!-- 統計カード -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div class="bg-white rounded-xl shadow-sm p-4">
-                    <div class="text-gray-600 text-sm mb-1">売上合計</div>
-                    <div class="text-2xl font-bold text-gray-900">¥<span id="total-sales">0</span></div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 mb-6">
+                <div class="bg-white rounded-xl shadow-sm p-3 sm:p-4">
+                    <div class="text-gray-600 text-xs sm:text-sm mb-1">売上合計</div>
+                    <div class="text-lg sm:text-2xl font-bold text-gray-900">¥<span id="total-sales">0</span></div>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm p-4">
-                    <div class="text-gray-600 text-sm mb-1">振込可能額</div>
-                    <div class="text-2xl font-bold text-green-600">¥<span id="withdrawable">0</span></div>
+                <div class="bg-white rounded-xl shadow-sm p-3 sm:p-4">
+                    <div class="text-gray-600 text-xs sm:text-sm mb-1">振込可能額</div>
+                    <div class="text-lg sm:text-2xl font-bold text-green-600">¥<span id="withdrawable">0</span></div>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm p-4">
-                    <div class="text-gray-600 text-sm mb-1">売却済み</div>
-                    <div class="text-2xl font-bold text-gray-900"><span id="sold-count">0</span>件</div>
+                <div class="bg-white rounded-xl shadow-sm p-3 sm:p-4">
+                    <div class="text-gray-600 text-xs sm:text-sm mb-1">売却済み</div>
+                    <div class="text-lg sm:text-2xl font-bold text-gray-900"><span id="sold-count">0</span>件</div>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm p-4">
-                    <div class="text-gray-600 text-sm mb-1">購入数</div>
-                    <div class="text-2xl font-bold text-gray-900"><span id="purchase-count">0</span>件</div>
+                <div class="bg-white rounded-xl shadow-sm p-3 sm:p-4">
+                    <div class="text-gray-600 text-xs sm:text-sm mb-1">購入数</div>
+                    <div class="text-lg sm:text-2xl font-bold text-gray-900"><span id="purchase-count">0</span>件</div>
                 </div>
             </div>
 
             <!-- メニュータブ -->
             <div class="bg-white rounded-xl shadow-sm mb-6">
-                <div class="flex border-b border-gray-200 overflow-x-auto">
-                    <button onclick="showTab('listings')" class="tab-btn flex-1 px-6 py-4 font-semibold text-gray-600 hover:text-red-500 border-b-2 border-transparent" data-tab="listings">
-                        出品中
+                <div class="flex border-b border-gray-200 overflow-x-auto scrollbar-hide" style="-webkit-overflow-scrolling: touch; -ms-overflow-style: none; scrollbar-width: none;">
+                    <button onclick="showTab('listings')" class="tab-btn flex-shrink-0 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-gray-600 hover:text-red-500 border-b-2 border-transparent whitespace-nowrap" data-tab="listings">
+                        <i class="fas fa-box sm:mr-1"></i><span class="hidden sm:inline"> </span>出品中
                     </button>
-                    <button onclick="showTab('sales')" class="tab-btn flex-1 px-6 py-4 font-semibold text-gray-600 hover:text-red-500 border-b-2 border-transparent" data-tab="sales">
-                        売上管理
+                    <button onclick="showTab('sales')" class="tab-btn flex-shrink-0 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-gray-600 hover:text-red-500 border-b-2 border-transparent whitespace-nowrap" data-tab="sales">
+                        <i class="fas fa-yen-sign sm:mr-1"></i><span class="hidden sm:inline"> </span>売上
                     </button>
-                    <button onclick="showTab('purchases')" class="tab-btn flex-1 px-6 py-4 font-semibold text-gray-600 hover:text-red-500 border-b-2 border-transparent" data-tab="purchases">
-                        購入履歴
+                    <button onclick="showTab('purchases')" class="tab-btn flex-shrink-0 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-gray-600 hover:text-red-500 border-b-2 border-transparent whitespace-nowrap" data-tab="purchases">
+                        <i class="fas fa-shopping-bag sm:mr-1"></i><span class="hidden sm:inline"> </span>購入
                     </button>
-                    <button onclick="showTab('favorites')" class="tab-btn flex-1 px-6 py-4 font-semibold text-gray-600 hover:text-red-500 border-b-2 border-transparent" data-tab="favorites">
-                        お気に入り
+                    <button onclick="showTab('favorites')" class="tab-btn flex-shrink-0 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-gray-600 hover:text-red-500 border-b-2 border-transparent whitespace-nowrap" data-tab="favorites">
+                        <i class="fas fa-heart sm:mr-1"></i><span class="hidden sm:inline"> </span>お気に入り
                     </button>
-                    <button onclick="showTab('negotiations')" class="tab-btn flex-1 px-6 py-4 font-semibold text-gray-600 hover:text-red-500 border-b-2 border-transparent" data-tab="negotiations">
-                        値下げ交渉
+                    <button onclick="showTab('negotiations')" class="tab-btn flex-shrink-0 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-gray-600 hover:text-red-500 border-b-2 border-transparent whitespace-nowrap" data-tab="negotiations">
+                        <i class="fas fa-handshake sm:mr-1"></i><span class="hidden sm:inline"> </span>交渉
                     </button>
                 </div>
 
                 <!-- 出品中タブ -->
-                <div id="tab-listings" class="tab-content p-6">
+                <div id="tab-listings" class="tab-content p-3 sm:p-6">
                     <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-lg font-bold text-gray-900">出品中の商品</h3>
-                        <select id="listing-status-filter" onchange="filterListings(this.value)" class="px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none">
+                        <h3 class="text-base sm:text-lg font-bold text-gray-900">出品中の商品</h3>
+                        <select id="listing-status-filter" onchange="filterListings(this.value)" class="text-sm px-3 py-1.5 sm:px-4 sm:py-2 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none">
                             <option value="all">すべて</option>
                             <option value="active">出品中</option>
                             <option value="draft">下書き</option>
                             <option value="sold">売却済み</option>
                         </select>
                     </div>
-                    <div id="listings-container" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <div id="listings-container" class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                         <!-- JavaScriptで動的に生成 -->
                     </div>
                 </div>
 
                 <!-- 売上管理タブ -->
-                <div id="tab-sales" class="tab-content p-6 hidden">
+                <div id="tab-sales" class="tab-content p-3 sm:p-6 hidden">
                     <div class="space-y-6">
                         <!-- 振込申請 -->
                         <div class="bg-gradient-to-r from-green-50 to-teal-50 rounded-xl p-6 border border-green-200">
@@ -4117,23 +4165,23 @@ app.get('/mypage', (c) => {
                 </div>
 
                 <!-- 購入履歴タブ -->
-                <div id="tab-purchases" class="tab-content p-6 hidden">
-                    <h3 class="text-lg font-bold text-gray-900 mb-4">購入履歴</h3>
+                <div id="tab-purchases" class="tab-content p-3 sm:p-6 hidden">
+                    <h3 class="text-base sm:text-lg font-bold text-gray-900 mb-4">購入履歴</h3>
                     <div id="purchases-container" class="space-y-3">
                         <!-- JavaScriptで動的に生成 -->
                     </div>
                 </div>
 
                 <!-- お気に入りタブ -->
-                <div id="tab-favorites" class="tab-content p-6 hidden">
-                    <h3 class="text-lg font-bold text-gray-900 mb-4">お気に入り商品</h3>
-                    <div id="favorites-container" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div id="tab-favorites" class="tab-content p-3 sm:p-6 hidden">
+                    <h3 class="text-base sm:text-lg font-bold text-gray-900 mb-4">お気に入り商品</h3>
+                    <div id="favorites-container" class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                         <!-- JavaScriptで動的に生成 -->
                     </div>
                 </div>
 
                 <!-- 値下げ交渉タブ -->
-                <div id="tab-negotiations" class="tab-content p-6 hidden">
+                <div id="tab-negotiations" class="tab-content p-3 sm:p-6 hidden">
                     <div class="mb-4">
                         <div class="flex gap-2 border-b border-gray-200">
                             <button onclick="showNegotiations('received')" class="nego-tab px-4 py-2 font-semibold text-gray-600 hover:text-red-500 border-b-2 border-transparent" data-nego-tab="received">

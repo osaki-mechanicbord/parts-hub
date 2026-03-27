@@ -3,6 +3,15 @@ import type { Bindings } from '../types'
 
 const api = new Hono<{ Bindings: Bindings }>()
 
+// R2キーを表示用URLに変換するヘルパー
+function toImageUrl(key: string | null | undefined): string | null {
+  if (!key) return null
+  // 既に完全なURLの場合はそのまま返す
+  if (key.startsWith('http://') || key.startsWith('https://') || key.startsWith('/r2/')) return key
+  // R2キーを /r2/ パス経由のURLに変換
+  return `/r2/${key}`
+}
+
 // ヘルスチェック
 api.get('/health', (c) => {
   return c.json({ status: 'ok', timestamp: new Date().toISOString() })
@@ -187,9 +196,15 @@ api.get('/products', async (c) => {
       .bind(...params, limit, offset)
       .all()
 
+    // 画像URLを変換
+    const items = results.map((p: any) => ({
+      ...p,
+      main_image: toImageUrl(p.main_image)
+    }))
+
     return c.json({
       success: true,
-      items: results,
+      items,
       pagination: {
         total,
         page,
@@ -238,12 +253,18 @@ api.get('/products/:slugOrId', async (c) => {
     }
 
     // 商品画像取得
-    const { results: images } = await c.env.DB.prepare(`
+    const { results: rawImages } = await c.env.DB.prepare(`
       SELECT id, image_url, display_order
       FROM product_images
       WHERE product_id = ?
       ORDER BY display_order ASC
     `).bind(product.id).all()
+
+    // 画像URLを変換
+    const images = rawImages.map((img: any) => ({
+      ...img,
+      image_url: toImageUrl(img.image_url)
+    }))
 
     // 適合情報取得
     const compatibility = await c.env.DB.prepare(`

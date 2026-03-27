@@ -256,8 +256,14 @@ fitment.post('/match', async (c) => {
         else if (confidence >= 70) match_type = 'high'
         else if (confidence >= 50) match_type = 'medium'
 
+        // 画像URLを変換
+        const main_image = product.main_image
+          ? (product.main_image.startsWith('http') || product.main_image.startsWith('/r2/') ? product.main_image : `/r2/${product.main_image}`)
+          : null
+
         return {
           ...product,
+          main_image,
           confidence,
           match_type,
           match_reasons: matchReasons

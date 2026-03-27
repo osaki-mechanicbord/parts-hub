@@ -7,6 +7,13 @@ type Bindings = {
 
 const mypage = new Hono<{ Bindings: Bindings }>()
 
+// R2キーを表示用URLに変換するヘルパー
+function toImageUrl(key: string | null | undefined): string | null {
+  if (!key) return null
+  if (key.startsWith('http://') || key.startsWith('https://') || key.startsWith('/r2/')) return key
+  return `/r2/${key}`
+}
+
 // マイページ統計情報取得
 mypage.get('/stats/:userId', async (c) => {
   try {
@@ -188,7 +195,13 @@ mypage.get('/listings/:userId', async (c) => {
 
     const { results } = await DB.prepare(query).bind(userId).all()
 
-    return c.json({ success: true, data: results })
+    // 画像URLを変換
+    const data = results.map((p: any) => ({
+      ...p,
+      image_url: toImageUrl(p.image_url)
+    }))
+
+    return c.json({ success: true, data })
   } catch (error) {
     console.error('Get listings error:', error)
     return c.json({ success: false, error: '出品商品の取得に失敗しました' }, 500)
@@ -222,7 +235,12 @@ mypage.get('/purchases/:userId', async (c) => {
       ORDER BY t.created_at DESC
     `).bind(userId, userId).all()
 
-    return c.json({ success: true, data: results })
+    const data = results.map((p: any) => ({
+      ...p,
+      product_image: toImageUrl(p.product_image)
+    }))
+
+    return c.json({ success: true, data })
   } catch (error) {
     console.error('Get purchases error:', error)
     return c.json({ success: false, error: '購入履歴の取得に失敗しました' }, 500)
@@ -255,7 +273,12 @@ mypage.get('/sales/:userId', async (c) => {
       ORDER BY t.updated_at DESC
     `).bind(userId).all()
 
-    return c.json({ success: true, data: results })
+    const data = results.map((s: any) => ({
+      ...s,
+      product_image: toImageUrl(s.product_image)
+    }))
+
+    return c.json({ success: true, data })
   } catch (error) {
     console.error('Get sales error:', error)
     return c.json({ success: false, error: '売上履歴の取得に失敗しました' }, 500)
@@ -306,7 +329,12 @@ mypage.get('/favorites/:userId', async (c) => {
       ORDER BY f.created_at DESC
     `).bind(userId).all()
 
-    return c.json({ success: true, data: results })
+    const data = results.map((p: any) => ({
+      ...p,
+      image_url: toImageUrl(p.image_url)
+    }))
+
+    return c.json({ success: true, data })
   } catch (error) {
     console.error('Get favorites error:', error)
     return c.json({ success: false, error: 'お気に入り商品の取得に失敗しました' }, 500)
