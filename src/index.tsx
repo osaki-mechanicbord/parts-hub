@@ -26,6 +26,7 @@ import adminPagesRoutes from './routes/admin-pages'
 import emailRoutes from './routes/email'
 import articlesRoutes from './routes/articles'
 import vehicleDemoRoutes from './routes/vehicle-demo'
+import argosDemoRoutes from './routes/argos-demo'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -367,6 +368,7 @@ app.route('/api/transactions', transactionsRoutes)
 app.route('/api/email', emailRoutes)
 app.route('/api/articles', articlesRoutes)
 app.route('/api/vehicle-demo', vehicleDemoRoutes)
+app.route('/api/argos-demo', argosDemoRoutes)
 app.route('/api/admin', adminRoutes)
 app.route('/admin', adminPagesRoutes)
 
@@ -6444,6 +6446,768 @@ app.get('/legal', (c) => {
 })
 
 // FAQページ
+
+// === ARGOS JPC API連携デモページ（本番未使用・サンプルUI） ===
+app.get('/argos-demo', (c) => {
+  return c.html(`<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARGOS JPC 連携デモ - PARTS HUB</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    .vin-input { font-family: 'Courier New', monospace; font-size: 1.15rem; letter-spacing: 3px; text-transform: uppercase; }
+    .card-hover { transition: all 0.2s; cursor: pointer; }
+    .card-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
+    .card-hover.active-group { border-color: #ef4444 !important; background: #fef2f2; box-shadow: 0 0 0 2px rgba(239,68,68,0.3); }
+    .fade-in { animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+    .shimmer { background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    .tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; }
+    .part-row { transition: background 0.15s; border-left: 3px solid transparent; }
+    .part-row:hover { background: #fef2f2; }
+    .part-row.selected { background: #fef2f2; border-left-color: #ef4444; }
+    .illustration-area { background: repeating-conic-gradient(#f3f4f6 0% 25%, #fff 0% 50%) 50% / 16px 16px; border: 2px dashed #d1d5db; }
+    .tab-active { border-bottom: 3px solid #ef4444; color: #ef4444; font-weight: 700; }
+    .tab-inactive { border-bottom: 3px solid transparent; color: #6b7280; }
+    .tab-inactive:hover { color: #374151; border-bottom-color: #e5e7eb; }
+    .listing-card { transition: all 0.2s; border: 2px solid transparent; }
+    .listing-card:hover { border-color: #60a5fa; transform: translateY(-1px); }
+    @media (max-width: 640px) { .vin-input { font-size: 0.9rem; letter-spacing: 1.5px; } }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <!-- ヘッダー -->
+  <header class="bg-white shadow-sm border-b sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <a href="/" class="text-red-500 font-bold text-xl"><i class="fas fa-puzzle-piece mr-1"></i>PARTS HUB</a>
+        <span class="text-gray-300">&times;</span>
+        <span class="text-sm font-semibold text-gray-700">ARGOS JPC</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="tag bg-yellow-100 text-yellow-700"><i class="fas fa-flask"></i> デモ環境</span>
+        <span class="tag bg-blue-100 text-blue-700"><i class="fas fa-plug"></i> モックAPI</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-6">
+    <!-- シーン切替タブ -->
+    <div class="flex border-b mb-6">
+      <button onclick="switchTab('listing')" id="tab-listing" class="px-5 py-3 text-sm tab-active transition-all"><i class="fas fa-upload mr-1.5"></i>出品時に使う</button>
+      <button onclick="switchTab('search')" id="tab-search" class="px-5 py-3 text-sm tab-inactive transition-all"><i class="fas fa-search mr-1.5"></i>購入時に使う</button>
+      <button onclick="switchTab('api')" id="tab-api" class="px-5 py-3 text-sm tab-inactive transition-all"><i class="fas fa-code mr-1.5"></i>API設計</button>
+    </div>
+
+    <!-- ============ STEP 0: VIN入力（共通） ============ -->
+    <div id="section-vin" class="bg-white rounded-2xl shadow-sm border p-6 mb-6 fade-in">
+      <div class="flex items-center gap-3 mb-1">
+        <div class="w-10 h-10 bg-red-500 text-white rounded-full flex items-center justify-center font-bold text-sm">1</div>
+        <div>
+          <h2 class="font-bold text-lg">車台番号（VIN）を入力</h2>
+          <p class="text-xs text-gray-400">車検証記載の車台番号を入力すると、車両情報・適合部品を自動取得します</p>
+        </div>
+      </div>
+
+      <!-- 説明バナー -->
+      <div id="vin-banner-listing" class="mt-3 mb-4 bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-xl p-3 flex items-start gap-3">
+        <i class="fas fa-lightbulb text-orange-400 mt-0.5"></i>
+        <div class="text-xs text-gray-600 leading-relaxed">
+          <span class="font-bold text-red-600">出品モード：</span>VINを入力するだけで、車両情報・OEM部品番号・参考価格が自動取得されます。手入力の手間を大幅に削減し、正確な適合情報付きで出品できます。
+        </div>
+      </div>
+      <div id="vin-banner-search" class="hidden mt-3 mb-4 bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-xl p-3 flex items-start gap-3">
+        <i class="fas fa-lightbulb text-blue-400 mt-0.5"></i>
+        <div class="text-xs text-gray-600 leading-relaxed">
+          <span class="font-bold text-blue-600">購入モード：</span>お持ちの車のVINを入力すると、その車に適合するOEM部品番号を特定できます。品番でPARTS HUB内の出品商品を横断検索できます。
+        </div>
+      </div>
+
+      <div class="flex gap-3">
+        <div class="flex-1 relative">
+          <input type="text" id="vin-input" class="vin-input w-full px-4 py-4 border-2 border-gray-300 rounded-xl focus:border-red-500 focus:outline-none transition-colors" placeholder="例: JTDKN3DU5P0000001" maxlength="30">
+          <button onclick="clearVin()" id="vin-clear" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"><i class="fas fa-times-circle text-xl"></i></button>
+        </div>
+        <button onclick="searchVin()" id="vin-btn" class="px-8 py-4 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold transition-colors whitespace-nowrap shadow-sm">
+          <i class="fas fa-search mr-2"></i>検索
+        </button>
+      </div>
+
+      <!-- デモ用クイック選択 -->
+      <div class="mt-3">
+        <p class="text-xs text-gray-400 mb-1.5"><i class="fas fa-vial mr-1"></i>デモ用VIN（クリックで自動入力）:</p>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="setVin('JTDKN3DU5P0000001')" class="text-xs px-3 py-1.5 bg-gray-100 hover:bg-red-50 hover:text-red-600 rounded-full transition-colors border border-transparent hover:border-red-200"><i class="fas fa-car text-gray-300 mr-1"></i>プリウス</button>
+          <button onclick="setVin('TRH200-0300001')" class="text-xs px-3 py-1.5 bg-gray-100 hover:bg-red-50 hover:text-red-600 rounded-full transition-colors border border-transparent hover:border-red-200"><i class="fas fa-truck text-gray-300 mr-1"></i>ハイエース</button>
+          <button onclick="setVin('JF5-1000001')" class="text-xs px-3 py-1.5 bg-gray-100 hover:bg-red-50 hover:text-red-600 rounded-full transition-colors border border-transparent hover:border-red-200"><i class="fas fa-car text-gray-300 mr-1"></i>N-BOX</button>
+          <button onclick="setVin('C28-100001')" class="text-xs px-3 py-1.5 bg-gray-100 hover:bg-red-50 hover:text-red-600 rounded-full transition-colors border border-transparent hover:border-red-200"><i class="fas fa-van-shuttle text-gray-300 mr-1"></i>セレナ</button>
+          <button onclick="setVin('CV1W-0400001')" class="text-xs px-3 py-1.5 bg-gray-100 hover:bg-red-50 hover:text-red-600 rounded-full transition-colors border border-transparent hover:border-red-200"><i class="fas fa-van-shuttle text-gray-300 mr-1"></i>デリカD:5</button>
+          <button onclick="setVin('LA650S-0100001')" class="text-xs px-3 py-1.5 bg-gray-100 hover:bg-red-50 hover:text-red-600 rounded-full transition-colors border border-transparent hover:border-red-200"><i class="fas fa-car text-gray-300 mr-1"></i>タント</button>
+          <button onclick="setVin('JB64W-200001')" class="text-xs px-3 py-1.5 bg-gray-100 hover:bg-red-50 hover:text-red-600 rounded-full transition-colors border border-transparent hover:border-red-200"><i class="fas fa-truck-monster text-gray-300 mr-1"></i>ジムニー</button>
+          <button onclick="setVin('ND5RC-300001')" class="text-xs px-3 py-1.5 bg-gray-100 hover:bg-red-50 hover:text-red-600 rounded-full transition-colors border border-transparent hover:border-red-200"><i class="fas fa-car text-gray-300 mr-1"></i>ロードスター</button>
+        </div>
+      </div>
+
+      <!-- ローディング -->
+      <div id="vin-loading" class="hidden mt-4">
+        <div class="flex items-center gap-3 py-4"><div class="w-5 h-5 border-3 border-red-200 border-t-red-500 rounded-full animate-spin"></div><span class="text-sm text-gray-500">ARGOS JPC APIで車両情報を取得中...</span></div>
+        <div class="grid grid-cols-2 gap-3 mt-2">
+          <div class="shimmer h-5 rounded"></div><div class="shimmer h-5 rounded"></div>
+          <div class="shimmer h-5 rounded"></div><div class="shimmer h-5 rounded"></div>
+        </div>
+      </div>
+      <!-- エラー -->
+      <div id="vin-error" class="hidden mt-4 bg-red-50 border border-red-200 rounded-xl p-4">
+        <p class="text-sm text-red-600 font-semibold"><i class="fas fa-exclamation-triangle mr-1"></i><span id="vin-error-msg"></span></p>
+        <p id="vin-error-hint" class="text-xs text-red-400 mt-1"></p>
+      </div>
+    </div>
+
+    <!-- ============ STEP 1: 車両情報表示 ============ -->
+    <div id="section-vehicle" class="hidden fade-in">
+      <div class="bg-white rounded-2xl shadow-sm border p-6 mb-6">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-green-500 text-white rounded-full flex items-center justify-center font-bold text-sm"><i class="fas fa-check"></i></div>
+            <div>
+              <h2 class="font-bold text-lg">車両特定完了</h2>
+              <p class="text-xs text-gray-400" id="vehicle-summary-text"></p>
+            </div>
+          </div>
+          <button onclick="resetAll()" class="text-xs text-red-500 hover:underline flex items-center gap-1"><i class="fas fa-redo"></i>やり直す</button>
+        </div>
+        <!-- 車両情報カード -->
+        <div class="bg-gray-50 rounded-xl overflow-hidden">
+          <div id="vehicle-header" class="bg-gradient-to-r from-gray-800 to-gray-700 px-5 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span id="vh-maker" class="text-white font-bold text-sm"></span>
+              <span id="vh-model" class="text-gray-300 text-sm"></span>
+            </div>
+            <span id="vh-vin" class="text-gray-400 text-xs font-mono"></span>
+          </div>
+          <div id="vehicle-info" class="grid grid-cols-1 sm:grid-cols-2"></div>
+        </div>
+        <!-- AI VIN認識ヒント -->
+        <div class="mt-3 flex items-center gap-2 text-xs text-gray-400">
+          <i class="fas fa-robot text-purple-300"></i>
+          <span>本番環境ではAI画像認識による車検証からのVIN自動読取にも対応（精度約95%、約1秒）</span>
+        </div>
+      </div>
+
+      <!-- ============ STEP 2: 部品グループ選択 ============ -->
+      <div class="bg-white rounded-2xl shadow-sm border p-6 mb-6 fade-in">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 bg-red-500 text-white rounded-full flex items-center justify-center font-bold text-sm">2</div>
+          <div>
+            <h2 class="font-bold text-lg" id="step2-title">部品グループを選択</h2>
+            <p class="text-xs text-gray-400" id="step2-desc">カテゴリを選んで、さらにサブグループから部品を絞り込めます</p>
+          </div>
+        </div>
+        <div id="groups-list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"></div>
+
+        <!-- サブグループ -->
+        <div id="subgroups-section" class="hidden mt-6 pt-5 border-t fade-in">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-bold text-sm text-gray-700"><i class="fas fa-folder-open text-red-400 mr-1.5"></i><span id="subgroup-title">サブグループ</span></h3>
+            <button onclick="backToGroups()" class="text-xs text-red-500 hover:underline flex items-center gap-1"><i class="fas fa-arrow-left"></i>グループに戻る</button>
+          </div>
+          <div id="subgroups-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2"></div>
+        </div>
+      </div>
+
+      <!-- ============ STEP 3: 部品一覧 + イラスト ============ -->
+      <div id="section-parts" class="hidden fade-in">
+        <div class="bg-white rounded-2xl shadow-sm border overflow-hidden mb-6">
+          <div class="px-6 py-4 border-b bg-gradient-to-r from-white to-gray-50">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 bg-red-500 text-white rounded-full flex items-center justify-center font-bold text-sm">3</div>
+              <div class="flex-1 min-w-0">
+                <h2 class="font-bold text-lg" id="step3-title">部品を選択</h2>
+                <p class="text-xs text-gray-400" id="step3-subtitle"></p>
+              </div>
+              <span id="parts-count" class="tag bg-gray-100 text-gray-600"></span>
+            </div>
+          </div>
+          <div class="flex flex-col lg:flex-row">
+            <!-- イラストエリア -->
+            <div class="lg:w-5/12 p-5 border-r border-b lg:border-b-0">
+              <div class="illustration-area rounded-xl h-56 lg:h-72 flex items-center justify-center relative">
+                <div class="text-center text-gray-400">
+                  <i class="fas fa-drafting-compass text-4xl mb-2 text-gray-300"></i>
+                  <p class="text-sm font-semibold">部品展開図イラスト</p>
+                  <p class="text-xs mt-1">(ARGOS API #21 Get Image)</p>
+                  <p class="text-xs mt-2 text-gray-300">トヨタ・三菱・日産・ホンダ・ダイハツ対応</p>
+                </div>
+                <div class="absolute bottom-2 right-2 flex gap-1">
+                  <button class="p-1.5 bg-white/80 rounded-lg border text-gray-400 hover:text-gray-600 text-xs" title="ズームイン"><i class="fas fa-search-plus"></i></button>
+                  <button class="p-1.5 bg-white/80 rounded-lg border text-gray-400 hover:text-gray-600 text-xs" title="ズームアウト"><i class="fas fa-search-minus"></i></button>
+                </div>
+              </div>
+            </div>
+            <!-- 部品リスト -->
+            <div class="lg:w-7/12 flex flex-col">
+              <div class="px-4 py-3 bg-gray-50 border-b flex items-center justify-between">
+                <span class="text-sm font-semibold text-gray-700"><i class="fas fa-list mr-1.5 text-gray-400"></i>部品一覧</span>
+                <div class="flex items-center gap-2">
+                  <input type="text" id="parts-filter" class="text-xs px-3 py-1.5 border rounded-lg w-36 focus:outline-none focus:border-red-400" placeholder="品番・名前で絞込..." oninput="filterParts(this.value)">
+                </div>
+              </div>
+              <div id="parts-list" class="max-h-80 overflow-y-auto"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============ 出品連携パネル（出品モード） ============ -->
+        <div id="listing-panel" class="bg-gradient-to-r from-red-50 to-pink-50 border-2 border-red-200 rounded-2xl p-6 mb-6 fade-in">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-bold text-lg text-red-700"><i class="fas fa-upload mr-2"></i>出品情報に反映</h3>
+            <span id="selected-count" class="tag bg-red-100 text-red-600 hidden">0件選択中</span>
+          </div>
+          <div id="selected-parts-summary" class="space-y-2 mb-4"></div>
+          <div id="no-parts-selected" class="text-center py-8">
+            <i class="fas fa-hand-pointer text-red-200 text-3xl mb-2"></i>
+            <p class="text-sm text-gray-400">部品一覧から出品する部品を選択してください</p>
+            <p class="text-xs text-gray-300 mt-1">クリックで選択・解除できます</p>
+          </div>
+
+          <!-- 出品プレビュー -->
+          <div id="listing-preview" class="hidden mt-4 bg-white rounded-xl border p-4">
+            <h4 class="text-sm font-bold text-gray-700 mb-3"><i class="fas fa-eye mr-1.5 text-gray-400"></i>出品フォーム自動入力プレビュー</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs" id="listing-preview-content"></div>
+          </div>
+
+          <button onclick="applyToListing()" id="apply-btn" class="hidden w-full mt-4 py-4 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white rounded-xl font-bold text-base transition-all shadow-lg shadow-red-200">
+            <i class="fas fa-arrow-right mr-2"></i>この情報で出品ページへ進む
+          </button>
+        </div>
+
+        <!-- ============ 購入検索パネル（購入モード） ============ -->
+        <div id="search-panel" class="hidden bg-gradient-to-r from-blue-50 to-cyan-50 border-2 border-blue-200 rounded-2xl p-6 mb-6 fade-in">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-bold text-lg text-blue-700"><i class="fas fa-shopping-cart mr-2"></i>適合部品から探す</h3>
+            <span id="search-selected-count" class="tag bg-blue-100 text-blue-600 hidden">0件選択中</span>
+          </div>
+          <p class="text-sm text-blue-600 mb-4">選択した部品番号（＋互換品番）でPARTS HUBの出品を検索します</p>
+          <div id="search-results-area" class="space-y-3"></div>
+          <div id="no-parts-search" class="text-center py-8">
+            <i class="fas fa-hand-pointer text-blue-200 text-3xl mb-2"></i>
+            <p class="text-sm text-gray-400">部品一覧から検索したい部品を選択してください</p>
+          </div>
+
+          <!-- 検索結果プレビュー (PARTS HUB内の出品商品) -->
+          <div id="hub-listings-section" class="hidden mt-4 pt-4 border-t border-blue-200">
+            <h4 class="text-sm font-bold text-blue-700 mb-3"><i class="fas fa-store mr-1.5"></i>PARTS HUB 出品商品（デモ）</h4>
+            <div id="hub-listings" class="space-y-2"></div>
+          </div>
+
+          <button onclick="searchOnHub()" id="search-hub-btn" class="hidden w-full mt-4 py-4 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-xl font-bold text-base transition-all shadow-lg shadow-blue-200">
+            <i class="fas fa-search mr-2"></i>PARTS HUBで検索する
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ API設計タブ ============ -->
+    <div id="section-api-design" class="hidden fade-in">
+      <div class="bg-white rounded-2xl shadow-sm border p-6 mb-6">
+        <h2 class="font-bold text-xl mb-6"><i class="fas fa-sitemap text-red-500 mr-2"></i>PARTS HUB &times; ARGOS JPC API連携アーキテクチャ</h2>
+
+        <!-- フロー図 -->
+        <div class="bg-gray-900 rounded-xl p-6 mb-6 text-sm font-mono overflow-x-auto">
+          <p class="text-green-400 mb-2">// データフロー（出品時）</p>
+          <p class="text-gray-300">ユーザー（出品者）</p>
+          <p class="text-gray-500 pl-4">│ 車台番号入力 or 車検証画像アップロード</p>
+          <p class="text-gray-500 pl-4">▼</p>
+          <p class="text-blue-400">PARTS HUB フロントエンド</p>
+          <p class="text-gray-500 pl-4">│ POST /api/argos/vin-search</p>
+          <p class="text-gray-500 pl-4">▼</p>
+          <p class="text-yellow-400">PARTS HUB バックエンド（Hono / Cloudflare Workers）</p>
+          <p class="text-gray-500 pl-4">│ Bearer Token認証 + D1キャッシュチェック</p>
+          <p class="text-gray-500 pl-4">│ API #13 Get Car List by VIN</p>
+          <p class="text-gray-500 pl-4">▼</p>
+          <p class="text-red-400">ARGOS JPC API（外部サービス）</p>
+          <p class="text-gray-500 pl-4">│ 車両情報 + 部品グループ + 部品番号 + イラスト</p>
+          <p class="text-gray-500 pl-4">▼</p>
+          <p class="text-yellow-400">PARTS HUB バックエンド</p>
+          <p class="text-gray-500 pl-4">│ レスポンス整形 + D1にキャッシュ保存（コスト最適化）</p>
+          <p class="text-gray-500 pl-4">▼</p>
+          <p class="text-blue-400">PARTS HUB フロントエンド</p>
+          <p class="text-gray-500 pl-4">│ 車両情報表示 → 部品選択 → 出品フォーム自動入力</p>
+          <p class="text-gray-500 pl-4">▼</p>
+          <p class="text-green-400">出品完了（適合車両情報・OEM部品番号・参考価格が自動設定済み）</p>
+        </div>
+
+        <!-- API連携方針 -->
+        <h3 class="font-bold text-lg mb-3">API連携方針</h3>
+        <div class="space-y-3 mb-6">
+          <div class="flex gap-3 p-4 bg-red-50 rounded-xl">
+            <div class="w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center flex-shrink-0"><i class="fas fa-shield-halved text-sm"></i></div>
+            <div><p class="font-semibold text-sm">APIキーはサーバー側で管理</p><p class="text-xs text-gray-500">ARGOS JPCのBearer TokenはCloudflare Secretsに保存。フロントエンドには一切露出させない。</p></div>
+          </div>
+          <div class="flex gap-3 p-4 bg-blue-50 rounded-xl">
+            <div class="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center flex-shrink-0"><i class="fas fa-database text-sm"></i></div>
+            <div><p class="font-semibold text-sm">APIレスポンスをD1にキャッシュ</p><p class="text-xs text-gray-500">同一VINの2回目以降はD1から高速応答。API呼出回数を最小化しコスト削減。キャッシュTTL: 30日。</p></div>
+          </div>
+          <div class="flex gap-3 p-4 bg-green-50 rounded-xl">
+            <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center flex-shrink-0"><i class="fas fa-layer-group text-sm"></i></div>
+            <div><p class="font-semibold text-sm">抽象化レイヤーで疎結合</p><p class="text-xs text-gray-500">内部APIとARGOS APIを分離。モック⇔本番の切替が1ファイル（argos-demo.ts）の変更だけで完了。</p></div>
+          </div>
+          <div class="flex gap-3 p-4 bg-purple-50 rounded-xl">
+            <div class="w-8 h-8 bg-purple-500 text-white rounded-full flex items-center justify-center flex-shrink-0"><i class="fas fa-link text-sm"></i></div>
+            <div><p class="font-semibold text-sm">既存出品フローとシームレス統合</p><p class="text-xs text-gray-500">VIN検索で得た車両・部品情報を出品フォームに自動入力。購入者は品番でPARTS HUB内を横断検索。</p></div>
+          </div>
+        </div>
+
+        <!-- 使用API一覧 -->
+        <h3 class="font-bold text-lg mb-3">使用するARGOS JPC API</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm border-collapse">
+            <thead><tr class="bg-gray-100"><th class="px-3 py-2 text-left">API#</th><th class="px-3 py-2 text-left">名称</th><th class="px-3 py-2 text-left">用途</th><th class="px-3 py-2 text-left">重要度</th></tr></thead>
+            <tbody>
+              <tr class="border-t"><td class="px-3 py-2 font-mono text-red-500">#13</td><td class="px-3 py-2">Get Car List by VIN</td><td class="px-3 py-2">車台番号→車両特定</td><td class="px-3 py-2"><span class="tag bg-red-100 text-red-600">必須</span></td></tr>
+              <tr class="border-t"><td class="px-3 py-2 font-mono text-red-500">#6</td><td class="px-3 py-2">Get Main Group List</td><td class="px-3 py-2">部品グループ一覧</td><td class="px-3 py-2"><span class="tag bg-red-100 text-red-600">必須</span></td></tr>
+              <tr class="border-t"><td class="px-3 py-2 font-mono text-red-500">#14</td><td class="px-3 py-2">Get Subgroup List by VIN</td><td class="px-3 py-2">サブグループ表示</td><td class="px-3 py-2"><span class="tag bg-red-100 text-red-600">必須</span></td></tr>
+              <tr class="border-t"><td class="px-3 py-2 font-mono text-red-500">#15</td><td class="px-3 py-2">Get Part List by VIN</td><td class="px-3 py-2">部品一覧取得</td><td class="px-3 py-2"><span class="tag bg-red-100 text-red-600">必須</span></td></tr>
+              <tr class="border-t"><td class="px-3 py-2 font-mono text-blue-500">#21</td><td class="px-3 py-2">Get Image</td><td class="px-3 py-2">部品展開図イラスト表示</td><td class="px-3 py-2"><span class="tag bg-blue-100 text-blue-600">推奨</span></td></tr>
+              <tr class="border-t"><td class="px-3 py-2 font-mono text-blue-500">#35</td><td class="px-3 py-2">Get Car Additional Data</td><td class="px-3 py-2">追加車両情報</td><td class="px-3 py-2"><span class="tag bg-blue-100 text-blue-600">推奨</span></td></tr>
+              <tr class="border-t"><td class="px-3 py-2 font-mono text-gray-500">#1~#5</td><td class="px-3 py-2">Brand/Model/Type/Year/Car</td><td class="px-3 py-2">VINなし時のフォールバック検索</td><td class="px-3 py-2"><span class="tag bg-gray-100 text-gray-600">任意</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 対応メーカー -->
+        <h3 class="font-bold text-lg mt-6 mb-3">対応メーカー・データカバレッジ</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="border rounded-xl p-4">
+            <p class="text-sm font-bold text-green-700 mb-2"><i class="fas fa-check-circle mr-1"></i>イラスト対応（5社）</p>
+            <div class="flex flex-wrap gap-2">
+              <span class="tag bg-green-50 text-green-700">トヨタ</span><span class="tag bg-green-50 text-green-700">三菱</span><span class="tag bg-green-50 text-green-700">日産</span><span class="tag bg-green-50 text-green-700">ホンダ</span><span class="tag bg-green-50 text-green-700">ダイハツ</span>
+            </div>
+          </div>
+          <div class="border rounded-xl p-4">
+            <p class="text-sm font-bold text-blue-700 mb-2"><i class="fas fa-database mr-1"></i>データのみ（3社）</p>
+            <div class="flex flex-wrap gap-2">
+              <span class="tag bg-blue-50 text-blue-700">マツダ</span><span class="tag bg-blue-50 text-blue-700">スバル</span><span class="tag bg-blue-50 text-blue-700">スズキ</span>
+            </div>
+            <p class="text-xs text-gray-400 mt-2">※イラストは今後対応予定</p>
+          </div>
+        </div>
+
+        <!-- コスト最適化 -->
+        <h3 class="font-bold text-lg mt-6 mb-3">コスト最適化戦略</h3>
+        <div class="bg-gray-50 rounded-xl p-4 text-sm">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="text-center">
+              <div class="text-2xl font-bold text-red-500 mb-1">~80%</div>
+              <div class="text-xs text-gray-500">D1キャッシュによるAPI呼出削減率</div>
+            </div>
+            <div class="text-center">
+              <div class="text-2xl font-bold text-blue-500 mb-1">&lt;100ms</div>
+              <div class="text-xs text-gray-500">キャッシュヒット時のレスポンス</div>
+            </div>
+            <div class="text-center">
+              <div class="text-2xl font-bold text-green-500 mb-1">30日</div>
+              <div class="text-xs text-gray-500">キャッシュTTL（部品データは安定）</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- フッター -->
+  <footer class="border-t bg-white mt-8">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between text-xs text-gray-400">
+      <span>PARTS HUB &times; ARGOS JPC デモ（本番環境には未反映）</span>
+      <a href="/" class="hover:text-red-500">トップに戻る</a>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+  <script>
+    // ============ 状態管理 ============
+    var currentTab = 'listing';
+    var vehicle = null;
+    var selectedParts = [];
+    var allPartsData = [];
+    var activeGroupId = null;
+
+    // ============ タブ切替 ============
+    function switchTab(tab) {
+      currentTab = tab;
+      ['listing','search','api'].forEach(function(t) {
+        document.getElementById('tab-' + t).className = t === tab ? 'px-5 py-3 text-sm tab-active transition-all' : 'px-5 py-3 text-sm tab-inactive transition-all';
+      });
+      document.getElementById('section-api-design').classList.toggle('hidden', tab !== 'api');
+      document.getElementById('section-vin').classList.toggle('hidden', tab === 'api');
+      document.getElementById('section-vehicle').classList.toggle('hidden', tab === 'api' || !vehicle);
+
+      // バナー切替
+      var bl = document.getElementById('vin-banner-listing');
+      var bs = document.getElementById('vin-banner-search');
+      if (bl) bl.classList.toggle('hidden', tab !== 'listing');
+      if (bs) bs.classList.toggle('hidden', tab !== 'search');
+
+      if (tab === 'listing') {
+        document.getElementById('step2-title').textContent = '出品する部品のグループを選択';
+        document.getElementById('step2-desc').textContent = 'カテゴリを選んで、さらにサブグループから部品を絞り込めます';
+      } else if (tab === 'search') {
+        document.getElementById('step2-title').textContent = '探している部品のグループを選択';
+        document.getElementById('step2-desc').textContent = '購入したい部品のカテゴリを選んでください';
+      }
+      updatePanelVisibility();
+      selectedParts = [];
+      updateSelectedParts();
+    }
+
+    function updatePanelVisibility() {
+      var lp = document.getElementById('listing-panel');
+      var sp = document.getElementById('search-panel');
+      if (lp) lp.classList.toggle('hidden', currentTab !== 'listing');
+      if (sp) sp.classList.toggle('hidden', currentTab !== 'search');
+    }
+
+    // ============ VIN入力 ============
+    function setVin(v) {
+      document.getElementById('vin-input').value = v;
+      document.getElementById('vin-clear').classList.remove('hidden');
+      searchVin();
+    }
+    function clearVin() {
+      document.getElementById('vin-input').value = '';
+      document.getElementById('vin-clear').classList.add('hidden');
+      resetAll();
+    }
+
+    document.getElementById('vin-input').addEventListener('input', function() {
+      this.value = this.value.toUpperCase();
+      document.getElementById('vin-clear').classList.toggle('hidden', !this.value);
+    });
+    document.getElementById('vin-input').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') searchVin();
+    });
+
+    async function searchVin() {
+      var vin = document.getElementById('vin-input').value.trim();
+      if (!vin) { alert('車台番号を入力してください'); return; }
+
+      document.getElementById('vin-error').classList.add('hidden');
+      document.getElementById('vin-loading').classList.remove('hidden');
+      document.getElementById('section-vehicle').classList.add('hidden');
+
+      try {
+        var t0 = performance.now();
+        var res = await axios.get('/api/argos-demo/vin/' + encodeURIComponent(vin));
+        var elapsed = Math.round(performance.now() - t0);
+        vehicle = res.data.data;
+        showVehicle(elapsed);
+        loadGroups();
+      } catch(e) {
+        var errData = e.response && e.response.data;
+        document.getElementById('vin-error').classList.remove('hidden');
+        document.getElementById('vin-error-msg').textContent = errData ? errData.error : '検索に失敗しました';
+        document.getElementById('vin-error-hint').textContent = errData && errData.hint ? errData.hint : '';
+      }
+      document.getElementById('vin-loading').classList.add('hidden');
+    }
+
+    // ============ 車両情報表示 ============
+    function showVehicle(elapsed) {
+      document.getElementById('section-vehicle').classList.remove('hidden');
+      var v = vehicle;
+
+      // ヘッダー
+      document.getElementById('vh-maker').textContent = v.brand_ja;
+      document.getElementById('vh-model').textContent = v.model_ja + (v.generation ? ' ' + v.generation : '');
+      document.getElementById('vh-vin').textContent = 'VIN: ' + v.vin;
+      document.getElementById('vehicle-summary-text').textContent = v.brand_ja + ' ' + v.model_ja + ' ' + v.grade + ' (' + v.year + '年)' + (elapsed ? ' - ' + elapsed + 'msで取得' : '');
+
+      var fields = [
+        { icon: 'fa-industry', label: 'メーカー', value: v.brand_ja + ' (' + v.brand + ')' },
+        { icon: 'fa-car', label: '車名', value: v.model_ja + (v.generation ? ' ' + v.generation : '') },
+        { icon: 'fa-hashtag', label: '型式', value: v.katashiki, mono: true },
+        { icon: 'fa-barcode', label: '車台番号', value: v.vin, mono: true },
+        { icon: 'fa-calendar', label: '年式', value: v.year + '年' + v.month + '月' },
+        { icon: 'fa-star', label: 'グレード', value: v.grade },
+        { icon: 'fa-cog', label: 'エンジン', value: v.engine + ' (' + v.displacement + ')' },
+        { icon: 'fa-arrows-spin', label: 'ミッション', value: v.transmission },
+        { icon: 'fa-road', label: '駆動', value: v.drive },
+        { icon: 'fa-gas-pump', label: '燃料', value: v.fuel },
+        { icon: 'fa-palette', label: 'ボディタイプ', value: v.body_type },
+        { icon: 'fa-file-alt', label: '類別区分', value: v.type_class + '-' + v.ruibetsu, mono: true }
+      ];
+
+      document.getElementById('vehicle-info').innerHTML = fields.map(function(f) {
+        return '<div class="vehicle-field"><span class="text-xs text-gray-500 flex items-center gap-1.5"><i class="fas ' + f.icon + ' text-gray-300 w-4 text-center"></i>' + f.label + '</span><span class="text-sm font-semibold text-gray-800' + (f.mono ? ' font-mono tracking-wide' : '') + '">' + f.value + '</span></div>';
+      }).join('');
+    }
+
+    // ============ 部品グループ ============
+    async function loadGroups() {
+      try {
+        var res = await axios.get('/api/argos-demo/groups');
+        var groups = res.data.data;
+        document.getElementById('groups-list').innerHTML = groups.map(function(g) {
+          return '<div class="card-hover border-2 border-gray-200 rounded-xl p-3 text-center" id="group-' + g.id + '" onclick="selectGroup(\\'' + g.id + '\\',\\'' + g.name + '\\')">' +
+            '<i class="fas ' + g.icon + ' text-2xl text-red-400 mb-1.5"></i>' +
+            '<div class="text-xs font-semibold text-gray-800">' + g.name + '</div>' +
+            '<div class="text-xs text-gray-400 mt-0.5">' + g.parts_count + '部品</div></div>';
+        }).join('');
+      } catch(e) { console.error(e); }
+    }
+
+    async function selectGroup(groupId, groupName) {
+      // ハイライト
+      document.querySelectorAll('#groups-list .card-hover').forEach(function(el) { el.classList.remove('active-group'); });
+      var el = document.getElementById('group-' + groupId);
+      if (el) el.classList.add('active-group');
+      activeGroupId = groupId;
+
+      document.getElementById('subgroups-section').classList.remove('hidden');
+      document.getElementById('section-parts').classList.add('hidden');
+      document.getElementById('subgroup-title').textContent = groupName + ' > サブグループ';
+      try {
+        var res = await axios.get('/api/argos-demo/groups/' + groupId + '/subgroups');
+        var subs = res.data.data;
+        document.getElementById('subgroups-list').innerHTML = subs.map(function(s) {
+          return '<div class="card-hover border-2 border-gray-200 rounded-lg p-3 hover:border-red-400 flex items-center justify-between" onclick="selectSubgroup(\\'' + s.id + '\\',\\'' + s.name + '\\',\\'' + groupName + '\\')">' +
+            '<div class="flex items-center gap-2"><span class="text-sm font-medium text-gray-800">' + s.name + '</span>' +
+            (s.has_illustration ? '<span class="tag bg-green-100 text-green-600"><i class="fas fa-image mr-0.5"></i>イラスト</span>' : '') +
+            '</div><i class="fas fa-chevron-right text-gray-300 text-xs"></i></div>';
+        }).join('');
+      } catch(e) { console.error(e); }
+    }
+
+    function backToGroups() {
+      document.getElementById('subgroups-section').classList.add('hidden');
+      document.getElementById('section-parts').classList.add('hidden');
+      document.querySelectorAll('#groups-list .card-hover').forEach(function(el) { el.classList.remove('active-group'); });
+      activeGroupId = null;
+    }
+
+    // ============ 部品一覧 ============
+    async function selectSubgroup(subgroupId, subgroupName, groupName) {
+      document.getElementById('section-parts').classList.remove('hidden');
+      document.getElementById('step3-title').textContent = subgroupName;
+      document.getElementById('step3-subtitle').textContent = groupName + ' > ' + subgroupName;
+      updatePanelVisibility();
+
+      try {
+        var t0 = performance.now();
+        var res = await axios.get('/api/argos-demo/subgroups/' + subgroupId + '/parts');
+        var elapsed = Math.round(performance.now() - t0);
+        var parts = res.data.data;
+        allPartsData = parts;
+        document.getElementById('parts-count').textContent = parts.length + '件 (' + elapsed + 'ms)';
+        renderParts(parts);
+      } catch(e) { console.error(e); }
+    }
+
+    function renderParts(parts) {
+      document.getElementById('parts-list').innerHTML = parts.map(function(p, i) {
+        var isSelected = selectedParts.some(function(sp) { return sp.part_number === p.part_number; });
+        return '<div class="part-row border-b px-4 py-3 cursor-pointer' + (isSelected ? ' selected' : '') + '" onclick="togglePart(\\'' + p.part_number + '\\', this)" data-pn="' + p.part_number + '">' +
+          '<div class="flex items-center justify-between">' +
+            '<div class="min-w-0 flex-1">' +
+              '<div class="flex items-center gap-2 flex-wrap">' +
+                '<span class="font-mono text-sm font-bold text-red-600">' + p.part_number + '</span>' +
+                (p.qty > 1 ? '<span class="tag bg-gray-100 text-gray-500">x' + p.qty + '</span>' : '') +
+                (p.compatible && p.compatible.length > 0 ? '<span class="tag bg-blue-50 text-blue-600"><i class="fas fa-exchange-alt mr-0.5"></i>互換' + p.compatible.length + '件</span>' : '') +
+              '</div>' +
+              '<div class="text-sm text-gray-800 mt-0.5">' + p.name + '</div>' +
+              (p.remark ? '<div class="text-xs text-gray-400">' + p.remark + '</div>' : '') +
+              (p.compatible && p.compatible.length > 0 ? '<div class="text-xs text-blue-400 mt-0.5"><i class="fas fa-link mr-0.5"></i>互換: ' + p.compatible.join(', ') + '</div>' : '') +
+            '</div>' +
+            '<div class="text-right ml-3 flex-shrink-0">' +
+              '<div class="text-sm font-bold text-gray-800">&yen;' + Number(p.price).toLocaleString() + '</div>' +
+              '<div class="text-xs text-gray-400">参考価格</div>' +
+            '</div>' +
+          '</div></div>';
+      }).join('');
+    }
+
+    function filterParts(query) {
+      if (!query) { renderParts(allPartsData); return; }
+      var q = query.toLowerCase();
+      var filtered = allPartsData.filter(function(p) {
+        return p.part_number.toLowerCase().includes(q) || p.name.toLowerCase().includes(q);
+      });
+      renderParts(filtered);
+    }
+
+    function togglePart(partNumber, el) {
+      var p = allPartsData.find(function(pp) { return pp.part_number === partNumber; });
+      if (!p) return;
+
+      var existIdx = selectedParts.findIndex(function(sp) { return sp.part_number === partNumber; });
+      if (existIdx >= 0) {
+        selectedParts.splice(existIdx, 1);
+        el.classList.remove('selected');
+      } else {
+        selectedParts.push(p);
+        el.classList.add('selected');
+      }
+      updateSelectedParts();
+    }
+
+    function updateSelectedParts() {
+      var count = selectedParts.length;
+
+      if (currentTab === 'listing') {
+        var area = document.getElementById('selected-parts-summary');
+        var noSel = document.getElementById('no-parts-selected');
+        var btn = document.getElementById('apply-btn');
+        var countEl = document.getElementById('selected-count');
+        var preview = document.getElementById('listing-preview');
+
+        if (count === 0) {
+          area.innerHTML = '';
+          noSel.classList.remove('hidden');
+          btn.classList.add('hidden');
+          countEl.classList.add('hidden');
+          preview.classList.add('hidden');
+          return;
+        }
+        noSel.classList.add('hidden');
+        btn.classList.remove('hidden');
+        countEl.classList.remove('hidden');
+        countEl.textContent = count + '件選択中';
+
+        area.innerHTML = selectedParts.map(function(p) {
+          return '<div class="flex items-center justify-between bg-white rounded-lg px-4 py-2.5 shadow-sm border"><div class="flex items-center gap-2"><span class="font-mono text-sm font-bold text-red-600">' + p.part_number + '</span><span class="text-sm text-gray-600">' + p.name + '</span></div><span class="font-bold text-sm">&yen;' + Number(p.price).toLocaleString() + '</span></div>';
+        }).join('');
+
+        // プレビュー
+        if (vehicle) {
+          preview.classList.remove('hidden');
+          var v = vehicle;
+          var partNames = selectedParts.map(function(p) { return p.part_number + ' ' + p.name; }).join(', ');
+          var previewFields = [
+            { label: 'カテゴリ', value: '（部品に応じて自動設定）', icon: 'fa-tag' },
+            { label: '適合車種', value: v.brand_ja + ' ' + v.model_ja + ' ' + v.grade, icon: 'fa-car' },
+            { label: '型式', value: v.katashiki, icon: 'fa-hashtag' },
+            { label: '年式', value: v.year + '年' + v.month + '月', icon: 'fa-calendar' },
+            { label: 'OEM品番', value: selectedParts.map(function(p) { return p.part_number; }).join(', '), icon: 'fa-barcode' },
+            { label: '参考新品価格', value: '&yen;' + selectedParts.reduce(function(s,p) { return s + p.price; }, 0).toLocaleString(), icon: 'fa-yen-sign' }
+          ];
+          document.getElementById('listing-preview-content').innerHTML = previewFields.map(function(f) {
+            return '<div class="bg-gray-50 rounded-lg p-2.5"><p class="text-gray-400 mb-0.5 flex items-center gap-1"><i class="fas ' + f.icon + ' w-3 text-center"></i>' + f.label + '</p><p class="font-semibold text-gray-800">' + f.value + '</p></div>';
+          }).join('');
+        }
+
+      } else if (currentTab === 'search') {
+        var area2 = document.getElementById('search-results-area');
+        var noSel2 = document.getElementById('no-parts-search');
+        var btn2 = document.getElementById('search-hub-btn');
+        var countEl2 = document.getElementById('search-selected-count');
+        var hubSection = document.getElementById('hub-listings-section');
+
+        if (count === 0) {
+          area2.innerHTML = '';
+          noSel2.classList.remove('hidden');
+          btn2.classList.add('hidden');
+          countEl2.classList.add('hidden');
+          hubSection.classList.add('hidden');
+          return;
+        }
+        noSel2.classList.add('hidden');
+        btn2.classList.remove('hidden');
+        countEl2.classList.remove('hidden');
+        countEl2.textContent = count + '件選択中';
+
+        area2.innerHTML = selectedParts.map(function(p) {
+          var allPns = [p.part_number].concat(p.compatible || []);
+          return '<div class="bg-white rounded-lg px-4 py-3 shadow-sm border"><div class="flex items-center justify-between"><div><span class="font-mono font-bold text-red-600">' + p.part_number + '</span><span class="text-sm text-gray-600 ml-2">' + p.name + '</span></div><span class="text-xs text-gray-400">検索対象: ' + allPns.length + '品番</span></div>' +
+            (p.compatible && p.compatible.length > 0 ? '<div class="text-xs text-blue-400 mt-1"><i class="fas fa-link mr-0.5"></i>互換品番も含めて検索: ' + p.compatible.join(', ') + '</div>' : '') +
+            '</div>';
+        }).join('');
+      }
+    }
+
+    // ============ 出品連携 ============
+    function applyToListing() {
+      if (!vehicle || selectedParts.length === 0) return;
+      var v = vehicle;
+      var lines = [];
+      lines.push('=== 出品フォームへ自動入力される情報 ===');
+      lines.push('');
+      lines.push('[車両情報]');
+      lines.push('メーカー: ' + v.brand_ja);
+      lines.push('車名: ' + v.model_ja + ' ' + v.grade);
+      lines.push('型式: ' + v.katashiki);
+      lines.push('年式: ' + v.year + '年' + v.month + '月');
+      lines.push('VIN: ' + v.vin);
+      lines.push('');
+      lines.push('[選択部品]');
+      selectedParts.forEach(function(p) {
+        lines.push('  ' + p.part_number + ' ' + p.name + ' \\xA5' + Number(p.price).toLocaleString());
+      });
+      lines.push('');
+      lines.push('合計参考価格: \\xA5' + selectedParts.reduce(function(s,p) { return s + p.price; }, 0).toLocaleString());
+      alert(lines.join('\\n'));
+    }
+
+    // ============ PARTS HUB検索 ============
+    async function searchOnHub() {
+      if (selectedParts.length === 0) return;
+      var pns = [];
+      selectedParts.forEach(function(p) {
+        pns.push(p.part_number);
+        if (p.compatible) pns = pns.concat(p.compatible);
+      });
+
+      var hubSection = document.getElementById('hub-listings-section');
+      var hubList = document.getElementById('hub-listings');
+      hubSection.classList.remove('hidden');
+      hubList.innerHTML = '<div class="text-center py-4"><div class="w-6 h-6 border-3 border-blue-200 border-t-blue-500 rounded-full animate-spin inline-block"></div><p class="text-xs text-gray-400 mt-2">PARTS HUB内を検索中...</p></div>';
+
+      try {
+        var res = await axios.get('/api/argos-demo/search-listings?pn=' + pns.join(','));
+        var listings = res.data.data;
+
+        if (listings.length === 0) {
+          hubList.innerHTML = '<div class="text-center py-4 text-sm text-gray-400"><i class="fas fa-search mr-1"></i>該当する出品商品はありませんでした</div>';
+          return;
+        }
+
+        hubList.innerHTML = listings.map(function(l) {
+          return '<div class="listing-card bg-white rounded-lg p-4 shadow-sm border cursor-pointer">' +
+            '<div class="flex items-center justify-between mb-2">' +
+              '<div class="flex items-center gap-2"><span class="font-mono text-sm font-bold text-blue-600">' + l.part_number + '</span><span class="tag bg-' + (l.condition === '美品' ? 'green' : l.condition === '良品' ? 'yellow' : 'gray') + '-100 text-' + (l.condition === '美品' ? 'green' : l.condition === '良品' ? 'yellow' : 'gray') + '-600">' + l.condition + '</span></div>' +
+              '<span class="font-bold text-lg text-red-600">&yen;' + Number(l.price).toLocaleString() + '</span>' +
+            '</div>' +
+            '<p class="text-sm text-gray-700 mb-1">' + l.title + '</p>' +
+            '<div class="flex items-center justify-between text-xs text-gray-400">' +
+              '<span><i class="fas fa-user mr-1"></i>' + l.seller + '</span>' +
+              '<span><i class="fas fa-image mr-1"></i>' + l.image_count + '枚 | ' + l.listed_at + '</span>' +
+            '</div>' +
+          '</div>';
+        }).join('');
+      } catch(e) {
+        hubList.innerHTML = '<div class="text-center py-4 text-sm text-red-400">検索に失敗しました</div>';
+      }
+    }
+
+    // ============ リセット ============
+    function resetAll() {
+      vehicle = null;
+      selectedParts = [];
+      allPartsData = [];
+      activeGroupId = null;
+      document.getElementById('section-vehicle').classList.add('hidden');
+      document.getElementById('subgroups-section').classList.add('hidden');
+      document.getElementById('section-parts').classList.add('hidden');
+      var hubSection = document.getElementById('hub-listings-section');
+      if (hubSection) hubSection.classList.add('hidden');
+    }
+  </script>
+</body>
+</html>`)
+})
 
 // === 適合車両情報デモページ（本番未使用・サンプルUI） ===
 app.get('/vehicle-demo', (c) => {
