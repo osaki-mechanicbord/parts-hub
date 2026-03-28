@@ -4640,37 +4640,85 @@ app.get('/profile/edit', (c) => {
 
                 <!-- 銀行口座情報（振込用） -->
                 <div class="bg-white rounded-xl shadow-sm p-6">
-                    <h2 class="text-lg font-bold text-gray-900 mb-2">銀行口座情報</h2>
+                    <h2 class="text-lg font-bold text-gray-900 mb-2">
+                        <i class="fas fa-university text-red-500 mr-1"></i>銀行口座情報
+                    </h2>
                     <p class="text-sm text-gray-600 mb-4">売上金の振込先口座を登録してください</p>
                     
+                    <style>
+                        .bank-autocomplete { max-height: 240px; overflow-y: auto; scrollbar-width: thin; }
+                        .bank-autocomplete::-webkit-scrollbar { width: 5px; }
+                        .bank-autocomplete::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+                        .bank-ac-item { transition: background 0.1s; }
+                        .bank-ac-item:hover, .bank-ac-item.active { background: #fef2f2; }
+                        .bank-field-ok { border-color: #22c55e !important; }
+                    </style>
+
                     <div class="space-y-4">
+                        <!-- 金融機関名 -->
                         <div>
-                            <label class="form-label">銀行名</label>
-                            <input type="text" id="bank-name" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors" placeholder="みずほ銀行">
+                            <label class="form-label">金融機関名 <span class="text-red-500">*</span></label>
+                            <div class="relative">
+                                <input type="text" id="bank-name"
+                                    class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors"
+                                    placeholder="ひらがなで検索（例: みずほ）" autocomplete="off">
+                                <input type="hidden" id="bank-code" value="">
+                                <div id="bank-dropdown" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-40 bank-autocomplete"></div>
+                            </div>
+                            <div id="bank-info" class="hidden mt-1.5 flex items-center gap-2 text-xs">
+                                <span class="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-mono" id="bank-code-show"></span>
+                                <span class="text-green-600"><i class="fas fa-check-circle"></i></span>
+                                <button type="button" onclick="window.__bankUI.clearBank()" class="ml-auto text-gray-400 hover:text-red-500"><i class="fas fa-times-circle"></i> クリア</button>
+                            </div>
                         </div>
 
+                        <!-- 支店名 -->
                         <div>
-                            <label class="form-label">支店名</label>
-                            <input type="text" id="branch-name" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors" placeholder="渋谷支店">
+                            <label class="form-label">支店名 <span class="text-red-500">*</span></label>
+                            <div class="relative">
+                                <input type="text" id="branch-name"
+                                    class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors"
+                                    placeholder="銀行を先に選択してください" autocomplete="off" disabled>
+                                <input type="hidden" id="branch-code" value="">
+                                <div id="branch-dropdown" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-40 bank-autocomplete"></div>
+                            </div>
+                            <div id="branch-info" class="hidden mt-1.5 flex items-center gap-2 text-xs">
+                                <span class="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-mono" id="branch-code-show"></span>
+                                <span class="text-green-600"><i class="fas fa-check-circle"></i></span>
+                                <button type="button" onclick="window.__bankUI.clearBranch()" class="ml-auto text-gray-400 hover:text-red-500"><i class="fas fa-times-circle"></i> クリア</button>
+                            </div>
                         </div>
 
+                        <!-- 口座種別 -->
                         <div>
                             <label class="form-label">口座種別</label>
-                            <select id="account-type" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors">
-                                <option value="">選択してください</option>
-                                <option value="普通">普通</option>
-                                <option value="当座">当座</option>
-                            </select>
+                            <div class="flex gap-3">
+                                <label class="flex-1 cursor-pointer">
+                                    <input type="radio" name="account-type-radio" value="普通" class="sr-only peer" checked>
+                                    <div class="py-2.5 text-center border-2 border-gray-200 rounded-lg text-sm font-medium peer-checked:border-red-500 peer-checked:bg-red-50 peer-checked:text-red-500 transition-all cursor-pointer">普通</div>
+                                </label>
+                                <label class="flex-1 cursor-pointer">
+                                    <input type="radio" name="account-type-radio" value="当座" class="sr-only peer">
+                                    <div class="py-2.5 text-center border-2 border-gray-200 rounded-lg text-sm font-medium peer-checked:border-red-500 peer-checked:bg-red-50 peer-checked:text-red-500 transition-all cursor-pointer">当座</div>
+                                </label>
+                                <label class="flex-1 cursor-pointer">
+                                    <input type="radio" name="account-type-radio" value="貯蓄" class="sr-only peer">
+                                    <div class="py-2.5 text-center border-2 border-gray-200 rounded-lg text-sm font-medium peer-checked:border-red-500 peer-checked:bg-red-50 peer-checked:text-red-500 transition-all cursor-pointer">貯蓄</div>
+                                </label>
+                            </div>
+                            <input type="hidden" id="account-type" value="普通">
                         </div>
 
+                        <!-- 口座番号 -->
                         <div>
                             <label class="form-label">口座番号</label>
-                            <input type="text" id="account-number" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors" placeholder="1234567" maxlength="7">
+                            <input type="text" id="account-number" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors font-mono tracking-wider" placeholder="7桁の口座番号" maxlength="7" inputmode="numeric">
                         </div>
 
+                        <!-- 口座名義 -->
                         <div>
                             <label class="form-label">口座名義（カタカナ）</label>
-                            <input type="text" id="account-holder" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors" placeholder="ヤマダジドウシャセイビコウジョウ">
+                            <input type="text" id="account-holder" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors" placeholder="ヤマダ タロウ">
                         </div>
                     </div>
                 </div>
@@ -4690,7 +4738,8 @@ app.get('/profile/edit', (c) => {
 <script src="/static/i18n-ko.js"></script>
         <script src="/static/i18n.js"></script>
         <script src="/static/auth-header.js"></script>
-        <script src="/static/profile-edit.js?v=20260327"></script>
+        <script src="/static/bank-db.js"></script>
+        <script src="/static/profile-edit.js?v=20260328"></script>
     </body>
     </html>
   `)

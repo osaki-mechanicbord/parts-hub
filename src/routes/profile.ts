@@ -38,7 +38,7 @@ profile.get('/me', async (c) => {
         id, name, nickname, email, phone, company_name, shop_type, bio,
         postal_code, prefecture, city, address,
         profile_image_url, is_verified, rating, created_at,
-        bank_name, branch_name, account_type, account_number, account_holder
+        bank_name, bank_code, branch_name, branch_code, account_type, account_number, account_holder
       FROM users
       WHERE id = ?
     `).bind(userId).first()
@@ -65,7 +65,7 @@ profile.get('/:userId', async (c) => {
         id, name, nickname, email, phone, company_name, shop_type, bio,
         postal_code, prefecture, city, address,
         profile_image_url, is_verified, rating, created_at,
-        bank_name, branch_name, account_type, account_number, account_holder
+        bank_name, bank_code, branch_name, branch_code, account_type, account_number, account_holder
       FROM users
       WHERE id = ?
     `).bind(userId).first()
@@ -107,7 +107,9 @@ profile.put('/me', async (c) => {
       address,
       profile_image_url,
       bank_name,
+      bank_code,
       branch_name,
+      branch_code,
       account_type,
       account_number,
       account_holder
@@ -135,7 +137,9 @@ profile.put('/me', async (c) => {
         address = ?,
         profile_image_url = COALESCE(?, profile_image_url),
         bank_name = ?,
+        bank_code = ?,
         branch_name = ?,
+        branch_code = ?,
         account_type = ?,
         account_number = ?,
         account_holder = ?,
@@ -155,7 +159,9 @@ profile.put('/me', async (c) => {
       address || null,
       profile_image_url || null,
       bank_name || null,
+      bank_code || null,
       branch_name || null,
+      branch_code || null,
       account_type || null,
       account_number || null,
       account_holder || null,
@@ -187,7 +193,7 @@ profile.put('/:userId', async (c) => {
       shop_type, phone, email, bio,
       postal_code, prefecture, city, address,
       profile_image_url,
-      bank_name, branch_name, account_type, account_number, account_holder
+      bank_name, bank_code, branch_name, branch_code, account_type, account_number, account_holder
     } = body
 
     const companyOrShop = company_name || shop_name || null
@@ -210,7 +216,9 @@ profile.put('/:userId', async (c) => {
         address = ?,
         profile_image_url = COALESCE(?, profile_image_url),
         bank_name = ?,
+        bank_code = ?,
         branch_name = ?,
+        branch_code = ?,
         account_type = ?,
         account_number = ?,
         account_holder = ?,
@@ -221,7 +229,7 @@ profile.put('/:userId', async (c) => {
       shop_type || null, phone || null, email || null,
       bio || null, postal_code || null, prefecture || null,
       city || null, address || null, profile_image_url || null,
-      bank_name || null, branch_name || null, account_type || null,
+      bank_name || null, bank_code || null, branch_name || null, branch_code || null, account_type || null,
       account_number || null, account_holder || null,
       userId
     ).run()
