@@ -5310,21 +5310,42 @@ app.get('/transaction/:id/cancel', async (c) => {
   // キャンセル時に商品をactiveに戻す
   try {
     const tx = await c.env.DB.prepare(`
-      SELECT product_id, status FROM transactions WHERE id = ?
+      SELECT product_id, status, stripe_session_id FROM transactions WHERE id = ?
     `).bind(transactionId).first()
     
     if (tx && tx.status === 'pending') {
+      // ★ 安全チェック: Stripeセッションで支払い済みなら、キャンセルではなく完了処理をする
+      let isPaid = false
+      if (tx.stripe_session_id) {
+        try {
+          const Stripe = (await import('stripe')).default
+          const stripe = new Stripe((c.env as any).STRIPE_SECRET_KEY)
+          const session = await stripe.checkout.sessions.retrieve(tx.stripe_session_id as string)
+          if (session.payment_status === 'paid') {
+            isPaid = true
+            console.log('Cancel page: Session actually paid! Redirecting to success page.')
+          }
+        } catch (stripeErr) {
+          console.error('Cancel page: Stripe check failed:', stripeErr)
+        }
+      }
+
+      if (isPaid) {
+        // 支払い済み → 成功ページにリダイレクト
+        return c.redirect(`/transaction/${transactionId}/success?session_id=${tx.stripe_session_id}`)
+      }
+
       // 取引をキャンセルに
       await c.env.DB.prepare(`
-        UPDATE transactions SET status = 'cancelled', updated_at = datetime('now') WHERE id = ? AND status = 'pending'
+        UPDATE transactions SET status = 'cancelled', cancelled_at = datetime('now'), updated_at = datetime('now') WHERE id = ? AND status = 'pending'
       `).bind(transactionId).run()
       
-      // 商品をactiveに戻す（sold状態の場合のみ・他のpending取引がない場合）
-      const otherPending = await c.env.DB.prepare(
-        "SELECT COUNT(*) as cnt FROM transactions WHERE product_id = ? AND status = 'pending' AND id != ?"
+      // 商品をactiveに戻す（sold状態の場合のみ・他のpaid/pending取引がない場合）
+      const otherActive = await c.env.DB.prepare(
+        "SELECT COUNT(*) as cnt FROM transactions WHERE product_id = ? AND status IN ('pending', 'paid', 'shipped', 'completed') AND id != ?"
       ).bind(tx.product_id, transactionId).first()
       
-      if (!otherPending || (otherPending.cnt as number) === 0) {
+      if (!otherActive || (otherActive.cnt as number) === 0) {
         await c.env.DB.prepare(
           "UPDATE products SET status = 'active', updated_at = datetime('now') WHERE id = ? AND status = 'sold'"
         ).bind(tx.product_id).run()

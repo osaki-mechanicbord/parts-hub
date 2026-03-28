@@ -542,35 +542,63 @@ payment.post('/webhook', async (c) => {
 
       case 'checkout.session.expired': {
         // セッション期限切れ → 商品を再度activeに戻す
+        // ★ ただし、支払い済みの場合は絶対にrevertしない（安全弁）
         const expiredSession = event.data.object as Stripe.Checkout.Session
         const expiredTxId = expiredSession.metadata?.transaction_id
         const expiredProductId = expiredSession.metadata?.product_id
 
+        // ★ 安全チェック: Stripeで支払い済みか確認
+        if (expiredSession.payment_status === 'paid') {
+          console.log(`[Webhook] Session expired but payment_status=paid. Processing as completed instead.`)
+          // 支払い済みなのにexpiredが来た → completedとして処理する
+          if (expiredTxId) {
+            await processPaymentCompleted(
+              c.env.DB,
+              (c.env as any).RESEND_API_KEY,
+              expiredTxId,
+              expiredSession.payment_intent as string | null
+            )
+          }
+          break
+        }
+
+        // ★ 安全チェック2: DB上で既にpaid/shipped/completedなら何もしない
         if (expiredTxId) {
+          const currentStatus = await c.env.DB.prepare(
+            `SELECT status FROM transactions WHERE id = ?`
+          ).bind(expiredTxId).first()
+          
+          if (currentStatus && ['paid', 'shipped', 'completed'].includes(currentStatus.status as string)) {
+            console.log(`[Webhook] Session expired but transaction ${expiredTxId} is already ${currentStatus.status}. Skipping revert.`)
+            break
+          }
+
           await c.env.DB.prepare(`
             UPDATE transactions 
-            SET status = 'cancelled', updated_at = datetime('now')
+            SET status = 'cancelled', cancelled_at = datetime('now'), updated_at = datetime('now')
             WHERE id = ? AND status = 'pending'
           `).bind(expiredTxId).run()
+          console.log(`[Webhook] Transaction ${expiredTxId} cancelled (session expired)`)
         }
 
         if (expiredProductId) {
           // 未決済のまま期限切れ → 商品をactiveに戻す
-          // pending取引が他にない場合のみ戻す
-          const otherPending = await c.env.DB.prepare(`
+          // paid/shipped/completed取引がない場合のみ戻す
+          const paidOrPending = await c.env.DB.prepare(`
             SELECT COUNT(*) as cnt FROM transactions 
-            WHERE product_id = ? AND status = 'pending' AND id != ?
-          `).bind(expiredProductId, expiredTxId).first()
+            WHERE product_id = ? AND status IN ('pending', 'paid', 'shipped', 'completed') AND id != ?
+          `).bind(expiredProductId, expiredTxId || 0).first()
           
-          if (!otherPending || (otherPending.cnt as number) === 0) {
+          if (!paidOrPending || (paidOrPending.cnt as number) === 0) {
             await c.env.DB.prepare(`
               UPDATE products 
               SET status = 'active', updated_at = datetime('now')
               WHERE id = ? AND status = 'sold'
             `).bind(expiredProductId).run()
-            console.log(`[Webhook] Product ${expiredProductId} restored to active (session expired)`)
+            console.log(`[Webhook] Product ${expiredProductId} restored to active (session expired, no paid transactions)`)
+          } else {
+            console.log(`[Webhook] Product ${expiredProductId} NOT restored - has active/paid transactions`)
           }
-          console.log(`[Webhook] Product ${expiredProductId} restored to active (session expired)`)
         }
         break
       }
@@ -583,24 +611,38 @@ payment.post('/webhook', async (c) => {
         const failedIntent = event.data.object as Stripe.PaymentIntent
         console.log('[Webhook] Payment failed:', failedIntent.id)
         
-        // 取引ステータスを「キャンセル」に更新
+        // 取引ステータスを「キャンセル」に更新（ただし既にpaid以降なら何もしない）
         const failedTx = await c.env.DB.prepare(`
-          SELECT id, product_id FROM transactions WHERE stripe_payment_intent = ?
+          SELECT id, product_id, status FROM transactions WHERE stripe_payment_intent = ?
         `).bind(failedIntent.id).first()
 
         if (failedTx) {
+          // ★ 安全チェック: 既にpaid/shipped/completedなら何もしない
+          if (['paid', 'shipped', 'completed'].includes(failedTx.status as string)) {
+            console.log(`[Webhook] Payment failed but transaction ${failedTx.id} is already ${failedTx.status}. Skipping.`)
+            break
+          }
+
           await c.env.DB.prepare(`
             UPDATE transactions 
-            SET status = 'cancelled', updated_at = datetime('now')
-            WHERE id = ?
+            SET status = 'cancelled', cancelled_at = datetime('now'), updated_at = datetime('now')
+            WHERE id = ? AND status = 'pending'
           `).bind(failedTx.id).run()
 
-          // 商品をactiveに戻す
-          await c.env.DB.prepare(`
-            UPDATE products 
-            SET status = 'active', updated_at = datetime('now')
-            WHERE id = ? AND status = 'sold'
-          `).bind(failedTx.product_id).run()
+          // 商品をactiveに戻す（paid取引がない場合のみ）
+          const hasPaidTx = await c.env.DB.prepare(`
+            SELECT COUNT(*) as cnt FROM transactions 
+            WHERE product_id = ? AND status IN ('paid', 'shipped', 'completed')
+          `).bind(failedTx.product_id).first()
+
+          if (!hasPaidTx || (hasPaidTx.cnt as number) === 0) {
+            await c.env.DB.prepare(`
+              UPDATE products 
+              SET status = 'active', updated_at = datetime('now')
+              WHERE id = ? AND status = 'sold'
+            `).bind(failedTx.product_id).run()
+            console.log(`[Webhook] Product ${failedTx.product_id} restored to active (payment failed)`)
+          }
         }
         break
       }
