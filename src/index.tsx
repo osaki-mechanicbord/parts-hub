@@ -27,6 +27,7 @@ import emailRoutes from './routes/email'
 import articlesRoutes from './routes/articles'
 import vehicleDemoRoutes from './routes/vehicle-demo'
 import argosDemoRoutes from './routes/argos-demo'
+import argosRoutes from './routes/argos'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -369,6 +370,7 @@ app.route('/api/email', emailRoutes)
 app.route('/api/articles', articlesRoutes)
 app.route('/api/vehicle-demo', vehicleDemoRoutes)
 app.route('/api/argos-demo', argosDemoRoutes)
+app.route('/api/argos', argosRoutes)  // 本番用ARGOS JPC API（ARGOS_API_ENABLED=true時のみ有効、公開予定: 2026年6月〜）
 app.route('/api/admin', adminRoutes)
 app.route('/admin', adminPagesRoutes)
 
@@ -2780,6 +2782,15 @@ app.get('/products/:id', (c) => {
                                 </tr>
                             </tbody>
                         </table>
+
+                        <!-- OEM品番情報（ARGOS JPC連携時に表示） -->
+                        <div id="oem-parts-section" style="display:none;" class="mt-4 pt-4 border-t">
+                            <h3 class="text-sm font-bold text-gray-700 mb-2">
+                                <i class="fas fa-barcode text-red-400 mr-1.5"></i>OEM品番情報
+                                <span style="font-size:10px; background:#fef2f2; color:#ef4444; padding:1px 6px; border-radius:9999px; margin-left:4px;">ARGOS JPC</span>
+                            </h3>
+                            <div id="oem-parts-list" class="space-y-1.5"></div>
+                        </div>
                     </div>
                     
                     <!-- 出品者情報カード -->
@@ -3279,6 +3290,58 @@ app.get('/listing', (c) => {
                     </div>
                 </div>
 
+                <!-- ===== VIN自動入力（ARGOS JPC連携・2026年6月公開予定） ===== -->
+                <div class="section-card" id="argos-vin-section" style="display:none;">
+                    <div class="section-header" style="background: linear-gradient(135deg, #fef2f2, #fff1f2); border-bottom: 2px solid #fecdd3;">
+                        <div class="section-header-icon bg-red-50 text-red-500">
+                            <i class="fas fa-magic"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-bold text-sm text-gray-900 flex items-center gap-2">
+                                VIN自動入力
+                                <span style="font-size:10px; background:#fef2f2; color:#ef4444; padding:1px 8px; border-radius:9999px; font-weight:600;">NEW</span>
+                            </div>
+                            <div class="text-xs text-gray-500">車台番号を入力すると適合情報・OEM品番を自動取得</div>
+                        </div>
+                    </div>
+                    <div class="section-body">
+                        <div style="display:flex; gap:8px; margin-bottom:12px;">
+                            <input type="text" id="argos-vin-input"
+                                   class="form-input" style="flex:1; font-family:monospace; letter-spacing:2px; text-transform:uppercase;"
+                                   placeholder="車台番号を入力（例: JTDKN3DU5P0000001）" maxlength="30">
+                            <button type="button" onclick="argosVinSearch()" id="argos-vin-btn"
+                                    style="background:linear-gradient(135deg,#ef4444,#ec4899); color:#fff; border:none; padding:0 20px; border-radius:12px; font-weight:700; font-size:14px; cursor:pointer; white-space:nowrap; min-height:48px;">
+                                <i class="fas fa-search" style="margin-right:4px;"></i>検索
+                            </button>
+                        </div>
+                        <div id="argos-vin-loading" style="display:none; text-align:center; padding:16px;">
+                            <div style="width:24px; height:24px; border:3px solid #fecdd3; border-top-color:#ef4444; border-radius:50%; animation:spin 0.8s linear infinite; display:inline-block;"></div>
+                            <p style="font-size:12px; color:#9ca3af; margin-top:8px;">ARGOS JPC APIで車両情報を取得中...</p>
+                        </div>
+                        <div id="argos-vin-error" style="display:none; background:#fef2f2; border:1px solid #fecdd3; border-radius:12px; padding:12px; margin-top:8px;">
+                            <p style="font-size:13px; color:#dc2626;"><i class="fas fa-exclamation-triangle" style="margin-right:4px;"></i><span id="argos-vin-error-msg"></span></p>
+                        </div>
+                        <div id="argos-vin-result" style="display:none; margin-top:12px;">
+                            <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:12px; margin-bottom:12px;">
+                                <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                                    <i class="fas fa-check-circle" style="color:#22c55e;"></i>
+                                    <span style="font-weight:700; font-size:14px; color:#15803d;">車両特定完了</span>
+                                    <span id="argos-vin-vehicle-name" style="font-size:12px; color:#6b7280;"></span>
+                                </div>
+                                <div id="argos-vin-details" style="display:grid; grid-template-columns:1fr 1fr; gap:4px 16px; font-size:12px;"></div>
+                            </div>
+                            <button type="button" onclick="argosApplyToForm()"
+                                    style="width:100%; padding:12px; background:linear-gradient(135deg,#22c55e,#16a34a); color:#fff; border:none; border-radius:12px; font-weight:700; font-size:14px; cursor:pointer;">
+                                <i class="fas fa-arrow-down" style="margin-right:6px;"></i>この車両情報を適合情報に反映する
+                            </button>
+                        </div>
+                        <p style="font-size:11px; color:#d1d5db; margin-top:8px;">
+                            <i class="fas fa-info-circle" style="margin-right:4px;"></i>
+                            Powered by ARGOS JPC (Level Bridge Inc.) - 対応: トヨタ/ホンダ/日産/三菱/ダイハツ/マツダ/スバル/スズキ
+                        </p>
+                    </div>
+                </div>
+
                 <!-- ===== 4. 適合車両情報（アコーディオン） ===== -->
                 <div class="section-card">
                     <div class="section-header accordion-toggle" onclick="toggleAccordion(this)">
@@ -3569,6 +3632,97 @@ app.get('/listing', (c) => {
         <script src="/static/auth-header.js"></script>
         <script src="/static/listing.js?v=20260325"></script>
         <script>
+            // ========== ARGOS JPC VIN連携（フィーチャーフラグ制御） ==========
+            var _argosVehicle = null;
+            (async function checkArgosEnabled() {
+              try {
+                var res = await fetch('/api/argos/status');
+                if (res.ok) {
+                  var data = await res.json();
+                  if (data.success && data.enabled) {
+                    var el = document.getElementById('argos-vin-section');
+                    if (el) el.style.display = '';
+                  }
+                }
+              } catch(e) { /* ARGOS未有効 → セクション非表示のまま */ }
+            })();
+
+            async function argosVinSearch() {
+              var vin = document.getElementById('argos-vin-input').value.trim().toUpperCase();
+              if (!vin) { alert('車台番号を入力してください'); return; }
+              document.getElementById('argos-vin-loading').style.display = '';
+              document.getElementById('argos-vin-error').style.display = 'none';
+              document.getElementById('argos-vin-result').style.display = 'none';
+              try {
+                var res = await axios.get('/api/argos/vin/' + encodeURIComponent(vin));
+                _argosVehicle = res.data.data;
+                document.getElementById('argos-vin-vehicle-name').textContent =
+                  _argosVehicle.brand_ja + ' ' + _argosVehicle.model_ja + ' ' + _argosVehicle.grade;
+                var fields = [
+                  ['型式', _argosVehicle.katashiki],
+                  ['年式', _argosVehicle.year + '年' + _argosVehicle.month + '月'],
+                  ['エンジン', _argosVehicle.engine],
+                  ['駆動', _argosVehicle.drive],
+                  ['ミッション', _argosVehicle.transmission],
+                  ['燃料', _argosVehicle.fuel]
+                ];
+                document.getElementById('argos-vin-details').innerHTML = fields.map(function(f) {
+                  return '<div><span style="color:#9ca3af;">' + f[0] + ':</span> <strong>' + f[1] + '</strong></div>';
+                }).join('');
+                document.getElementById('argos-vin-result').style.display = '';
+              } catch(e) {
+                var errData = e.response && e.response.data;
+                document.getElementById('argos-vin-error').style.display = '';
+                document.getElementById('argos-vin-error-msg').textContent =
+                  errData ? errData.error : '検索に失敗しました';
+              }
+              document.getElementById('argos-vin-loading').style.display = 'none';
+            }
+
+            function argosApplyToForm() {
+              if (!_argosVehicle) return;
+              var v = _argosVehicle;
+              // 型式
+              var mc = document.getElementById('model-code');
+              if (mc) mc.value = v.katashiki || '';
+              // グレード
+              var gr = document.getElementById('grade');
+              if (gr) gr.value = v.grade || '';
+              // エンジン型式
+              var et = document.getElementById('engine-type');
+              if (et) et.value = v.engine || '';
+              // 駆動方式マッピング
+              var dt = document.getElementById('drive-type');
+              if (dt) {
+                var driveMap = { 'FF': '2WD', '4WD': '4WD', 'FR': 'FR', 'MR': 'MR', 'RR': 'RR', 'E-Four': '4WD' };
+                dt.value = driveMap[v.drive] || '';
+              }
+              // ミッション
+              var tt = document.getElementById('transmission-type');
+              if (tt) {
+                var tmMap = { 'AT': 'AT', 'MT': 'MT', 'CVT': 'CVT', 'eCVT': 'CVT', 'DCT': 'DCT', '4AT': 'AT', '5AT': 'AT', '6AT': 'AT', '8AT': 'AT', '5MT': 'MT', '6MT': 'MT' };
+                tt.value = tmMap[v.transmission] || '';
+              }
+              // 年式
+              var yf = document.getElementById('year-from');
+              if (yf && v.year) yf.value = v.year;
+              var yt = document.getElementById('year-to');
+              if (yt && v.year) yt.value = v.year;
+
+              // アコーディオンを開く
+              var accordion = document.getElementById('vehicle-accordion');
+              if (accordion && !accordion.classList.contains('open')) {
+                accordion.classList.add('open');
+                var arrow = accordion.previousElementSibling.querySelector('.accordion-arrow');
+                if (arrow) arrow.classList.add('open');
+              }
+
+              alert('車両情報を適合情報欄に反映しました');
+            }
+
+            document.getElementById('argos-vin-input').addEventListener('keydown', function(e) {
+              if (e.key === 'Enter') { e.preventDefault(); argosVinSearch(); }
+            });
             // 状態チップ選択
             function selectCondition(el) {
                 document.querySelectorAll('.condition-chip').forEach(function(c) {

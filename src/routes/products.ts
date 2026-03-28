@@ -506,6 +506,21 @@ app.get('/:slugOrId', async (c) => {
       WHERE product_id = ?
     `).bind(product.id).first()
     
+    // OEM品番情報を取得（ARGOS JPC連携で紐付けられた品番）
+    let oem_parts: any[] = []
+    try {
+      const { results: oemResults } = await DB.prepare(`
+        SELECT oem_part_number, part_name, reference_price, compatible_part_numbers, 
+               source, vin_used, group_name, subgroup_name, created_at
+        FROM product_oem_parts
+        WHERE product_id = ?
+        ORDER BY created_at ASC
+      `).bind(product.id).all()
+      oem_parts = oemResults || []
+    } catch (_) {
+      // product_oem_parts テーブルが存在しない場合（マイグレーション未適用）はスキップ
+    }
+    
     // 閲覧数を増やす
     await DB.prepare(`
       UPDATE products SET view_count = view_count + 1 WHERE id = ?
@@ -516,7 +531,8 @@ app.get('/:slugOrId', async (c) => {
       data: {
         ...product,
         images,
-        compatibility
+        compatibility,
+        oem_parts
       }
     })
   } catch (error) {

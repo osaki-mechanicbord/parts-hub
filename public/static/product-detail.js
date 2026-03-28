@@ -218,6 +218,9 @@ function renderProduct() {
         if (compatSection) compatSection.style.display = 'none';
     }
     
+    // OEM品番情報（ARGOS JPC連携）
+    renderOemParts();
+    
     // 出品者情報
     renderSellerInfo();
     
@@ -360,6 +363,53 @@ function renderCompatibility() {
     `;
     
     container.innerHTML = html;
+}
+
+// OEM品番情報を表示（ARGOS JPC連携）
+function renderOemParts() {
+    const section = document.getElementById('oem-parts-section');
+    const list = document.getElementById('oem-parts-list');
+    if (!section || !list) return;
+    
+    if (!product.oem_parts || product.oem_parts.length === 0) {
+        section.style.display = 'none';
+        return;
+    }
+    
+    section.style.display = '';
+    
+    const html = product.oem_parts.map(function(part) {
+        const compatParts = part.compatible_part_numbers 
+            ? part.compatible_part_numbers.split(',').filter(Boolean)
+            : [];
+        
+        return `
+            <div style="background:#fafafa; border:1px solid #f0f0f0; border-radius:8px; padding:10px 12px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                    <div style="display:flex; align-items:center; gap:8px; flex:1; min-width:0;">
+                        <code style="font-size:13px; font-weight:700; color:#1e293b; letter-spacing:0.5px; white-space:nowrap;">${part.oem_part_number}</code>
+                        ${part.part_name ? `<span style="font-size:12px; color:#6b7280; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${part.part_name}</span>` : ''}
+                    </div>
+                    ${part.reference_price ? `<span style="font-size:12px; color:#059669; font-weight:600; white-space:nowrap;">参考 ¥${Number(part.reference_price).toLocaleString()}</span>` : ''}
+                </div>
+                ${part.group_name || part.subgroup_name ? `
+                    <div style="font-size:11px; color:#9ca3af; margin-top:4px;">
+                        <i class="fas fa-folder-open" style="margin-right:3px;"></i>${part.group_name || ''}${part.subgroup_name ? ' > ' + part.subgroup_name : ''}
+                    </div>
+                ` : ''}
+                ${compatParts.length > 0 ? `
+                    <div style="margin-top:6px; display:flex; flex-wrap:wrap; gap:4px;">
+                        <span style="font-size:10px; color:#9ca3af;">互換:</span>
+                        ${compatParts.map(function(cp) {
+                            return '<code style="font-size:10px; background:#e0f2fe; color:#0369a1; padding:1px 6px; border-radius:4px;">' + cp.trim() + '</code>';
+                        }).join('')}
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }).join('');
+    
+    list.innerHTML = html;
 }
 
 // 出品者情報を表示
