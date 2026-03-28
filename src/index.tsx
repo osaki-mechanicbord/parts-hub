@@ -31,6 +31,12 @@ import argosRoutes from './routes/argos'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
+// キャッシュバスティング用バージョン（デプロイ毎に更新）
+const BUILD_VERSION = '20260328c'
+
+// 静的ファイルURLにバージョンを付与するヘルパー
+const v = (path: string) => `${path}?v=${BUILD_VERSION}`
+
 // 共通フッターコンポーネント
 const Footer = () => `
 <footer class="bg-gray-900 text-white mt-16">
@@ -88,17 +94,17 @@ const Footer = () => `
         </div>
     </div>
 </footer>
-<script src="/static/i18n-en.js"></script>
-<script src="/static/i18n-zh.js"></script>
-<script src="/static/i18n-ko.js"></script>
-<script src="/static/i18n.js"></script>
+<script src="${v('/static/i18n-en.js')}"></script>
+<script src="${v('/static/i18n-zh.js')}"></script>
+<script src="${v('/static/i18n-ko.js')}"></script>
+<script src="${v('/static/i18n.js')}"></script>
 `
 
 // ミドルウェア
 app.use(logger())
 app.use('/api/*', cors())
 
-// 静的ファイル配信
+// 静的ファイル配信（キャッシュバスティング: ?v=xxx はCloudflare Pagesが無視してファイルを返す）
 app.use('/static/*', serveStatic({ root: './public' }))
 
 // SVGアイコンを直接配信（Cloudflare Pagesではpublic/iconsのserveStaticが動作しないため）
@@ -927,10 +933,10 @@ app.get('/', (c) => {
 
         <!-- スクリプト -->
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-        <script src="/static/i18n-en.js"></script>
-<script src="/static/i18n-zh.js"></script>
-<script src="/static/i18n-ko.js"></script>
-        <script src="/static/i18n.js"></script>
+        <script src="${v('/static/i18n-en.js')}"></script>
+<script src="${v('/static/i18n-zh.js')}"></script>
+<script src="${v('/static/i18n-ko.js')}"></script>
+        <script src="${v('/static/i18n.js')}"></script>
         <script>
             // ==========================================
             // ログイン状態の検出とヘッダーUI切り替え
@@ -1441,11 +1447,11 @@ app.get('/news', (c) => {
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-        <script src="/static/i18n-en.js"></script>
-<script src="/static/i18n-zh.js"></script>
-<script src="/static/i18n-ko.js"></script>
-        <script src="/static/i18n.js"></script>
-        <script src="/static/auth-header.js"></script>
+        <script src="${v('/static/i18n-en.js')}"></script>
+<script src="${v('/static/i18n-zh.js')}"></script>
+<script src="${v('/static/i18n-ko.js')}"></script>
+        <script src="${v('/static/i18n.js')}"></script>
+        <script src="${v('/static/auth-header.js')}"></script>
         <script>
             let currentPage = 1;
             
@@ -1880,11 +1886,11 @@ app.get('/news/:category/:year/:month/:slug', (c) => {
         ${getArticleDetailBody()}
         
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-        <script src="/static/i18n-en.js"></script>
-<script src="/static/i18n-zh.js"></script>
-<script src="/static/i18n-ko.js"></script>
-        <script src="/static/i18n.js"></script>
-        <script src="/static/auth-header.js"></script>
+        <script src="${v('/static/i18n-en.js')}"></script>
+<script src="${v('/static/i18n-zh.js')}"></script>
+<script src="${v('/static/i18n-ko.js')}"></script>
+        <script src="${v('/static/i18n.js')}"></script>
+        <script src="${v('/static/auth-header.js')}"></script>
         <script>
             var articleSlug = '${fullSlug}';
             ${getArticleDetailScript()}
@@ -1927,11 +1933,11 @@ app.get('/news/:slug', (c) => {
         ${getArticleDetailBody()}
         
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-        <script src="/static/i18n-en.js"></script>
-<script src="/static/i18n-zh.js"></script>
-<script src="/static/i18n-ko.js"></script>
-        <script src="/static/i18n.js"></script>
-        <script src="/static/auth-header.js"></script>
+        <script src="${v('/static/i18n-en.js')}"></script>
+<script src="${v('/static/i18n-zh.js')}"></script>
+<script src="${v('/static/i18n-ko.js')}"></script>
+        <script src="${v('/static/i18n.js')}"></script>
+        <script src="${v('/static/auth-header.js')}"></script>
         <script>
             var articleSlug = '${slug}';
             ${getArticleDetailScript()}
@@ -2182,10 +2188,10 @@ app.get('/login', (c) => {
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-        <script src="/static/i18n-en.js"></script>
-<script src="/static/i18n-zh.js"></script>
-<script src="/static/i18n-ko.js"></script>
-        <script src="/static/i18n.js"></script>
+        <script src="${v('/static/i18n-en.js')}"></script>
+<script src="${v('/static/i18n-zh.js')}"></script>
+<script src="${v('/static/i18n-ko.js')}"></script>
+        <script src="${v('/static/i18n.js')}"></script>
         <script>
             // パスワード表示切替
             document.getElementById('toggle-password').addEventListener('click', function() {
@@ -2538,10 +2544,10 @@ app.get('/register', (c) => {
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-        <script src="/static/i18n-en.js"></script>
-<script src="/static/i18n-zh.js"></script>
-<script src="/static/i18n-ko.js"></script>
-        <script src="/static/i18n.js"></script>
+        <script src="${v('/static/i18n-en.js')}"></script>
+<script src="${v('/static/i18n-zh.js')}"></script>
+<script src="${v('/static/i18n-ko.js')}"></script>
+        <script src="${v('/static/i18n.js')}"></script>
         <script>
             function showError(message) {
                 var errorDiv = document.getElementById('error-message');
@@ -2915,13 +2921,13 @@ app.get('/products/:id', (c) => {
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-        <script src="/static/i18n-en.js"></script>
-<script src="/static/i18n-zh.js"></script>
-<script src="/static/i18n-ko.js"></script>
-        <script src="/static/i18n.js"></script>
-        <script src="/static/auth-header.js"></script>
-        <script src="/static/product-detail.js"></script>
-        <script src="/static/comments.js"></script>
+        <script src="${v('/static/i18n-en.js')}"></script>
+<script src="${v('/static/i18n-zh.js')}"></script>
+<script src="${v('/static/i18n-ko.js')}"></script>
+        <script src="${v('/static/i18n.js')}"></script>
+        <script src="${v('/static/auth-header.js')}"></script>
+        <script src="${v('/static/product-detail.js')}"></script>
+        <script src="${v('/static/comments.js')}"></script>
     </body>
     </html>
   `)
@@ -3625,12 +3631,12 @@ app.get('/listing', (c) => {
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-        <script src="/static/i18n-en.js"></script>
-<script src="/static/i18n-zh.js"></script>
-<script src="/static/i18n-ko.js"></script>
-        <script src="/static/i18n.js"></script>
-        <script src="/static/auth-header.js"></script>
-        <script src="/static/listing.js?v=20260325"></script>
+        <script src="${v('/static/i18n-en.js')}"></script>
+<script src="${v('/static/i18n-zh.js')}"></script>
+<script src="${v('/static/i18n-ko.js')}"></script>
+        <script src="${v('/static/i18n.js')}"></script>
+        <script src="${v('/static/auth-header.js')}"></script>
+        <script src="${v('/static/listing.js?v=20260325')}"></script>
         <script>
             // ========== ARGOS JPC VIN連携（フィーチャーフラグ制御） ==========
             var _argosVehicle = null;
@@ -3890,11 +3896,11 @@ app.get('/chat', (c) => {
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-        <script src="/static/i18n-en.js"></script>
-<script src="/static/i18n-zh.js"></script>
-<script src="/static/i18n-ko.js"></script>
-        <script src="/static/i18n.js"></script>
-        <script src="/static/auth-header.js"></script>
+        <script src="${v('/static/i18n-en.js')}"></script>
+<script src="${v('/static/i18n-zh.js')}"></script>
+<script src="${v('/static/i18n-ko.js')}"></script>
+        <script src="${v('/static/i18n.js')}"></script>
+        <script src="${v('/static/auth-header.js')}"></script>
         <script>
             let currentUserId = null;
             let token = null;
@@ -4105,11 +4111,11 @@ app.get('/chat/:roomId', (c) => {
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-        <script src="/static/i18n-en.js"></script>
-<script src="/static/i18n-zh.js"></script>
-<script src="/static/i18n-ko.js"></script>
-        <script src="/static/i18n.js"></script>
-        <script src="/static/auth-header.js"></script>
+        <script src="${v('/static/i18n-en.js')}"></script>
+<script src="${v('/static/i18n-zh.js')}"></script>
+<script src="${v('/static/i18n-ko.js')}"></script>
+        <script src="${v('/static/i18n.js')}"></script>
+        <script src="${v('/static/auth-header.js')}"></script>
         <script>
             const roomId = ${roomId};
             let currentUserId = null;
@@ -4552,11 +4558,11 @@ app.get('/mypage', (c) => {
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-        <script src="/static/i18n-en.js"></script>
-<script src="/static/i18n-zh.js"></script>
-<script src="/static/i18n-ko.js"></script>
-        <script src="/static/i18n.js"></script>
-        <script src="/static/mypage.js"></script>
+        <script src="${v('/static/i18n-en.js')}"></script>
+<script src="${v('/static/i18n-zh.js')}"></script>
+<script src="${v('/static/i18n-ko.js')}"></script>
+        <script src="${v('/static/i18n.js')}"></script>
+        <script src="${v('/static/mypage.js')}"></script>
     </body>
     </html>
   `)
@@ -4622,12 +4628,12 @@ app.get('/notifications', (c) => {
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-        <script src="/static/i18n-en.js"></script>
-<script src="/static/i18n-zh.js"></script>
-<script src="/static/i18n-ko.js"></script>
-        <script src="/static/i18n.js"></script>
-        <script src="/static/auth-header.js"></script>
-        <script src="/static/notifications.js"></script>
+        <script src="${v('/static/i18n-en.js')}"></script>
+<script src="${v('/static/i18n-zh.js')}"></script>
+<script src="${v('/static/i18n-ko.js')}"></script>
+        <script src="${v('/static/i18n.js')}"></script>
+        <script src="${v('/static/auth-header.js')}"></script>
+        <script src="${v('/static/notifications.js')}"></script>
     </body>
     </html>
   `)
@@ -4891,13 +4897,13 @@ app.get('/profile/edit', (c) => {
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-        <script src="/static/i18n-en.js"></script>
-<script src="/static/i18n-zh.js"></script>
-<script src="/static/i18n-ko.js"></script>
-        <script src="/static/i18n.js"></script>
-        <script src="/static/auth-header.js"></script>
-        <script src="/static/bank-db.js"></script>
-        <script src="/static/profile-edit.js?v=20260328"></script>
+        <script src="${v('/static/i18n-en.js')}"></script>
+<script src="${v('/static/i18n-zh.js')}"></script>
+<script src="${v('/static/i18n-ko.js')}"></script>
+        <script src="${v('/static/i18n.js')}"></script>
+        <script src="${v('/static/auth-header.js')}"></script>
+        <script src="${v('/static/bank-db.js')}"></script>
+        <script src="${v('/static/profile-edit.js?v=20260328')}"></script>
     </body>
     </html>
   `)
@@ -5026,12 +5032,12 @@ app.get('/reviews/new', (c) => {
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-        <script src="/static/i18n-en.js"></script>
-<script src="/static/i18n-zh.js"></script>
-<script src="/static/i18n-ko.js"></script>
-        <script src="/static/i18n.js"></script>
-        <script src="/static/auth-header.js"></script>
-        <script src="/static/reviews.js"></script>
+        <script src="${v('/static/i18n-en.js')}"></script>
+<script src="${v('/static/i18n-zh.js')}"></script>
+<script src="${v('/static/i18n-ko.js')}"></script>
+        <script src="${v('/static/i18n.js')}"></script>
+        <script src="${v('/static/auth-header.js')}"></script>
+        <script src="${v('/static/reviews.js')}"></script>
     </body>
     </html>
   `)
@@ -5071,12 +5077,12 @@ app.get('/transactions/:id', (c) => {
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-        <script src="/static/i18n-en.js"></script>
-<script src="/static/i18n-zh.js"></script>
-<script src="/static/i18n-ko.js"></script>
-        <script src="/static/i18n.js"></script>
-        <script src="/static/auth-header.js"></script>
-        <script src="/static/transaction-detail.js"></script>
+        <script src="${v('/static/i18n-en.js')}"></script>
+<script src="${v('/static/i18n-zh.js')}"></script>
+<script src="${v('/static/i18n-ko.js')}"></script>
+        <script src="${v('/static/i18n.js')}"></script>
+        <script src="${v('/static/auth-header.js')}"></script>
+        <script src="${v('/static/transaction-detail.js')}"></script>
     </body>
     </html>
   `)
@@ -5210,11 +5216,11 @@ app.get('/transaction/:id/success', (c) => {
             </div>
         </main>
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-        <script src="/static/i18n-en.js"></script>
-<script src="/static/i18n-zh.js"></script>
-<script src="/static/i18n-ko.js"></script>
-        <script src="/static/i18n.js"></script>
-        <script src="/static/auth-header.js"></script>
+        <script src="${v('/static/i18n-en.js')}"></script>
+<script src="${v('/static/i18n-zh.js')}"></script>
+<script src="${v('/static/i18n-ko.js')}"></script>
+        <script src="${v('/static/i18n.js')}"></script>
+        <script src="${v('/static/auth-header.js')}"></script>
         <script>
             (async function() {
                 var token = localStorage.getItem('token');
@@ -5506,11 +5512,11 @@ app.get('/contact', (c) => {
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-        <script src="/static/i18n-en.js"></script>
-<script src="/static/i18n-zh.js"></script>
-<script src="/static/i18n-ko.js"></script>
-        <script src="/static/i18n.js"></script>
-        <script src="/static/auth-header.js"></script>
+        <script src="${v('/static/i18n-en.js')}"></script>
+<script src="${v('/static/i18n-zh.js')}"></script>
+<script src="${v('/static/i18n-ko.js')}"></script>
+        <script src="${v('/static/i18n.js')}"></script>
+        <script src="${v('/static/auth-header.js')}"></script>
         <script>
             document.getElementById('contact-form').addEventListener('submit', async (e) => {
                 e.preventDefault()
@@ -5602,11 +5608,11 @@ app.get('/favorites', (c) => {
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-        <script src="/static/i18n-en.js"></script>
-<script src="/static/i18n-zh.js"></script>
-<script src="/static/i18n-ko.js"></script>
-        <script src="/static/i18n.js"></script>
-        <script src="/static/auth-header.js"></script>
+        <script src="${v('/static/i18n-en.js')}"></script>
+<script src="${v('/static/i18n-zh.js')}"></script>
+<script src="${v('/static/i18n-ko.js')}"></script>
+        <script src="${v('/static/i18n.js')}"></script>
+        <script src="${v('/static/auth-header.js')}"></script>
         <script>
             const currentUserId = 1; // TODO: 実際のログインユーザーID
             
@@ -5801,11 +5807,11 @@ app.get('/search', (c) => {
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-        <script src="/static/i18n-en.js"></script>
-<script src="/static/i18n-zh.js"></script>
-<script src="/static/i18n-ko.js"></script>
-        <script src="/static/i18n.js"></script>
-        <script src="/static/auth-header.js"></script>
+        <script src="${v('/static/i18n-en.js')}"></script>
+<script src="${v('/static/i18n-zh.js')}"></script>
+<script src="${v('/static/i18n-ko.js')}"></script>
+        <script src="${v('/static/i18n.js')}"></script>
+        <script src="${v('/static/auth-header.js')}"></script>
         <script>
             let searchTimeout;
             
@@ -6368,11 +6374,11 @@ app.get('/password-reset', (c) => {
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-        <script src="/static/i18n-en.js"></script>
-<script src="/static/i18n-zh.js"></script>
-<script src="/static/i18n-ko.js"></script>
-        <script src="/static/i18n.js"></script>
-        <script src="/static/auth-header.js"></script>
+        <script src="${v('/static/i18n-en.js')}"></script>
+<script src="${v('/static/i18n-zh.js')}"></script>
+<script src="${v('/static/i18n-ko.js')}"></script>
+        <script src="${v('/static/i18n.js')}"></script>
+        <script src="${v('/static/auth-header.js')}"></script>
         <script>
             document.getElementById('reset-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
@@ -8230,7 +8236,7 @@ app.get('/bank-demo', (c) => {
             </div>
         </main>
 
-        <script src="/static/bank-db.js"></script>
+        <script src="${v('/static/bank-db.js')}"></script>
         <script>
         (function() {
             'use strict';
