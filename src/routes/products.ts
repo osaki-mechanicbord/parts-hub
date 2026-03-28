@@ -457,7 +457,7 @@ app.get('/:slugOrId', async (c) => {
         LEFT JOIN categories c ON p.category_id = c.id
         LEFT JOIN car_makers m ON p.maker_id = m.id
         LEFT JOIN car_models mo ON p.model_id = mo.id
-        WHERE p.slug = ? AND p.status = 'active'
+        WHERE p.slug = ? AND p.status IN ('active', 'sold', 'reserved')
       `).bind(slugOrId).first()
       console.log('[商品詳細] 検索結果:', product ? `見つかった(ID:${product.id})` : '見つからない')
     } else {
@@ -478,7 +478,7 @@ app.get('/:slugOrId', async (c) => {
         LEFT JOIN categories c ON p.category_id = c.id
         LEFT JOIN car_makers m ON p.maker_id = m.id
         LEFT JOIN car_models mo ON p.model_id = mo.id
-        WHERE p.id = ? AND p.status = 'active'
+        WHERE p.id = ? AND p.status IN ('active', 'sold', 'reserved')
       `).bind(slugOrId).first()
       console.log('[商品詳細] 検索結果:', product ? `見つかった(ID:${product.id})` : '見つからない')
     }

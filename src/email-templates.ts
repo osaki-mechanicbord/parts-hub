@@ -96,7 +96,7 @@ export function registrationComplete(p: { userName: string }) {
 }
 
 // ================================================================
-// 3. 商品が購入されたとき（出品者向け）
+// 3. 商品が購入されたとき（出品者向け）- 発送準備依頼を強調
 // ================================================================
 export function productPurchasedSeller(p: {
   sellerName: string; productName: string; amount: number;
@@ -107,23 +107,28 @@ export function productPurchasedSeller(p: {
   const content = `
     <h2 style="margin:0 0 16px;font-size:20px;color:#111;">🎊 商品が購入されました！</h2>
     <p>${p.sellerName} 様</p>
-    <p>おめでとうございます！あなたの商品が購入されました。</p>
+    <p>おめでとうございます！あなたの商品が購入されました。<br><strong style="color:#dc2626;">決済は完了していますので、できるだけ早く発送準備をお願いします。</strong></p>
     ${infoBox([
       infoRow('商品名', p.productName),
       infoRow('販売価格', `¥${amt}`),
       infoRow('購入者', p.buyerName),
       infoRow('注文番号', `#${p.transactionId}`),
+      infoRow('決済状況', '<span style="color:#16a34a;font-weight:700;">✅ 決済完了</span>'),
     ])}
-    <p style="font-weight:700;">📦 次のステップ：</p>
-    <ol style="font-size:14px;padding-left:20px;">
-      <li>商品の梱包を行ってください</li>
-      <li>発送手配を進めてください</li>
-      <li>発送完了後、取引ページで「発送済み」に更新してください</li>
-    </ol>
-    ${actionButton('注文詳細を見る', url)}
+    <div style="background:#fff7ed;border:2px solid #fb923c;border-radius:8px;padding:16px 20px;margin:20px 0;">
+      <p style="margin:0 0 8px;font-weight:800;font-size:15px;color:#c2410c;">📦 発送をお願いします</p>
+      <ol style="font-size:14px;padding-left:20px;margin:0;color:#333;">
+        <li style="margin-bottom:4px;">商品の梱包を行ってください</li>
+        <li style="margin-bottom:4px;">配送業者に依頼して発送してください</li>
+        <li style="margin-bottom:4px;">発送完了後、<a href="${url}" style="color:#ef4444;font-weight:600;">取引ページ</a>で「発送済み」に更新してください</li>
+      </ol>
+      <p style="margin:8px 0 0;font-size:13px;color:#9a3412;">※ 追跡番号がある場合は取引ページに入力してください。購入者に自動通知されます。</p>
+    </div>
+    ${actionButton('取引ページで発送手続きをする', url)}
+    <p style="font-size:13px;color:#6b7280;">商品についての質問は取引ページのチャットで購入者とやり取りできます。</p>
   `
   return {
-    subject: `【PARTS HUB】商品が購入されました - ${p.productName}`,
+    subject: `【PARTS HUB】商品が購入されました！発送準備をお願いします - ${p.productName}`,
     html: baseTemplate('商品購入通知', content),
   }
 }

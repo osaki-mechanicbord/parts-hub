@@ -19,6 +19,166 @@ type Bindings = {
 
 const payment = new Hono<{ Bindings: Bindings }>()
 
+// ============================================================
+// ヘルパー関数
+// ============================================================
+
+/** アプリ内通知を作成 */
+async function createNotification(
+  db: D1Database,
+  userId: number,
+  type: string,
+  title: string,
+  message: string,
+  relatedId: number | null,
+  relatedType: string | null,
+  actionUrl: string | null
+) {
+  try {
+    await db.prepare(`
+      INSERT INTO notifications (user_id, type, title, message, related_id, related_type, action_url)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).bind(userId, type, title, message, relatedId, relatedType, actionUrl).run()
+  } catch (e) {
+    console.error('Failed to create notification:', e)
+  }
+}
+
+/** 取引完了処理（Webhook + verify-session 共通） */
+async function processPaymentCompleted(
+  db: D1Database,
+  resendApiKey: string | undefined,
+  transactionId: string,
+  stripePaymentIntent: string | null
+) {
+  // 取引の現在ステータスを確認（二重処理防止）
+  const currentTx = await db.prepare(`
+    SELECT id, status, product_id FROM transactions WHERE id = ?
+  `).bind(transactionId).first()
+
+  if (!currentTx) {
+    console.error(`Transaction ${transactionId} not found`)
+    return { processed: false, reason: 'not_found' }
+  }
+
+  // 既に処理済みの場合はスキップ
+  if (currentTx.status === 'paid' || currentTx.status === 'shipped' || currentTx.status === 'completed') {
+    console.log(`Transaction ${transactionId} already processed (status: ${currentTx.status})`)
+    return { processed: false, reason: 'already_processed', status: currentTx.status }
+  }
+
+  // 1. 取引ステータスを「支払い済み」に更新
+  await db.prepare(`
+    UPDATE transactions 
+    SET status = 'paid', 
+        stripe_payment_intent = ?,
+        paid_at = datetime('now'),
+        updated_at = datetime('now')
+    WHERE id = ?
+  `).bind(stripePaymentIntent, transactionId).run()
+
+  // 2. 商品ステータスを即座に「sold」に更新（最重要！）
+  await db.prepare(`
+    UPDATE products 
+    SET status = 'sold', updated_at = datetime('now')
+    WHERE id = ?
+  `).bind(currentTx.product_id).run()
+
+  console.log(`Product ${currentTx.product_id} marked as SOLD`)
+
+  // 3. 取引の詳細情報を取得
+  const txData = await db.prepare(`
+    SELECT 
+      t.id, t.amount, t.fee, t.product_id,
+      p.title as product_name,
+      buyer.id as buyer_id, buyer.name as buyer_name, buyer.email as buyer_email,
+      COALESCE(buyer.company_name, buyer.nickname, buyer.name) as buyer_display_name,
+      seller.id as seller_id, seller.name as seller_name, seller.email as seller_email,
+      COALESCE(seller.company_name, seller.nickname, seller.name) as seller_display_name
+    FROM transactions t
+    JOIN products p ON t.product_id = p.id
+    JOIN users buyer ON t.buyer_id = buyer.id
+    JOIN users seller ON t.seller_id = seller.id
+    WHERE t.id = ?
+  `).bind(transactionId).first()
+
+  if (!txData) {
+    console.error(`Transaction detail not found for ${transactionId}`)
+    return { processed: true, reason: 'detail_not_found' }
+  }
+
+  const txId = txData.id as number
+  const amount = txData.amount as number
+  const sellerId = txData.seller_id as number
+  const buyerId = txData.buyer_id as number
+  const productName = txData.product_name as string
+
+  // 4. 出品者へのアプリ内通知
+  await createNotification(
+    db,
+    sellerId,
+    'purchase',
+    '商品が購入されました！',
+    `「${productName}」が購入されました。発送準備をお願いします。（金額: ¥${amount.toLocaleString()}）`,
+    txId,
+    'transaction',
+    `/transactions/${txId}`
+  )
+
+  // 5. 購入者へのアプリ内通知
+  await createNotification(
+    db,
+    buyerId,
+    'payment',
+    'お支払いが完了しました',
+    `「${productName}」のお支払いが完了しました。出品者の発送をお待ちください。`,
+    txId,
+    'transaction',
+    `/transactions/${txId}`
+  )
+
+  // 6. メール送信（出品者・購入者の両方）
+  if (resendApiKey) {
+    try {
+      // 出品者向け: 商品が購入されました + 発送準備依頼
+      const sellerMail = tpl.productPurchasedSeller({
+        sellerName: txData.seller_display_name as string || txData.seller_name as string,
+        productName,
+        amount,
+        buyerName: txData.buyer_display_name as string || txData.buyer_name as string,
+        transactionId: txId,
+      })
+      await sendEmail(resendApiKey, { to: txData.seller_email as string, ...sellerMail })
+      console.log(`Seller notification email sent to ${txData.seller_email}`)
+    } catch (emailError) {
+      console.error('Failed to send seller notification email:', emailError)
+    }
+
+    try {
+      // 購入者向け: 決済完了
+      const buyerMail = tpl.paymentCompleteBuyer({
+        buyerName: txData.buyer_display_name as string || txData.buyer_name as string,
+        productName,
+        amount,
+        transactionId: txId,
+      })
+      await sendEmail(resendApiKey, { to: txData.buyer_email as string, ...buyerMail })
+      console.log(`Buyer notification email sent to ${txData.buyer_email}`)
+    } catch (emailError) {
+      console.error('Failed to send buyer notification email:', emailError)
+    }
+  } else {
+    console.warn('RESEND_API_KEY not configured, skipping email notifications')
+  }
+
+  console.log(`Transaction ${transactionId} fully processed: paid + sold + notified`)
+  return { processed: true, reason: 'success' }
+}
+
+// ============================================================
+// エンドポイント
+// ============================================================
+
 // Stripe設定確認
 payment.get('/config', async (c) => {
   try {
@@ -63,10 +223,7 @@ payment.post('/create-checkout-session', authMiddleware, async (c) => {
     const { product_id } = await c.req.json()
 
     if (!product_id) {
-      return c.json({ 
-        success: false, 
-        error: '商品IDが必要です' 
-      }, 400)
+      return c.json({ success: false, error: '商品IDが必要です' }, 400)
     }
 
     // 商品情報取得
@@ -79,39 +236,35 @@ payment.post('/create-checkout-session', authMiddleware, async (c) => {
     `).bind(product_id).first()
 
     if (!product) {
-      return c.json({ 
-        success: false, 
-        error: '商品が見つかりません' 
-      }, 404)
+      return c.json({ success: false, error: '商品が見つかりません' }, 404)
     }
 
     // 商品ステータスチェック
     if (product.status !== 'active') {
-      return c.json({ 
-        success: false, 
-        error: 'この商品は購入できません' 
-      }, 400)
+      return c.json({ success: false, error: 'この商品は既に売り切れです' }, 400)
     }
 
     // 自分の商品は購入できない
     if (product.seller_id === userId) {
-      return c.json({ 
-        success: false, 
-        error: '自分の商品は購入できません' 
-      }, 400)
+      return c.json({ success: false, error: '自分の商品は購入できません' }, 400)
     }
 
     // 金額バリデーション
     const amountValidation = validateAmount(product.price as number)
     if (!amountValidation.valid) {
-      return c.json({ 
-        success: false, 
-        error: amountValidation.error 
-      }, 400)
+      return c.json({ success: false, error: amountValidation.error }, 400)
     }
 
     // 手数料計算
     const fees = calculateFees(product.price as number)
+
+    // ★ 商品を即座に「売却中」にする（他のユーザーが購入できないように）
+    // NOTE: SQLiteのCHECK制約でreservedが使えない場合はsoldを使用
+    //       キャンセル/期限切れ時にactiveに戻す
+    await c.env.DB.prepare(`
+      UPDATE products SET status = 'sold', updated_at = datetime('now')
+      WHERE id = ? AND status = 'active'
+    `).bind(product_id).run()
 
     // 取引レコード作成
     const transactionResult = await c.env.DB.prepare(`
@@ -149,7 +302,7 @@ payment.post('/create-checkout-session', authMiddleware, async (c) => {
         },
       ],
       mode: 'payment',
-      success_url: `https://parts-hub-tci.com/transaction/${transactionId}/success`,
+      success_url: `https://parts-hub-tci.com/transaction/${transactionId}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `https://parts-hub-tci.com/transaction/${transactionId}/cancel`,
       metadata: {
         transaction_id: transactionId.toString(),
@@ -157,6 +310,8 @@ payment.post('/create-checkout-session', authMiddleware, async (c) => {
         buyer_id: userId.toString(),
         seller_id: (product.seller_id as number).toString(),
       },
+      // 30分のタイムアウト
+      expires_at: Math.floor(Date.now() / 1000) + 1800,
     })
 
     // セッションIDを取引に保存
@@ -184,6 +339,95 @@ payment.post('/create-checkout-session', authMiddleware, async (c) => {
   }
 })
 
+// ============================================================
+// ★ 決済確認エンドポイント（successページからのフォールバック）
+// Webhook が遅延した場合やWebhookが届かなかった場合のセーフティネット
+// ============================================================
+payment.post('/verify-session', authMiddleware, async (c) => {
+  try {
+    const userId = c.get('userId')
+    const { transaction_id, session_id } = await c.req.json()
+
+    if (!transaction_id) {
+      return c.json({ success: false, error: '取引IDが必要です' }, 400)
+    }
+
+    // 取引情報取得（権限チェック）
+    const transaction = await c.env.DB.prepare(`
+      SELECT t.*, p.title as product_title, p.status as product_status
+      FROM transactions t
+      JOIN products p ON t.product_id = p.id
+      WHERE t.id = ? AND (t.buyer_id = ? OR t.seller_id = ?)
+    `).bind(transaction_id, userId, userId).first()
+
+    if (!transaction) {
+      return c.json({ success: false, error: '取引が見つかりません' }, 404)
+    }
+
+    // 既に処理済みの場合
+    if (transaction.status === 'paid' || transaction.status === 'shipped' || transaction.status === 'completed') {
+      return c.json({
+        success: true,
+        status: transaction.status,
+        product_status: transaction.product_status,
+        message: '決済は既に確認済みです',
+        already_processed: true
+      })
+    }
+
+    // StripeセッションIDの確認
+    const stripeSessionId = session_id || transaction.stripe_session_id
+    if (!stripeSessionId) {
+      return c.json({ success: false, error: 'Stripeセッション情報がありません' }, 400)
+    }
+
+    // Stripeに直接確認
+    const stripe = getStripeClient(c)
+    const session = await stripe.checkout.sessions.retrieve(stripeSessionId as string)
+
+    if (session.payment_status === 'paid') {
+      // ★ Webhookで処理されていなければここで処理する（フォールバック）
+      const result = await processPaymentCompleted(
+        c.env.DB,
+        (c.env as any).RESEND_API_KEY,
+        transaction_id.toString(),
+        session.payment_intent as string | null
+      )
+
+      return c.json({
+        success: true,
+        status: 'paid',
+        product_status: 'sold',
+        message: result.processed ? '決済を確認し、処理を完了しました' : '決済は既に確認済みです',
+        payment_status: session.payment_status,
+        processed: result.processed
+      })
+    } else if (session.payment_status === 'unpaid') {
+      return c.json({
+        success: true,
+        status: 'pending',
+        message: '決済はまだ完了していません',
+        payment_status: session.payment_status
+      })
+    } else {
+      return c.json({
+        success: true,
+        status: transaction.status,
+        message: `決済ステータス: ${session.payment_status}`,
+        payment_status: session.payment_status
+      })
+    }
+
+  } catch (error: any) {
+    console.error('Verify session error:', error)
+    return c.json({ 
+      success: false, 
+      error: '決済確認に失敗しました',
+      details: error.message
+    }, 500)
+  }
+})
+
 // 取引ステータス確認
 payment.get('/transaction/:id/status', authMiddleware, async (c) => {
   try {
@@ -192,10 +436,10 @@ payment.get('/transaction/:id/status', authMiddleware, async (c) => {
 
     const transaction = await c.env.DB.prepare(`
       SELECT t.id, t.product_id, t.buyer_id, t.seller_id, t.amount, 
-             t.fee, t.status, t.stripe_session_id, t.created_at,
-             p.title as product_title,
-             b.name as buyer_name,
-             s.name as seller_name
+             t.fee, t.status, t.stripe_session_id, t.created_at, t.paid_at,
+             p.title as product_title, p.status as product_status,
+             COALESCE(b.company_name, b.nickname, b.name) as buyer_name,
+             COALESCE(s.company_name, s.nickname, s.name) as seller_name
       FROM transactions t
       JOIN products p ON t.product_id = p.id
       JOIN users b ON t.buyer_id = b.id
@@ -204,20 +448,21 @@ payment.get('/transaction/:id/status', authMiddleware, async (c) => {
     `).bind(transactionId, userId, userId).first()
 
     if (!transaction) {
-      return c.json({ 
-        success: false, 
-        error: '取引が見つかりません' 
-      }, 404)
+      return c.json({ success: false, error: '取引が見つかりません' }, 404)
     }
 
     // Stripeセッション情報取得
     let paymentStatus = null
     if (transaction.stripe_session_id) {
-      const stripe = getStripeClient(c)
-      const session = await stripe.checkout.sessions.retrieve(
-        transaction.stripe_session_id as string
-      )
-      paymentStatus = session.payment_status
+      try {
+        const stripe = getStripeClient(c)
+        const session = await stripe.checkout.sessions.retrieve(
+          transaction.stripe_session_id as string
+        )
+        paymentStatus = session.payment_status
+      } catch (e) {
+        console.error('Failed to retrieve Stripe session:', e)
+      }
     }
 
     return c.json({
@@ -226,6 +471,7 @@ payment.get('/transaction/:id/status', authMiddleware, async (c) => {
         id: transaction.id,
         product_id: transaction.product_id,
         product_title: transaction.product_title,
+        product_status: transaction.product_status,
         buyer_id: transaction.buyer_id,
         buyer_name: transaction.buyer_name,
         seller_id: transaction.seller_id,
@@ -234,20 +480,20 @@ payment.get('/transaction/:id/status', authMiddleware, async (c) => {
         fee: transaction.fee,
         status: transaction.status,
         payment_status: paymentStatus,
+        paid_at: transaction.paid_at,
         created_at: transaction.created_at
       }
     })
 
   } catch (error: any) {
     console.error('Get transaction status error:', error)
-    return c.json({ 
-      success: false, 
-      error: '取引ステータスの取得に失敗しました' 
-    }, 500)
+    return c.json({ success: false, error: '取引ステータスの取得に失敗しました' }, 500)
   }
 })
 
+// ============================================================
 // Webhook受信エンドポイント
+// ============================================================
 payment.post('/webhook', async (c) => {
   try {
     const signature = c.req.header('stripe-signature')
@@ -274,95 +520,93 @@ payment.post('/webhook', async (c) => {
       return c.json({ error: 'Invalid signature' }, 400)
     }
 
+    console.log(`[Webhook] Received event: ${event.type}`)
+
     // イベント処理
     switch (event.type) {
-      case 'checkout.session.completed':
+      case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session
         const transactionId = session.metadata?.transaction_id
 
         if (transactionId) {
-          // 取引ステータスを「支払い済み」に更新
-          await c.env.DB.prepare(`
-            UPDATE transactions 
-            SET status = 'paid', 
-                stripe_payment_intent = ?,
-                updated_at = datetime('now')
-            WHERE id = ?
-          `).bind(session.payment_intent, transactionId).run()
-
-          // 商品ステータスを「売却済み」に更新
-          await c.env.DB.prepare(`
-            UPDATE products 
-            SET status = 'sold', updated_at = datetime('now')
-            WHERE id = (SELECT product_id FROM transactions WHERE id = ?)
-          `).bind(transactionId).run()
-
-          // 取引情報を取得してメール送信
-          const txData = await c.env.DB.prepare(`
-            SELECT 
-              t.id, t.amount, 
-              p.title as product_name,
-              buyer.name as buyer_name, buyer.email as buyer_email,
-              seller.name as seller_name, seller.email as seller_email
-            FROM transactions t
-            JOIN products p ON t.product_id = p.id
-            JOIN users buyer ON t.buyer_id = buyer.id
-            JOIN users seller ON t.seller_id = seller.id
-            WHERE t.id = ?
-          `).bind(transactionId).first()
-
-          // メール送信（非同期、エラーは無視）
-          if (txData && (c.env as any).RESEND_API_KEY) {
-            try {
-              const apiKey = (c.env as any).RESEND_API_KEY
-              const txId = txData.id as number
-              const amount = txData.amount as number
-
-              // 3) 出品者向け: 商品が購入されました
-              const sellerMail = tpl.productPurchasedSeller({
-                sellerName: txData.seller_name as string,
-                productName: txData.product_name as string,
-                amount,
-                buyerName: txData.buyer_name as string,
-                transactionId: txId,
-              })
-              await sendEmail(apiKey, { to: txData.seller_email as string, ...sellerMail })
-
-              // 4) 購入者向け: 決済完了
-              const buyerMail = tpl.paymentCompleteBuyer({
-                buyerName: txData.buyer_name as string,
-                productName: txData.product_name as string,
-                amount,
-                transactionId: txId,
-              })
-              await sendEmail(apiKey, { to: txData.buyer_email as string, ...buyerMail })
-            } catch (emailError) {
-              console.error('Failed to send purchase notification emails:', emailError)
-            }
-          }
-
-          console.log(`Transaction ${transactionId} marked as paid`)
+          const result = await processPaymentCompleted(
+            c.env.DB,
+            (c.env as any).RESEND_API_KEY,
+            transactionId,
+            session.payment_intent as string | null
+          )
+          console.log(`[Webhook] checkout.session.completed processed:`, result)
         }
         break
+      }
+
+      case 'checkout.session.expired': {
+        // セッション期限切れ → 商品を再度activeに戻す
+        const expiredSession = event.data.object as Stripe.Checkout.Session
+        const expiredTxId = expiredSession.metadata?.transaction_id
+        const expiredProductId = expiredSession.metadata?.product_id
+
+        if (expiredTxId) {
+          await c.env.DB.prepare(`
+            UPDATE transactions 
+            SET status = 'cancelled', updated_at = datetime('now')
+            WHERE id = ? AND status = 'pending'
+          `).bind(expiredTxId).run()
+        }
+
+        if (expiredProductId) {
+          // 未決済のまま期限切れ → 商品をactiveに戻す
+          // pending取引が他にない場合のみ戻す
+          const otherPending = await c.env.DB.prepare(`
+            SELECT COUNT(*) as cnt FROM transactions 
+            WHERE product_id = ? AND status = 'pending' AND id != ?
+          `).bind(expiredProductId, expiredTxId).first()
+          
+          if (!otherPending || (otherPending.cnt as number) === 0) {
+            await c.env.DB.prepare(`
+              UPDATE products 
+              SET status = 'active', updated_at = datetime('now')
+              WHERE id = ? AND status = 'sold'
+            `).bind(expiredProductId).run()
+            console.log(`[Webhook] Product ${expiredProductId} restored to active (session expired)`)
+          }
+          console.log(`[Webhook] Product ${expiredProductId} restored to active (session expired)`)
+        }
+        break
+      }
 
       case 'payment_intent.succeeded':
-        console.log('Payment intent succeeded:', event.data.object.id)
+        console.log('[Webhook] Payment intent succeeded:', event.data.object.id)
         break
 
-      case 'payment_intent.payment_failed':
+      case 'payment_intent.payment_failed': {
         const failedIntent = event.data.object as Stripe.PaymentIntent
-        console.log('Payment failed:', failedIntent.id)
+        console.log('[Webhook] Payment failed:', failedIntent.id)
         
         // 取引ステータスを「キャンセル」に更新
-        await c.env.DB.prepare(`
-          UPDATE transactions 
-          SET status = 'cancelled', updated_at = datetime('now')
-          WHERE stripe_payment_intent = ?
-        `).bind(failedIntent.id).run()
+        const failedTx = await c.env.DB.prepare(`
+          SELECT id, product_id FROM transactions WHERE stripe_payment_intent = ?
+        `).bind(failedIntent.id).first()
+
+        if (failedTx) {
+          await c.env.DB.prepare(`
+            UPDATE transactions 
+            SET status = 'cancelled', updated_at = datetime('now')
+            WHERE id = ?
+          `).bind(failedTx.id).run()
+
+          // 商品をactiveに戻す
+          await c.env.DB.prepare(`
+            UPDATE products 
+            SET status = 'active', updated_at = datetime('now')
+            WHERE id = ? AND status = 'sold'
+          `).bind(failedTx.product_id).run()
+        }
         break
+      }
 
       default:
-        console.log(`Unhandled event type: ${event.type}`)
+        console.log(`[Webhook] Unhandled event type: ${event.type}`)
     }
 
     return c.json({ received: true })
@@ -384,33 +628,37 @@ payment.post('/transaction/:id/complete', authMiddleware, async (c) => {
 
     // 取引情報取得（購入者のみ実行可能）
     const transaction = await c.env.DB.prepare(`
-      SELECT id, buyer_id, seller_id, status
+      SELECT id, buyer_id, seller_id, status, product_id
       FROM transactions
       WHERE id = ? AND buyer_id = ?
     `).bind(transactionId, userId).first()
 
     if (!transaction) {
-      return c.json({ 
-        success: false, 
-        error: '取引が見つかりません' 
-      }, 404)
+      return c.json({ success: false, error: '取引が見つかりません' }, 404)
     }
 
     if (transaction.status !== 'shipped') {
-      return c.json({ 
-        success: false, 
-        error: '配送済みの取引のみ完了できます' 
-      }, 400)
+      return c.json({ success: false, error: '配送済みの取引のみ完了できます' }, 400)
     }
 
     // 取引ステータスを「完了」に更新
     await c.env.DB.prepare(`
       UPDATE transactions 
-      SET status = 'completed', updated_at = datetime('now')
+      SET status = 'completed', completed_at = datetime('now'), updated_at = datetime('now')
       WHERE id = ?
     `).bind(transactionId).run()
 
-    // TODO: 出品者への入金処理（Stripe Connect）
+    // 出品者に完了通知
+    await createNotification(
+      c.env.DB,
+      transaction.seller_id as number,
+      'transaction',
+      '取引が完了しました',
+      '購入者が商品の受取を確認しました。お疲れ様でした！',
+      parseInt(transactionId),
+      'transaction',
+      `/transactions/${transactionId}`
+    )
 
     return c.json({
       success: true,
@@ -419,10 +667,7 @@ payment.post('/transaction/:id/complete', authMiddleware, async (c) => {
 
   } catch (error: any) {
     console.error('Complete transaction error:', error)
-    return c.json({ 
-      success: false, 
-      error: '取引完了処理に失敗しました' 
-    }, 500)
+    return c.json({ success: false, error: '取引完了処理に失敗しました' }, 500)
   }
 })
 

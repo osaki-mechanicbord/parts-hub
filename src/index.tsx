@@ -5096,6 +5096,18 @@ app.get('/transaction/:id/success', (c) => {
         <script src="https://cdn.tailwindcss.com"></script>
         <script>tailwind.config={theme:{extend:{colors:{primary:'#ff4757','primary-dark':'#ee3b4c'}}}}</script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>
+            @keyframes checkmark { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+            @keyframes fadeIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+            @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+            .fade-in { animation: fadeIn 0.6s ease-out forwards; }
+            .fade-in-delay { animation: fadeIn 0.6s ease-out 0.3s forwards; opacity:0; }
+            .pulse-anim { animation: pulse 1.5s infinite; }
+            .step-active { background: linear-gradient(135deg, #22c55e, #16a34a); color: white; }
+            .step-pending { background: #e5e7eb; color: #9ca3af; }
+            .step-line-active { background: #22c55e; }
+            .step-line-pending { background: #e5e7eb; }
+        </style>
     </head>
     <body class="bg-gray-50 min-h-screen">
         <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -5103,29 +5115,97 @@ app.get('/transaction/:id/success', (c) => {
                 <a href="/" class="text-red-500 font-bold text-lg">PARTS HUB</a>
             </div>
         </header>
-        <main class="max-w-2xl mx-auto px-4 py-12">
-            <div class="bg-white rounded-2xl shadow-lg p-8 text-center">
-                <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <i class="fas fa-check-circle text-4xl text-green-500"></i>
+        <main class="max-w-2xl mx-auto px-4 py-8">
+            <!-- 決済確認中の表示 -->
+            <div id="verifying-section" class="bg-white rounded-2xl shadow-lg p-8 text-center">
+                <div class="w-16 h-16 border-4 border-gray-200 border-t-green-500 rounded-full mx-auto mb-4 pulse-anim" style="animation: spin 1s linear infinite;">
                 </div>
-                <h1 class="text-2xl font-bold text-gray-800 mb-2">購入が完了しました！</h1>
-                <p class="text-gray-600 mb-6">ご購入ありがとうございます。出品者に通知されました。</p>
-                <div id="transaction-info" class="bg-gray-50 rounded-lg p-4 mb-6 text-left">
-                    <p class="text-sm text-gray-500">読み込み中...</p>
+                <h1 class="text-xl font-bold text-gray-800 mb-2">決済を確認しています...</h1>
+                <p class="text-gray-500 text-sm">しばらくお待ちください</p>
+                <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+            </div>
+
+            <!-- 決済完了後の表示 -->
+            <div id="success-section" style="display:none;">
+                <div class="bg-white rounded-2xl shadow-lg p-8 text-center fade-in">
+                    <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-check-circle text-5xl text-green-500"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold text-gray-800 mb-1">購入が完了しました！</h1>
+                    <p class="text-gray-500 mb-6">ご購入ありがとうございます</p>
+
+                    <!-- 取引情報 -->
+                    <div id="transaction-info" class="bg-gray-50 rounded-xl p-5 mb-6 text-left">
+                        <div class="space-y-3" id="tx-details"></div>
+                    </div>
+
+                    <!-- 進行ステップ -->
+                    <div class="bg-blue-50 rounded-xl p-5 mb-6 text-left fade-in-delay">
+                        <h3 class="font-bold text-sm text-blue-900 mb-4"><i class="fas fa-truck mr-1.5"></i>取引の流れ</h3>
+                        <div class="flex items-start gap-3">
+                            <div class="flex flex-col items-center">
+                                <div class="w-8 h-8 rounded-full step-active flex items-center justify-center text-xs font-bold"><i class="fas fa-check"></i></div>
+                                <div class="w-0.5 h-8 step-line-active mt-1"></div>
+                            </div>
+                            <div class="pt-1"><div class="font-semibold text-sm text-green-700">決済完了</div><div class="text-xs text-gray-500">お支払いが確認されました</div></div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <div class="flex flex-col items-center">
+                                <div class="w-8 h-8 rounded-full step-active flex items-center justify-center text-xs font-bold"><i class="fas fa-check"></i></div>
+                                <div class="w-0.5 h-8 step-line-active mt-1"></div>
+                            </div>
+                            <div class="pt-1"><div class="font-semibold text-sm text-green-700">出品者に通知済み</div><div class="text-xs text-gray-500">メールとアプリ内通知を送信しました</div></div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <div class="flex flex-col items-center">
+                                <div class="w-8 h-8 rounded-full bg-yellow-400 text-white flex items-center justify-center text-xs font-bold pulse-anim"><i class="fas fa-box"></i></div>
+                                <div class="w-0.5 h-8 step-line-pending mt-1"></div>
+                            </div>
+                            <div class="pt-1"><div class="font-semibold text-sm text-yellow-700">発送準備中</div><div class="text-xs text-gray-500">出品者が発送準備を進めています</div></div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <div class="flex flex-col items-center">
+                                <div class="w-8 h-8 rounded-full step-pending flex items-center justify-center text-xs font-bold">4</div>
+                            </div>
+                            <div class="pt-1"><div class="font-semibold text-sm text-gray-400">受取確認</div><div class="text-xs text-gray-400">商品到着後に確認してください</div></div>
+                        </div>
+                    </div>
+
+                    <!-- アクションボタン -->
+                    <div class="space-y-3 fade-in-delay">
+                        <a href="/transactions/${transactionId}" 
+                           class="block w-full px-6 py-3.5 bg-primary text-white rounded-xl hover:bg-primary-dark transition-all text-center font-bold shadow-md">
+                            <i class="fas fa-receipt mr-2"></i>取引詳細を見る
+                        </a>
+                        <a href="/mypage" 
+                           class="block w-full px-6 py-3 border-2 border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-all text-center font-semibold">
+                            <i class="fas fa-user mr-2"></i>マイページに戻る
+                        </a>
+                        <a href="/" 
+                           class="block w-full px-6 py-2 text-gray-400 hover:text-gray-700 text-center text-sm">
+                            トップページに戻る
+                        </a>
+                    </div>
                 </div>
-                <div class="space-y-3">
-                    <a href="/transactions/${transactionId}" 
-                       class="block w-full px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-all text-center font-semibold">
-                        <i class="fas fa-receipt mr-2"></i>取引詳細を見る
-                    </a>
-                    <a href="/mypage" 
-                       class="block w-full px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all text-center">
-                        <i class="fas fa-user mr-2"></i>マイページに戻る
-                    </a>
-                    <a href="/" 
-                       class="block w-full px-6 py-3 text-gray-500 hover:text-gray-700 text-center">
-                        トップページに戻る
-                    </a>
+            </div>
+
+            <!-- 決済エラー時の表示 -->
+            <div id="error-section" style="display:none;">
+                <div class="bg-white rounded-2xl shadow-lg p-8 text-center">
+                    <div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-exclamation-circle text-5xl text-red-400"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold text-gray-800 mb-2">決済の確認に問題が発生しました</h1>
+                    <p id="error-message" class="text-gray-500 mb-6"></p>
+                    <div class="space-y-3">
+                        <a href="/transactions/${transactionId}" 
+                           class="block w-full px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark transition-all text-center font-semibold">
+                            取引詳細を確認する
+                        </a>
+                        <a href="/mypage" class="block w-full px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 text-center">
+                            マイページに戻る
+                        </a>
+                    </div>
                 </div>
             </div>
         </main>
@@ -5137,23 +5217,79 @@ app.get('/transaction/:id/success', (c) => {
         <script src="/static/auth-header.js"></script>
         <script>
             (async function() {
-                const token = localStorage.getItem('token');
-                if (!token) return;
+                var token = localStorage.getItem('token');
+                if (!token) {
+                    showError('ログインセッションが見つかりません。マイページから取引を確認してください。');
+                    return;
+                }
+
+                // URLからsession_idを取得
+                var urlParams = new URLSearchParams(window.location.search);
+                var sessionId = urlParams.get('session_id');
+
                 try {
-                    const res = await axios.get('/api/payment/transaction/${transactionId}/status', {
+                    // 1. verify-session で決済を確認＆処理（フォールバック）
+                    var verifyRes = await axios.post('/api/payment/verify-session', {
+                        transaction_id: ${transactionId},
+                        session_id: sessionId
+                    }, {
                         headers: { 'Authorization': 'Bearer ' + token }
                     });
-                    if (res.data.success) {
-                        const tx = res.data.transaction;
-                        document.getElementById('transaction-info').innerHTML = 
-                            '<div class="space-y-2">' +
-                            '<div class="flex justify-between"><span class="text-gray-600">商品</span><span class="font-semibold">' + tx.product_title + '</span></div>' +
-                            '<div class="flex justify-between"><span class="text-gray-600">金額</span><span class="font-semibold">¥' + Number(tx.amount).toLocaleString() + '</span></div>' +
-                            '<div class="flex justify-between"><span class="text-gray-600">出品者</span><span>' + tx.seller_name + '</span></div>' +
-                            '<div class="flex justify-between"><span class="text-gray-600">ステータス</span><span class="text-green-600 font-semibold">支払い完了</span></div>' +
-                            '</div>';
+
+                    if (verifyRes.data.success && (verifyRes.data.status === 'paid' || verifyRes.data.status === 'shipped' || verifyRes.data.status === 'completed')) {
+                        // 決済確認成功
+                        showSuccess();
+                        
+                        // 2. 取引詳細を表示
+                        try {
+                            var statusRes = await axios.get('/api/payment/transaction/${transactionId}/status', {
+                                headers: { 'Authorization': 'Bearer ' + token }
+                            });
+                            if (statusRes.data.success) {
+                                var tx = statusRes.data.transaction;
+                                var statusLabel = {
+                                    'paid': '<span class="text-green-600 font-bold">決済完了</span>',
+                                    'shipped': '<span class="text-blue-600 font-bold">発送済み</span>',
+                                    'completed': '<span class="text-purple-600 font-bold">取引完了</span>'
+                                }[tx.status] || '<span class="text-gray-600">' + tx.status + '</span>';
+                                
+                                document.getElementById('tx-details').innerHTML = 
+                                    '<div class="flex justify-between items-center py-2 border-b border-gray-100"><span class="text-gray-500 text-sm">商品名</span><span class="font-bold text-gray-900">' + tx.product_title + '</span></div>' +
+                                    '<div class="flex justify-between items-center py-2 border-b border-gray-100"><span class="text-gray-500 text-sm">お支払い金額</span><span class="font-bold text-lg text-primary">¥' + Number(tx.amount).toLocaleString() + '</span></div>' +
+                                    '<div class="flex justify-between items-center py-2 border-b border-gray-100"><span class="text-gray-500 text-sm">出品者</span><span class="text-gray-900">' + tx.seller_name + '</span></div>' +
+                                    '<div class="flex justify-between items-center py-2 border-b border-gray-100"><span class="text-gray-500 text-sm">注文番号</span><span class="font-mono text-gray-700">#' + tx.id + '</span></div>' +
+                                    '<div class="flex justify-between items-center py-2"><span class="text-gray-500 text-sm">ステータス</span>' + statusLabel + '</div>';
+                            }
+                        } catch (e) { console.error('Failed to load tx details:', e); }
+                    } else {
+                        showError('決済がまだ完了していない可能性があります。しばらく経ってからマイページで確認してください。');
                     }
-                } catch (e) { console.error(e); }
+                } catch (e) {
+                    console.error('Verify error:', e);
+                    // verify-sessionが失敗しても、statusで確認してみる
+                    try {
+                        var fallback = await axios.get('/api/payment/transaction/${transactionId}/status', {
+                            headers: { 'Authorization': 'Bearer ' + token }
+                        });
+                        if (fallback.data.success && fallback.data.transaction.status === 'paid') {
+                            showSuccess();
+                        } else {
+                            showError('決済の確認中にエラーが発生しました。マイページから取引状況をご確認ください。');
+                        }
+                    } catch (e2) {
+                        showError('決済の確認中にエラーが発生しました。マイページから取引状況をご確認ください。');
+                    }
+                }
+
+                function showSuccess() {
+                    document.getElementById('verifying-section').style.display = 'none';
+                    document.getElementById('success-section').style.display = '';
+                }
+                function showError(msg) {
+                    document.getElementById('verifying-section').style.display = 'none';
+                    document.getElementById('error-section').style.display = '';
+                    document.getElementById('error-message').textContent = msg;
+                }
             })();
         </script>
     </body>
@@ -5162,8 +5298,38 @@ app.get('/transaction/:id/success', (c) => {
 })
 
 // 決済キャンセルページ
-app.get('/transaction/:id/cancel', (c) => {
+app.get('/transaction/:id/cancel', async (c) => {
   const transactionId = c.req.param('id')
+  
+  // キャンセル時に商品をactiveに戻す
+  try {
+    const tx = await c.env.DB.prepare(`
+      SELECT product_id, status FROM transactions WHERE id = ?
+    `).bind(transactionId).first()
+    
+    if (tx && tx.status === 'pending') {
+      // 取引をキャンセルに
+      await c.env.DB.prepare(`
+        UPDATE transactions SET status = 'cancelled', updated_at = datetime('now') WHERE id = ? AND status = 'pending'
+      `).bind(transactionId).run()
+      
+      // 商品をactiveに戻す（sold状態の場合のみ・他のpending取引がない場合）
+      const otherPending = await c.env.DB.prepare(
+        "SELECT COUNT(*) as cnt FROM transactions WHERE product_id = ? AND status = 'pending' AND id != ?"
+      ).bind(tx.product_id, transactionId).first()
+      
+      if (!otherPending || (otherPending.cnt as number) === 0) {
+        await c.env.DB.prepare(
+          "UPDATE products SET status = 'active', updated_at = datetime('now') WHERE id = ? AND status = 'sold'"
+        ).bind(tx.product_id).run()
+      }
+      
+      console.log('Cancel page: Transaction ' + transactionId + ' cancelled, product ' + tx.product_id + ' restored to active')
+    }
+  } catch (e) {
+    console.error('Cancel page cleanup error:', e)
+  }
+
   return c.html(`
     <!DOCTYPE html>
     <html lang="ja">
@@ -5188,7 +5354,8 @@ app.get('/transaction/:id/cancel', (c) => {
                     <i class="fas fa-times-circle text-4xl text-yellow-500"></i>
                 </div>
                 <h1 class="text-2xl font-bold text-gray-800 mb-2">決済がキャンセルされました</h1>
-                <p class="text-gray-600 mb-6">決済は完了していません。商品は引き続き購入可能です。</p>
+                <p class="text-gray-600 mb-2">決済は完了していません。</p>
+                <p class="text-gray-500 text-sm mb-6">商品は再度購入可能な状態に戻りました。</p>
                 <div class="space-y-3">
                     <button onclick="window.history.go(-2)" 
                        class="block w-full px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-all text-center font-semibold cursor-pointer">

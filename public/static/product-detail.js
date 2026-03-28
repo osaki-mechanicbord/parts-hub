@@ -102,9 +102,24 @@ function updateActionButtons() {
     if (product.status === 'sold') {
         if (purchaseBtn) {
             purchaseBtn.disabled = true;
-            purchaseBtn.innerHTML = '<i class="fas fa-ban mr-2"></i>売り切れ';
+            purchaseBtn.onclick = null;
+            purchaseBtn.style.pointerEvents = 'none';
+            purchaseBtn.innerHTML = '<i class="fas fa-ban mr-2"></i>SOLD OUT';
             purchaseBtn.classList.remove('bg-primary', 'hover:bg-primary-dark');
             purchaseBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+        }
+        
+        // SOLD OUTバナーを追加
+        var banner = document.createElement('div');
+        banner.style.cssText = 'background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff;text-align:center;padding:12px;font-weight:800;font-size:16px;letter-spacing:2px;';
+        banner.innerHTML = '<i class="fas fa-ban" style="margin-right:8px;"></i>SOLD OUT - この商品は売り切れです';
+        var main = document.getElementById('product-detail-container');
+        if (main && main.parentNode) {
+            main.parentNode.insertBefore(banner, main);
+        }
+        
+        if (contactBtn) {
+            contactBtn.style.display = 'none';
         }
         return;
     }
