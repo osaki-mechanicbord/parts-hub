@@ -25,6 +25,7 @@ import adminRoutes from './routes/admin'
 import adminPagesRoutes from './routes/admin-pages'
 import emailRoutes from './routes/email'
 import articlesRoutes from './routes/articles'
+import vehicleDemoRoutes from './routes/vehicle-demo'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -365,6 +366,7 @@ app.route('/api/reviews', reviewsRoutes)
 app.route('/api/transactions', transactionsRoutes)
 app.route('/api/email', emailRoutes)
 app.route('/api/articles', articlesRoutes)
+app.route('/api/vehicle-demo', vehicleDemoRoutes)
 app.route('/api/admin', adminRoutes)
 app.route('/admin', adminPagesRoutes)
 
@@ -6442,6 +6444,470 @@ app.get('/legal', (c) => {
 })
 
 // FAQページ
+
+// === 適合車両情報デモページ（本番未使用・サンプルUI） ===
+app.get('/vehicle-demo', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>適合車両情報入力デモ - PARTS HUB</title>
+      <script src="https://cdn.tailwindcss.com"></script>
+      <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+      <style>
+        .step-active { background: linear-gradient(135deg, #ef4444, #ec4899); color: white; }
+        .step-done { background: #22c55e; color: white; }
+        .step-pending { background: #e5e7eb; color: #9ca3af; }
+        .cascade-select { transition: all 0.3s ease; }
+        .cascade-select:focus { box-shadow: 0 0 0 3px rgba(239,68,68,0.2); }
+        .option-card { transition: all 0.15s ease; }
+        .option-card:hover { background: #fef2f2; border-color: #fca5a5; transform: translateY(-1px); }
+        .option-card.selected { background: #fef2f2; border-color: #ef4444; box-shadow: 0 0 0 2px rgba(239,68,68,0.3); }
+        .loading-spinner { animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; }
+        .fade-in { animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .search-input { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239ca3af'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: 12px center; background-size: 20px; padding-left: 40px; }
+      </style>
+    </head>
+    <body class="bg-gray-50 min-h-screen">
+      <!-- ヘッダー -->
+      <header class="bg-white shadow-sm border-b">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <a href="/" class="text-red-500 font-bold text-xl">PARTS HUB</a>
+            <span class="text-gray-300">|</span>
+            <span class="text-sm text-gray-600"><i class="fas fa-car mr-1"></i>適合車両情報デモ</span>
+          </div>
+          <span class="badge bg-yellow-100 text-yellow-700">サンプルUI</span>
+        </div>
+      </header>
+
+      <main class="max-w-4xl mx-auto px-4 py-8">
+        <!-- 説明 -->
+        <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+          <div class="flex items-start gap-3">
+            <i class="fas fa-info-circle text-blue-500 mt-0.5"></i>
+            <div>
+              <p class="text-sm text-blue-800 font-semibold mb-1">カスケード選択デモ</p>
+              <p class="text-xs text-blue-600">メーカー → 車種（型式） → 年式 → グレード の順に段階的にデータを取得します。<br>各ステップでサーバーAPIを呼び出しますが、1リクエストあたりの取得量は数十件程度のため、ユーザー操作への影響はほぼありません。</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- パフォーマンス計測パネル -->
+        <div id="perf-panel" class="bg-gray-800 text-green-400 rounded-xl p-4 mb-6 font-mono text-xs hidden">
+          <div class="flex items-center gap-2 mb-2">
+            <i class="fas fa-tachometer-alt"></i>
+            <span class="text-white font-semibold">API パフォーマンス</span>
+          </div>
+          <div id="perf-log" class="space-y-1"></div>
+        </div>
+
+        <!-- ステップインジケーター -->
+        <div class="flex items-center justify-between mb-8 px-4">
+          <div class="flex flex-col items-center gap-1">
+            <div id="step-1" class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold step-active"><i class="fas fa-industry"></i></div>
+            <span class="text-xs text-gray-500">メーカー</span>
+          </div>
+          <div class="flex-1 h-0.5 bg-gray-200 mx-2" id="line-1-2"></div>
+          <div class="flex flex-col items-center gap-1">
+            <div id="step-2" class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold step-pending"><i class="fas fa-car"></i></div>
+            <span class="text-xs text-gray-500">車種</span>
+          </div>
+          <div class="flex-1 h-0.5 bg-gray-200 mx-2" id="line-2-3"></div>
+          <div class="flex flex-col items-center gap-1">
+            <div id="step-3" class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold step-pending"><i class="fas fa-calendar"></i></div>
+            <span class="text-xs text-gray-500">年式</span>
+          </div>
+          <div class="flex-1 h-0.5 bg-gray-200 mx-2" id="line-3-4"></div>
+          <div class="flex flex-col items-center gap-1">
+            <div id="step-4" class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold step-pending"><i class="fas fa-star"></i></div>
+            <span class="text-xs text-gray-500">グレード</span>
+          </div>
+        </div>
+
+        <!-- STEP 1: メーカー選択 -->
+        <div id="section-maker" class="bg-white rounded-xl shadow-sm border p-6 mb-4 fade-in">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="font-bold text-lg"><i class="fas fa-industry text-red-500 mr-2"></i>メーカー選択</h2>
+            <span id="maker-count" class="text-xs text-gray-400"></span>
+          </div>
+          <!-- 国産/輸入タブ -->
+          <div class="flex gap-2 mb-3">
+            <button onclick="filterMakers('all')" id="tab-all" class="px-3 py-1.5 text-xs font-semibold rounded-full bg-red-500 text-white">すべて</button>
+            <button onclick="filterMakers('JP')" id="tab-JP" class="px-3 py-1.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200">国産</button>
+            <button onclick="filterMakers('foreign')" id="tab-foreign" class="px-3 py-1.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200">輸入車</button>
+          </div>
+          <input type="text" id="maker-search" class="search-input w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none mb-3" placeholder="メーカー名で検索...">
+          <div id="maker-list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-80 overflow-y-auto"></div>
+        </div>
+
+        <!-- STEP 2: 車種選択 -->
+        <div id="section-model" class="bg-white rounded-xl shadow-sm border p-6 mb-4 opacity-50 pointer-events-none">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="font-bold text-lg"><i class="fas fa-car text-red-500 mr-2"></i>車種選択</h2>
+            <div class="flex items-center gap-2">
+              <span id="model-count" class="text-xs text-gray-400"></span>
+              <button onclick="clearModel()" class="text-xs text-red-500 hover:underline hidden" id="clear-model">クリア</button>
+            </div>
+          </div>
+          <input type="text" id="model-search" class="search-input w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none mb-3" placeholder="車種名・型式で検索...">
+          <div id="model-list" class="space-y-2 max-h-96 overflow-y-auto"></div>
+          <div id="model-loading" class="hidden text-center py-8"><div class="loading-spinner inline-block w-8 h-8 border-4 border-red-200 border-t-red-500 rounded-full"></div><p class="text-sm text-gray-400 mt-2">車種を読み込み中...</p></div>
+        </div>
+
+        <!-- STEP 3: 年式選択 -->
+        <div id="section-year" class="bg-white rounded-xl shadow-sm border p-6 mb-4 opacity-50 pointer-events-none">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="font-bold text-lg"><i class="fas fa-calendar text-red-500 mr-2"></i>年式選択</h2>
+            <button onclick="clearYear()" class="text-xs text-red-500 hover:underline hidden" id="clear-year">クリア</button>
+          </div>
+          <div id="year-list" class="flex flex-wrap gap-2"></div>
+          <div id="year-loading" class="hidden text-center py-6"><div class="loading-spinner inline-block w-8 h-8 border-4 border-red-200 border-t-red-500 rounded-full"></div></div>
+        </div>
+
+        <!-- STEP 4: グレード選択 -->
+        <div id="section-grade" class="bg-white rounded-xl shadow-sm border p-6 mb-4 opacity-50 pointer-events-none">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="font-bold text-lg"><i class="fas fa-star text-red-500 mr-2"></i>グレード選択</h2>
+            <button onclick="clearGrade()" class="text-xs text-red-500 hover:underline hidden" id="clear-grade">クリア</button>
+          </div>
+          <div id="grade-list" class="space-y-2"></div>
+          <div id="grade-loading" class="hidden text-center py-6"><div class="loading-spinner inline-block w-8 h-8 border-4 border-red-200 border-t-red-500 rounded-full"></div></div>
+          <div id="no-grades" class="hidden text-center py-6 text-sm text-gray-400"><i class="fas fa-info-circle mr-1"></i>この車種のグレード情報はまだ登録されていません<br><span class="text-xs">年式のみの選択で進めることができます</span></div>
+        </div>
+
+        <!-- 結果表示 -->
+        <div id="result-panel" class="hidden bg-gradient-to-r from-red-50 to-pink-50 border-2 border-red-200 rounded-xl p-6 mb-4 fade-in">
+          <h3 class="font-bold text-lg mb-4 text-red-700"><i class="fas fa-check-circle mr-2"></i>選択された適合車両情報</h3>
+          <div id="result-content" class="space-y-3"></div>
+          <div class="mt-4 pt-4 border-t border-red-200 flex gap-3">
+            <button onclick="resetAll()" class="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold text-sm transition-colors"><i class="fas fa-redo mr-1"></i>最初からやり直す</button>
+            <button onclick="alert('この適合情報で出品に進みます（デモ）')" class="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold text-sm transition-colors"><i class="fas fa-check mr-1"></i>この情報で確定</button>
+          </div>
+        </div>
+
+        <!-- データ統計 -->
+        <div class="bg-white rounded-xl shadow-sm border p-6 mt-6">
+          <h3 class="font-bold text-sm text-gray-700 mb-3"><i class="fas fa-database text-gray-400 mr-2"></i>データベース統計</h3>
+          <div id="stats" class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+            <div class="bg-gray-50 rounded-lg p-3">
+              <div id="stat-makers" class="text-2xl font-bold text-red-500">-</div>
+              <div class="text-xs text-gray-500">メーカー</div>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-3">
+              <div id="stat-models" class="text-2xl font-bold text-blue-500">-</div>
+              <div class="text-xs text-gray-500">車種</div>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-3">
+              <div id="stat-grades" class="text-2xl font-bold text-green-500">-</div>
+              <div class="text-xs text-gray-500">グレード</div>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-3">
+              <div id="stat-avg-time" class="text-2xl font-bold text-purple-500">-</div>
+              <div class="text-xs text-gray-500">平均API応答(ms)</div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+      <script>
+        // ============ 状態管理 ============
+        var allMakers = [];
+        var allModels = [];
+        var selectedMaker = null;
+        var selectedModel = null;
+        var selectedYear = null;
+        var selectedGrade = null;
+        var makerFilter = 'all';
+        var apiTimes = [];
+
+        // ============ パフォーマンス計測 ============
+        function logPerf(label, ms, count) {
+          apiTimes.push(ms);
+          var panel = document.getElementById('perf-panel');
+          panel.classList.remove('hidden');
+          var log = document.getElementById('perf-log');
+          var color = ms < 100 ? 'text-green-400' : ms < 300 ? 'text-yellow-400' : 'text-red-400';
+          log.innerHTML += '<div class="flex justify-between"><span class="text-gray-400">' + new Date().toLocaleTimeString() + '</span><span>' + label + '</span><span class="' + color + '">' + ms + 'ms</span><span class="text-gray-500">' + count + '件</span></div>';
+          // 平均を更新
+          var avg = Math.round(apiTimes.reduce(function(a,b){return a+b},0) / apiTimes.length);
+          document.getElementById('stat-avg-time').textContent = avg;
+        }
+
+        // ============ ステップUI更新 ============
+        function setStep(n) {
+          for (var i = 1; i <= 4; i++) {
+            var el = document.getElementById('step-' + i);
+            el.className = el.className.replace(/step-\\S+/g, '');
+            if (i < n) el.classList.add('step-done');
+            else if (i === n) el.classList.add('step-active');
+            else el.classList.add('step-pending');
+          }
+          ['line-1-2','line-2-3','line-3-4'].forEach(function(id, idx) {
+            document.getElementById(id).style.background = idx < n - 1 ? '#22c55e' : '#e5e7eb';
+          });
+        }
+
+        function enableSection(id) {
+          var el = document.getElementById(id);
+          el.classList.remove('opacity-50', 'pointer-events-none');
+          el.classList.add('fade-in');
+        }
+        function disableSection(id) {
+          var el = document.getElementById(id);
+          el.classList.add('opacity-50', 'pointer-events-none');
+        }
+
+        // ============ STEP 1: メーカー ============
+        async function loadMakers() {
+          var t0 = Date.now();
+          try {
+            var res = await axios.get('/api/vehicle-demo/makers');
+            var ms = Date.now() - t0;
+            allMakers = res.data.data || [];
+            document.getElementById('stat-makers').textContent = allMakers.length;
+            logPerf('GET /makers', ms, allMakers.length);
+            renderMakers();
+          } catch(e) { console.error(e); }
+        }
+
+        function filterMakers(filter) {
+          makerFilter = filter;
+          ['all','JP','foreign'].forEach(function(f) {
+            var btn = document.getElementById('tab-' + f);
+            if (f === filter) { btn.className = 'px-3 py-1.5 text-xs font-semibold rounded-full bg-red-500 text-white'; }
+            else { btn.className = 'px-3 py-1.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200'; }
+          });
+          renderMakers();
+        }
+
+        function renderMakers() {
+          var q = document.getElementById('maker-search').value.toLowerCase();
+          var filtered = allMakers.filter(function(m) {
+            if (makerFilter === 'JP' && m.country !== 'JP') return false;
+            if (makerFilter === 'foreign' && m.country === 'JP') return false;
+            if (q && m.name.toLowerCase().indexOf(q) === -1 && (m.name_en||'').toLowerCase().indexOf(q) === -1) return false;
+            return true;
+          });
+          document.getElementById('maker-count').textContent = filtered.length + '社';
+          var countryFlags = { JP:'🇯🇵', DE:'🇩🇪', GB:'🇬🇧', FR:'🇫🇷', IT:'🇮🇹', US:'🇺🇸', SE:'🇸🇪', KR:'🇰🇷', CN:'🇨🇳' };
+          document.getElementById('maker-list').innerHTML = filtered.map(function(m) {
+            var sel = selectedMaker && selectedMaker.id === m.id;
+            return '<div class="option-card border-2 rounded-lg p-3 cursor-pointer text-center ' + (sel ? 'selected' : 'border-gray-200') + '" onclick="selectMaker(' + m.id + ')">' +
+              '<div class="text-lg mb-1">' + (countryFlags[m.country] || '🌐') + '</div>' +
+              '<div class="text-sm font-semibold text-gray-800">' + m.name + '</div>' +
+              '<div class="text-xs text-gray-400">' + (m.name_en || '') + '</div></div>';
+          }).join('');
+        }
+
+        document.getElementById('maker-search').addEventListener('input', renderMakers);
+
+        async function selectMaker(id) {
+          selectedMaker = allMakers.find(function(m) { return m.id === id; });
+          selectedModel = null; selectedYear = null; selectedGrade = null;
+          renderMakers();
+          setStep(2);
+          enableSection('section-model');
+          disableSection('section-year');
+          disableSection('section-grade');
+          document.getElementById('result-panel').classList.add('hidden');
+          document.getElementById('clear-model').classList.remove('hidden');
+          document.getElementById('model-search').value = '';
+
+          // 車種読み込み
+          document.getElementById('model-list').innerHTML = '';
+          document.getElementById('model-loading').classList.remove('hidden');
+          var t0 = Date.now();
+          try {
+            var res = await axios.get('/api/vehicle-demo/makers/' + id + '/models');
+            var ms = Date.now() - t0;
+            allModels = res.data.data || [];
+            logPerf('GET /makers/' + id + '/models', ms, allModels.length);
+            document.getElementById('stat-models').textContent = allModels.length;
+            renderModels();
+          } catch(e) { console.error(e); }
+          document.getElementById('model-loading').classList.add('hidden');
+        }
+
+        function renderModels() {
+          var q = document.getElementById('model-search').value.toLowerCase();
+          var filtered = allModels.filter(function(m) {
+            if (q && m.name.toLowerCase().indexOf(q) === -1 && (m.model_code||'').toLowerCase().indexOf(q) === -1) return false;
+            return true;
+          });
+          document.getElementById('model-count').textContent = filtered.length + '車種';
+          document.getElementById('model-list').innerHTML = filtered.map(function(m) {
+            var sel = selectedModel && selectedModel.id === m.id;
+            var bodyColors = { 'セダン':'blue', 'SUV':'green', 'ミニバン':'purple', 'ハッチバック':'orange', 'クーペ':'red', '軽自動車':'pink', 'オープン':'yellow', 'ステーションワゴン':'teal', 'ピックアップ':'amber', 'トールワゴン':'indigo', '軽バン':'gray', '軽トラック':'stone' };
+            var bc = bodyColors[m.body_type] || 'gray';
+            return '<div class="option-card border-2 rounded-lg p-4 cursor-pointer ' + (sel ? 'selected' : 'border-gray-200') + '" onclick="selectModel(' + m.id + ')">' +
+              '<div class="flex items-center justify-between">' +
+                '<div class="min-w-0 flex-1">' +
+                  '<div class="flex items-center gap-2 flex-wrap">' +
+                    '<span class="font-bold text-gray-800">' + m.name + '</span>' +
+                    (m.generation ? '<span class="badge bg-gray-100 text-gray-600">' + m.generation + '</span>' : '') +
+                    (m.body_type ? '<span class="badge bg-' + bc + '-100 text-' + bc + '-600">' + m.body_type + '</span>' : '') +
+                  '</div>' +
+                  '<div class="flex items-center gap-3 mt-1 text-xs text-gray-500">' +
+                    (m.model_code ? '<span><i class="fas fa-hashtag mr-0.5"></i>' + m.model_code + '</span>' : '') +
+                    '<span><i class="fas fa-calendar mr-0.5"></i>' + m.year_from + '〜' + (m.year_to >= 2026 ? '現行' : m.year_to) + '</span>' +
+                    (m.engine_type ? '<span><i class="fas fa-cog mr-0.5"></i>' + m.engine_type + '</span>' : '') +
+                  '</div>' +
+                '</div>' +
+                '<i class="fas fa-chevron-right text-gray-300 ml-3"></i>' +
+              '</div></div>';
+          }).join('');
+        }
+
+        document.getElementById('model-search').addEventListener('input', renderModels);
+
+        async function selectModel(id) {
+          selectedModel = allModels.find(function(m) { return m.id === id; });
+          selectedYear = null; selectedGrade = null;
+          renderModels();
+          setStep(3);
+          enableSection('section-year');
+          disableSection('section-grade');
+          document.getElementById('result-panel').classList.add('hidden');
+          document.getElementById('clear-year').classList.add('hidden');
+
+          // 年式読み込み
+          document.getElementById('year-list').innerHTML = '';
+          document.getElementById('year-loading').classList.remove('hidden');
+          var t0 = Date.now();
+          try {
+            var res = await axios.get('/api/vehicle-demo/models/' + id + '/years');
+            var ms = Date.now() - t0;
+            var years = res.data.data || [];
+            logPerf('GET /models/' + id + '/years', ms, years.length);
+            document.getElementById('year-list').innerHTML = years.map(function(y) {
+              return '<button class="px-4 py-2 border-2 border-gray-200 rounded-lg text-sm font-semibold hover:border-red-400 hover:bg-red-50 transition-colors option-card" onclick="selectYear(' + y + ', this)">' + y + '年</button>';
+            }).join('');
+          } catch(e) { console.error(e); }
+          document.getElementById('year-loading').classList.add('hidden');
+        }
+
+        async function selectYear(year, el) {
+          selectedYear = year; selectedGrade = null;
+          document.getElementById('clear-year').classList.remove('hidden');
+          document.querySelectorAll('#year-list button').forEach(function(b) { b.classList.remove('selected', '!border-red-500', '!bg-red-50'); });
+          if (el) { el.classList.add('selected', '!border-red-500', '!bg-red-50'); }
+          setStep(4);
+          enableSection('section-grade');
+
+          // グレード読み込み
+          document.getElementById('grade-list').innerHTML = '';
+          document.getElementById('no-grades').classList.add('hidden');
+          document.getElementById('grade-loading').classList.remove('hidden');
+          var t0 = Date.now();
+          try {
+            var res = await axios.get('/api/vehicle-demo/models/' + selectedModel.id + '/grades');
+            var ms = Date.now() - t0;
+            var grades = res.data.data || [];
+            document.getElementById('stat-grades').textContent = grades.length;
+            logPerf('GET /models/' + selectedModel.id + '/grades', ms, grades.length);
+            if (grades.length === 0) {
+              document.getElementById('no-grades').classList.remove('hidden');
+              showResult(); // グレードなしでも結果を表示
+            } else {
+              document.getElementById('grade-list').innerHTML = grades.map(function(g) {
+                return '<div class="option-card border-2 border-gray-200 rounded-lg p-4 cursor-pointer" onclick="selectGrade(' + g.id + ', this)">' +
+                  '<div class="flex items-center justify-between">' +
+                    '<div>' +
+                      '<span class="font-bold text-gray-800">' + g.name + '</span>' +
+                      '<div class="flex flex-wrap gap-2 mt-1">' +
+                        (g.displacement ? '<span class="badge bg-blue-50 text-blue-600">' + g.displacement + 'cc</span>' : '') +
+                        (g.transmission ? '<span class="badge bg-green-50 text-green-600">' + g.transmission + '</span>' : '') +
+                        (g.drive_type ? '<span class="badge bg-purple-50 text-purple-600">' + g.drive_type + '</span>' : '') +
+                        (g.fuel_type ? '<span class="badge bg-orange-50 text-orange-600">' + g.fuel_type + '</span>' : '') +
+                      '</div>' +
+                    '</div>' +
+                    '<i class="fas fa-chevron-right text-gray-300"></i>' +
+                  '</div></div>';
+              }).join('');
+            }
+          } catch(e) { console.error(e); }
+          document.getElementById('grade-loading').classList.add('hidden');
+        }
+
+        function selectGrade(id, el) {
+          var grades = []; // 再取得の代わりに DOM から情報取得
+          document.querySelectorAll('#grade-list .option-card').forEach(function(c) { c.classList.remove('selected'); });
+          if (el) el.classList.add('selected');
+          selectedGrade = { id: id, name: el ? el.querySelector('.font-bold').textContent : '' };
+          document.getElementById('clear-grade').classList.remove('hidden');
+          showResult();
+        }
+
+        // ============ 結果表示 ============
+        function showResult() {
+          var panel = document.getElementById('result-panel');
+          panel.classList.remove('hidden');
+          var rows = [
+            ['メーカー', selectedMaker ? selectedMaker.name + (selectedMaker.name_en ? ' (' + selectedMaker.name_en + ')' : '') : '-'],
+            ['車種', selectedModel ? selectedModel.name + (selectedModel.generation ? ' ' + selectedModel.generation : '') : '-'],
+            ['型式', selectedModel && selectedModel.model_code ? selectedModel.model_code : '-'],
+            ['年式', selectedYear ? selectedYear + '年' : '-'],
+            ['グレード', selectedGrade ? selectedGrade.name : '(未選択)'],
+            ['ボディタイプ', selectedModel ? (selectedModel.body_type || '-') : '-'],
+            ['エンジン型式', selectedModel ? (selectedModel.engine_type || '-') : '-']
+          ];
+          document.getElementById('result-content').innerHTML = rows.map(function(r) {
+            return '<div class="flex justify-between items-center py-2 border-b border-red-100 last:border-0"><span class="text-sm text-gray-500">' + r[0] + '</span><span class="font-semibold text-sm text-gray-800">' + r[1] + '</span></div>';
+          }).join('');
+        }
+
+        // ============ クリア操作 ============
+        function clearModel() {
+          selectedModel = null; selectedYear = null; selectedGrade = null;
+          allModels = [];
+          document.getElementById('model-list').innerHTML = '';
+          document.getElementById('clear-model').classList.add('hidden');
+          disableSection('section-year');
+          disableSection('section-grade');
+          document.getElementById('result-panel').classList.add('hidden');
+          setStep(2);
+        }
+        function clearYear() {
+          selectedYear = null; selectedGrade = null;
+          document.querySelectorAll('#year-list button').forEach(function(b) { b.classList.remove('selected', '!border-red-500', '!bg-red-50'); });
+          document.getElementById('clear-year').classList.add('hidden');
+          disableSection('section-grade');
+          document.getElementById('result-panel').classList.add('hidden');
+          setStep(3);
+        }
+        function clearGrade() {
+          selectedGrade = null;
+          document.querySelectorAll('#grade-list .option-card').forEach(function(c) { c.classList.remove('selected'); });
+          document.getElementById('clear-grade').classList.add('hidden');
+        }
+        function resetAll() {
+          selectedMaker = null; selectedModel = null; selectedYear = null; selectedGrade = null;
+          allModels = [];
+          setStep(1);
+          disableSection('section-model');
+          disableSection('section-year');
+          disableSection('section-grade');
+          document.getElementById('result-panel').classList.add('hidden');
+          document.getElementById('maker-search').value = '';
+          filterMakers('all');
+          renderMakers();
+        }
+
+        // ============ 初期化 ============
+        loadMakers();
+      </script>
+    </body>
+    </html>
+  `)
+})
+
 // === 銀行情報入力デモページ（本番未使用・サンプルUI） ===
 app.get('/bank-demo', (c) => {
   return c.html(`
