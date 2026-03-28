@@ -4711,13 +4711,13 @@ app.get('/profile/edit', (c) => {
 
                         <!-- 口座番号 -->
                         <div>
-                            <label class="form-label">口座番号</label>
+                            <label class="form-label">口座番号 <span class="bank-required-label bg-red-100 text-red-600 text-xs font-bold px-1.5 py-0.5 rounded" style="display:none">必須</span></label>
                             <input type="text" id="account-number" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors font-mono tracking-wider" placeholder="7桁の口座番号" maxlength="7" inputmode="numeric">
                         </div>
 
                         <!-- 口座名義 -->
                         <div>
-                            <label class="form-label">口座名義（カタカナ）</label>
+                            <label class="form-label">口座名義（カタカナ） <span class="bank-required-label bg-red-100 text-red-600 text-xs font-bold px-1.5 py-0.5 rounded" style="display:none">必須</span></label>
                             <input type="text" id="account-holder" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors" placeholder="ヤマダ タロウ">
                         </div>
                     </div>

@@ -123,6 +123,9 @@ function fillForm(profile) {
 
     setVal('account-number', profile.account_number);
     setVal('account-holder', profile.account_holder);
+
+    // 銀行選択済みなら必須ラベル表示
+    setTimeout(function() { updateBankRequiredLabels(); }, 100);
 }
 
 // ヘルパー：要素があれば値をセット
@@ -142,11 +145,20 @@ function setupForm() {
         });
     });
 
-    // 口座番号: 数字のみ
+    // 口座番号: 数字のみ + エラー解除
     var accNum = document.getElementById('account-number');
     if (accNum) {
         accNum.addEventListener('input', function() {
             this.value = this.value.replace(/[^0-9]/g, '');
+            this.classList.remove('border-red-500', 'ring-1', 'ring-red-500');
+        });
+    }
+
+    // 口座名義: 入力時エラー解除
+    var accHolder = document.getElementById('account-holder');
+    if (accHolder) {
+        accHolder.addEventListener('input', function() {
+            this.classList.remove('border-red-500', 'ring-1', 'ring-red-500');
         });
     }
 }
@@ -176,9 +188,61 @@ function handleProfileImageUpload(event) {
     reader.readAsDataURL(file);
 }
 
+// 銀行選択時の必須バリデーション
+function validateBankFields() {
+    var bankCode = getVal('bank-code');
+    var bankName = getVal('bank-name');
+    var hasBankSelected = !!(bankCode || bankName);
+
+    if (!hasBankSelected) return true; // 銀行未選択なら検証不要
+
+    var errors = [];
+    var accNum = document.getElementById('account-number');
+    var accHolder = document.getElementById('account-holder');
+
+    // 口座番号チェック
+    if (!accNum || !accNum.value.trim()) {
+        errors.push('口座番号');
+        if (accNum) accNum.classList.add('border-red-500', 'ring-1', 'ring-red-500');
+    } else if (accNum.value.trim().length !== 7) {
+        errors.push('口座番号（7桁）');
+        accNum.classList.add('border-red-500', 'ring-1', 'ring-red-500');
+    } else {
+        if (accNum) accNum.classList.remove('border-red-500', 'ring-1', 'ring-red-500');
+    }
+
+    // 口座名義チェック
+    if (!accHolder || !accHolder.value.trim()) {
+        errors.push('口座名義（カタカナ）');
+        if (accHolder) accHolder.classList.add('border-red-500', 'ring-1', 'ring-red-500');
+    } else {
+        if (accHolder) accHolder.classList.remove('border-red-500', 'ring-1', 'ring-red-500');
+    }
+
+    if (errors.length > 0) {
+        alert('銀行口座を登録する場合、以下の項目は必須です:\n\n・' + errors.join('\n・'));
+        return false;
+    }
+    return true;
+}
+
+// 必須ラベルの表示切替
+function updateBankRequiredLabels() {
+    var bankCode = getVal('bank-code');
+    var bankName = getVal('bank-name');
+    var hasBankSelected = !!(bankCode || bankName);
+    var reqLabels = document.querySelectorAll('.bank-required-label');
+    reqLabels.forEach(function(el) {
+        el.style.display = hasBankSelected ? 'inline-flex' : 'none';
+    });
+}
+
 // フォーム送信処理
 async function handleSubmit(event) {
     event.preventDefault();
+    
+    // 銀行口座バリデーション
+    if (!validateBankFields()) return;
     
     const submitBtn = document.getElementById('submit-btn');
     const originalText = submitBtn.innerHTML;
@@ -370,6 +434,9 @@ function setupBankUI() {
         document.getElementById('branch-code').value = '';
         document.getElementById('branch-info').classList.add('hidden');
         branchInput.focus();
+
+        // 必須ラベル表示
+        updateBankRequiredLabels();
     }
 
     function clearBank() {
@@ -386,6 +453,13 @@ function setupBankUI() {
         document.getElementById('branch-code').value = '';
         document.getElementById('branch-info').classList.add('hidden');
         bankInput.focus();
+
+        // 必須ラベル非表示 + エラー表示クリア
+        updateBankRequiredLabels();
+        var accNum = document.getElementById('account-number');
+        var accHolder = document.getElementById('account-holder');
+        if (accNum) accNum.classList.remove('border-red-500', 'ring-1', 'ring-red-500');
+        if (accHolder) accHolder.classList.remove('border-red-500', 'ring-1', 'ring-red-500');
     }
 
     // === 支店入力 ===
@@ -452,6 +526,7 @@ function setupBankUI() {
             document.getElementById('bank-info').classList.remove('hidden');
             branchInput.disabled = false;
             branchInput.placeholder = bank.name + ' の支店名を入力';
+            updateBankRequiredLabels();
         },
         _restoreBranch: function(branch) {
             selectedBranch = branch;
