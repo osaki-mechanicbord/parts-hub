@@ -6393,6 +6393,613 @@ app.get('/legal', (c) => {
 })
 
 // FAQページ
+// === 銀行情報入力デモページ（本番未使用・サンプルUI） ===
+app.get('/bank-demo', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>銀行口座情報入力デモ - PARTS HUB</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <script>
+          tailwind.config = {
+            theme: { extend: { colors: { primary: '#ef4444', 'primary-dark': '#dc2626' } } }
+          }
+        </script>
+        <style>
+          .autocomplete-dropdown {
+            max-height: 280px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+          }
+          .autocomplete-dropdown::-webkit-scrollbar { width: 6px; }
+          .autocomplete-dropdown::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+          .autocomplete-item { transition: background 0.1s; }
+          .autocomplete-item:hover, .autocomplete-item.active { background: #fef2f2; }
+          .autocomplete-item .code { color: #9ca3af; font-size: 12px; font-family: monospace; }
+          .autocomplete-item .name { color: #1f2937; font-weight: 500; }
+          .autocomplete-item .kana { color: #6b7280; font-size: 12px; }
+          .field-success { border-color: #22c55e !important; }
+          .field-success + .check-icon { display: flex !important; }
+          .step-badge { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
+          .step-active { background: #ef4444; color: white; }
+          .step-done { background: #22c55e; color: white; }
+          .step-pending { background: #e5e7eb; color: #9ca3af; }
+          .fade-in { animation: fadeIn 0.2s ease-out; }
+          @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+          .katakana-preview { background: #f9fafb; border: 1px dashed #d1d5db; padding: 8px 12px; border-radius: 8px; font-size: 14px; }
+        </style>
+    </head>
+    <body class="bg-gray-50 min-h-screen">
+        <!-- ヘッダー -->
+        <header class="bg-white shadow-sm border-b sticky top-0 z-50">
+            <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+                <a href="/" class="flex items-center gap-2 text-gray-800 font-bold text-lg">
+                    <i class="fas fa-cog text-primary"></i> PARTS HUB
+                </a>
+                <span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full font-semibold">
+                    <i class="fas fa-flask mr-1"></i>サンプルUI
+                </span>
+            </div>
+        </header>
+
+        <main class="max-w-2xl mx-auto px-4 py-8">
+            <!-- タイトル -->
+            <div class="text-center mb-8">
+                <h1 class="text-2xl font-bold text-gray-800 mb-2">
+                    <i class="fas fa-university text-primary mr-2"></i>銀行口座情報入力
+                </h1>
+                <p class="text-gray-500 text-sm">振込先の銀行口座を簡単に設定できます</p>
+            </div>
+
+            <!-- ステップインジケーター -->
+            <div class="flex items-center justify-center gap-3 mb-8">
+                <div class="flex items-center gap-2">
+                    <div class="step-badge step-active" id="step1-badge">1</div>
+                    <span class="text-sm font-semibold text-gray-700">金融機関</span>
+                </div>
+                <div class="w-8 h-0.5 bg-gray-300" id="step-line1"></div>
+                <div class="flex items-center gap-2">
+                    <div class="step-badge step-pending" id="step2-badge">2</div>
+                    <span class="text-sm text-gray-400" id="step2-label">支店</span>
+                </div>
+                <div class="w-8 h-0.5 bg-gray-300" id="step-line2"></div>
+                <div class="flex items-center gap-2">
+                    <div class="step-badge step-pending" id="step3-badge">3</div>
+                    <span class="text-sm text-gray-400" id="step3-label">口座情報</span>
+                </div>
+            </div>
+
+            <!-- フォーム -->
+            <div class="bg-white rounded-2xl shadow-sm border p-6 space-y-6">
+
+                <!-- STEP 1: 金融機関選択 -->
+                <div id="bank-section">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-building text-primary mr-1"></i>金融機関名
+                        <span class="text-red-500 ml-1">*</span>
+                    </label>
+                    <div class="relative">
+                        <input type="text" id="bank-input"
+                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-base focus:border-primary focus:outline-none transition-colors"
+                            placeholder="ひらがなで入力（例: みずほ）"
+                            autocomplete="off">
+                        <div class="absolute right-3 top-1/2 -translate-y-1/2 hidden items-center justify-center w-6 h-6 bg-green-500 rounded-full check-icon">
+                            <i class="fas fa-check text-white text-xs"></i>
+                        </div>
+                        <div id="bank-dropdown" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-40 autocomplete-dropdown fade-in"></div>
+                    </div>
+                    <div id="bank-selected-info" class="hidden mt-2 flex items-center gap-2 text-sm">
+                        <span class="bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-mono text-xs" id="bank-code-display"></span>
+                        <span class="text-gray-700 font-medium" id="bank-name-display"></span>
+                        <button onclick="clearBank()" class="ml-auto text-gray-400 hover:text-red-500 text-xs">
+                            <i class="fas fa-times-circle"></i> クリア
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-1.5"><i class="fas fa-lightbulb mr-1"></i>ひらがな・カタカナ・漢字・コードで検索できます</p>
+                </div>
+
+                <!-- STEP 2: 支店選択 -->
+                <div id="branch-section" class="opacity-40 pointer-events-none transition-all duration-300">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-map-marker-alt text-primary mr-1"></i>支店名
+                        <span class="text-red-500 ml-1">*</span>
+                    </label>
+                    <div class="relative">
+                        <input type="text" id="branch-input"
+                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-base focus:border-primary focus:outline-none transition-colors"
+                            placeholder="支店名またはコードを入力"
+                            autocomplete="off" disabled>
+                        <div class="absolute right-3 top-1/2 -translate-y-1/2 hidden items-center justify-center w-6 h-6 bg-green-500 rounded-full check-icon">
+                            <i class="fas fa-check text-white text-xs"></i>
+                        </div>
+                        <div id="branch-dropdown" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-40 autocomplete-dropdown fade-in"></div>
+                    </div>
+                    <div id="branch-selected-info" class="hidden mt-2 flex items-center gap-2 text-sm">
+                        <span class="bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-mono text-xs" id="branch-code-display"></span>
+                        <span class="text-gray-700 font-medium" id="branch-name-display"></span>
+                        <button onclick="clearBranch()" class="ml-auto text-gray-400 hover:text-red-500 text-xs">
+                            <i class="fas fa-times-circle"></i> クリア
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 区切り線 -->
+                <div class="border-t border-dashed border-gray-200"></div>
+
+                <!-- STEP 3: 口座情報入力 -->
+                <div id="account-section" class="opacity-40 pointer-events-none transition-all duration-300">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-4">
+                        <i class="fas fa-credit-card text-primary mr-1"></i>口座情報
+                    </h3>
+
+                    <!-- 口座種別 -->
+                    <div class="mb-4">
+                        <label class="block text-sm text-gray-600 mb-2">口座種別 <span class="text-red-500">*</span></label>
+                        <div class="flex gap-3">
+                            <label class="flex-1 cursor-pointer">
+                                <input type="radio" name="account-type" value="普通" class="sr-only peer" checked disabled>
+                                <div class="py-2.5 text-center border-2 border-gray-200 rounded-xl text-sm font-medium peer-checked:border-primary peer-checked:bg-red-50 peer-checked:text-primary transition-all">
+                                    普通
+                                </div>
+                            </label>
+                            <label class="flex-1 cursor-pointer">
+                                <input type="radio" name="account-type" value="当座" class="sr-only peer" disabled>
+                                <div class="py-2.5 text-center border-2 border-gray-200 rounded-xl text-sm font-medium peer-checked:border-primary peer-checked:bg-red-50 peer-checked:text-primary transition-all">
+                                    当座
+                                </div>
+                            </label>
+                            <label class="flex-1 cursor-pointer">
+                                <input type="radio" name="account-type" value="貯蓄" class="sr-only peer" disabled>
+                                <div class="py-2.5 text-center border-2 border-gray-200 rounded-xl text-sm font-medium peer-checked:border-primary peer-checked:bg-red-50 peer-checked:text-primary transition-all">
+                                    貯蓄
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 口座番号 -->
+                    <div class="mb-4">
+                        <label class="block text-sm text-gray-600 mb-2">口座番号 <span class="text-red-500">*</span></label>
+                        <input type="text" id="account-number"
+                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-base font-mono tracking-wider focus:border-primary focus:outline-none transition-colors"
+                            placeholder="7桁の口座番号"
+                            maxlength="7" inputmode="numeric" pattern="[0-9]*" disabled>
+                    </div>
+
+                    <!-- 口座名義 -->
+                    <div class="mb-4">
+                        <label class="block text-sm text-gray-600 mb-2">口座名義（カタカナ） <span class="text-red-500">*</span></label>
+                        <input type="text" id="account-holder"
+                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-base focus:border-primary focus:outline-none transition-colors"
+                            placeholder="カタカナで入力（例: ヤマダ タロウ）" disabled>
+                        <div id="katakana-preview" class="hidden mt-2 katakana-preview">
+                            <span class="text-xs text-gray-500">口座名義：</span>
+                            <span id="katakana-text" class="font-medium"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 確認ボタン -->
+                <button id="submit-btn" onclick="submitForm()"
+                    class="w-full py-3.5 bg-gray-300 text-white rounded-xl font-bold text-base cursor-not-allowed transition-all"
+                    disabled>
+                    <i class="fas fa-check-circle mr-2"></i>口座情報を確認する
+                </button>
+            </div>
+
+            <!-- 確認モーダル -->
+            <div id="confirm-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 fade-in">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 text-center">
+                        <i class="fas fa-clipboard-check text-primary mr-2"></i>入力内容の確認
+                    </h3>
+                    <div class="space-y-3 mb-6" id="confirm-details"></div>
+                    <div class="flex gap-3">
+                        <button onclick="closeModal()" class="flex-1 py-2.5 border-2 border-gray-300 text-gray-600 rounded-xl font-semibold hover:bg-gray-50">
+                            修正する
+                        </button>
+                        <button onclick="finalSubmit()" class="flex-1 py-2.5 bg-primary text-white rounded-xl font-semibold hover:bg-primary-dark">
+                            登録する
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 完了メッセージ -->
+            <div id="success-msg" class="hidden mt-6 bg-green-50 border border-green-200 rounded-2xl p-6 text-center fade-in">
+                <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <i class="fas fa-check text-green-500 text-2xl"></i>
+                </div>
+                <h3 class="text-lg font-bold text-green-700 mb-1">登録完了</h3>
+                <p class="text-green-600 text-sm">銀行口座情報が正常に登録されました。</p>
+            </div>
+
+            <!-- サンプルUI説明 -->
+            <div class="mt-8 bg-blue-50 border border-blue-200 rounded-2xl p-5">
+                <h4 class="text-sm font-bold text-blue-800 mb-2"><i class="fas fa-info-circle mr-1"></i>このページについて</h4>
+                <ul class="text-xs text-blue-700 space-y-1.5">
+                    <li>• これはサンプルUIです。実際のデータは保存されません。</li>
+                    <li>• 主要銀行（都市銀行・ネット銀行・地方銀行・信用金庫など）<span id="bank-count"></span>行、約<span id="branch-count"></span>支店のデータを内蔵</li>
+                    <li>• ひらがな、カタカナ、漢字、金融機関コードで検索可能</li>
+                    <li>• 本番実装時は全国銀行協会の完全データ（約1,500行・30,000支店）に拡張予定</li>
+                </ul>
+            </div>
+        </main>
+
+        <script src="/static/bank-db.js"></script>
+        <script>
+        (function() {
+            'use strict';
+
+            // === 状態管理 ===
+            var state = {
+                selectedBank: null,
+                selectedBranch: null,
+                bankDropdownIndex: -1,
+                branchDropdownIndex: -1
+            };
+
+            // データ統計
+            var totalBanks = BANK_DB.banks.length;
+            var totalBranches = BANK_DB.banks.reduce(function(sum, b) { return sum + b.branches.length; }, 0);
+            document.getElementById('bank-count').textContent = totalBanks;
+            document.getElementById('branch-count').textContent = totalBranches;
+
+            // === カタカナ→ひらがな変換 ===
+            function kataToHira(str) {
+                return str.replace(/[\\u30A1-\\u30FA]/g, function(ch) {
+                    return String.fromCharCode(ch.charCodeAt(0) - 0x60);
+                });
+            }
+
+            // === 検索マッチング ===
+            function matchBank(bank, query) {
+                var q = query.toLowerCase();
+                var qHira = kataToHira(q);
+                if (bank.kana.indexOf(qHira) !== -1) return true;
+                if (bank.name.toLowerCase().indexOf(q) !== -1) return true;
+                if (bank.code.indexOf(q) !== -1) return true;
+                return false;
+            }
+
+            function matchBranch(branch, query) {
+                var q = query.toLowerCase();
+                var qHira = kataToHira(q);
+                if (branch.kana.indexOf(qHira) !== -1) return true;
+                if (branch.name.toLowerCase().indexOf(q) !== -1) return true;
+                if (branch.code.indexOf(q) !== -1) return true;
+                return false;
+            }
+
+            // === ハイライト表示 ===
+            function highlight(text, query) {
+                if (!query) return text;
+                var idx = text.toLowerCase().indexOf(query.toLowerCase());
+                if (idx === -1) return text;
+                return text.substring(0, idx) + '<mark class="bg-yellow-200 rounded px-0.5">' + text.substring(idx, idx + query.length) + '</mark>' + text.substring(idx + query.length);
+            }
+
+            // === 銀行検索 ===
+            var bankInput = document.getElementById('bank-input');
+            var bankDropdown = document.getElementById('bank-dropdown');
+
+            bankInput.addEventListener('input', function() {
+                var q = this.value.trim();
+                if (q.length === 0) { bankDropdown.classList.add('hidden'); return; }
+
+                var results = BANK_DB.banks.filter(function(b) { return matchBank(b, q); }).slice(0, 15);
+                if (results.length === 0) {
+                    bankDropdown.innerHTML = '<div class="p-4 text-center text-gray-400 text-sm"><i class="fas fa-search mr-1"></i>該当する金融機関が見つかりません</div>';
+                    bankDropdown.classList.remove('hidden');
+                    return;
+                }
+
+                var html = results.map(function(b, i) {
+                    return '<div class="autocomplete-item px-4 py-2.5 cursor-pointer flex items-center gap-3 border-b border-gray-50 last:border-0" data-index="' + i + '" data-code="' + b.code + '">' +
+                        '<span class="code w-12 text-center">' + b.code + '</span>' +
+                        '<div class="flex-1 min-w-0">' +
+                            '<div class="name">' + highlight(b.name, q) + '</div>' +
+                            '<div class="kana">' + highlight(b.kana, q) + '</div>' +
+                        '</div>' +
+                        '<span class="text-xs text-gray-400">' + b.branches.length + '支店</span>' +
+                    '</div>';
+                }).join('');
+                bankDropdown.innerHTML = html;
+                bankDropdown.classList.remove('hidden');
+                state.bankDropdownIndex = -1;
+
+                bankDropdown.querySelectorAll('.autocomplete-item').forEach(function(item) {
+                    item.addEventListener('click', function() {
+                        var code = this.getAttribute('data-code');
+                        selectBank(code);
+                    });
+                });
+            });
+
+            bankInput.addEventListener('keydown', function(e) {
+                var items = bankDropdown.querySelectorAll('.autocomplete-item');
+                if (items.length === 0) return;
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    state.bankDropdownIndex = Math.min(state.bankDropdownIndex + 1, items.length - 1);
+                    updateDropdownHighlight(items, state.bankDropdownIndex);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    state.bankDropdownIndex = Math.max(state.bankDropdownIndex - 1, 0);
+                    updateDropdownHighlight(items, state.bankDropdownIndex);
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (state.bankDropdownIndex >= 0 && items[state.bankDropdownIndex]) {
+                        items[state.bankDropdownIndex].click();
+                    }
+                }
+            });
+
+            function updateDropdownHighlight(items, idx) {
+                items.forEach(function(it, i) {
+                    it.classList.toggle('active', i === idx);
+                    if (i === idx) it.scrollIntoView({ block: 'nearest' });
+                });
+            }
+
+            function selectBank(code) {
+                var bank = BANK_DB.banks.find(function(b) { return b.code === code; });
+                if (!bank) return;
+                state.selectedBank = bank;
+                state.selectedBranch = null;
+
+                bankInput.value = bank.name;
+                bankInput.classList.add('field-success');
+                bankDropdown.classList.add('hidden');
+
+                document.getElementById('bank-code-display').textContent = bank.code;
+                document.getElementById('bank-name-display').textContent = bank.name;
+                document.getElementById('bank-selected-info').classList.remove('hidden');
+
+                // Step 2を有効化
+                var branchSection = document.getElementById('branch-section');
+                branchSection.classList.remove('opacity-40', 'pointer-events-none');
+                var branchInput = document.getElementById('branch-input');
+                branchInput.disabled = false;
+                branchInput.value = '';
+                branchInput.placeholder = bank.name + 'の支店名またはコードを入力';
+                branchInput.focus();
+                document.getElementById('branch-selected-info').classList.add('hidden');
+                branchInput.classList.remove('field-success');
+
+                updateSteps(2);
+                updateSubmitBtn();
+            }
+
+            window.clearBank = function() {
+                state.selectedBank = null;
+                state.selectedBranch = null;
+                bankInput.value = '';
+                bankInput.classList.remove('field-success');
+                document.getElementById('bank-selected-info').classList.add('hidden');
+
+                var branchSection = document.getElementById('branch-section');
+                branchSection.classList.add('opacity-40', 'pointer-events-none');
+                document.getElementById('branch-input').disabled = true;
+                document.getElementById('branch-input').value = '';
+                document.getElementById('branch-input').classList.remove('field-success');
+                document.getElementById('branch-selected-info').classList.add('hidden');
+
+                var accountSection = document.getElementById('account-section');
+                accountSection.classList.add('opacity-40', 'pointer-events-none');
+                disableAccountFields(true);
+
+                updateSteps(1);
+                updateSubmitBtn();
+                bankInput.focus();
+            };
+
+            // === 支店検索 ===
+            var branchInput = document.getElementById('branch-input');
+            var branchDropdown = document.getElementById('branch-dropdown');
+
+            branchInput.addEventListener('input', function() {
+                if (!state.selectedBank) return;
+                var q = this.value.trim();
+
+                var branches = state.selectedBank.branches;
+                var results = q.length === 0 ? branches.slice(0, 20) : branches.filter(function(b) { return matchBranch(b, q); }).slice(0, 20);
+
+                if (results.length === 0) {
+                    branchDropdown.innerHTML = '<div class="p-4 text-center text-gray-400 text-sm"><i class="fas fa-search mr-1"></i>該当する支店が見つかりません</div>';
+                    branchDropdown.classList.remove('hidden');
+                    return;
+                }
+
+                var html = results.map(function(b, i) {
+                    return '<div class="autocomplete-item px-4 py-2.5 cursor-pointer flex items-center gap-3 border-b border-gray-50 last:border-0" data-index="' + i + '" data-code="' + b.code + '">' +
+                        '<span class="code w-10 text-center">' + b.code + '</span>' +
+                        '<div class="flex-1 min-w-0">' +
+                            '<div class="name">' + (q ? highlight(b.name, q) : b.name) + '</div>' +
+                            '<div class="kana">' + (q ? highlight(b.kana, q) : b.kana) + '</div>' +
+                        '</div>' +
+                    '</div>';
+                }).join('');
+                branchDropdown.innerHTML = html;
+                branchDropdown.classList.remove('hidden');
+                state.branchDropdownIndex = -1;
+
+                branchDropdown.querySelectorAll('.autocomplete-item').forEach(function(item) {
+                    item.addEventListener('click', function() {
+                        var code = this.getAttribute('data-code');
+                        selectBranch(code);
+                    });
+                });
+            });
+
+            branchInput.addEventListener('focus', function() {
+                if (state.selectedBank && !state.selectedBranch) {
+                    this.dispatchEvent(new Event('input'));
+                }
+            });
+
+            branchInput.addEventListener('keydown', function(e) {
+                var items = branchDropdown.querySelectorAll('.autocomplete-item');
+                if (items.length === 0) return;
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    state.branchDropdownIndex = Math.min(state.branchDropdownIndex + 1, items.length - 1);
+                    updateDropdownHighlight(items, state.branchDropdownIndex);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    state.branchDropdownIndex = Math.max(state.branchDropdownIndex - 1, 0);
+                    updateDropdownHighlight(items, state.branchDropdownIndex);
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (state.branchDropdownIndex >= 0 && items[state.branchDropdownIndex]) {
+                        items[state.branchDropdownIndex].click();
+                    }
+                }
+            });
+
+            function selectBranch(code) {
+                var branch = state.selectedBank.branches.find(function(b) { return b.code === code; });
+                if (!branch) return;
+                state.selectedBranch = branch;
+
+                branchInput.value = branch.name;
+                branchInput.classList.add('field-success');
+                branchDropdown.classList.add('hidden');
+
+                document.getElementById('branch-code-display').textContent = branch.code;
+                document.getElementById('branch-name-display').textContent = branch.name;
+                document.getElementById('branch-selected-info').classList.remove('hidden');
+
+                // Step 3を有効化
+                var accountSection = document.getElementById('account-section');
+                accountSection.classList.remove('opacity-40', 'pointer-events-none');
+                disableAccountFields(false);
+                document.getElementById('account-number').focus();
+
+                updateSteps(3);
+                updateSubmitBtn();
+            }
+
+            window.clearBranch = function() {
+                state.selectedBranch = null;
+                branchInput.value = '';
+                branchInput.classList.remove('field-success');
+                document.getElementById('branch-selected-info').classList.add('hidden');
+
+                var accountSection = document.getElementById('account-section');
+                accountSection.classList.add('opacity-40', 'pointer-events-none');
+                disableAccountFields(true);
+
+                updateSteps(2);
+                updateSubmitBtn();
+                branchInput.focus();
+            };
+
+            function disableAccountFields(disabled) {
+                document.querySelectorAll('#account-section input').forEach(function(el) { el.disabled = disabled; });
+            }
+
+            // === 口座番号バリデーション ===
+            document.getElementById('account-number').addEventListener('input', function() {
+                this.value = this.value.replace(/[^0-9]/g, '');
+                if (this.value.length === 7) {
+                    this.classList.add('field-success');
+                } else {
+                    this.classList.remove('field-success');
+                }
+                updateSubmitBtn();
+            });
+
+            // === 口座名義プレビュー ===
+            document.getElementById('account-holder').addEventListener('input', function() {
+                var val = this.value.trim();
+                var preview = document.getElementById('katakana-preview');
+                var text = document.getElementById('katakana-text');
+                if (val.length > 0) {
+                    preview.classList.remove('hidden');
+                    text.textContent = val;
+                    this.classList.add('field-success');
+                } else {
+                    preview.classList.add('hidden');
+                    this.classList.remove('field-success');
+                }
+                updateSubmitBtn();
+            });
+
+            // === ステップ更新 ===
+            function updateSteps(current) {
+                for (var i = 1; i <= 3; i++) {
+                    var badge = document.getElementById('step' + i + '-badge');
+                    badge.className = 'step-badge ' + (i < current ? 'step-done' : (i === current ? 'step-active' : 'step-pending'));
+                    if (i < current) badge.innerHTML = '<i class="fas fa-check text-xs"></i>';
+                    else badge.textContent = i;
+                }
+                if (current >= 2) document.getElementById('step2-label').className = 'text-sm font-semibold text-gray-700';
+                else document.getElementById('step2-label').className = 'text-sm text-gray-400';
+                if (current >= 3) document.getElementById('step3-label').className = 'text-sm font-semibold text-gray-700';
+                else document.getElementById('step3-label').className = 'text-sm text-gray-400';
+            }
+
+            // === 送信ボタン更新 ===
+            function updateSubmitBtn() {
+                var btn = document.getElementById('submit-btn');
+                var valid = state.selectedBank && state.selectedBranch &&
+                    document.getElementById('account-number').value.length === 7 &&
+                    document.getElementById('account-holder').value.trim().length > 0;
+                if (valid) {
+                    btn.disabled = false;
+                    btn.className = 'w-full py-3.5 bg-primary text-white rounded-xl font-bold text-base hover:bg-primary-dark transition-all shadow-sm cursor-pointer';
+                } else {
+                    btn.disabled = true;
+                    btn.className = 'w-full py-3.5 bg-gray-300 text-white rounded-xl font-bold text-base cursor-not-allowed transition-all';
+                }
+            }
+
+            // === 確認モーダル ===
+            window.submitForm = function() {
+                var accountType = document.querySelector('input[name="account-type"]:checked').value;
+                var html = [
+                    '<div class="flex justify-between py-2 border-b border-gray-100"><span class="text-gray-500 text-sm">金融機関</span><span class="font-medium text-sm">' + state.selectedBank.name + ' (' + state.selectedBank.code + ')</span></div>',
+                    '<div class="flex justify-between py-2 border-b border-gray-100"><span class="text-gray-500 text-sm">支店</span><span class="font-medium text-sm">' + state.selectedBranch.name + ' (' + state.selectedBranch.code + ')</span></div>',
+                    '<div class="flex justify-between py-2 border-b border-gray-100"><span class="text-gray-500 text-sm">口座種別</span><span class="font-medium text-sm">' + accountType + '</span></div>',
+                    '<div class="flex justify-between py-2 border-b border-gray-100"><span class="text-gray-500 text-sm">口座番号</span><span class="font-medium text-sm font-mono">' + document.getElementById('account-number').value + '</span></div>',
+                    '<div class="flex justify-between py-2"><span class="text-gray-500 text-sm">口座名義</span><span class="font-medium text-sm">' + document.getElementById('account-holder').value + '</span></div>',
+                ].join('');
+                document.getElementById('confirm-details').innerHTML = html;
+                document.getElementById('confirm-modal').classList.remove('hidden');
+            };
+
+            window.closeModal = function() {
+                document.getElementById('confirm-modal').classList.add('hidden');
+            };
+
+            window.finalSubmit = function() {
+                document.getElementById('confirm-modal').classList.add('hidden');
+                document.getElementById('success-msg').classList.remove('hidden');
+                document.getElementById('success-msg').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            };
+
+            // === ドロップダウン外クリックで閉じる ===
+            document.addEventListener('click', function(e) {
+                if (!bankInput.contains(e.target) && !bankDropdown.contains(e.target)) {
+                    bankDropdown.classList.add('hidden');
+                }
+                if (!branchInput.contains(e.target) && !branchDropdown.contains(e.target)) {
+                    branchDropdown.classList.add('hidden');
+                }
+            });
+
+        })();
+        </script>
+    </body>
+    </html>
+  `);
+});
+
 app.get('/faq', (c) => {
   return c.html(`
     <!DOCTYPE html>
