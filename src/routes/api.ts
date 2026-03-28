@@ -67,6 +67,28 @@ api.get('/categories/:id', async (c) => {
   }
 })
 
+// サブカテゴリ一覧（カテゴリID指定）
+api.get('/categories/:id/subcategories', async (c) => {
+  try {
+    const id = c.req.param('id')
+
+    const { results: subcategories } = await c.env.DB.prepare(`
+      SELECT id, name, slug, display_order
+      FROM subcategories
+      WHERE category_id = ? AND is_active = 1
+      ORDER BY display_order ASC
+    `).bind(id).all()
+
+    return c.json({
+      success: true,
+      data: subcategories
+    })
+  } catch (error) {
+    console.error('Subcategory fetch error:', error)
+    return c.json({ success: false, error: 'サブカテゴリの取得に失敗しました' }, 500)
+  }
+})
+
 // メーカー一覧
 api.get('/makers', async (c) => {
   try {
