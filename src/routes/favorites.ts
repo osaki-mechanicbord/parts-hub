@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { authMiddleware } from '../auth'
 
 type Bindings = {
   DB: D1Database
@@ -7,7 +8,37 @@ type Bindings = {
 
 const favorites = new Hono<{ Bindings: Bindings }>()
 
-// お気に入り一覧取得
+// お気に入り一覧取得（認証済みユーザーの全お気に入り）
+favorites.get('/', authMiddleware, async (c) => {
+  try {
+    const { DB } = c.env
+    const userId = c.get('userId')
+
+    const { results } = await DB.prepare(`
+      SELECT 
+        f.*,
+        p.title,
+        p.price,
+        p.condition,
+        p.status as product_status,
+        p.user_id as seller_id,
+        COALESCE(u.company_name, u.nickname, u.name) as seller_name,
+        (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as image_url
+      FROM favorites f
+      JOIN products p ON f.product_id = p.id
+      JOIN users u ON p.user_id = u.id
+      WHERE f.user_id = ?
+      ORDER BY f.created_at DESC
+    `).bind(userId).all()
+
+    return c.json({ success: true, data: results })
+  } catch (error) {
+    console.error('Get favorites error:', error)
+    return c.json({ success: false, error: 'お気に入りの取得に失敗しました' }, 500)
+  }
+})
+
+// お気に入り一覧取得（ユーザーID指定 - 後方互換）
 favorites.get('/user/:userId', async (c) => {
   try {
     const { DB } = c.env
@@ -37,30 +68,40 @@ favorites.get('/user/:userId', async (c) => {
   }
 })
 
-// お気に入り追加
-favorites.post('/', async (c) => {
+// お気に入り追加（認証済み）
+favorites.post('/', authMiddleware, async (c) => {
   try {
     const { DB } = c.env
+    const userId = c.get('userId')
     const body = await c.req.json()
-    const { user_id, product_id } = body
+    const { product_id } = body
 
-    if (!user_id || !product_id) {
-      return c.json({ success: false, error: '必須項目が不足しています' }, 400)
+    if (!product_id) {
+      return c.json({ success: false, error: '商品IDが必要です' }, 400)
     }
 
     // 既にお気に入り済みかチェック
     const existing = await DB.prepare(`
       SELECT id FROM favorites WHERE user_id = ? AND product_id = ?
-    `).bind(user_id, product_id).first()
+    `).bind(userId, product_id).first()
 
     if (existing) {
-      return c.json({ success: false, error: '既にお気に入りに追加されています' }, 400)
+      // 既にお気に入り済み → 削除（トグル動作）
+      await DB.prepare(`DELETE FROM favorites WHERE id = ?`).bind(existing.id).run()
+      
+      await DB.prepare(`
+        UPDATE products 
+        SET favorite_count = (SELECT COUNT(*) FROM favorites WHERE product_id = ?)
+        WHERE id = ?
+      `).bind(product_id, product_id).run()
+
+      return c.json({ success: true, action: 'removed', message: 'お気に入りを解除しました' })
     }
 
     const result = await DB.prepare(`
       INSERT INTO favorites (user_id, product_id)
       VALUES (?, ?)
-    `).bind(user_id, product_id).run()
+    `).bind(userId, product_id).run()
 
     // 商品のお気に入り数を更新
     await DB.prepare(`
@@ -69,29 +110,24 @@ favorites.post('/', async (c) => {
       WHERE id = ?
     `).bind(product_id, product_id).run()
 
-    return c.json({ success: true, data: { id: result.meta.last_row_id } })
+    return c.json({ success: true, action: 'added', data: { id: result.meta.last_row_id } })
   } catch (error) {
     console.error('Add favorite error:', error)
-    return c.json({ success: false, error: 'お気に入りの追加に失敗しました' }, 500)
+    return c.json({ success: false, error: 'お気に入りの操作に失敗しました' }, 500)
   }
 })
 
-// お気に入り削除
-favorites.delete('/:favoriteId', async (c) => {
+// お気に入り削除（favorite ID指定）
+favorites.delete('/:favoriteId', authMiddleware, async (c) => {
   try {
     const { DB } = c.env
+    const userId = c.get('userId')
     const favoriteId = c.req.param('favoriteId')
-    const body = await c.req.json()
-    const { user_id } = body
-
-    if (!user_id) {
-      return c.json({ success: false, error: 'ユーザーIDが必要です' }, 400)
-    }
 
     // お気に入り情報取得
     const favorite = await DB.prepare(`
       SELECT * FROM favorites WHERE id = ? AND user_id = ?
-    `).bind(favoriteId, user_id).first()
+    `).bind(favoriteId, userId).first()
 
     if (!favorite) {
       return c.json({ success: false, error: 'お気に入りが見つかりません' }, 404)

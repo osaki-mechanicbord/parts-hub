@@ -143,11 +143,9 @@ async function checkFavoriteStatus() {
     if (!currentUser || !product) return;
     
     try {
-        const response = await axios.get('/api/favorites', getAuthHeaders());
+        const response = await axios.get(`/api/favorites/check/${product.id}/${currentUser.id}`);
         if (response.data.success) {
-            const favorites = response.data.data || [];
-            const isFavorited = favorites.some(f => f.product_id == product.id);
-            updateFavoriteButton(isFavorited);
+            updateFavoriteButton(response.data.data.is_favorited);
         }
     } catch (error) {
         console.log('Could not check favorite status');
@@ -589,20 +587,14 @@ async function addToFavorites() {
     const isFavorited = btn?.dataset.favorited === 'true';
     
     try {
-        if (isFavorited) {
-            // お気に入り解除
-            await axios.delete(`/api/favorites/${product.id}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            updateFavoriteButton(false);
-        } else {
-            // お気に入り追加
-            await axios.post('/api/favorites', {
-                product_id: product.id
-            }, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            updateFavoriteButton(true);
+        // POST /api/favorites はトグル動作（追加済みなら解除、未追加なら追加）
+        const response = await axios.post('/api/favorites', {
+            product_id: product.id
+        }, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.data.success) {
+            updateFavoriteButton(response.data.action === 'added');
         }
     } catch (error) {
         console.error('Favorite error:', error);
