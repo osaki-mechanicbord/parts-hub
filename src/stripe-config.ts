@@ -34,6 +34,11 @@ export function getStripeClient(c: Context): Stripe {
 }
 
 // 手数料計算
+// ★ 修正: Stripe手数料は購入者に転嫁しない（プラットフォーム手数料に内包）
+// 購入者が支払う金額 = 商品価格 + プラットフォーム手数料(10%)
+// Stripeが差し引く手数料 = 合計金額 × 3.6% (Stripeが自動徴収)
+// プラットフォーム実収入 = プラットフォーム手数料 - Stripe手数料
+// 出品者が受け取る金額 = 商品価格 - プラットフォーム手数料
 export function calculateFees(amount: number): {
   subtotal: number
   platformFee: number
@@ -41,17 +46,15 @@ export function calculateFees(amount: number): {
   total: number
   sellerReceives: number
 } {
-  // Stripe手数料: 3.6%
-  const stripeFeePercentage = 0.036
-  
   // プラットフォーム手数料: 10%
   const platformFee = Math.floor(amount * STRIPE_CONFIG.PLATFORM_FEE_PERCENTAGE)
   
-  // Stripe手数料計算
-  const stripeFee = Math.floor(amount * stripeFeePercentage)
+  // 購入者が支払う合計金額（商品価格 + プラットフォーム手数料のみ）
+  const total = amount + platformFee
   
-  // 合計金額
-  const total = amount + platformFee + stripeFee
+  // Stripe手数料: 合計金額の3.6% (Stripeが自動で差し引く、参考値)
+  const stripeFeePercentage = 0.036
+  const stripeFee = Math.floor(total * stripeFeePercentage)
   
   // 出品者が受け取る金額
   const sellerReceives = amount - platformFee
@@ -59,8 +62,8 @@ export function calculateFees(amount: number): {
   return {
     subtotal: amount,
     platformFee: platformFee,
-    stripeFee: stripeFee,
-    total: total,
+    stripeFee: stripeFee,       // 参考値（Stripeが自動徴収）
+    total: total,               // 購入者の支払い額
     sellerReceives: sellerReceives
   }
 }

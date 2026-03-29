@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { authMiddleware } from '../auth'
 import { sendEmail } from '../email-config'
 import * as tpl from '../email-templates'
 
@@ -10,11 +11,12 @@ type Bindings = {
 
 const transactions = new Hono<{ Bindings: Bindings }>()
 
-// 取引詳細取得
-transactions.get('/:transactionId', async (c) => {
+// 取引詳細取得（認証必須 + 当事者のみアクセス可能）
+transactions.get('/:transactionId', authMiddleware, async (c) => {
   try {
     const { DB } = c.env
     const transactionId = c.req.param('transactionId')
+    const userId = c.get('userId')
 
     const transaction = await DB.prepare(`
       SELECT 
@@ -39,6 +41,11 @@ transactions.get('/:transactionId', async (c) => {
       return c.json({ success: false, error: '取引が見つかりません' }, 404)
     }
 
+    // ★ 当事者チェック: 購入者または出品者のみアクセス可能
+    if (transaction.buyer_id !== userId && transaction.seller_id !== userId) {
+      return c.json({ success: false, error: 'この取引へのアクセス権限がありません' }, 403)
+    }
+
     // レビュー情報も取得
     const review = await DB.prepare(`
       SELECT id, reviewer_id, rating, comment 
@@ -60,13 +67,14 @@ transactions.get('/:transactionId', async (c) => {
   }
 })
 
-// 取引ステータス更新
-transactions.put('/:transactionId/status', async (c) => {
+// 取引ステータス更新（認証必須 + トークンからuser_id取得）
+transactions.put('/:transactionId/status', authMiddleware, async (c) => {
   try {
     const { DB } = c.env
     const transactionId = c.req.param('transactionId')
+    const userId = c.get('userId') // ★ トークンからuser_idを取得（リクエストbodyのuser_idは無視）
     const body = await c.req.json()
-    const { status, user_id, tracking_number } = body
+    const { status, tracking_number } = body
 
     // 取引情報取得
     const transaction = await DB.prepare(`
@@ -77,13 +85,23 @@ transactions.put('/:transactionId/status', async (c) => {
       return c.json({ success: false, error: '取引が見つかりません' }, 404)
     }
 
-    // 権限チェック
-    if (transaction.buyer_id !== user_id && transaction.seller_id !== user_id) {
+    // ★ 権限チェック: トークンのuser_idで検証
+    if (transaction.buyer_id !== userId && transaction.seller_id !== userId) {
       return c.json({ success: false, error: '権限がありません' }, 403)
     }
 
+    // ★ 操作権限の詳細チェック
+    // 出品者のみ: shipped に変更可能
+    if (status === 'shipped' && transaction.seller_id !== userId) {
+      return c.json({ success: false, error: '発送報告は出品者のみ可能です' }, 403)
+    }
+    // 購入者のみ: completed に変更可能
+    if (status === 'completed' && transaction.buyer_id !== userId) {
+      return c.json({ success: false, error: '受取完了は購入者のみ可能です' }, 403)
+    }
+
     // ステータス遷移チェック
-    const allowedTransitions = {
+    const allowedTransitions: Record<string, string[]> = {
       'pending': ['paid', 'cancelled'],
       'paid': ['shipped', 'cancelled'],
       'shipped': ['completed', 'cancelled'],
@@ -91,7 +109,7 @@ transactions.put('/:transactionId/status', async (c) => {
       'cancelled': []
     }
 
-    if (!allowedTransitions[transaction.status]?.includes(status)) {
+    if (!allowedTransitions[transaction.status as string]?.includes(status)) {
       return c.json({ success: false, error: '無効なステータス遷移です' }, 400)
     }
 
@@ -124,7 +142,7 @@ transactions.put('/:transactionId/status', async (c) => {
     // 通知を作成
     let notificationTitle = ''
     let notificationMessage = ''
-    let recipientId = transaction.buyer_id === user_id ? transaction.seller_id : transaction.buyer_id
+    let recipientId = transaction.buyer_id === userId ? transaction.seller_id : transaction.buyer_id
 
     if (status === 'paid') {
       notificationTitle = '支払いが完了しました'

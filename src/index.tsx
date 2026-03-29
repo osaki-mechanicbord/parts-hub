@@ -32,7 +32,7 @@ import argosRoutes from './routes/argos'
 const app = new Hono<{ Bindings: Bindings }>()
 
 // キャッシュバスティング用バージョン（デプロイ毎に更新）
-const BUILD_VERSION = '20260329a'
+const BUILD_VERSION = '20260329b'
 
 // 静的ファイルURLにバージョンを付与するヘルパー
 const v = (path: string) => `${path}?v=${BUILD_VERSION}`

@@ -248,8 +248,7 @@ function renderFeeInfo() {
     
     const price = Number(product.price);
     const platformFee = Math.floor(price * 0.10);
-    const stripeFee = Math.floor(price * 0.036);
-    const total = price + platformFee + stripeFee;
+    const total = price + platformFee;
     
     feeContainer.innerHTML = `
         <div class="text-sm text-gray-600 mt-2 space-y-1">
@@ -258,12 +257,8 @@ function renderFeeInfo() {
                 <span>¥${price.toLocaleString()}</span>
             </div>
             <div class="flex justify-between">
-                <span>手数料（10%）</span>
+                <span>サービス手数料（10%）</span>
                 <span>¥${platformFee.toLocaleString()}</span>
-            </div>
-            <div class="flex justify-between">
-                <span>決済手数料（3.6%）</span>
-                <span>¥${stripeFee.toLocaleString()}</span>
             </div>
             <div class="flex justify-between font-bold text-gray-800 border-t pt-1">
                 <span>お支払い合計</span>
@@ -503,14 +498,12 @@ async function purchaseProduct() {
     // 確認ダイアログ
     const price = Number(product.price);
     const platformFee = Math.floor(price * 0.10);
-    const stripeFee = Math.floor(price * 0.036);
-    const total = price + platformFee + stripeFee;
+    const total = price + platformFee;
     
     const confirmed = confirm(
         `「${product.title}」を購入しますか？\n\n` +
         `商品価格: ¥${price.toLocaleString()}\n` +
-        `手数料: ¥${platformFee.toLocaleString()}\n` +
-        `決済手数料: ¥${stripeFee.toLocaleString()}\n` +
+        `サービス手数料（10%）: ¥${platformFee.toLocaleString()}\n` +
         `━━━━━━━━━━━━━━\n` +
         `お支払い合計: ¥${total.toLocaleString()}\n\n` +
         `決済ページに移動します。`
