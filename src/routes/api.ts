@@ -140,8 +140,9 @@ api.get('/products', async (c) => {
     const offset = (page - 1) * limit
 
     // 検索条件構築
-    let conditions = ['p.status = ?']
-    let params: any[] = ['active']
+    // active + sold 両方表示（sold商品はSOLDバッジ付きで表示）
+    let conditions = ["p.status IN ('active', 'sold')"]
+    let params: any[] = []
 
     if (query) {
       conditions.push('(p.title LIKE ? OR p.description LIKE ? OR p.part_number LIKE ? OR p.compatible_models LIKE ?)')
@@ -194,6 +195,7 @@ api.get('/products', async (c) => {
     const productsQuery = `
       SELECT 
         p.id, p.title, p.description, p.price, p.condition,
+        p.status,
         p.view_count, p.favorite_count, p.part_number,
         p.created_at,
         c.name as category_name,

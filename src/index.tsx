@@ -32,7 +32,7 @@ import argosRoutes from './routes/argos'
 const app = new Hono<{ Bindings: Bindings }>()
 
 // キャッシュバスティング用バージョン（デプロイ毎に更新）
-const BUILD_VERSION = '20260328c'
+const BUILD_VERSION = '20260329a'
 
 // 静的ファイルURLにバージョンを付与するヘルパー
 const v = (path: string) => `${path}?v=${BUILD_VERSION}`
@@ -1131,10 +1131,19 @@ app.get('/', (c) => {
                         <div class="relative aspect-square bg-gray-100">
                             <img src="\${product.main_image || 'https://placehold.co/400x400/e2e8f0/64748b?text=No+Image'}" 
                                  alt="\${product.title}" 
-                                 class="w-full h-full object-cover"
+                                 class="w-full h-full object-cover\${product.status === 'sold' ? ' opacity-60' : ''}"
                                  loading="lazy"
                                  onerror="this.src='https://placehold.co/400x400/e2e8f0/64748b?text=No+Image'">
                             
+                            \${product.status === 'sold' ? \`
+                            <!-- SOLDオーバーレイ -->
+                            <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div style="background:rgba(220,38,38,0.85); transform:rotate(-20deg); padding:8px 36px; border-radius:4px; box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+                                    <span style="font-size:1.5rem; font-weight:900; color:#fff; letter-spacing:0.15em; text-shadow:1px 1px 2px rgba(0,0,0,0.3);">SOLD</span>
+                                </div>
+                            </div>
+                            \` : ''}
+
                             <!-- 状態バッジ -->
                             <div class="absolute top-2 left-2">
                                 <span class="px-2 py-1 \${conditionColors[product.condition] || 'bg-gray-500'} text-white text-xs font-bold rounded shadow-md">
@@ -5649,8 +5658,8 @@ app.get('/favorites', (c) => {
                         grid.innerHTML = response.data.data.map(item => \`
                             <div class="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow">
                                 <a href="/products/\${item.id}" class="block relative">
-                                    <img src="\${item.image_url}" alt="\${item.title}" class="w-full aspect-square object-cover">
-                                    \${item.status === 'sold' ? '<div class="absolute top-0 left-0 right-0 bottom-0 bg-black bg-opacity-50 flex items-center justify-center"><span class="bg-gray-800 text-white px-4 py-2 rounded-lg font-bold text-lg">SOLD</span></div>' : ''}
+                                    <img src="\${item.image_url}" alt="\${item.title}" class="w-full aspect-square object-cover\${item.status === 'sold' ? ' opacity-60' : ''}">
+                                    \${item.status === 'sold' ? '<div class="absolute inset-0 flex items-center justify-center pointer-events-none"><div style="background:rgba(220,38,38,0.85);transform:rotate(-20deg);padding:8px 36px;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.3);"><span style="font-size:1.5rem;font-weight:900;color:#fff;letter-spacing:0.15em;text-shadow:1px 1px 2px rgba(0,0,0,0.3);">SOLD</span></div></div>' : ''}
                                 </a>
                                 <div class="p-3">
                                     <a href="/products/\${item.id}" class="block">
@@ -5882,8 +5891,8 @@ app.get('/search', (c) => {
                         grid.innerHTML = response.data.products.map(product => \`
                             <a href="/products/\${product.id}" class="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow block">
                                 <div class="relative">
-                                    <img src="\${product.image_url}" alt="\${product.title}" class="w-full aspect-square object-cover">
-                                    \${product.status === 'sold' ? '<div class="absolute top-0 left-0 right-0 bottom-0 bg-black bg-opacity-50 flex items-center justify-center"><span class="bg-gray-800 text-white px-4 py-2 rounded-lg font-bold text-lg">SOLD</span></div>' : ''}
+                                    <img src="\${product.image_url}" alt="\${product.title}" class="w-full aspect-square object-cover\${product.status === 'sold' ? ' opacity-60' : ''}">
+                                    \${product.status === 'sold' ? '<div class="absolute inset-0 flex items-center justify-center pointer-events-none"><div style="background:rgba(220,38,38,0.85);transform:rotate(-20deg);padding:8px 36px;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.3);"><span style="font-size:1.5rem;font-weight:900;color:#fff;letter-spacing:0.15em;text-shadow:1px 1px 2px rgba(0,0,0,0.3);">SOLD</span></div></div>' : ''}
                                 </div>
                                 <div class="p-3">
                                     <h3 class="text-sm font-semibold text-gray-900 mb-2 line-clamp-2">\${product.title}</h3>

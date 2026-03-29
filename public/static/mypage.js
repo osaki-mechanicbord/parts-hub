@@ -189,9 +189,10 @@ function renderListings() {
                 <div class="relative">
                     <img src="${product.image_url || 'https://placehold.co/400x300/e2e8f0/64748b?text=No+Image'}" 
                          alt="${product.title}" 
-                         class="w-full aspect-square object-cover"
+                         class="w-full aspect-square object-cover${product.status === 'sold' ? ' opacity-60' : ''}"
                          onerror="this.src='https://placehold.co/400x300/e2e8f0/64748b?text=No+Image'">
                     ${renderStatusBadge(product.status)}
+                    ${product.status === 'sold' ? '<div class="absolute inset-0 flex items-center justify-center pointer-events-none"><div style="background:rgba(220,38,38,0.85);transform:rotate(-20deg);padding:8px 32px;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.3);"><span style="font-size:1.3rem;font-weight:900;color:#fff;letter-spacing:0.15em;text-shadow:1px 1px 2px rgba(0,0,0,0.3);">SOLD</span></div></div>' : ''}
                 </div>
                 <div class="p-3 pb-1">
                     <h4 class="font-semibold text-gray-900 text-sm mb-1 line-clamp-2">${product.title}</h4>
