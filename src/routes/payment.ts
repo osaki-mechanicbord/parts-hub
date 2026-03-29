@@ -67,6 +67,12 @@ async function processPaymentCompleted(
     return { processed: false, reason: 'already_processed', status: currentTx.status }
   }
 
+  // ★ 安全策: cancelled状態でもStripeで実際に決済が完了していれば復元する
+  // （手動キャンセルや競合条件でDBがcancelledになっていてもWebhookで正しく処理）
+  if (currentTx.status === 'cancelled') {
+    console.log(`[RECOVERY] Transaction ${transactionId} was cancelled but Stripe payment succeeded. Restoring to paid.`)
+  }
+
   // 1. 取引ステータスを「支払い済み」に更新
   await db.prepare(`
     UPDATE transactions 
@@ -499,6 +505,8 @@ payment.post('/webhook', async (c) => {
     const signature = c.req.header('stripe-signature')
     const body = await c.req.text()
 
+    console.log(`[Webhook] Received request. Has signature: ${!!signature}, Body length: ${body.length}`)
+
     if (!signature) {
       return c.json({ error: 'No signature' }, 400)
     }
@@ -509,6 +517,8 @@ payment.post('/webhook', async (c) => {
       return c.json({ error: 'Webhook secret not configured' }, 500)
     }
 
+    console.log(`[Webhook] Secret starts with: ${webhookSecret.substring(0, 10)}...`)
+
     // Webhook署名検証
     const stripe = getStripeClient(c)
     let event: Stripe.Event
@@ -516,7 +526,7 @@ payment.post('/webhook', async (c) => {
     try {
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
     } catch (err: any) {
-      console.error('Webhook signature verification failed:', err.message)
+      console.error(`[Webhook] Signature verification FAILED: ${err.message}`)
       return c.json({ error: 'Invalid signature' }, 400)
     }
 
