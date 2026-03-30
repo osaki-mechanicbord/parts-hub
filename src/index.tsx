@@ -1429,11 +1429,14 @@ app.get('/news', (c) => {
     </head>
     <body class="bg-gray-50">
         <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
-            <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-                <a href="/" class="text-red-500 font-bold text-2xl">PARTS HUB</a>
-                <a href="/" class="text-gray-600 hover:text-gray-900">
-                    <i class="fas fa-times text-2xl"></i>
-                </a>
+            <div class="max-w-7xl mx-auto px-4 py-3 sm:py-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <a href="/" class="text-gray-600 hover:text-gray-900 flex-shrink-0">
+                        <i class="fas fa-arrow-left text-lg sm:text-xl"></i>
+                    </a>
+                    <a href="/" class="text-red-500 font-bold text-xl sm:text-2xl">PARTS HUB</a>
+                </div>
+                <div class="w-16"></div>
             </div>
         </header>
 
