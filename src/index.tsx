@@ -5928,7 +5928,7 @@ app.get('/search', (c) => {
             }
             
             // 検索入力の監視（デバウンス）
-            document.getElementById('search-input').t').addEventListener('input', () => {
+            document.getElementById('search-input').addEventListener('input', () => {
                 clearTimeout(searchTimeout);
                 searchTimeout = setTimeout(performSearch, 500);
             });
