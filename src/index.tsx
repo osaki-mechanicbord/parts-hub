@@ -4610,23 +4610,24 @@ app.get('/notifications', (c) => {
         <main class="max-w-6xl mx-auto px-4 py-6">
             <!-- フィルタータブ -->
             <div class="bg-white rounded-xl shadow-sm mb-6">
-                <div class="flex border-b border-gray-200 overflow-x-auto">
-                    <button onclick="filterNotifications('all')" class="filter-tab flex-1 px-6 py-4 font-semibold text-red-500 border-b-2 border-red-500" data-filter="all">
+                <div class="flex border-b border-gray-200 overflow-x-auto" style="-webkit-overflow-scrolling:touch;scrollbar-width:none;">
+                    <button onclick="filterNotifications('all')" class="filter-tab whitespace-nowrap flex-shrink-0 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-red-500 border-b-2 border-red-500" data-filter="all">
                         すべて
                     </button>
-                    <button onclick="filterNotifications('unread')" class="filter-tab flex-1 px-6 py-4 font-semibold text-gray-600 border-b-2 border-transparent hover:text-red-500" data-filter="unread">
+                    <button onclick="filterNotifications('unread')" class="filter-tab whitespace-nowrap flex-shrink-0 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-gray-600 border-b-2 border-transparent hover:text-red-500" data-filter="unread">
                         未読
                     </button>
-                    <button onclick="filterNotifications('comment')" class="filter-tab flex-1 px-6 py-4 font-semibold text-gray-600 border-b-2 border-transparent hover:text-red-500" data-filter="comment">
+                    <button onclick="filterNotifications('comment')" class="filter-tab whitespace-nowrap flex-shrink-0 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-gray-600 border-b-2 border-transparent hover:text-red-500" data-filter="comment">
                         コメント
                     </button>
-                    <button onclick="filterNotifications('negotiation')" class="filter-tab flex-1 px-6 py-4 font-semibold text-gray-600 border-b-2 border-transparent hover:text-red-500" data-filter="negotiation">
+                    <button onclick="filterNotifications('negotiation')" class="filter-tab whitespace-nowrap flex-shrink-0 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-gray-600 border-b-2 border-transparent hover:text-red-500" data-filter="negotiation">
                         値下げ交渉
                     </button>
-                    <button onclick="filterNotifications('transaction')" class="filter-tab flex-1 px-6 py-4 font-semibold text-gray-600 border-b-2 border-transparent hover:text-red-500" data-filter="transaction">
+                    <button onclick="filterNotifications('transaction')" class="filter-tab whitespace-nowrap flex-shrink-0 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-gray-600 border-b-2 border-transparent hover:text-red-500" data-filter="transaction">
                         取引
                     </button>
                 </div>
+                <style>.filter-tab::-webkit-scrollbar{display:none;}</style>
             </div>
 
             <!-- 通知一覧 -->
