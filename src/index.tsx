@@ -937,6 +937,7 @@ app.get('/', (c) => {
 <script src="${v('/static/i18n-zh.js')}"></script>
 <script src="${v('/static/i18n-ko.js')}"></script>
         <script src="${v('/static/i18n.js')}"></script>
+        <script src="${v('/static/notification-badge.js')}"></script>
         <script>
             // ==========================================
             // ログイン状態の検出とヘッダーUI切り替え
@@ -1464,6 +1465,7 @@ app.get('/news', (c) => {
 <script src="${v('/static/i18n-ko.js')}"></script>
         <script src="${v('/static/i18n.js')}"></script>
         <script src="${v('/static/auth-header.js')}"></script>
+        <script src="${v('/static/notification-badge.js')}"></script>
         <script>
             let currentPage = 1;
             
@@ -1903,6 +1905,7 @@ app.get('/news/:category/:year/:month/:slug', (c) => {
 <script src="${v('/static/i18n-ko.js')}"></script>
         <script src="${v('/static/i18n.js')}"></script>
         <script src="${v('/static/auth-header.js')}"></script>
+        <script src="${v('/static/notification-badge.js')}"></script>
         <script>
             var articleSlug = '${fullSlug}';
             ${getArticleDetailScript()}
@@ -1950,6 +1953,7 @@ app.get('/news/:slug', (c) => {
 <script src="${v('/static/i18n-ko.js')}"></script>
         <script src="${v('/static/i18n.js')}"></script>
         <script src="${v('/static/auth-header.js')}"></script>
+        <script src="${v('/static/notification-badge.js')}"></script>
         <script>
             var articleSlug = '${slug}';
             ${getArticleDetailScript()}
@@ -2938,6 +2942,7 @@ app.get('/products/:id', (c) => {
 <script src="${v('/static/i18n-ko.js')}"></script>
         <script src="${v('/static/i18n.js')}"></script>
         <script src="${v('/static/auth-header.js')}"></script>
+        <script src="${v('/static/notification-badge.js')}"></script>
         <script src="${v('/static/product-detail.js')}"></script>
         <script src="${v('/static/comments.js')}"></script>
     </body>
@@ -3648,6 +3653,7 @@ app.get('/listing', (c) => {
 <script src="${v('/static/i18n-ko.js')}"></script>
         <script src="${v('/static/i18n.js')}"></script>
         <script src="${v('/static/auth-header.js')}"></script>
+        <script src="${v('/static/notification-badge.js')}"></script>
         <script src="${v('/static/listing.js?v=20260325')}"></script>
         <script>
             // ========== ARGOS JPC VIN連携（フィーチャーフラグ制御） ==========
@@ -3913,6 +3919,7 @@ app.get('/chat', (c) => {
 <script src="${v('/static/i18n-ko.js')}"></script>
         <script src="${v('/static/i18n.js')}"></script>
         <script src="${v('/static/auth-header.js')}"></script>
+        <script src="${v('/static/notification-badge.js')}"></script>
         <script>
             let currentUserId = null;
             let token = null;
@@ -4128,6 +4135,7 @@ app.get('/chat/:roomId', (c) => {
 <script src="${v('/static/i18n-ko.js')}"></script>
         <script src="${v('/static/i18n.js')}"></script>
         <script src="${v('/static/auth-header.js')}"></script>
+        <script src="${v('/static/notification-badge.js')}"></script>
         <script>
             const roomId = ${roomId};
             let currentUserId = null;
@@ -4646,6 +4654,7 @@ app.get('/notifications', (c) => {
 <script src="${v('/static/i18n-ko.js')}"></script>
         <script src="${v('/static/i18n.js')}"></script>
         <script src="${v('/static/auth-header.js')}"></script>
+        <script src="${v('/static/notification-badge.js')}"></script>
         <script src="${v('/static/notifications.js')}"></script>
     </body>
     </html>
@@ -4915,6 +4924,7 @@ app.get('/profile/edit', (c) => {
 <script src="${v('/static/i18n-ko.js')}"></script>
         <script src="${v('/static/i18n.js')}"></script>
         <script src="${v('/static/auth-header.js')}"></script>
+        <script src="${v('/static/notification-badge.js')}"></script>
         <script src="${v('/static/bank-db.js')}"></script>
         <script src="${v('/static/profile-edit.js?v=20260328')}"></script>
     </body>
@@ -5050,6 +5060,7 @@ app.get('/reviews/new', (c) => {
 <script src="${v('/static/i18n-ko.js')}"></script>
         <script src="${v('/static/i18n.js')}"></script>
         <script src="${v('/static/auth-header.js')}"></script>
+        <script src="${v('/static/notification-badge.js')}"></script>
         <script src="${v('/static/reviews.js')}"></script>
     </body>
     </html>
@@ -5095,6 +5106,7 @@ app.get('/transactions/:id', (c) => {
 <script src="${v('/static/i18n-ko.js')}"></script>
         <script src="${v('/static/i18n.js')}"></script>
         <script src="${v('/static/auth-header.js')}"></script>
+        <script src="${v('/static/notification-badge.js')}"></script>
         <script src="${v('/static/transaction-detail.js')}"></script>
     </body>
     </html>
@@ -5234,6 +5246,7 @@ app.get('/transaction/:id/success', (c) => {
 <script src="${v('/static/i18n-ko.js')}"></script>
         <script src="${v('/static/i18n.js')}"></script>
         <script src="${v('/static/auth-header.js')}"></script>
+        <script src="${v('/static/notification-badge.js')}"></script>
         <script>
             (async function() {
                 var token = localStorage.getItem('token');
@@ -5551,6 +5564,7 @@ app.get('/contact', (c) => {
 <script src="${v('/static/i18n-ko.js')}"></script>
         <script src="${v('/static/i18n.js')}"></script>
         <script src="${v('/static/auth-header.js')}"></script>
+        <script src="${v('/static/notification-badge.js')}"></script>
         <script>
             document.getElementById('contact-form').addEventListener('submit', async (e) => {
                 e.preventDefault()
@@ -5647,6 +5661,7 @@ app.get('/favorites', (c) => {
 <script src="${v('/static/i18n-ko.js')}"></script>
         <script src="${v('/static/i18n.js')}"></script>
         <script src="${v('/static/auth-header.js')}"></script>
+        <script src="${v('/static/notification-badge.js')}"></script>
         <script>
             const currentUserId = 1; // TODO: 実際のログインユーザーID
             
@@ -5846,6 +5861,7 @@ app.get('/search', (c) => {
 <script src="${v('/static/i18n-ko.js')}"></script>
         <script src="${v('/static/i18n.js')}"></script>
         <script src="${v('/static/auth-header.js')}"></script>
+        <script src="${v('/static/notification-badge.js')}"></script>
         <script>
             let searchTimeout;
             
@@ -6413,6 +6429,7 @@ app.get('/password-reset', (c) => {
 <script src="${v('/static/i18n-ko.js')}"></script>
         <script src="${v('/static/i18n.js')}"></script>
         <script src="${v('/static/auth-header.js')}"></script>
+        <script src="${v('/static/notification-badge.js')}"></script>
         <script>
             document.getElementById('reset-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
