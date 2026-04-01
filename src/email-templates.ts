@@ -189,6 +189,25 @@ export function newQuestionToSeller(p: {
   }
 }
 
+// ========== 追跡URL生成ヘルパー ==========
+function getTrackingUrl(carrier: string, trackingNumber: string): string | null {
+  const num = trackingNumber.replace(/[-\s]/g, '')
+  switch (carrier) {
+    case 'ヤマト運輸':
+      return `https://toi.kuronekoyamato.co.jp/cgi-bin/tneko?number=${num}`
+    case '佐川急便':
+      return `https://k2k.sagawa-exp.co.jp/p/web/okurijosearch.do?okurijoNo=${num}`
+    case '日本郵便':
+      return `https://trackings.post.japanpost.jp/services/srv/search/?requestNo1=${num}`
+    case '西濃運輸':
+      return `https://track.seino.co.jp/kamotsu/GempyoNoShoworiBin.do?gnpNo1=${num}`
+    case '福山通運':
+      return `https://corp.fukutsu.co.jp/situation/tracking_no_hunt/${num}`
+    default:
+      return null
+  }
+}
+
 // ================================================================
 // 6. 商品が発送されたとき（購入者向け）
 // ================================================================
@@ -197,12 +216,15 @@ export function productShipped(p: {
   trackingNumber?: string; shippingCarrier?: string
 }) {
   const url = `${SITE_URL}/transactions/${p.transactionId}`
-  const trackingInfo = p.trackingNumber
-    ? [
-        infoRow('配送業者', p.shippingCarrier || '未指定'),
-        infoRow('追跡番号', p.trackingNumber),
-      ]
-    : []
+  const trackingInfo: string[] = []
+  if (p.shippingCarrier) trackingInfo.push(infoRow('配送業者', p.shippingCarrier))
+  if (p.trackingNumber) {
+    const trackingUrl = getTrackingUrl(p.shippingCarrier || '', p.trackingNumber)
+    const trackingDisplay = trackingUrl
+      ? `<a href="${trackingUrl}" style="color:#ef4444;font-weight:600;" target="_blank">${p.trackingNumber}</a>`
+      : p.trackingNumber
+    trackingInfo.push(infoRow('追跡番号', trackingDisplay))
+  }
   const content = `
     <h2 style="margin:0 0 16px;font-size:20px;color:#111;">📦 商品が発送されました！</h2>
     <p>${p.buyerName} 様</p>
@@ -212,12 +234,57 @@ export function productShipped(p: {
       infoRow('注文番号', `#${p.transactionId}`),
       ...trackingInfo,
     ])}
-    <p>商品到着後、取引ページから受取確認をお願いいたします。</p>
-    ${actionButton('注文詳細を見る', url)}
+    <p>商品到着後、取引ページから<strong>「受取完了」</strong>ボタンを押してください。</p>
+    ${actionButton('配送状況を確認する', url)}
     <p style="font-size:13px;color:#6b7280;">商品に問題がある場合は、取引ページからお問い合わせください。</p>
   `
   return {
     subject: `【PARTS HUB】商品が発送されました - ${p.productName}`,
     html: baseTemplate('発送通知', content),
+  }
+}
+
+// ================================================================
+// 7. 取引完了時（出品者向け）
+// ================================================================
+export function transactionCompleted(p: {
+  sellerName: string; productName: string; amount: number; transactionId: number
+}) {
+  const amt = p.amount.toLocaleString('ja-JP')
+  const url = `${SITE_URL}/transactions/${p.transactionId}`
+  const content = `
+    <h2 style="margin:0 0 16px;font-size:20px;color:#111;">✅ 取引が完了しました</h2>
+    <p>${p.sellerName} 様</p>
+    <p>購入者が商品の受け取りを確認しました。取引が正常に完了しました。</p>
+    ${infoBox([
+      infoRow('商品名', p.productName),
+      infoRow('販売価格', `¥${amt}`),
+      infoRow('注文番号', `#${p.transactionId}`),
+      infoRow('ステータス', '<span style="color:#16a34a;font-weight:700;">✅ 取引完了</span>'),
+    ])}
+    <p>お取引いただきありがとうございます。売上金はマイページからご確認いただけます。</p>
+    ${actionButton('取引詳細を見る', url)}
+  `
+  return {
+    subject: `【PARTS HUB】取引完了 - ${p.productName}`,
+    html: baseTemplate('取引完了', content),
+  }
+}
+
+// ================================================================
+// 8. パスワードリセット
+// ================================================================
+export function passwordReset(p: { userName: string; resetUrl: string }) {
+  const content = `
+    <h2 style="margin:0 0 16px;font-size:20px;color:#111;">🔑 パスワードリセット</h2>
+    <p>${p.userName} 様</p>
+    <p>パスワードのリセットが要求されました。以下のボタンをクリックして、新しいパスワードを設定してください。</p>
+    ${infoBox([infoRow('有効期限', '1時間')])}
+    ${actionButton('パスワードをリセットする', p.resetUrl)}
+    <p style="font-size:13px;color:#6b7280;">このリクエストに心当たりがない場合は、このメールを無視してください。</p>
+  `
+  return {
+    subject: '【PARTS HUB】パスワードリセット',
+    html: baseTemplate('パスワードリセット', content),
   }
 }

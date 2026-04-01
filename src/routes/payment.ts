@@ -98,6 +98,11 @@ async function processPaymentCompleted(
       t.id, t.amount, t.fee, t.product_id,
       p.title as product_name,
       buyer.id as buyer_id, buyer.name as buyer_name, buyer.email as buyer_email,
+      buyer.phone as buyer_phone,
+      buyer.postal_code as buyer_postal_code,
+      buyer.prefecture as buyer_prefecture,
+      buyer.city as buyer_city,
+      buyer.address as buyer_address,
       COALESCE(buyer.company_name, buyer.nickname, buyer.name) as buyer_display_name,
       seller.id as seller_id, seller.name as seller_name, seller.email as seller_email,
       COALESCE(seller.company_name, seller.nickname, seller.name) as seller_display_name
@@ -107,6 +112,26 @@ async function processPaymentCompleted(
     JOIN users seller ON t.seller_id = seller.id
     WHERE t.id = ?
   `).bind(transactionId).first()
+
+  // 3.5 購入者の住所を取引にスナップショット保存（発送先として使用）
+  if (txData && (txData.buyer_postal_code || txData.buyer_address)) {
+    try {
+      const fullAddress = [txData.buyer_prefecture, txData.buyer_city, txData.buyer_address].filter(Boolean).join('')
+      await db.prepare(`
+        UPDATE transactions 
+        SET shipping_name = ?, shipping_postal_code = ?, shipping_address = ?, shipping_phone = ?
+        WHERE id = ?
+      `).bind(
+        txData.buyer_display_name || txData.buyer_name,
+        txData.buyer_postal_code || null,
+        fullAddress || null,
+        txData.buyer_phone || null,
+        transactionId
+      ).run()
+    } catch (addrErr) {
+      console.error('Failed to save shipping address snapshot:', addrErr)
+    }
+  }
 
   if (!txData) {
     console.error(`Transaction detail not found for ${transactionId}`)
