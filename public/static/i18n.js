@@ -131,58 +131,9 @@
     }
     window.__i18n.translatePage = translatePage;
 
-    // 言語切替ボタンUI生成
+    // 言語切替ボタンUI生成（ヘッダーのauth-header.jsに統一、左下固定ボタンは廃止）
     function createLangSwitcher() {
-        var btn = document.createElement('div');
-        btn.id = 'i18n-lang-switcher';
-        btn.style.cssText = 'position:fixed;bottom:20px;left:20px;z-index:9999;';
-
-        var labels = { ja: '🇯🇵', en: '🇺🇸', zh: '🇨🇳', ko: '🇰🇷' };
-        var names = { ja: '日本語', en: 'English', zh: '中文', ko: '한국어' };
-        var current = window.__i18n.currentLang;
-
-        // メインボタン
-        var mainBtn = document.createElement('button');
-        mainBtn.innerHTML = labels[current] || '🌐';
-        mainBtn.style.cssText = 'width:48px;height:48px;border-radius:50%;background:#fff;border:2px solid #e5e7eb;box-shadow:0 2px 8px rgba(0,0,0,0.15);cursor:pointer;font-size:22px;display:flex;align-items:center;justify-content:center;transition:all 0.2s;';
-        mainBtn.title = 'Language / 言語';
-
-        // ドロップアップメニュー
-        var menu = document.createElement('div');
-        menu.style.cssText = 'display:none;position:absolute;bottom:56px;left:0;background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.15);overflow:hidden;min-width:140px;';
-
-        for (var i = 0; i < SUPPORTED.length; i++) {
-            var lang = SUPPORTED[i];
-            var item = document.createElement('button');
-            item.style.cssText = 'display:flex;align-items:center;gap:8px;width:100%;padding:10px 16px;border:none;background:' + (lang === current ? '#fef2f2' : '#fff') + ';cursor:pointer;font-size:14px;color:#374151;text-align:left;transition:background 0.15s;';
-            item.innerHTML = labels[lang] + ' <span>' + names[lang] + '</span>';
-            if (lang === current) {
-                item.innerHTML += ' <span style="margin-left:auto;color:#ef4444;">✓</span>';
-            }
-            item.setAttribute('data-lang', lang);
-            item.onmouseover = function() { if (this.getAttribute('data-lang') !== current) this.style.background = '#f9fafb'; };
-            item.onmouseout = function() { if (this.getAttribute('data-lang') !== current) this.style.background = '#fff'; };
-            item.onclick = function() {
-                var l = this.getAttribute('data-lang');
-                if (l !== current) setLang(l);
-            };
-            menu.appendChild(item);
-        }
-
-        var menuOpen = false;
-        mainBtn.onclick = function(e) {
-            e.stopPropagation();
-            menuOpen = !menuOpen;
-            menu.style.display = menuOpen ? 'block' : 'none';
-        };
-        document.addEventListener('click', function() {
-            menuOpen = false;
-            menu.style.display = 'none';
-        });
-
-        btn.appendChild(menu);
-        btn.appendChild(mainBtn);
-        document.body.appendChild(btn);
+        // auth-header.js がヘッダーに言語切替を挿入するため、ここでは何もしない
     }
 
     // MutationObserver: 動的コンテンツも翻訳
