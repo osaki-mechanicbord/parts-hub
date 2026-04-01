@@ -23,7 +23,6 @@ transactions.get('/:transactionId', authMiddleware, async (c) => {
         t.*,
         p.title as product_title,
         p.price as product_price,
-        p.weight as product_weight,
         COALESCE(buyer.company_name, buyer.nickname, buyer.name) as buyer_name,
         buyer.email as buyer_email,
         buyer.phone as buyer_phone,
