@@ -223,6 +223,40 @@ app.get('/icons/icon-192x192.png', (c) => {
   });
 })
 
+// ========================================
+// IndexNow対応（Bing/Yandex/Naver即時インデックス）
+// ========================================
+const INDEXNOW_KEY = '7f8378e8529bb2b7f7d90488df2cf78c'
+
+// IndexNowキー検証ファイル
+app.get('/7f8378e8529bb2b7f7d90488df2cf78c.txt', (c) => {
+  return c.text(INDEXNOW_KEY, { headers: { 'Content-Type': 'text/plain' } })
+})
+
+// IndexNow API送信エンドポイント（管理者用）
+app.post('/api/indexnow', async (c) => {
+  try {
+    const { urls } = await c.req.json() as { urls?: string[] }
+    if (!urls || urls.length === 0) {
+      return c.json({ error: 'urls required' }, 400)
+    }
+    const body = {
+      host: 'parts-hub-tci.com',
+      key: INDEXNOW_KEY,
+      keyLocation: 'https://parts-hub-tci.com/7f8378e8529bb2b7f7d90488df2cf78c.txt',
+      urlList: urls.slice(0, 10000)
+    }
+    const resp = await fetch('https://api.indexnow.org/indexnow', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    })
+    return c.json({ status: resp.status, submitted: urls.length })
+  } catch(e: any) {
+    return c.json({ error: e.message }, 500)
+  }
+})
+
 // robots.txt, sitemap.xml, manifest.json, sw.js配信
 app.get('/robots.txt', async (c) => {
   return c.text(`User-agent: *
@@ -277,6 +311,39 @@ Allow: /
 Allow: /products/*
 Allow: /faq
 Allow: /search
+Disallow: /mypage
+Disallow: /api/*
+
+# Bingbot（Yahoo! JAPAN経由含む）
+User-agent: bingbot
+Allow: /
+Allow: /products/*
+Allow: /search
+Allow: /news/*
+Allow: /faq
+Disallow: /mypage
+Disallow: /profile/*
+Disallow: /chat/*
+Disallow: /notifications
+Disallow: /transactions/*
+Disallow: /api/*
+Crawl-delay: 1
+
+# Yandex
+User-agent: YandexBot
+Allow: /
+Allow: /products/*
+Allow: /search
+Allow: /news/*
+Disallow: /mypage
+Disallow: /api/*
+
+# Naver
+User-agent: Yeti
+Allow: /
+Allow: /products/*
+Allow: /search
+Allow: /news/*
 Disallow: /mypage
 Disallow: /api/*
 
@@ -890,8 +957,6 @@ app.get('/', (c) => {
         <meta name="twitter:title" content="PARTS HUB - 自動車パーツ売買プラットフォーム">
         <meta name="twitter:description" content="整備工場専門の自動車パーツマーケットプレイス">
 
-        <!-- Canonical URL -->
-        <link rel="canonical" href="https://parts-hub-tci.com">
     </head>
     <body class="bg-gray-50">
         <!-- ヘッダー -->
@@ -1749,7 +1814,7 @@ app.get('/news', (c) => {
         <meta name="twitter:title" content="PARTS HUBニュース - 自動車パーツ・整備の最新情報">
         <meta name="twitter:description" content="自動車整備・パーツに関する最新ニュース、メンテナンスガイド、デッドストック活用術を配信。">
         <meta name="twitter:image" content="https://parts-hub-tci.com/icons/og-default.png">
-        <meta name="robots" content="index, follow">
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
         <script type="application/ld+json">
         {
           "@context": "https://schema.org",
@@ -2295,7 +2360,7 @@ app.get('/news/:category/:year/:month/:slug', async (c) => {
         <meta name="twitter:image" content="${seoImage}">
         ${articleJsonLd}
         ${breadcrumbJsonLd}
-        <meta name="robots" content="index, follow">
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         ${getArticleDetailCSS()}
@@ -3173,6 +3238,7 @@ app.get('/products/:id', async (c) => {
         <meta name="twitter:title" content="${seoTitle}">
         <meta name="twitter:description" content="${seoDesc}">
         <meta name="twitter:image" content="${seoImage}">
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
         ${productJsonLd}
         ${breadcrumbJsonLd}
         <meta name="theme-color" content="#ff4757">
@@ -3462,7 +3528,7 @@ app.get('/listing', (c) => {
         <meta property="og:description" content="自動車パーツを簡単3ステップで出品。手数料は売れた時だけ10%。出品無料。">
         <meta property="og:url" content="https://parts-hub-tci.com/listing">
         <meta property="og:site_name" content="PARTS HUB">
-        <meta name="robots" content="index, follow">
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
         <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"PARTS HUB","item":"https://parts-hub-tci.com/"},{"@type":"ListItem","position":2,"name":"出品する"}]}</script>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
@@ -5968,7 +6034,7 @@ app.get('/contact', (c) => {
         <meta property="og:description" content="PARTS HUBへのお問い合わせ。サービスに関するご質問、代理出品のご依頼などお気軽にどうぞ。">
         <meta property="og:url" content="https://parts-hub-tci.com/contact">
         <meta property="og:site_name" content="PARTS HUB">
-        <meta name="robots" content="index, follow">
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
         <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"PARTS HUB","item":"https://parts-hub-tci.com/"},{"@type":"ListItem","position":2,"name":"お問い合わせ"}]}</script>
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
@@ -6287,7 +6353,7 @@ app.get('/search', (c) => {
         <meta name="twitter:card" content="summary_large_image">
         <meta name="twitter:title" content="自動車パーツ検索 - PARTS HUB">
         <meta name="twitter:description" content="純正部品・社外品・工具を全国の整備工場から検索。中古パーツも新品パーツも見つかる。">
-        <meta name="robots" content="index, follow">
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
         <script type="application/ld+json">
         {
           "@context": "https://schema.org",
@@ -6543,7 +6609,7 @@ app.get('/privacy', (c) => {
         <meta property="og:title" content="プライバシーポリシー - PARTS HUB">
         <meta property="og:url" content="https://parts-hub-tci.com/privacy">
         <meta property="og:site_name" content="PARTS HUB">
-        <meta name="robots" content="index, follow">
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
         <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"PARTS HUB","item":"https://parts-hub-tci.com/"},{"@type":"ListItem","position":2,"name":"プライバシーポリシー"}]}</script>
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
@@ -6689,7 +6755,7 @@ app.get('/terms', (c) => {
         <meta property="og:title" content="利用規約 - PARTS HUB">
         <meta property="og:url" content="https://parts-hub-tci.com/terms">
         <meta property="og:site_name" content="PARTS HUB">
-        <meta name="robots" content="index, follow">
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
         <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"PARTS HUB","item":"https://parts-hub-tci.com/"},{"@type":"ListItem","position":2,"name":"利用規約"}]}</script>
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
@@ -7048,7 +7114,7 @@ app.get('/security', (c) => {
         <meta property="og:title" content="セキュリティポリシー - PARTS HUB">
         <meta property="og:url" content="https://parts-hub-tci.com/security">
         <meta property="og:site_name" content="PARTS HUB">
-        <meta name="robots" content="index, follow">
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
         <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"PARTS HUB","item":"https://parts-hub-tci.com/"},{"@type":"ListItem","position":2,"name":"セキュリティポリシー"}]}</script>
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
@@ -7311,7 +7377,7 @@ app.get('/sitemap', async (c) => {
         <meta property="og:description" content="PARTS HUBの全ページ一覧。商品検索、カテゴリ、ニュース記事へのリンクを掲載。">
         <meta property="og:url" content="https://parts-hub-tci.com/sitemap">
         <meta property="og:site_name" content="PARTS HUB">
-        <meta name="robots" content="index, follow">
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
         <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"PARTS HUB","item":"https://parts-hub-tci.com/"},{"@type":"ListItem","position":2,"name":"サイトマップ"}]}</script>
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
@@ -7451,7 +7517,7 @@ app.get('/legal', (c) => {
         <meta property="og:title" content="特定商取引法に基づく表記 - PARTS HUB">
         <meta property="og:url" content="https://parts-hub-tci.com/legal">
         <meta property="og:site_name" content="PARTS HUB">
-        <meta name="robots" content="index, follow">
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
         <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"PARTS HUB","item":"https://parts-hub-tci.com/"},{"@type":"ListItem","position":2,"name":"特定商取引法に基づく表記"}]}</script>
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
@@ -9483,7 +9549,7 @@ app.get('/faq', (c) => {
         <meta property="og:url" content="https://parts-hub-tci.com/faq">
         <meta property="og:site_name" content="PARTS HUB">
         <meta property="og:locale" content="ja_JP">
-        <meta name="robots" content="index, follow">
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
         <script type="application/ld+json">
         {
           "@context": "https://schema.org",
@@ -9583,8 +9649,6 @@ app.get('/faq', (c) => {
         <meta property="og:description" content="PARTS HUBの利用方法、手数料、配送、返品などについてのよくある質問">
         <meta property="og:url" content="https://parts-hub-tci.com/faq">
         
-        <!-- Canonical URL -->
-        <link rel="canonical" href="https://parts-hub-tci.com/faq">
     </head>
     <body class="bg-gray-50 min-h-screen">
         <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
