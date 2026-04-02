@@ -434,7 +434,14 @@ app.get('/sitemap.xml', async (c) => {
       { url: '/security', changefreq: 'yearly', priority: '0.3' },
       { url: '/terms', changefreq: 'yearly', priority: '0.3' },
       { url: '/privacy', changefreq: 'yearly', priority: '0.3' },
+      { url: '/area', changefreq: 'weekly', priority: '0.6' },
     ];
+
+    // 47都道府県ページをsitemapに追加
+    const prefSlugs = Object.keys(PREFECTURES)
+    prefSlugs.forEach(slug => {
+      staticPages.push({ url: '/area/' + slug, changefreq: 'weekly', priority: '0.6' })
+    })
     
     let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
@@ -7320,6 +7327,372 @@ app.get('/security', (c) => {
     </body>
     </html>
   `)
+})
+
+// ========================================
+// 地域別ランディングページ（/area/:prefecture）
+// ========================================
+const PREFECTURES: Record<string, { name: string; nameEn: string; region: string; shops: number; desc: string }> = {
+  hokkaido: { name: '北海道', nameEn: 'Hokkaido', region: '北海道', shops: 5200, desc: '広大な面積を持つ北海道では、厳しい寒冷地仕様パーツの需要が高く、冬季タイヤやバッテリー、暖機系部品の取引が活発です。' },
+  aomori: { name: '青森県', nameEn: 'Aomori', region: '東北', shops: 1180, desc: '積雪地域ならではの防錆パーツや4WD関連部品、融雪剤対策用アンダーコート資材の需要があります。' },
+  iwate: { name: '岩手県', nameEn: 'Iwate', region: '東北', shops: 1150, desc: '県土の広さに伴う長距離走行車が多く、足回りやブレーキパーツの交換需要が安定しています。' },
+  miyagi: { name: '宮城県', nameEn: 'Miyagi', region: '東北', shops: 1580, desc: '東北最大の都市仙台を擁し、乗用車からトラックまで幅広い車種のパーツ流通が見込めます。' },
+  akita: { name: '秋田県', nameEn: 'Akita', region: '東北', shops: 880, desc: '豪雪地帯特有の冬季パーツ需要に加え、農業機械関連の整備工場も多い地域です。' },
+  yamagata: { name: '山形県', nameEn: 'Yamagata', region: '東北', shops: 960, desc: 'さくらんぼ・米どころを支える物流車両の整備需要が高く、商用車パーツの流通が盛んです。' },
+  fukushima: { name: '福島県', nameEn: 'Fukushima', region: '東北', shops: 1520, desc: '東北の南の玄関口として物流拠点が多く、トラック・商用車の整備工場が集積しています。' },
+  ibaraki: { name: '茨城県', nameEn: 'Ibaraki', region: '関東', shops: 2180, desc: '自動車保有台数が全国上位で、日立・つくば周辺の工業地帯を中心に整備需要が高い地域です。' },
+  tochigi: { name: '栃木県', nameEn: 'Tochigi', region: '関東', shops: 1520, desc: 'SUBARUやHONDAの工場が立地し、自動車産業が盛んな地域。テスト車両用パーツの需要もあります。' },
+  gunma: { name: '群馬県', nameEn: 'Gunma', region: '関東', shops: 1620, desc: 'SUBARUの本拠地として知られ、自動車関連産業の集積度が高い県です。' },
+  saitama: { name: '埼玉県', nameEn: 'Saitama', region: '関東', shops: 3800, desc: '首都圏のベッドタウンとして自動車保有台数が多く、乗用車の整備需要が非常に高い地域です。' },
+  chiba: { name: '千葉県', nameEn: 'Chiba', region: '関東', shops: 3200, desc: '京葉工業地帯の物流を支える商用車と、住宅地の乗用車、双方の整備需要があります。' },
+  tokyo: { name: '東京都', nameEn: 'Tokyo', region: '関東', shops: 4800, desc: '全国最大の自動車市場。高級車からハイブリッド・EVまで、先端技術パーツの需要が集中します。' },
+  kanagawa: { name: '神奈川県', nameEn: 'Kanagawa', region: '関東', shops: 3600, desc: '日産自動車の本社所在地。横浜・川崎の工業地帯を中心に、多種多様なパーツ需要があります。' },
+  niigata: { name: '新潟県', nameEn: 'Niigata', region: '中部', shops: 1800, desc: '日本有数の豪雪地帯で、スタッドレスタイヤや寒冷地仕様パーツの取引が年間を通じて活発です。' },
+  toyama: { name: '富山県', nameEn: 'Toyama', region: '中部', shops: 820, desc: 'ものづくり県として精密部品の品質への意識が高く、純正パーツの需要が根強い地域です。' },
+  ishikawa: { name: '石川県', nameEn: 'Ishikawa', region: '中部', shops: 880, desc: '金沢を中心に観光関連の送迎車両が多く、業務用車両のメンテナンスパーツの需要があります。' },
+  fukui: { name: '福井県', nameEn: 'Fukui', region: '中部', shops: 620, desc: '繊維・眼鏡産業を支える物流車両の整備に加え、一家に一台以上の車社会でパーツ需要が安定しています。' },
+  yamanashi: { name: '山梨県', nameEn: 'Yamanashi', region: '中部', shops: 680, desc: '山間部の走行が多く、ブレーキやサスペンション等の足回りパーツの消耗が早い地域特性があります。' },
+  nagano: { name: '長野県', nameEn: 'Nagano', region: '中部', shops: 1720, desc: '標高差のある山岳地帯での走行が多く、エンジン・冷却系パーツへの需要が高い県です。' },
+  gifu: { name: '岐阜県', nameEn: 'Gifu', region: '中部', shops: 1580, desc: '中京工業地帯の一角として、商用車から乗用車まで幅広い整備需要を持つ地域です。' },
+  shizuoka: { name: '静岡県', nameEn: 'Shizuoka', region: '中部', shops: 2600, desc: 'SUZUKIやYAMAHAの本拠地。バイク・自動車の両面でパーツ市場が活発です。' },
+  aichi: { name: '愛知県', nameEn: 'Aichi', region: '中部', shops: 4200, desc: 'トヨタ自動車のお膝元。日本最大の自動車産業集積地として、あらゆるパーツの流通量が群を抜きます。' },
+  mie: { name: '三重県', nameEn: 'Mie', region: '近畿', shops: 1320, desc: 'HONDAの鈴鹿製作所を擁し、モータースポーツの聖地としてチューニングパーツの需要もあります。' },
+  shiga: { name: '滋賀県', nameEn: 'Shiga', region: '近畿', shops: 920, desc: '京阪神のベッドタウンとして自動車通勤率が高く、消耗品パーツの回転が早い地域です。' },
+  kyoto: { name: '京都府', nameEn: 'Kyoto', region: '近畿', shops: 1480, desc: '観光地特有のタクシー・バス向け業務用パーツと、一般乗用車の二面的な需要があります。' },
+  osaka: { name: '大阪府', nameEn: 'Osaka', region: '近畿', shops: 3800, desc: '西日本最大の経済圏。ダイハツ本社を擁し、軽自動車から商用車まで幅広いパーツ市場を形成しています。' },
+  hyogo: { name: '兵庫県', nameEn: 'Hyogo', region: '近畿', shops: 2800, desc: '神戸港を通じた輸入車パーツの流通に加え、播磨地域の工業地帯での商用車整備需要も高い県です。' },
+  nara: { name: '奈良県', nameEn: 'Nara', region: '近畿', shops: 820, desc: '大阪への通勤車両が多く、日常的な消耗パーツ（オイルフィルター、ブレーキパッド等）の需要が安定しています。' },
+  wakayama: { name: '和歌山県', nameEn: 'Wakayama', region: '近畿', shops: 720, desc: '南北に長い県土と山間部が多く、足回り・駆動系パーツの需要が恒常的に高い地域です。' },
+  tottori: { name: '鳥取県', nameEn: 'Tottori', region: '中国', shops: 480, desc: '日本で最も人口の少ない県ですが、車社会のため一人当たりの自動車保有率は高い地域です。' },
+  shimane: { name: '島根県', nameEn: 'Shimane', region: '中国', shops: 560, desc: '中山間地域が多く、軽トラック・四駆車の整備需要が特に高い特徴があります。' },
+  okayama: { name: '岡山県', nameEn: 'Okayama', region: '中国', shops: 1420, desc: '三菱自動車の工場があり、中国・四国地方の物流ハブとして商用車パーツの取引が盛んです。' },
+  hiroshima: { name: '広島県', nameEn: 'Hiroshima', region: '中国', shops: 1820, desc: 'MAZDAの本社所在地。マツダ車の純正・社外パーツの流通量が特に多い地域です。' },
+  yamaguchi: { name: '山口県', nameEn: 'Yamaguchi', region: '中国', shops: 1080, desc: '化学工業地帯を支える特殊車両の整備に加え、九州との結節点として物流車両の通過需要もあります。' },
+  tokushima: { name: '徳島県', nameEn: 'Tokushima', region: '四国', shops: 580, desc: '四国の東の玄関口として、京阪神との物流を担う商用車の整備拠点が集まっています。' },
+  kagawa: { name: '香川県', nameEn: 'Kagawa', region: '四国', shops: 720, desc: '面積最小の県ながら自動車密度が高く、都市部のコンパクトカー・軽自動車のパーツ需要が中心です。' },
+  ehime: { name: '愛媛県', nameEn: 'Ehime', region: '四国', shops: 1020, desc: '造船・タオル産業を支える物流網があり、トラック整備を中心としたパーツ需要が安定しています。' },
+  kochi: { name: '高知県', nameEn: 'Kochi', region: '四国', shops: 540, desc: '東西に長い県土で走行距離が伸びやすく、エンジン・排気系パーツの交換頻度が高い傾向にあります。' },
+  fukuoka: { name: '福岡県', nameEn: 'Fukuoka', region: '九州', shops: 3200, desc: '九州最大の経済圏。日産・トヨタの工場も立地し、西日本有数のパーツ市場を形成しています。' },
+  saga: { name: '佐賀県', nameEn: 'Saga', region: '九州', shops: 620, desc: '農業県として軽トラック・農業機械の整備需要が高く、実用車向けパーツの取引が多い地域です。' },
+  nagasaki: { name: '長崎県', nameEn: 'Nagasaki', region: '九州', shops: 920, desc: '離島を多く抱え、船舶輸送コストからパーツの効率的な調達手段としてオンライン取引の意義が大きい県です。' },
+  kumamoto: { name: '熊本県', nameEn: 'Kumamoto', region: '九州', shops: 1280, desc: 'HONDAの工場が立地。半導体産業の成長に伴い物流車両も増加し、整備需要が拡大中です。' },
+  oita: { name: '大分県', nameEn: 'Oita', region: '九州', shops: 880, desc: 'ダイハツの工場があり、軽自動車関連パーツの流通が活発な地域です。' },
+  miyazaki: { name: '宮崎県', nameEn: 'Miyazaki', region: '九州', shops: 820, desc: '農畜産業を支える商用車の整備に加え、温暖な気候で錆が少なく良質な中古パーツが出回る地域です。' },
+  kagoshima: { name: '鹿児島県', nameEn: 'Kagoshima', region: '九州', shops: 1220, desc: '火山灰対策としてエアフィルターやワイパー等の消耗品需要が特徴的な地域です。' },
+  okinawa: { name: '沖縄県', nameEn: 'Okinawa', region: '沖縄', shops: 780, desc: '塩害によるボディ・下回り腐食が深刻で、防錆パーツや外装部品の需要が非常に高い地域です。' }
+}
+
+const REGION_LIST = ['北海道','東北','関東','中部','近畿','中国','四国','九州','沖縄']
+
+// 地域一覧ページ
+app.get('/area', (c) => {
+  const regionGroups: Record<string, { slug: string; name: string }[]> = {}
+  for (const r of REGION_LIST) { regionGroups[r] = [] }
+  for (const [slug, data] of Object.entries(PREFECTURES)) {
+    if (regionGroups[data.region]) {
+      regionGroups[data.region].push({ slug, name: data.name })
+    }
+  }
+
+  let regionCards = ''
+  for (const region of REGION_LIST) {
+    const prefs = regionGroups[region]
+    let prefLinks = ''
+    for (const p of prefs) {
+      prefLinks += '<a href="/area/' + p.slug + '" class="area-chip">' + p.name + '</a>'
+    }
+    regionCards += '<div class="region-card"><h3 class="region-title">' + region + '</h3><div class="pref-grid">' + prefLinks + '</div></div>'
+  }
+
+  return c.html(`<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>エリアから探す - PARTS HUB（パーツハブ）</title>
+    <meta name="description" content="PARTS HUBは全国47都道府県の整備工場をつなぐパーツ売買プラットフォームです。お近くのエリアの出品状況をご覧ください。">
+    <link rel="canonical" href="https://parts-hub-tci.com/area">
+    <meta property="og:title" content="エリアから探す - PARTS HUB">
+    <meta property="og:description" content="全国47都道府県の整備工場をつなぐパーツ売買プラットフォーム">
+    <meta property="og:url" content="https://parts-hub-tci.com/area">
+    <meta property="og:site_name" content="PARTS HUB">
+    <meta property="og:image" content="https://parts-hub-tci.com/icons/og-default.png">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"PARTS HUB","item":"https://parts-hub-tci.com/"},{"@type":"ListItem","position":2,"name":"エリアから探す"}]}</script>
+    <meta name="theme-color" content="#ff4757">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+      body { font-family: 'Noto Sans JP', sans-serif; }
+      .region-card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #f3f4f6; }
+      .region-title { font-size: 15px; font-weight: 700; color: #1f2937; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid #fee2e2; }
+      .pref-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+      .area-chip { display: inline-block; padding: 8px 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; color: #374151; font-size: 14px; font-weight: 500; text-decoration: none; transition: all 0.15s; }
+      .area-chip:hover { background: #fef2f2; border-color: #fca5a5; color: #dc2626; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+            <a href="/" class="text-gray-600 hover:text-gray-900 flex items-center gap-2"><i class="fas fa-arrow-left"></i><span class="text-sm font-medium">トップ</span></a>
+            <a href="/" class="text-red-500 font-bold text-lg">PARTS HUB</a>
+            <div class="w-16"></div>
+        </div>
+    </header>
+    <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white py-12 sm:py-16">
+        <div class="max-w-6xl mx-auto px-4 text-center">
+            <p class="text-red-400 text-sm font-semibold tracking-wider mb-3">AREA NETWORK</p>
+            <h1 class="text-2xl sm:text-3xl font-bold mb-3">エリアから探す</h1>
+            <p class="text-slate-400 text-sm sm:text-base max-w-xl mx-auto">全国47都道府県の整備工場をつなぐネットワーク。お近くのエリアを選んで、地域の出品状況をご確認ください。</p>
+        </div>
+    </div>
+    <main class="max-w-6xl mx-auto px-4 py-8 sm:py-12">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            ${regionCards}
+        </div>
+    </main>
+    ${Footer()}
+    <script src="${v('/static/auth-header.js')}"></script>
+    <script src="${v('/static/notification-badge.js')}"></script>
+</body>
+</html>`)
+})
+
+// 都道府県別ランディングページ
+app.get('/area/:pref', async (c) => {
+  const prefSlug = c.req.param('pref')
+  const pref = PREFECTURES[prefSlug]
+  if (!pref) return c.redirect('/area', 302)
+
+  const { DB } = c.env as any
+  let productsHtml = ''
+  let productsCount = 0
+  let categoriesHtml = ''
+
+  try {
+    // 最新の出品商品を取得
+    const prods = await DB.prepare(
+      "SELECT p.id, p.title, p.price, p.condition, p.status, pi.image_url FROM products p LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.display_order = 0 WHERE p.status = 'active' ORDER BY p.created_at DESC LIMIT 8"
+    ).all()
+    productsCount = prods.results.length
+    const condMap: Record<string,string> = { new:'新品', like_new:'未使用に近い', good:'良好', fair:'やや傷あり', poor:'状態不良' }
+    productsHtml = prods.results.map((p: any) => {
+      const price = Number(p.price || 0).toLocaleString()
+      const cond = condMap[p.condition] || p.condition || '中古'
+      const safeTitle = String(p.title || '').replace(/</g, '&lt;')
+      const imgUrl = p.image_url ? '/r2/' + p.image_url : '/icons/icon.svg'
+      return '<a href="/products/' + p.id + '" class="product-card">' +
+        '<div class="product-img-wrap"><img src="' + imgUrl + '" alt="' + safeTitle + '" class="product-img" loading="lazy"></div>' +
+        '<div class="product-info">' +
+        '<p class="product-title">' + safeTitle + '</p>' +
+        '<p class="product-price">&yen;' + price + '<span class="product-cond">' + cond + '</span></p>' +
+        '</div></a>'
+    }).join('')
+
+    // カテゴリ取得
+    const cats = await DB.prepare('SELECT id, name FROM categories ORDER BY id').all()
+    categoriesHtml = cats.results.map((cat: any) =>
+      '<a href="/search?category=' + encodeURIComponent(cat.name) + '" class="cat-tag">' + cat.name + '</a>'
+    ).join('')
+  } catch(e) { console.error('Area LP error:', e) }
+
+  // 近隣の都道府県
+  const sameRegion = Object.entries(PREFECTURES)
+    .filter(([slug, d]) => d.region === pref.region && slug !== prefSlug)
+    .map(([slug, d]) => '<a href="/area/' + slug + '" class="nearby-link">' + d.name + '</a>')
+    .join('')
+
+  const totalShops = Object.values(PREFECTURES).reduce((s, p) => s + p.shops, 0)
+
+  return c.html(`<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${pref.name}の整備工場向けパーツ売買 - PARTS HUB（パーツハブ）</title>
+    <meta name="description" content="${pref.name}の整備工場の皆様へ。PARTS HUBは余剰パーツ・工具・SSTを全国の整備工場同士で売買できるプラットフォームです。${pref.desc}">
+    <link rel="canonical" href="https://parts-hub-tci.com/area/${prefSlug}">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="${pref.name}の整備工場向けパーツ売買 - PARTS HUB">
+    <meta property="og:description" content="${pref.name}の整備工場の皆様へ。余剰パーツを全国の整備工場と売買。登録無料・Stripe安全決済。">
+    <meta property="og:url" content="https://parts-hub-tci.com/area/${prefSlug}">
+    <meta property="og:site_name" content="PARTS HUB">
+    <meta property="og:image" content="https://parts-hub-tci.com/icons/og-default.png">
+    <meta property="og:locale" content="ja_JP">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="${pref.name}の整備工場向けパーツ売買 - PARTS HUB">
+    <meta name="twitter:description" content="${pref.name}の整備工場の皆様へ。余剰パーツを全国の整備工場と売買。">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+    <script type="application/ld+json">${JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "name": pref.name + "の整備工場向けパーツ売買 - PARTS HUB",
+      "description": pref.name + "の整備工場の皆様へ。PARTS HUBは余剰パーツを全国の整備工場同士で売買できるプラットフォームです。",
+      "url": "https://parts-hub-tci.com/area/" + prefSlug,
+      "isPartOf": { "@type": "WebSite", "name": "PARTS HUB", "url": "https://parts-hub-tci.com/" },
+      "breadcrumb": {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "PARTS HUB", "item": "https://parts-hub-tci.com/" },
+          { "@type": "ListItem", "position": 2, "name": "エリア", "item": "https://parts-hub-tci.com/area" },
+          { "@type": "ListItem", "position": 3, "name": pref.name }
+        ]
+      }
+    })}</script>
+    <meta name="theme-color" content="#ff4757">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+      body { font-family: 'Noto Sans JP', sans-serif; }
+      .hero-area { background: linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #334155 100%); }
+      .stat-card { background: rgba(255,255,255,0.06); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 20px; text-align: center; }
+      .stat-number { font-size: 28px; font-weight: 900; background: linear-gradient(135deg, #f87171, #fb923c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+      .stat-label { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+      .section-heading { font-size: 20px; font-weight: 700; color: #1f2937; position: relative; padding-left: 16px; }
+      .section-heading::before { content: ''; position: absolute; left: 0; top: 2px; bottom: 2px; width: 4px; background: linear-gradient(180deg, #ef4444, #f97316); border-radius: 2px; }
+      .product-card { display: block; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #f3f4f6; text-decoration: none; transition: all 0.2s; }
+      .product-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.1); transform: translateY(-2px); }
+      .product-img-wrap { aspect-ratio: 1; overflow: hidden; background: #f9fafb; }
+      .product-img { width: 100%; height: 100%; object-fit: cover; }
+      .product-info { padding: 12px; }
+      .product-title { font-size: 13px; font-weight: 600; color: #1f2937; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 36px; }
+      .product-price { font-size: 16px; font-weight: 800; color: #dc2626; margin-top: 6px; }
+      .product-cond { font-size: 11px; font-weight: 400; color: #9ca3af; margin-left: 8px; }
+      .feature-card { background: white; border-radius: 12px; padding: 28px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #f3f4f6; }
+      .feature-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 16px; }
+      .cat-tag { display: inline-block; padding: 6px 14px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 20px; color: #374151; font-size: 13px; font-weight: 500; text-decoration: none; transition: all 0.15s; margin: 3px; }
+      .cat-tag:hover { background: #fef2f2; border-color: #fca5a5; color: #dc2626; }
+      .nearby-link { display: inline-block; padding: 8px 16px; background: white; border: 1px solid #e5e7eb; border-radius: 8px; color: #374151; font-size: 14px; font-weight: 500; text-decoration: none; transition: all 0.15s; margin: 3px; }
+      .nearby-link:hover { background: #fef2f2; border-color: #fca5a5; color: #dc2626; }
+      .step-line { position: relative; padding-left: 48px; }
+      .step-line::before { content: ''; position: absolute; left: 19px; top: 40px; bottom: -20px; width: 2px; background: #e5e7eb; }
+      .step-line:last-child::before { display: none; }
+      .step-num { position: absolute; left: 0; top: 0; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; color: white; }
+      .cta-section { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- ヘッダー -->
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+            <a href="/area" class="text-gray-600 hover:text-gray-900 flex items-center gap-2"><i class="fas fa-arrow-left"></i><span class="text-sm font-medium">エリア一覧</span></a>
+            <a href="/" class="text-red-500 font-bold text-lg">PARTS HUB</a>
+            <a href="/register" class="text-sm font-semibold text-white bg-red-500 hover:bg-red-600 px-4 py-1.5 rounded-lg transition-colors">無料登録</a>
+        </div>
+    </header>
+
+    <!-- ヒーロー -->
+    <section class="hero-area text-white py-12 sm:py-20">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="text-center mb-10">
+                <div class="inline-block px-3 py-1 bg-red-500/20 text-red-300 text-xs font-semibold rounded-full tracking-wider mb-4">${pref.region} / ${pref.name}</div>
+                <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight mb-4">${pref.name}の整備工場の皆様へ</h1>
+                <p class="text-slate-400 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">${pref.desc}</p>
+            </div>
+            <div class="grid grid-cols-3 gap-3 sm:gap-5 max-w-lg mx-auto">
+                <div class="stat-card">
+                    <div class="stat-number">${pref.shops.toLocaleString()}</div>
+                    <div class="stat-label">${pref.name}の整備工場数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${totalShops.toLocaleString()}</div>
+                    <div class="stat-label">全国の整備工場数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">0%</div>
+                    <div class="stat-label">出品手数料</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <main class="max-w-6xl mx-auto px-4 py-10 sm:py-14">
+
+        <!-- PARTS HUBの特長 -->
+        <section class="mb-14">
+            <h2 class="section-heading mb-8">PARTS HUBが選ばれる理由</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                <div class="feature-card">
+                    <div class="feature-icon bg-red-50 text-red-500"><i class="fas fa-yen-sign"></i></div>
+                    <h3 class="font-bold text-gray-900 mb-2">出品無料・低手数料</h3>
+                    <p class="text-sm text-gray-500 leading-relaxed">出品は完全無料。売れた時だけ販売価格の10%が手数料として発生します。</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon bg-blue-50 text-blue-500"><i class="fas fa-shield-alt"></i></div>
+                    <h3 class="font-bold text-gray-900 mb-2">Stripe安全決済</h3>
+                    <p class="text-sm text-gray-500 leading-relaxed">クレジットカード決済をStripeが仲介。取引完了まで売上金をエスクロー保護します。</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon bg-emerald-50 text-emerald-500"><i class="fas fa-truck"></i></div>
+                    <h3 class="font-bold text-gray-900 mb-2">配送追跡対応</h3>
+                    <p class="text-sm text-gray-500 leading-relaxed">ヤマト運輸・佐川急便・日本郵便・西濃運輸・福山通運に対応。追跡番号で状況確認。</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon bg-amber-50 text-amber-500"><i class="fas fa-comments"></i></div>
+                    <h3 class="font-bold text-gray-900 mb-2">チャット機能</h3>
+                    <p class="text-sm text-gray-500 leading-relaxed">購入前に出品者へ直接質問が可能。適合確認や価格交渉がスムーズに行えます。</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 出品中の商品 -->
+        ${productsHtml ? '<section class="mb-14"><div class="flex items-center justify-between mb-8"><h2 class="section-heading">出品中のパーツ</h2><a href="/search" class="text-sm text-red-500 font-semibold hover:underline">すべて見る<i class="fas fa-chevron-right ml-1 text-xs"></i></a></div><div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">' + productsHtml + '</div></section>' : ''}
+
+        <!-- カテゴリ -->
+        ${categoriesHtml ? '<section class="mb-14"><h2 class="section-heading mb-6">カテゴリから探す</h2><div class="flex flex-wrap">' + categoriesHtml + '</div></section>' : ''}
+
+        <!-- 取引の流れ -->
+        <section class="mb-14">
+            <h2 class="section-heading mb-8">取引の流れ</h2>
+            <div class="max-w-xl mx-auto space-y-8">
+                <div class="step-line">
+                    <div class="step-num bg-red-500">1</div>
+                    <h3 class="font-bold text-gray-900 mb-1">無料会員登録</h3>
+                    <p class="text-sm text-gray-500">メールアドレスだけで簡単登録。最短1分で出品・購入が可能に。</p>
+                </div>
+                <div class="step-line">
+                    <div class="step-num bg-orange-500">2</div>
+                    <h3 class="font-bold text-gray-900 mb-1">商品を出品 or 検索</h3>
+                    <p class="text-sm text-gray-500">写真を撮って出品、またはキーワード・カテゴリで必要なパーツを検索。</p>
+                </div>
+                <div class="step-line">
+                    <div class="step-num bg-blue-500">3</div>
+                    <h3 class="font-bold text-gray-900 mb-1">チャットで確認</h3>
+                    <p class="text-sm text-gray-500">適合や状態について、出品者に直接質問して確認できます。</p>
+                </div>
+                <div class="step-line">
+                    <div class="step-num bg-emerald-500">4</div>
+                    <h3 class="font-bold text-gray-900 mb-1">安全に決済・配送</h3>
+                    <p class="text-sm text-gray-500">Stripeによる安全決済と追跡番号付き配送で、安心して取引完了。</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 近隣エリア -->
+        ${sameRegion ? '<section class="mb-14"><h2 class="section-heading mb-6">' + pref.region + 'の他のエリア</h2><div class="flex flex-wrap">' + sameRegion + '</div></section>' : ''}
+    </main>
+
+    <!-- CTA -->
+    <section class="cta-section text-white py-14 sm:py-20">
+        <div class="max-w-3xl mx-auto px-4 text-center">
+            <h2 class="text-xl sm:text-2xl font-bold mb-4">眠っているパーツを、必要としている工場へ</h2>
+            <p class="text-slate-400 text-sm sm:text-base mb-8 leading-relaxed">PARTS HUBは全国の整備工場同士をつなぐプラットフォームです。<br class="hidden sm:block">余剰在庫の削減と、必要なパーツの効率的な調達を実現します。</p>
+            <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                <a href="/register" class="inline-block px-8 py-3.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-colors text-base shadow-lg shadow-red-500/20">無料で会員登録</a>
+                <a href="/search" class="inline-block px-8 py-3.5 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl transition-colors text-base border border-white/20">商品を探す</a>
+            </div>
+        </div>
+    </section>
+
+    ${Footer()}
+    <script src="${v('/static/auth-header.js')}"></script>
+    <script src="${v('/static/notification-badge.js')}"></script>
+</body>
+</html>`)
 })
 
 // ========================================
