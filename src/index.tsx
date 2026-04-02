@@ -104,6 +104,17 @@ const Footer = () => `
 app.use(logger())
 app.use('/api/*', cors())
 
+// セキュリティヘッダー（全レスポンス）
+app.use('*', async (c, next) => {
+  await next()
+  c.header('X-Content-Type-Options', 'nosniff')
+  c.header('X-Frame-Options', 'DENY')
+  c.header('X-XSS-Protection', '1; mode=block')
+  c.header('Referrer-Policy', 'strict-origin-when-cross-origin')
+  c.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  c.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+})
+
 // 静的ファイル配信（キャッシュバスティング: ?v=xxx はCloudflare Pagesが無視してファイルを返す）
 app.use('/static/*', serveStatic({ root: './public' }))
 
@@ -156,6 +167,59 @@ app.get('/icons/logo.svg', (c) => {
   <circle cx="100" cy="100" r="15" fill="#ff4757"/>
   <circle cx="100" cy="100" r="8" fill="#ffffff"/>
 </svg>`, 200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=86400' });
+})
+
+// OGP画像（1200x630 SVG → SNSシェア用）
+app.get('/icons/og-default.png', (c) => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="50%" style="stop-color:#16213e"/>
+      <stop offset="100%" style="stop-color:#0f3460"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#ff4757"/>
+      <stop offset="100%" style="stop-color:#ff6b95"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="0" y="0" width="1200" height="6" fill="url(#accent)"/>
+  <rect x="0" y="624" width="1200" height="6" fill="url(#accent)"/>
+  <circle cx="100" cy="315" r="200" fill="#ff4757" opacity="0.05"/>
+  <circle cx="1100" cy="315" r="250" fill="#0f3460" opacity="0.3"/>
+  <text x="600" y="240" font-family="Arial,Helvetica,sans-serif" font-size="96" font-weight="bold" text-anchor="middle" fill="#ff4757">PARTS HUB</text>
+  <text x="600" y="310" font-family="Arial,Helvetica,sans-serif" font-size="36" text-anchor="middle" fill="#ffffff" opacity="0.9">パーツハブ</text>
+  <line x1="400" y1="345" x2="800" y2="345" stroke="#ff4757" stroke-width="2" opacity="0.6"/>
+  <text x="600" y="400" font-family="Arial,Helvetica,sans-serif" font-size="30" text-anchor="middle" fill="#ffffff" opacity="0.8">整備工場専門 自動車パーツ売買プラットフォーム</text>
+  <text x="600" y="460" font-family="Arial,Helvetica,sans-serif" font-size="22" text-anchor="middle" fill="#ffffff" opacity="0.5">純正部品・社外品・工具・SST ｜ 全国の整備工場が出品</text>
+  <rect x="430" y="500" width="340" height="50" rx="25" fill="url(#accent)"/>
+  <text x="600" y="533" font-family="Arial,Helvetica,sans-serif" font-size="20" font-weight="bold" text-anchor="middle" fill="#ffffff">parts-hub-tci.com</text>
+</svg>`;
+  return c.body(svg, 200, { 
+    'Content-Type': 'image/svg+xml', 
+    'Cache-Control': 'public, max-age=604800' 
+  });
+})
+
+// アイコン 192x192 (PWA用)
+app.get('/icons/icon-192x192.png', (c) => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <defs>
+    <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff4757"/>
+      <stop offset="100%" style="stop-color:#ff6b95"/>
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="40" fill="url(#g1)"/>
+  <text x="96" y="80" font-family="Arial,Helvetica,sans-serif" font-size="48" font-weight="bold" text-anchor="middle" fill="#ffffff">PARTS</text>
+  <text x="96" y="128" font-family="Arial,Helvetica,sans-serif" font-size="48" font-weight="bold" text-anchor="middle" fill="#ffffff">HUB</text>
+  <rect x="30" y="148" width="132" height="3" rx="1.5" fill="#ffffff" opacity="0.6"/>
+</svg>`;
+  return c.body(svg, 200, { 
+    'Content-Type': 'image/svg+xml', 
+    'Cache-Control': 'public, max-age=604800' 
+  });
 })
 
 // robots.txt, sitemap.xml, manifest.json, sw.js配信
@@ -219,11 +283,14 @@ Disallow: /api/*
 Sitemap: https://parts-hub-tci.com/sitemap.xml`, { headers: { 'Content-Type': 'text/plain' } })
 })
 
-// sitemap.xml（動的に記事を含める）
+// sitemap.xml（動的に記事+商品を含める）
 app.get('/sitemap.xml', async (c) => {
   const { env } = c;
   
   try {
+    const baseUrl = 'https://parts-hub-tci.com';
+    const now = new Date().toISOString().split('T')[0];
+    
     // 公開済みの記事を取得
     const articles = await env.DB.prepare(`
       SELECT slug, updated_at, category 
@@ -232,27 +299,40 @@ app.get('/sitemap.xml', async (c) => {
       ORDER BY published_at DESC 
       LIMIT 1000
     `).all();
-    
-    const baseUrl = 'https://parts-hub-tci.com';
-    const now = new Date().toISOString().split('T')[0];
+
+    // アクティブな商品を取得
+    const products = await env.DB.prepare(`
+      SELECT p.id, p.title, p.updated_at, p.created_at,
+        (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as main_image
+      FROM products p
+      WHERE p.status = 'active' 
+      ORDER BY p.created_at DESC 
+      LIMIT 5000
+    `).all();
+
+    // カテゴリを取得
+    const categories = await env.DB.prepare(`
+      SELECT id, name, slug FROM categories ORDER BY id
+    `).all();
     
     // 静的ページ
     const staticPages = [
       { url: '/', changefreq: 'daily', priority: '1.0' },
       { url: '/news', changefreq: 'daily', priority: '0.9' },
-      { url: '/search', changefreq: 'weekly', priority: '0.8' },
+      { url: '/search', changefreq: 'hourly', priority: '0.9' },
       { url: '/listing', changefreq: 'monthly', priority: '0.7' },
-      { url: '/contact', changefreq: 'monthly', priority: '0.6' },
       { url: '/faq', changefreq: 'monthly', priority: '0.6' },
+      { url: '/contact', changefreq: 'monthly', priority: '0.5' },
+      { url: '/legal', changefreq: 'yearly', priority: '0.3' },
+      { url: '/security', changefreq: 'yearly', priority: '0.3' },
       { url: '/terms', changefreq: 'yearly', priority: '0.3' },
       { url: '/privacy', changefreq: 'yearly', priority: '0.3' },
     ];
     
-    // XML生成
     let xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`;
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">`;
     
-    // 静的ページを追加
     staticPages.forEach(page => {
       xml += `
   <url>
@@ -262,8 +342,38 @@ app.get('/sitemap.xml', async (c) => {
     <priority>${page.priority}</priority>
   </url>`;
     });
+
+    // カテゴリページ
+    categories.results.forEach((cat: any) => {
+      xml += `
+  <url>
+    <loc>${baseUrl}/search?category=${encodeURIComponent(cat.name)}</loc>
+    <lastmod>${now}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>`;
+    });
+
+    // 商品ページ
+    products.results.forEach((product: any) => {
+      const lastmod = product.updated_at ? new Date(product.updated_at).toISOString().split('T')[0] : (product.created_at ? new Date(product.created_at).toISOString().split('T')[0] : now);
+      const imgRaw = String(product.main_image || '')
+      const imgUrl = imgRaw.startsWith('/r2/') ? imgRaw : imgRaw.startsWith('r2/') ? `/${imgRaw}` : `/r2/${imgRaw}`
+      const imageTag = product.main_image ? `
+    <image:image>
+      <image:loc>https://parts-hub-tci.com${imgUrl}</image:loc>
+      <image:title>${String(product.title || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</image:title>
+    </image:image>` : '';
+      xml += `
+  <url>
+    <loc>${baseUrl}/products/${product.id}</loc>
+    <lastmod>${lastmod}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>${imageTag}
+  </url>`;
+    });
     
-    // 記事ページを追加
+    // 記事ページ
     articles.results.forEach((article: any) => {
       const lastmod = article.updated_at ? new Date(article.updated_at).toISOString().split('T')[0] : now;
       xml += `
@@ -278,12 +388,139 @@ app.get('/sitemap.xml', async (c) => {
     xml += `
 </urlset>`;
     
-    return c.text(xml, 200, { 'Content-Type': 'application/xml' });
+    return c.text(xml, 200, { 'Content-Type': 'application/xml', 'Cache-Control': 'public, max-age=3600' });
     
   } catch (error) {
     console.error('Sitemap generation error:', error);
     return c.text('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>', 200, { 'Content-Type': 'application/xml' });
   }
+})
+
+// ==== LLMO: llms.txt / llms-full.txt（AI検索エンジン最適化） ====
+app.get('/llms.txt', (c) => {
+  return c.text(`# PARTS HUB（パーツハブ）
+> 日本初の整備工場専門 自動車パーツ売買プラットフォーム
+
+## サービス概要
+PARTS HUBは、全国の自動車整備工場・板金塗装工場・ディーラーが、純正部品・社外品・工具・SST（特殊工具）をオンラインで売買できるマーケットプレイスです。
+
+## URL
+- Webサイト: https://parts-hub-tci.com
+- 商品検索: https://parts-hub-tci.com/search
+- ニュース・コラム: https://parts-hub-tci.com/news
+- FAQ: https://parts-hub-tci.com/faq
+- お問い合わせ: https://parts-hub-tci.com/contact
+- 利用規約: https://parts-hub-tci.com/terms
+- 詳細情報: https://parts-hub-tci.com/llms-full.txt
+
+## 主な機能
+- 自動車パーツの出品・購入（Stripe決済）
+- 車体番号（VIN）からの適合部品検索
+- 16カテゴリ分類（エンジン、ボディ、電装、足回り、工具等）
+- 配送追跡（ヤマト運輸/佐川急便/日本郵便/西濃運輸/福山通運）
+- リアルタイムチャット機能
+- 日本語・英語・中国語・韓国語対応
+
+## 料金
+- 会員登録: 無料
+- 出品: 無料
+- 販売手数料: 商品価格の10%
+- 決済: Stripe（クレジットカード）
+- 送料: 出品者負担または購入者負担（出品時に設定）
+
+## 運営
+- 運営: 株式会社TCI
+- 所在地: 大阪府
+- お問い合わせ: osaki.mf@gmail.com
+`, 200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=86400' })
+})
+
+app.get('/llms-full.txt', async (c) => {
+  const { DB } = c.env as any
+  let categoriesList = ''
+  let articlesSection = ''
+  let productsSection = ''
+  try {
+    const cats = await DB.prepare('SELECT name FROM categories ORDER BY id').all()
+    categoriesList = cats.results.map((c: any) => `- ${c.name}`).join('\n')
+    const arts = await DB.prepare("SELECT title, slug, summary FROM articles WHERE status='published' ORDER BY published_at DESC LIMIT 20").all()
+    articlesSection = arts.results.map((a: any) => `### ${a.title}\nURL: https://parts-hub-tci.com/news/${a.slug}\n${a.summary || ''}`).join('\n\n')
+    const prods = await DB.prepare("SELECT id, title, price, condition FROM products WHERE status='active' ORDER BY created_at DESC LIMIT 20").all()
+    productsSection = prods.results.map((p: any) => {
+      const condMap: Record<string,string> = { new:'新品', like_new:'未使用に近い', good:'良好', fair:'やや傷あり', poor:'状態不良' }
+      return `- ${p.title}（¥${Number(p.price).toLocaleString()}・${condMap[p.condition]||p.condition}）: https://parts-hub-tci.com/products/${p.id}`
+    }).join('\n')
+  } catch(e) {}
+  
+  return c.text(`# PARTS HUB（パーツハブ）完全ガイド
+
+## サービス詳細
+PARTS HUBは2026年3月にサービスを開始した、日本初の整備工場専門オンラインパーツマーケットプレイスです。
+自動車整備工場が日常的に発生するデッドストック（余剰在庫）部品や、工具・SST（特殊工具）を全国の整備工場同士で売買できます。
+
+## 対象ユーザー
+- 自動車整備工場（認証工場・指定工場）
+- 板金塗装工場
+- 自動車ディーラー（トヨタ、日産、ホンダ、マツダ、スバル等）
+- カーショップ・カー用品店
+- 自動車部品商
+- 中古車販売店
+
+## カテゴリ一覧
+${categoriesList}
+
+## 取引の流れ
+1. 出品者が商品を登録（写真・説明・価格・送料設定）
+2. 購入者が商品を検索し、購入ボタンをクリック
+3. Stripe決済で安全にお支払い（手数料10%）
+4. 出品者に決済完了通知 → 商品を発送
+5. 配送業者選択・追跡番号登録 → 購入者に自動通知
+6. 購入者が受取確認 → 取引完了
+7. レビュー投稿
+
+## 配送対応
+以下の主要配送業者に対応し、追跡番号からリアルタイム追跡が可能です：
+- ヤマト運輸
+- 佐川急便
+- 日本郵便（ゆうパック）
+- 西濃運輸
+- 福山通運
+
+## 安全性
+- Stripe決済による安全な取引（SSL/TLS暗号化）
+- 本人確認済みユーザーのみ出品可能
+- チャット機能で取引前に質問・価格交渉が可能
+- 取引完了まで売上金をエスクロー保護
+- 24時間有人監視
+
+## 出品中の商品（最新）
+${productsSection}
+
+## 最新記事
+${articlesSection}
+
+## API（開発者向け）
+- 商品一覧: GET https://parts-hub-tci.com/api/products
+- 商品詳細: GET https://parts-hub-tci.com/api/products/:id
+- カテゴリ一覧: GET https://parts-hub-tci.com/api/categories
+- 記事一覧: GET https://parts-hub-tci.com/api/articles
+- 記事詳細: GET https://parts-hub-tci.com/api/articles/:slug
+
+## 料金体系
+- 会員登録: 無料
+- 出品手数料: 無料
+- 販売手数料: 商品価格の10%
+- 決済方式: Stripe（クレジットカード / デビットカード）
+- 送料: 出品者設定（出品者負担 or 購入者負担）
+- 出金手数料: 200円/回（最低出金額1,000円）
+
+## 運営会社
+- 運営: 株式会社TCI
+- 所在地: 大阪府大阪市淀川区新高1-5-4
+- お問い合わせ: osaki.mf@gmail.com
+- お問い合わせフォーム: https://parts-hub-tci.com/contact
+- お問い合わせフォーム: https://parts-hub-tci.com/contact
+`, 200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=86400' })
 })
 
 // manifest.json を直接返す
@@ -389,7 +626,77 @@ app.get('/', (c) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
         <title>PARTS HUB（パーツハブ）- 自動車パーツ売買プラットフォーム</title>
-        <meta name="description" content="整備工場専門の純正パーツ・工具売買マーケットプレイス。手軽に部品を出品・購入できるプラットフォームです。">
+        <meta name="description" content="整備工場専門の自動車パーツ売買プラットフォーム。純正部品・社外品・工具・SSTを全国の整備工場同士で売買。Stripe安全決済・配送追跡・チャット機能完備。">
+        <link rel="canonical" href="https://parts-hub-tci.com/">
+        <meta property="og:type" content="website">
+        <meta property="og:title" content="PARTS HUB（パーツハブ）- 自動車パーツ売買プラットフォーム">
+        <meta property="og:description" content="整備工場専門の自動車パーツ売買プラットフォーム。純正部品・社外品・工具・SSTを全国の整備工場同士で売買。">
+        <meta property="og:image" content="https://parts-hub-tci.com/icons/og-default.png">
+        <meta property="og:url" content="https://parts-hub-tci.com/">
+        <meta property="og:site_name" content="PARTS HUB">
+        <meta property="og:locale" content="ja_JP">
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:title" content="PARTS HUB（パーツハブ）- 自動車パーツ売買プラットフォーム">
+        <meta name="twitter:description" content="整備工場専門の自動車パーツ売買プラットフォーム。純正部品・社外品・工具・SSTを全国の整備工場同士で売買。">
+        <meta name="twitter:image" content="https://parts-hub-tci.com/icons/og-default.png">
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+        
+        <!-- 構造化データ -->
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          "name": "PARTS HUB",
+          "alternateName": "パーツハブ",
+          "url": "https://parts-hub-tci.com",
+          "description": "整備工場専門の自動車パーツ売買プラットフォーム",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "https://parts-hub-tci.com/search?q={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+          }
+        }
+        </script>
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          "name": "PARTS HUB",
+          "alternateName": "パーツハブ",
+          "url": "https://parts-hub-tci.com",
+          "logo": "https://parts-hub-tci.com/icons/icon-192x192.png",
+          "description": "日本初の整備工場専門 自動車パーツ売買マーケットプレイス",
+          "foundingDate": "2026",
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "大阪市淀川区",
+            "addressRegion": "大阪府",
+            "addressCountry": "JP"
+          },
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "email": "osaki.mf@gmail.com",
+            "contactType": "customer service",
+            "availableLanguage": ["Japanese", "English"]
+          },
+          "sameAs": []
+        }
+        </script>
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "itemListElement": [{
+            "@type": "ListItem",
+            "position": 1,
+            "name": "PARTS HUB",
+            "item": "https://parts-hub-tci.com/"
+          }]
+        }
+        </script>
         
         <!-- PWA対応 -->
         <meta name="theme-color" content="#ff4757">
@@ -1424,7 +1731,41 @@ app.get('/news', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>PARTS HUBニュース - PARTS HUB（パーツハブ）</title>
+        <title>PARTS HUBニュース - 自動車パーツ・整備の最新情報 | PARTS HUB</title>
+        <meta name="description" content="自動車整備・パーツに関する最新ニュース、メンテナンスガイド、デッドストック活用術、コスト削減のコツを配信。整備工場の経営改善に役立つ情報が満載。">
+        <link rel="canonical" href="https://parts-hub-tci.com/news">
+        <meta property="og:type" content="website">
+        <meta property="og:title" content="PARTS HUBニュース - 自動車パーツ・整備の最新情報">
+        <meta property="og:description" content="自動車整備・パーツに関する最新ニュース、メンテナンスガイド、デッドストック活用術を配信。">
+        <meta property="og:image" content="https://parts-hub-tci.com/icons/og-default.png">
+        <meta property="og:url" content="https://parts-hub-tci.com/news">
+        <meta property="og:site_name" content="PARTS HUB">
+        <meta property="og:locale" content="ja_JP">
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:title" content="PARTS HUBニュース - 自動車パーツ・整備の最新情報">
+        <meta name="twitter:description" content="自動車整備・パーツに関する最新ニュース、メンテナンスガイド、デッドストック活用術を配信。">
+        <meta name="twitter:image" content="https://parts-hub-tci.com/icons/og-default.png">
+        <meta name="robots" content="index, follow">
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          "name": "PARTS HUBニュース",
+          "description": "自動車パーツ・整備に関する最新ニュース一覧",
+          "url": "https://parts-hub-tci.com/news",
+          "isPartOf": { "@type": "WebSite", "name": "PARTS HUB", "url": "https://parts-hub-tci.com" }
+        }
+        </script>
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "PARTS HUB", "item": "https://parts-hub-tci.com/" },
+            { "@type": "ListItem", "position": 2, "name": "ニュース" }
+          ]
+        }
+        </script>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     </head>
@@ -1880,9 +2221,51 @@ function getArticleDetailScript() {
 }
 
 // コラム詳細ページ（SEO最適化URL: /news/category/YYYY/MM/slug）
-app.get('/news/:category/:year/:month/:slug', (c) => {
+app.get('/news/:category/:year/:month/:slug', async (c) => {
   const { category, year, month, slug } = c.req.param();
   const fullSlug = `${category}/${year}/${month}/${slug}`;
+  const { DB } = c.env as any
+  let seoTitle = '記事詳細 - PARTS HUBニュース'
+  let seoDesc = '自動車パーツ・整備に関する最新情報 - PARTS HUB'
+  let seoImage = 'https://parts-hub-tci.com/icons/og-default.png'
+  const seoUrl = `https://parts-hub-tci.com/news/${fullSlug}`
+  let articleJsonLd = ''
+  let breadcrumbJsonLd = ''
+  try {
+    const art = await DB.prepare(`SELECT * FROM articles WHERE slug = ? AND status = 'published'`).bind(fullSlug).first()
+    if (art) {
+      const aTitle = String(art.title || '').replace(/"/g, '&quot;').replace(/</g, '&lt;')
+      const aSummary = String(art.summary || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').substring(0, 160)
+      seoTitle = `${aTitle} - PARTS HUBニュース`
+      seoDesc = aSummary || `${aTitle}｜自動車パーツ・整備の最新情報`
+      seoImage = art.thumbnail_url ? String(art.thumbnail_url) : seoImage
+      const catLabels: Record<string,string> = { 'parts-guide': 'パーツガイド', 'maintenance': 'メンテナンス', 'tips': '整備のコツ', 'deadstock': 'デッドストック活用' }
+      const catLabel = catLabels[category] || category
+      articleJsonLd = `<script type="application/ld+json">${JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": art.title,
+        "description": aSummary,
+        "image": seoImage,
+        "url": seoUrl,
+        "datePublished": art.published_at || art.created_at,
+        "dateModified": art.updated_at || art.published_at,
+        "author": { "@type": "Organization", "name": "PARTS HUB", "url": "https://parts-hub-tci.com" },
+        "publisher": { "@type": "Organization", "name": "PARTS HUB", "logo": { "@type": "ImageObject", "url": "https://parts-hub-tci.com/icons/icon-192x192.png" } },
+        "mainEntityOfPage": { "@type": "WebPage", "@id": seoUrl }
+      })}</script>`
+      breadcrumbJsonLd = `<script type="application/ld+json">${JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "PARTS HUB", "item": "https://parts-hub-tci.com/" },
+          { "@type": "ListItem", "position": 2, "name": "ニュース", "item": "https://parts-hub-tci.com/news" },
+          { "@type": "ListItem", "position": 3, "name": catLabel, "item": `https://parts-hub-tci.com/news?category=${category}` },
+          { "@type": "ListItem", "position": 4, "name": art.title }
+        ]
+      })}</script>`
+    }
+  } catch(e) { console.error('Article SSR SEO error:', e) }
   
   return c.html(`
     <!DOCTYPE html>
@@ -1890,7 +2273,22 @@ app.get('/news/:category/:year/:month/:slug', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>記事詳細 - PARTS HUBニュース</title>
+        <title>${seoTitle}</title>
+        <meta name="description" content="${seoDesc}">
+        <link rel="canonical" href="${seoUrl}">
+        <meta property="og:type" content="article">
+        <meta property="og:title" content="${seoTitle}">
+        <meta property="og:description" content="${seoDesc}">
+        <meta property="og:image" content="${seoImage}">
+        <meta property="og:url" content="${seoUrl}">
+        <meta property="og:site_name" content="PARTS HUB">
+        <meta property="og:locale" content="ja_JP">
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:title" content="${seoTitle}">
+        <meta name="twitter:description" content="${seoDesc}">
+        <meta name="twitter:image" content="${seoImage}">
+        ${articleJsonLd}
+        ${breadcrumbJsonLd}
         <meta name="robots" content="index, follow">
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
@@ -1987,6 +2385,8 @@ app.get('/login', (c) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>ログイン - PARTS HUB（パーツハブ）</title>
+        <meta name="description" content="PARTS HUBにログイン。自動車パーツの売買・出品を始めましょう。">
+        <meta name="robots" content="noindex, follow">
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
@@ -2297,6 +2697,8 @@ app.get('/register', (c) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>新規会員登録 - PARTS HUB（パーツハブ）</title>
+        <meta name="description" content="PARTS HUBに新規登録。無料で自動車パーツの売買が始められます。">
+        <meta name="robots" content="noindex, follow">
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
@@ -2671,15 +3073,98 @@ app.get('/register', (c) => {
 })
 
 // 商品詳細ページ
-app.get('/products/:id', (c) => {
+app.get('/products/:id', async (c) => {
+  // SSR: DBから商品情報を取得してSEOメタを動的生成
+  const productId = c.req.param('id')
+  const { DB } = c.env as any
+  let seoTitle = '商品詳細 - PARTS HUB（パーツハブ）'
+  let seoDesc = '自動車パーツの詳細情報、適合車両、価格など - PARTS HUB'
+  let seoImage = 'https://parts-hub-tci.com/icons/og-default.png'
+  let seoUrl = `https://parts-hub-tci.com/products/${productId}`
+  let productJsonLd = ''
+  let breadcrumbJsonLd = ''
+  let seoPrice = '0'
+  try {
+    const p = await DB.prepare(`
+      SELECT p.*, c.name as category_name,
+        COALESCE(u.company_name, u.nickname, u.name) as seller_name,
+        (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as main_image
+      FROM products p
+      LEFT JOIN categories c ON p.category_id = c.id
+      LEFT JOIN users u ON p.user_id = u.id
+      WHERE p.id = ?
+    `).bind(productId).first()
+    if (p) {
+      const pTitle = String(p.title || '').replace(/"/g, '&quot;').replace(/</g, '&lt;')
+      const pDesc = String(p.description || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').substring(0, 160)
+      const pPrice = Number(p.price || 0)
+      const rawImg = String(p.main_image || '')
+      const imgPath = rawImg.startsWith('/r2/') ? rawImg : rawImg.startsWith('r2/') ? `/${rawImg}` : `/r2/${rawImg}`
+      const pImage = p.main_image ? `https://parts-hub-tci.com${imgPath}` : seoImage
+      const pCat = String(p.category_name || '自動車パーツ')
+      const pSeller = String(p.seller_name || 'PARTS HUB出品者').replace(/"/g, '&quot;')
+      const pCondMap: Record<string, string> = { new: '新品', like_new: '未使用に近い', good: '目立った傷や汚れなし', fair: 'やや傷や汚れあり', poor: '状態が悪い' }
+      const pCondLabel = pCondMap[String(p.condition)] || String(p.condition || '中古')
+      const pAvail = p.status === 'active' ? 'https://schema.org/InStock' : 'https://schema.org/SoldOut'
+      seoTitle = `${pTitle} - PARTS HUB（パーツハブ）`
+      seoDesc = pDesc || `${pTitle}｜${pCat}｜¥${pPrice.toLocaleString()}｜${pCondLabel}｜PARTS HUB`
+      seoImage = pImage
+      seoPrice = String(pPrice)
+      productJsonLd = `<script type="application/ld+json">${JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "Product",
+        "name": p.title,
+        "description": pDesc,
+        "image": pImage,
+        "url": seoUrl,
+        "brand": { "@type": "Brand", "name": pCat },
+        "sku": p.part_number || `PH-${p.id}`,
+        "itemCondition": p.condition === 'new' ? 'https://schema.org/NewCondition' : 'https://schema.org/UsedCondition',
+        "offers": {
+          "@type": "Offer",
+          "url": seoUrl,
+          "priceCurrency": "JPY",
+          "price": pPrice,
+          "availability": pAvail,
+          "seller": { "@type": "Organization", "name": pSeller },
+          "itemCondition": p.condition === 'new' ? 'https://schema.org/NewCondition' : 'https://schema.org/UsedCondition'
+        }
+      })}</script>`
+      breadcrumbJsonLd = `<script type="application/ld+json">${JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "PARTS HUB", "item": "https://parts-hub-tci.com/" },
+          { "@type": "ListItem", "position": 2, "name": pCat, "item": `https://parts-hub-tci.com/search?category=${encodeURIComponent(pCat)}` },
+          { "@type": "ListItem", "position": 3, "name": p.title }
+        ]
+      })}</script>`
+    }
+  } catch(e) { console.error('Product SSR SEO error:', e) }
   return c.html(`
     <!DOCTYPE html>
     <html lang="ja">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>商品詳細 - PARTS HUB（パーツハブ）</title>
-        <meta name="description" content="自動車パーツの詳細情報、適合車両、価格など">
+        <title>${seoTitle}</title>
+        <meta name="description" content="${seoDesc}">
+        <link rel="canonical" href="${seoUrl}">
+        <meta property="og:type" content="product">
+        <meta property="og:title" content="${seoTitle}">
+        <meta property="og:description" content="${seoDesc}">
+        <meta property="og:image" content="${seoImage}">
+        <meta property="og:url" content="${seoUrl}">
+        <meta property="og:site_name" content="PARTS HUB">
+        <meta property="og:locale" content="ja_JP">
+        <meta property="product:price:amount" content="${seoPrice}">
+        <meta property="product:price:currency" content="JPY">
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:title" content="${seoTitle}">
+        <meta name="twitter:description" content="${seoDesc}">
+        <meta name="twitter:image" content="${seoImage}">
+        ${productJsonLd}
+        ${breadcrumbJsonLd}
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
@@ -2960,7 +3445,14 @@ app.get('/listing', (c) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>商品を出品 - PARTS HUB（パーツハブ）</title>
         <meta name="theme-color" content="#ff4757">
-        <meta name="description" content="PARTS HUBで自動車パーツを出品。簡単ステップで今すぐ出品できます。">
+        <meta name="description" content="PARTS HUBで自動車パーツを出品。写真撮影・価格設定・カテゴリ選択の簡単ステップで今すぐ出品できます。出品手数料無料。">
+        <link rel="canonical" href="https://parts-hub-tci.com/listing">
+        <meta property="og:title" content="商品を出品 - PARTS HUB">
+        <meta property="og:description" content="自動車パーツを簡単3ステップで出品。手数料は売れた時だけ10%。出品無料。">
+        <meta property="og:url" content="https://parts-hub-tci.com/listing">
+        <meta property="og:site_name" content="PARTS HUB">
+        <meta name="robots" content="index, follow">
+        <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"PARTS HUB","item":"https://parts-hub-tci.com/"},{"@type":"ListItem","position":2,"name":"出品する"}]}</script>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -4386,6 +4878,7 @@ app.get('/mypage', (c) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>マイページ - PARTS HUB（パーツハブ）</title>
+        <meta name="robots" content="noindex, nofollow">
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
@@ -4597,6 +5090,7 @@ app.get('/notifications', (c) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>通知 - PARTS HUB（パーツハブ）</title>
+        <meta name="robots" content="noindex, nofollow">
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
@@ -5447,6 +5941,14 @@ app.get('/contact', (c) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>お問い合わせ - PARTS HUB（パーツハブ）</title>
+        <meta name="description" content="PARTS HUBへのお問い合わせはこちら。サービスに関するご質問、代理出品のご依頼、不具合報告などお気軽にご連絡ください。">
+        <link rel="canonical" href="https://parts-hub-tci.com/contact">
+        <meta property="og:title" content="お問い合わせ - PARTS HUB">
+        <meta property="og:description" content="PARTS HUBへのお問い合わせ。サービスに関するご質問、代理出品のご依頼などお気軽にどうぞ。">
+        <meta property="og:url" content="https://parts-hub-tci.com/contact">
+        <meta property="og:site_name" content="PARTS HUB">
+        <meta name="robots" content="index, follow">
+        <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"PARTS HUB","item":"https://parts-hub-tci.com/"},{"@type":"ListItem","position":2,"name":"お問い合わせ"}]}</script>
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
@@ -5614,6 +6116,7 @@ app.get('/favorites', (c) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>お気に入り - PARTS HUB（パーツハブ）</title>
+        <meta name="robots" content="noindex, nofollow">
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
@@ -5751,6 +6254,37 @@ app.get('/search', (c) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>商品検索 - PARTS HUB（パーツハブ）</title>
+        <meta name="description" content="自動車パーツ・純正部品・工具をキーワード・カテゴリ・車種から検索。全国の整備工場が出品する中古・新品パーツを簡単に見つけられます。">
+        <link rel="canonical" href="https://parts-hub-tci.com/search">
+        <meta property="og:type" content="website">
+        <meta property="og:title" content="自動車パーツ検索 - PARTS HUB">
+        <meta property="og:description" content="純正部品・社外品・工具を全国の整備工場から検索。中古パーツも新品パーツも見つかる。">
+        <meta property="og:url" content="https://parts-hub-tci.com/search">
+        <meta property="og:site_name" content="PARTS HUB">
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:title" content="自動車パーツ検索 - PARTS HUB">
+        <meta name="twitter:description" content="純正部品・社外品・工具を全国の整備工場から検索。中古パーツも新品パーツも見つかる。">
+        <meta name="robots" content="index, follow">
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "SearchResultsPage",
+          "name": "自動車パーツ検索",
+          "description": "自動車パーツ・純正部品・工具をキーワード・カテゴリ・車種から検索",
+          "url": "https://parts-hub-tci.com/search",
+          "isPartOf": { "@type": "WebSite", "name": "PARTS HUB", "url": "https://parts-hub-tci.com" }
+        }
+        </script>
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "PARTS HUB", "item": "https://parts-hub-tci.com/" },
+            { "@type": "ListItem", "position": 2, "name": "パーツ検索" }
+          ]
+        }
+        </script>
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
@@ -5980,6 +6514,13 @@ app.get('/privacy', (c) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>プライバシーポリシー - PARTS HUB（パーツハブ）</title>
+        <meta name="description" content="PARTS HUBのプライバシーポリシー。個人情報の取り扱い、利用目的、第三者提供、Cookie利用について定めています。">
+        <link rel="canonical" href="https://parts-hub-tci.com/privacy">
+        <meta property="og:title" content="プライバシーポリシー - PARTS HUB">
+        <meta property="og:url" content="https://parts-hub-tci.com/privacy">
+        <meta property="og:site_name" content="PARTS HUB">
+        <meta name="robots" content="index, follow">
+        <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"PARTS HUB","item":"https://parts-hub-tci.com/"},{"@type":"ListItem","position":2,"name":"プライバシーポリシー"}]}</script>
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
@@ -6118,6 +6659,13 @@ app.get('/terms', (c) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>利用規約 - PARTS HUB（パーツハブ）</title>
+        <meta name="description" content="PARTS HUBの利用規約。サービス利用条件、禁止事項、手数料、取引ルール、免責事項について定めています。">
+        <link rel="canonical" href="https://parts-hub-tci.com/terms">
+        <meta property="og:title" content="利用規約 - PARTS HUB">
+        <meta property="og:url" content="https://parts-hub-tci.com/terms">
+        <meta property="og:site_name" content="PARTS HUB">
+        <meta name="robots" content="index, follow">
+        <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"PARTS HUB","item":"https://parts-hub-tci.com/"},{"@type":"ListItem","position":2,"name":"利用規約"}]}</script>
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
@@ -6468,6 +7016,13 @@ app.get('/security', (c) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>セキュリティポリシー - PARTS HUB（パーツハブ）</title>
+        <meta name="description" content="PARTS HUBのセキュリティポリシー。Stripe決済の安全性、SSL暗号化、データ保護、不正利用対策について説明しています。">
+        <link rel="canonical" href="https://parts-hub-tci.com/security">
+        <meta property="og:title" content="セキュリティポリシー - PARTS HUB">
+        <meta property="og:url" content="https://parts-hub-tci.com/security">
+        <meta property="og:site_name" content="PARTS HUB">
+        <meta name="robots" content="index, follow">
+        <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"PARTS HUB","item":"https://parts-hub-tci.com/"},{"@type":"ListItem","position":2,"name":"セキュリティポリシー"}]}</script>
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
@@ -6645,6 +7200,13 @@ app.get('/legal', (c) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>特定商取引法に基づく表記 - PARTS HUB（パーツハブ）</title>
+        <meta name="description" content="PARTS HUBの特定商取引法に基づく表記。販売事業者情報、返品・返金ポリシー、支払方法について記載しています。">
+        <link rel="canonical" href="https://parts-hub-tci.com/legal">
+        <meta property="og:title" content="特定商取引法に基づく表記 - PARTS HUB">
+        <meta property="og:url" content="https://parts-hub-tci.com/legal">
+        <meta property="og:site_name" content="PARTS HUB">
+        <meta name="robots" content="index, follow">
+        <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"PARTS HUB","item":"https://parts-hub-tci.com/"},{"@type":"ListItem","position":2,"name":"特定商取引法に基づく表記"}]}</script>
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
@@ -8666,6 +9228,24 @@ app.get('/faq', (c) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>よくある質問（FAQ） - PARTS HUB（パーツハブ）</title>
         <meta name="description" content="PARTS HUBの利用方法、手数料、配送、返品などについてのよくある質問をまとめています。">
+        <link rel="canonical" href="https://parts-hub-tci.com/faq">
+        <meta property="og:type" content="website">
+        <meta property="og:title" content="よくある質問（FAQ） - PARTS HUB">
+        <meta property="og:description" content="PARTS HUBの利用方法、手数料、配送、返品などについてのよくある質問をまとめています。">
+        <meta property="og:url" content="https://parts-hub-tci.com/faq">
+        <meta property="og:site_name" content="PARTS HUB">
+        <meta property="og:locale" content="ja_JP">
+        <meta name="robots" content="index, follow">
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "PARTS HUB", "item": "https://parts-hub-tci.com/" },
+            { "@type": "ListItem", "position": 2, "name": "よくある質問" }
+          ]
+        }
+        </script>
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
@@ -9236,80 +9816,6 @@ app.get('/faq', (c) => {
     </body>
     </html>
   `)
-})
-
-// Sitemap.xml生成
-app.get('/sitemap.xml', async (c) => {
-  const currentDate = new Date().toISOString().split('T')[0];
-  
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
-        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
-  <!-- トップページ -->
-  <url>
-    <loc>https://parts-hub-tci.com/</loc>
-    <lastmod>${currentDate}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
-  
-  <!-- 主要ページ -->
-  <url>
-    <loc>https://parts-hub-tci.com/search</loc>
-    <lastmod>${currentDate}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://parts-hub-tci.com/listing</loc>
-    <lastmod>${currentDate}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://parts-hub-tci.com/faq</loc>
-    <lastmod>${currentDate}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  
-  <!-- 法的ページ -->
-  <url>
-    <loc>https://parts-hub-tci.com/terms</loc>
-    <lastmod>${currentDate}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://parts-hub-tci.com/privacy</loc>
-    <lastmod>${currentDate}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://parts-hub-tci.com/security</loc>
-    <lastmod>${currentDate}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://parts-hub-tci.com/legal</loc>
-    <lastmod>${currentDate}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://parts-hub-tci.com/contact</loc>
-    <lastmod>${currentDate}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-</urlset>`;
-
-  c.header('Content-Type', 'application/xml; charset=utf-8');
-  return c.body(xml);
 })
 
 // ========================================
