@@ -3257,6 +3257,7 @@ app.get('/products/:id', async (c) => {
     const p = await DB.prepare(`
       SELECT p.*, c.name as category_name,
         COALESCE(u.company_name, u.nickname, u.name) as seller_name,
+        u.id as seller_user_id,
         (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as main_image
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
@@ -3279,13 +3280,51 @@ app.get('/products/:id', async (c) => {
       seoDesc = pDesc || `${pTitle}｜${pCat}｜¥${pPrice.toLocaleString()}｜${pCondLabel}｜PARTS HUB`
       seoImage = pImage
       seoPrice = String(pPrice)
-      productJsonLd = `<script type="application/ld+json">${JSON.stringify({
+
+      // 全商品画像を取得
+      const allImages: string[] = [pImage]
+      try {
+        const { results: imgs } = await DB.prepare(
+          'SELECT image_url FROM product_images WHERE product_id = ? ORDER BY display_order'
+        ).bind(productId).all()
+        ;(imgs || []).forEach((img: any, i: number) => {
+          if (i === 0) return // メイン画像はすでに追加済み
+          const raw = String(img.image_url || '')
+          const path = raw.startsWith('/r2/') ? raw : raw.startsWith('r2/') ? `/${raw}` : `/r2/${raw}`
+          allImages.push(`https://parts-hub-tci.com${path}`)
+        })
+      } catch(e) { /* 画像取得エラーは無視 */ }
+
+      // 出品者のレビュー集計を取得（AggregateRating用）
+      let aggregateRating: any = null
+      try {
+        const sellerId = p.seller_user_id || p.user_id
+        if (sellerId) {
+          const reviewStats = await DB.prepare(`
+            SELECT COUNT(*) as cnt, COALESCE(AVG(rating), 0) as avg
+            FROM reviews WHERE reviewee_id = ? OR reviewed_user_id = ?
+          `).bind(sellerId, sellerId).first() as any
+          if (reviewStats && Number(reviewStats.cnt) > 0) {
+            aggregateRating = {
+              "@type": "AggregateRating",
+              "ratingValue": (Math.round(Number(reviewStats.avg) * 10) / 10).toString(),
+              "reviewCount": Number(reviewStats.cnt).toString(),
+              "bestRating": "5",
+              "worstRating": "1"
+            }
+          }
+        }
+      } catch(e) { /* レビュー取得エラーは無視 */ }
+
+      // 拡充版 Product JSON-LD
+      const productSchema: any = {
         "@context": "https://schema.org",
         "@type": "Product",
         "name": p.title,
         "description": pDesc,
-        "image": pImage,
+        "image": allImages.length > 1 ? allImages : pImage,
         "url": seoUrl,
+        "category": pCat,
         "brand": { "@type": "Brand", "name": pCat },
         "sku": p.part_number || `PH-${p.id}`,
         "itemCondition": p.condition === 'new' ? 'https://schema.org/NewCondition' : 'https://schema.org/UsedCondition',
@@ -3295,10 +3334,23 @@ app.get('/products/:id', async (c) => {
           "priceCurrency": "JPY",
           "price": pPrice,
           "availability": pAvail,
-          "seller": { "@type": "Organization", "name": pSeller },
-          "itemCondition": p.condition === 'new' ? 'https://schema.org/NewCondition' : 'https://schema.org/UsedCondition'
+          "priceValidUntil": new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0],
+          "seller": { "@type": "AutoPartsStore", "name": pSeller, "url": `https://parts-hub-tci.com/seller/${p.seller_user_id || p.user_id}` },
+          "itemCondition": p.condition === 'new' ? 'https://schema.org/NewCondition' : 'https://schema.org/UsedCondition',
+          "shippingDetails": {
+            "@type": "OfferShippingDetails",
+            "shippingDestination": { "@type": "DefinedRegion", "addressCountry": "JP" },
+            "deliveryTime": { "@type": "ShippingDeliveryTime", "handlingTime": { "@type": "QuantitativeValue", "minValue": 1, "maxValue": 3, "unitCode": "DAY" }, "transitTime": { "@type": "QuantitativeValue", "minValue": 1, "maxValue": 5, "unitCode": "DAY" } }
+          },
+          "hasMerchantReturnPolicy": { "@type": "MerchantReturnPolicy", "applicableCountry": "JP", "returnPolicyCategory": "https://schema.org/MerchantReturnFiniteReturnWindow", "merchantReturnDays": 7, "returnMethod": "https://schema.org/ReturnByMail" }
         }
-      })}</script>`
+      }
+      // 品番がある場合 mpn を追加
+      if (p.part_number) productSchema.mpn = p.part_number
+      // AggregateRating があれば追加
+      if (aggregateRating) productSchema.aggregateRating = aggregateRating
+
+      productJsonLd = `<script type="application/ld+json">${JSON.stringify(productSchema)}</script>`
       breadcrumbJsonLd = `<script type="application/ld+json">${JSON.stringify({
         "@context": "https://schema.org",
         "@type": "BreadcrumbList",
