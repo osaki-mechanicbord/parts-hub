@@ -257,6 +257,44 @@ app.post('/api/indexnow', async (c) => {
   }
 })
 
+// Sitemap ping通知（Bing/IndexNowへサイトマップ更新を通知）
+app.post('/api/sitemap-ping', async (c) => {
+  try {
+    const sitemapUrl = 'https://parts-hub-tci.com/sitemap.xml'
+    const results: Record<string, any> = {}
+
+    // Bing ping
+    const bingResp = await fetch(`https://www.bing.com/ping?sitemap=${encodeURIComponent(sitemapUrl)}`)
+    results.bing = { status: bingResp.status }
+
+    // IndexNow（全主要URL一括送信）
+    const mainUrls = [
+      'https://parts-hub-tci.com/',
+      'https://parts-hub-tci.com/search',
+      'https://parts-hub-tci.com/news',
+      'https://parts-hub-tci.com/faq',
+      'https://parts-hub-tci.com/listing',
+      'https://parts-hub-tci.com/contact',
+      'https://parts-hub-tci.com/sitemap',
+    ]
+    const indexNowResp = await fetch('https://api.indexnow.org/indexnow', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        host: 'parts-hub-tci.com',
+        key: INDEXNOW_KEY,
+        keyLocation: `https://parts-hub-tci.com/${INDEXNOW_KEY}.txt`,
+        urlList: mainUrls
+      })
+    })
+    results.indexnow = { status: indexNowResp.status, submitted: mainUrls.length }
+
+    return c.json({ success: true, results })
+  } catch(e: any) {
+    return c.json({ error: e.message }, 500)
+  }
+})
+
 // robots.txt, sitemap.xml, manifest.json, sw.js配信
 app.get('/robots.txt', async (c) => {
   return c.text(`User-agent: *
