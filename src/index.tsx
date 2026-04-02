@@ -442,6 +442,13 @@ app.get('/sitemap.xml', async (c) => {
     prefSlugs.forEach(slug => {
       staticPages.push({ url: '/area/' + slug, changefreq: 'weekly', priority: '0.6' })
     })
+
+    // 車種別ページをsitemapに追加
+    staticPages.push({ url: '/vehicle', changefreq: 'weekly', priority: '0.6' })
+    const vehicleSlugs = Object.keys(VEHICLES)
+    vehicleSlugs.forEach(slug => {
+      staticPages.push({ url: '/vehicle/' + slug, changefreq: 'weekly', priority: '0.6' })
+    })
     
     let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
@@ -3385,6 +3392,15 @@ app.get('/products/:id', async (c) => {
                                 class="w-full px-6 py-4 bg-white border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-all flex items-center justify-center">
                             <i class="fas fa-comment-dots mr-2"></i>出品者に質問
                         </button>
+                        <div class="mt-3 pt-3 border-t border-gray-100">
+                            <p class="text-xs text-gray-400 text-center mb-2">この商品をシェア</p>
+                            <div class="flex justify-center gap-2" id="share-buttons">
+                                <a id="share-line" href="#" target="_blank" rel="noopener" class="w-10 h-10 flex items-center justify-center rounded-full bg-[#06C755] text-white hover:opacity-80 transition-opacity" title="LINEでシェア"><i class="fab fa-line text-lg"></i></a>
+                                <a id="share-x" href="#" target="_blank" rel="noopener" class="w-10 h-10 flex items-center justify-center rounded-full bg-black text-white hover:opacity-80 transition-opacity" title="Xでシェア"><i class="fab fa-x-twitter text-lg"></i></a>
+                                <a id="share-facebook" href="#" target="_blank" rel="noopener" class="w-10 h-10 flex items-center justify-center rounded-full bg-[#1877F2] text-white hover:opacity-80 transition-opacity" title="Facebookでシェア"><i class="fab fa-facebook-f text-lg"></i></a>
+                                <button id="share-copy" onclick="copyProductUrl()" class="w-10 h-10 flex items-center justify-center rounded-full bg-gray-200 text-gray-600 hover:bg-gray-300 transition-colors" title="URLをコピー"><i class="fas fa-link text-sm"></i></button>
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- 商品詳細テーブル -->
@@ -7696,6 +7712,515 @@ app.get('/area/:pref', async (c) => {
 })
 
 // ========================================
+// 車種別パーツガイドページ（/vehicle）
+// ========================================
+const VEHICLES: Record<string, { maker: string; name: string; nameEn: string; years: string; type: string; desc: string; keywords: string[] }> = {
+  'toyota-prius': { maker: 'トヨタ', name: 'プリウス', nameEn: 'Prius', years: '2009-2023', type: 'ハイブリッド', desc: '世界初の量産ハイブリッドカー。HVバッテリーやインバーター等の専用パーツに加え、ブレーキパッド・フィルター類の消耗品も定期交換が必要です。走行距離10万km超えの個体が増加し、リビルトパーツの需要が拡大しています。', keywords: ['HVバッテリー','インバーター','ウォーターポンプ','ブレーキパッド','エアフィルター'] },
+  'toyota-aqua': { maker: 'トヨタ', name: 'アクア', nameEn: 'Aqua', years: '2011-2023', type: 'ハイブリッド', desc: 'コンパクトHVの定番車種。プリウスと共通のハイブリッドシステムを採用しており、HVバッテリーの交換需要が高い車種です。小型ゆえにDIY整備を行うオーナーも多く、パーツの個人向け需要もあります。', keywords: ['HVバッテリー','ヘッドライト','ドアミラー','エアコンフィルター','ワイパーブレード'] },
+  'toyota-hiace': { maker: 'トヨタ', name: 'ハイエース', nameEn: 'HiAce', years: '2004-2023', type: '商用バン', desc: '整備工場で最も取り扱いの多い商用車の一つ。走行距離が伸びやすく、エンジンパーツ・足回り・ブレーキの交換頻度が高い車種です。カスタム需要も根強く、外装・内装パーツの流通も活発です。', keywords: ['ディーゼルエンジン部品','ターボチャージャー','ブレーキローター','サスペンション','スライドドア部品'] },
+  'toyota-alphard': { maker: 'トヨタ', name: 'アルファード', nameEn: 'Alphard', years: '2015-2023', type: 'ミニバン', desc: '高級ミニバンの代名詞。電装品が多く、パワースライドドアやデジタルミラー等の修理パーツ需要が特徴的です。中古車価格が高いため、リビルト・中古パーツでの修理コスト削減ニーズが強い車種です。', keywords: ['パワースライドドア','デジタルインナーミラー','エアサスペンション','LEDヘッドライト','オーディオユニット'] },
+  'toyota-corolla': { maker: 'トヨタ', name: 'カローラ', nameEn: 'Corolla', years: '2006-2023', type: 'セダン/ワゴン', desc: '世界累計販売台数No.1の車種。歴代モデルが幅広く現役で走行しており、年式ごとのパーツ互換性の確認が重要です。消耗品からボディパーツまで、安定した取引量があります。', keywords: ['ブレーキパッド','エアフィルター','スパークプラグ','ドライブシャフト','テールランプ'] },
+  'toyota-landcruiser': { maker: 'トヨタ', name: 'ランドクルーザー', nameEn: 'Land Cruiser', years: '2007-2023', type: 'SUV', desc: '世界中で愛されるSUV。国内外からの需要が高く、特にランクル70系・80系・100系の旧型パーツは希少価値があります。オフロード走行による足回りの消耗が早く、サスペンション・ブレーキの交換頻度が高い車種です。', keywords: ['サスペンション','デフオイル','トランスファー','ブレーキキャリパー','フロントグリル'] },
+  'nissan-note': { maker: '日産', name: 'ノート', nameEn: 'Note', years: '2012-2023', type: 'コンパクト', desc: 'e-POWER搭載で人気のコンパクトカー。独自の電動パワートレインにより、専用モーターやインバーターの整備需要があります。販売台数が多いため、消耗品の回転率も高い車種です。', keywords: ['e-POWERモーター','インバーター','CVTフルード','ブレーキパッド','ドアミラー'] },
+  'nissan-serena': { maker: '日産', name: 'セレナ', nameEn: 'Serena', years: '2010-2023', type: 'ミニバン', desc: 'ファミリーミニバンの定番。スライドドア機構やプロパイロット関連の電装品修理が増加傾向にあります。走行距離の多い個体ではCVTの不具合も報告されており、駆動系パーツの需要も高い車種です。', keywords: ['CVTアッセンブリー','スライドドアモーター','プロパイロットセンサー','エアコンコンプレッサー','オルタネーター'] },
+  'honda-nbox': { maker: 'ホンダ', name: 'N-BOX', nameEn: 'N-BOX', years: '2011-2023', type: '軽自動車', desc: '軽自動車販売台数No.1。全国の整備工場で最も入庫頻度の高い車種の一つです。ターボモデルのエンジン系パーツや、スライドドア機構の修理需要が特に多い車種です。', keywords: ['ターボチャージャー','CVTフルード','スライドドアワイヤー','エアコンコンプレッサー','ドライブシャフトブーツ'] },
+  'honda-fit': { maker: 'ホンダ', name: 'フィット', nameEn: 'Fit', years: '2007-2023', type: 'コンパクト', desc: 'ホンダの主力コンパクトカー。e:HEV搭載モデルの普及に伴い、ハイブリッド関連パーツの整備需要が拡大中。歴代モデル共通のパーツも多く、在庫管理がしやすい車種です。', keywords: ['e:HEVバッテリー','CVTフルード','ブレーキディスク','パワーウィンドウモーター','エアフィルター'] },
+  'honda-freed': { maker: 'ホンダ', name: 'フリード', nameEn: 'Freed', years: '2008-2023', type: 'コンパクトミニバン', desc: 'コンパクトミニバンの先駆者。3列シート車特有のスライドドア機構やシートアレンジ関連の修理需要があります。e:HEVモデルも増加し、電動系パーツの取り扱いも必要な車種です。', keywords: ['スライドドアモーター','シートベルトプリテンショナー','e:HEVユニット','リアゲートダンパー','CVTフルード'] },
+  'suzuki-jimny': { maker: 'スズキ', name: 'ジムニー', nameEn: 'Jimny', years: '1998-2023', type: '軽SUV', desc: '根強いファンを持つ軽SUV。オフロード走行による過酷な使用条件から、足回り・駆動系パーツの消耗が早い車種です。JB23/JB64問わずカスタムパーツの需要も非常に高い特徴があります。', keywords: ['リフトアップキット','トランスファーギア','ラテラルロッド','マフラー','フロントバンパー'] },
+  'suzuki-swift': { maker: 'スズキ', name: 'スイフト', nameEn: 'Swift', years: '2004-2023', type: 'コンパクト', desc: 'スポーティなコンパクトカー。スイフトスポーツはモータースポーツベースとしても人気が高く、チューニングパーツの需要があります。通常モデルも燃費性能の高さから法人車両として採用が多い車種です。', keywords: ['ブレーキパッド','クラッチキット','マフラー','サスペンション','エアフィルター'] },
+  'suzuki-hustler': { maker: 'スズキ', name: 'ハスラー', nameEn: 'Hustler', years: '2014-2023', type: '軽SUV', desc: 'クロスオーバーSUVスタイルの軽自動車。若年層のユーザーが多く、外装カスタムパーツの需要が特徴的です。マイルドハイブリッドシステム搭載車も増え、電装系パーツの取り扱いも必要になっています。', keywords: ['マイルドハイブリッドバッテリー','ルーフレール','フォグランプ','サスペンション','CVTフルード'] },
+  'daihatsu-tanto': { maker: 'ダイハツ', name: 'タント', nameEn: 'Tanto', years: '2003-2023', type: '軽自動車', desc: '軽スーパーハイトワゴンの先駆け。ミラクルオープンドアやパワースライドドアの機構部品の修理需要が高い車種です。ファミリーユースが中心で、チャイルドシート関連の内装パーツ需要もあります。', keywords: ['パワースライドドアモーター','ミラクルオープンドアヒンジ','CVTベルト','エアコンコンプレッサー','ドライブシャフト'] },
+  'daihatsu-move': { maker: 'ダイハツ', name: 'ムーヴ', nameEn: 'Move', years: '2006-2023', type: '軽自動車', desc: 'ダイハツの主力軽自動車。長い販売歴から多数の現役車両が存在し、年式を問わず安定したパーツ需要があります。ムーヴキャンバスなど派生モデルとのパーツ共通性も高い車種です。', keywords: ['CVTフルード','ターボチャージャー','ブレーキパッド','パワーウィンドウレギュレーター','エアコンフィルター'] },
+  'subaru-forester': { maker: 'スバル', name: 'フォレスター', nameEn: 'Forester', years: '2007-2023', type: 'SUV', desc: 'スバルのAWD技術を結集したSUV。水平対向エンジン特有の整備性から、オイル漏れ修理やヘッドガスケット交換の需要があります。雪国での使用率が高く、防錆・下回りパーツの需要も強い車種です。', keywords: ['ヘッドガスケット','CVTフルード','ブレーキローター','マフラー遮熱板','フロントハブベアリング'] },
+  'mazda-cx5': { maker: 'マツダ', name: 'CX-5', nameEn: 'CX-5', years: '2012-2023', type: 'SUV', desc: 'マツダのクリーンディーゼルSUV。SKYACTIV-Dエンジンの煤（すす）詰まり対策としてDPF関連パーツの需要が高い車種です。デザイン性の高い外装パーツも中古市場で人気があります。', keywords: ['DPFフィルター','ディーゼルインジェクター','フロントグリル','ブレーキキャリパー','エアコンコンプレッサー'] },
+  'mitsubishi-delica': { maker: '三菱', name: 'デリカD:5', nameEn: 'Delica D:5', years: '2007-2023', type: 'ミニバンSUV', desc: '唯一無二のオールラウンドミニバン。オフロード走行にも対応する足回りの頑丈さが特徴ですが、ディーゼルモデルのDPFやターボの整備需要が高い車種です。アウトドアユーザーからの根強い人気があります。', keywords: ['ディーゼルターボ','DPFフィルター','4WDトランスファー','サスペンションアーム','フロントバンパー'] },
+  'isuzu-elf': { maker: 'いすゞ', name: 'エルフ', nameEn: 'Elf', years: '2006-2023', type: '小型トラック', desc: '小型トラック市場シェアNo.1。物流を支える主力車種として全国の整備工場で日常的に入庫します。ディーゼルエンジンの耐久性が高い一方、DPF・尿素SCR系の定期メンテナンスが必須の車種です。', keywords: ['DPFフィルター','尿素SCRシステム','クラッチディスク','ブレーキライニング','オルタネーター'] },
+  'hino-dutro': { maker: '日野', name: 'デュトロ', nameEn: 'Dutro', years: '2011-2023', type: '小型トラック', desc: '日野自動車の主力小型トラック。トヨタグループの品質管理のもと高い信頼性を誇りますが、商用車ゆえの高稼働により消耗品の定期交換が不可欠です。エルフとともにパーツ需要が安定した車種です。', keywords: ['ディーゼルインジェクター','DPFフィルター','ブレーキシュー','エアドライヤー','ファンベルト'] }
+}
+
+const MAKER_ORDER = ['トヨタ','日産','ホンダ','スズキ','ダイハツ','スバル','マツダ','三菱','いすゞ','日野']
+
+// 車種一覧ページ
+app.get('/vehicle', (c) => {
+  const makerGroups: Record<string, { slug: string; name: string; type: string }[]> = {}
+  for (const m of MAKER_ORDER) { makerGroups[m] = [] }
+  for (const [slug, data] of Object.entries(VEHICLES)) {
+    if (!makerGroups[data.maker]) makerGroups[data.maker] = []
+    makerGroups[data.maker].push({ slug, name: data.name, type: data.type })
+  }
+
+  let makerCards = ''
+  for (const maker of MAKER_ORDER) {
+    const vehicles = makerGroups[maker]
+    if (!vehicles || vehicles.length === 0) continue
+    let vLinks = ''
+    for (const v2 of vehicles) {
+      vLinks += '<a href="/vehicle/' + v2.slug + '" class="vehicle-chip"><span class="vehicle-name">' + v2.name + '</span><span class="vehicle-type">' + v2.type + '</span></a>'
+    }
+    makerCards += '<div class="maker-card"><h3 class="maker-title">' + maker + '</h3><div class="vehicle-list">' + vLinks + '</div></div>'
+  }
+
+  return c.html(`<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>車種別パーツガイド - PARTS HUB（パーツハブ）</title>
+    <meta name="description" content="車種別の整備・交換パーツガイド。トヨタ、日産、ホンダ、スズキなど主要メーカーの人気車種ごとに、よく交換されるパーツと整備のポイントを解説します。">
+    <link rel="canonical" href="https://parts-hub-tci.com/vehicle">
+    <meta property="og:title" content="車種別パーツガイド - PARTS HUB">
+    <meta property="og:description" content="主要メーカーの人気車種ごとに、よく交換されるパーツと整備のポイントを解説">
+    <meta property="og:url" content="https://parts-hub-tci.com/vehicle">
+    <meta property="og:site_name" content="PARTS HUB">
+    <meta property="og:image" content="https://parts-hub-tci.com/icons/og-default.png">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"PARTS HUB","item":"https://parts-hub-tci.com/"},{"@type":"ListItem","position":2,"name":"車種別パーツガイド"}]}</script>
+    <meta name="theme-color" content="#ff4757">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+      body { font-family: 'Noto Sans JP', sans-serif; }
+      .maker-card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #f3f4f6; }
+      .maker-title { font-size: 15px; font-weight: 700; color: #1f2937; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid #fee2e2; }
+      .vehicle-list { display: flex; flex-direction: column; gap: 6px; }
+      .vehicle-chip { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; color: #374151; text-decoration: none; transition: all 0.15s; }
+      .vehicle-chip:hover { background: #fef2f2; border-color: #fca5a5; color: #dc2626; }
+      .vehicle-name { font-size: 14px; font-weight: 600; }
+      .vehicle-type { font-size: 11px; color: #9ca3af; background: #f3f4f6; padding: 2px 8px; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+            <a href="/" class="text-gray-600 hover:text-gray-900 flex items-center gap-2"><i class="fas fa-arrow-left"></i><span class="text-sm font-medium">トップ</span></a>
+            <a href="/" class="text-red-500 font-bold text-lg">PARTS HUB</a>
+            <div class="w-16"></div>
+        </div>
+    </header>
+    <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white py-12 sm:py-16">
+        <div class="max-w-6xl mx-auto px-4 text-center">
+            <p class="text-red-400 text-sm font-semibold tracking-wider mb-3">VEHICLE PARTS GUIDE</p>
+            <h1 class="text-2xl sm:text-3xl font-bold mb-3">車種別パーツガイド</h1>
+            <p class="text-slate-400 text-sm sm:text-base max-w-xl mx-auto">主要メーカーの人気車種ごとに、よく交換されるパーツと整備のポイントを解説します。</p>
+        </div>
+    </div>
+    <main class="max-w-6xl mx-auto px-4 py-8 sm:py-12">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            ${makerCards}
+        </div>
+    </main>
+    ${Footer()}
+    <script src="${v('/static/auth-header.js')}"></script>
+    <script src="${v('/static/notification-badge.js')}"></script>
+</body>
+</html>`)
+})
+
+// 車種別詳細ページ
+app.get('/vehicle/:slug', async (c) => {
+  const slug = c.req.param('slug')
+  const vehicle = VEHICLES[slug]
+  if (!vehicle) return c.redirect('/vehicle', 302)
+
+  const { DB } = c.env as any
+  let productsHtml = ''
+  let categoriesHtml = ''
+
+  try {
+    const prods = await DB.prepare(
+      "SELECT p.id, p.title, p.price, p.condition, pi.image_url FROM products p LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.display_order = 0 WHERE p.status = 'active' ORDER BY p.created_at DESC LIMIT 8"
+    ).all()
+    const condMap: Record<string,string> = { new:'新品', like_new:'未使用に近い', good:'良好', fair:'やや傷あり', poor:'状態不良' }
+    productsHtml = prods.results.map((p: any) => {
+      const price = Number(p.price || 0).toLocaleString()
+      const cond = condMap[p.condition] || p.condition || '中古'
+      const safeTitle = String(p.title || '').replace(/</g, '&lt;')
+      const imgUrl = p.image_url ? '/r2/' + p.image_url : '/icons/icon.svg'
+      return '<a href="/products/' + p.id + '" class="product-card"><div class="product-img-wrap"><img src="' + imgUrl + '" alt="' + safeTitle + '" class="product-img" loading="lazy"></div><div class="product-info"><p class="product-title">' + safeTitle + '</p><p class="product-price">&yen;' + price + '<span class="product-cond">' + cond + '</span></p></div></a>'
+    }).join('')
+
+    const cats = await DB.prepare('SELECT id, name FROM categories ORDER BY id').all()
+    categoriesHtml = cats.results.map((cat: any) =>
+      '<a href="/search?category=' + encodeURIComponent(cat.name) + '" class="cat-tag">' + cat.name + '</a>'
+    ).join('')
+  } catch(e) { console.error('Vehicle LP error:', e) }
+
+  const keywordsHtml = vehicle.keywords.map(k => '<span class="keyword-tag">' + k + '</span>').join('')
+
+  const sameMaker = Object.entries(VEHICLES)
+    .filter(([s, d]) => d.maker === vehicle.maker && s !== slug)
+    .map(([s, d]) => '<a href="/vehicle/' + s + '" class="nearby-link">' + d.name + '</a>')
+    .join('')
+
+  return c.html(`<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${vehicle.maker} ${vehicle.name}のパーツ・整備ガイド - PARTS HUB</title>
+    <meta name="description" content="${vehicle.maker} ${vehicle.name}（${vehicle.years}）の整備・交換パーツガイド。${vehicle.keywords.slice(0,3).join('、')}など、よく交換されるパーツの情報と中古パーツの探し方を解説。">
+    <link rel="canonical" href="https://parts-hub-tci.com/vehicle/${slug}">
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="${vehicle.maker} ${vehicle.name}のパーツ・整備ガイド - PARTS HUB">
+    <meta property="og:description" content="${vehicle.name}の整備・交換パーツガイド。${vehicle.keywords.slice(0,3).join('、')}など主要パーツの情報。">
+    <meta property="og:url" content="https://parts-hub-tci.com/vehicle/${slug}">
+    <meta property="og:site_name" content="PARTS HUB">
+    <meta property="og:image" content="https://parts-hub-tci.com/icons/og-default.png">
+    <meta property="og:locale" content="ja_JP">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="${vehicle.maker} ${vehicle.name}のパーツ・整備ガイド">
+    <meta name="twitter:description" content="${vehicle.name}の整備・交換パーツガイド。中古パーツの探し方も解説。">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+    <script type="application/ld+json">${JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "Article",
+      "headline": vehicle.maker + ' ' + vehicle.name + 'のパーツ・整備ガイド',
+      "description": vehicle.desc,
+      "url": 'https://parts-hub-tci.com/vehicle/' + slug,
+      "publisher": { "@type": "Organization", "name": "PARTS HUB", "url": "https://parts-hub-tci.com/" },
+      "breadcrumb": {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "PARTS HUB", "item": "https://parts-hub-tci.com/" },
+          { "@type": "ListItem", "position": 2, "name": "車種別パーツガイド", "item": "https://parts-hub-tci.com/vehicle" },
+          { "@type": "ListItem", "position": 3, "name": vehicle.maker + ' ' + vehicle.name }
+        ]
+      }
+    })}</script>
+    <meta name="theme-color" content="#ff4757">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+      body { font-family: 'Noto Sans JP', sans-serif; }
+      .hero-vehicle { background: linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #334155 100%); }
+      .spec-item { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+      .spec-label { font-size: 12px; color: #94a3b8; width: 80px; flex-shrink: 0; }
+      .spec-value { font-size: 14px; font-weight: 600; color: white; }
+      .section-heading { font-size: 20px; font-weight: 700; color: #1f2937; position: relative; padding-left: 16px; }
+      .section-heading::before { content: ''; position: absolute; left: 0; top: 2px; bottom: 2px; width: 4px; background: linear-gradient(180deg, #ef4444, #f97316); border-radius: 2px; }
+      .keyword-tag { display: inline-block; padding: 8px 16px; background: white; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 13px; font-weight: 500; color: #374151; margin: 3px; }
+      .product-card { display: block; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #f3f4f6; text-decoration: none; transition: all 0.2s; }
+      .product-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.1); transform: translateY(-2px); }
+      .product-img-wrap { aspect-ratio: 1; overflow: hidden; background: #f9fafb; }
+      .product-img { width: 100%; height: 100%; object-fit: cover; }
+      .product-info { padding: 12px; }
+      .product-title { font-size: 13px; font-weight: 600; color: #1f2937; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 36px; }
+      .product-price { font-size: 16px; font-weight: 800; color: #dc2626; margin-top: 6px; }
+      .product-cond { font-size: 11px; font-weight: 400; color: #9ca3af; margin-left: 8px; }
+      .cat-tag { display: inline-block; padding: 6px 14px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 20px; color: #374151; font-size: 13px; font-weight: 500; text-decoration: none; transition: all 0.15s; margin: 3px; }
+      .cat-tag:hover { background: #fef2f2; border-color: #fca5a5; color: #dc2626; }
+      .nearby-link { display: inline-block; padding: 8px 16px; background: white; border: 1px solid #e5e7eb; border-radius: 8px; color: #374151; font-size: 14px; font-weight: 500; text-decoration: none; transition: all 0.15s; margin: 3px; }
+      .nearby-link:hover { background: #fef2f2; border-color: #fca5a5; color: #dc2626; }
+      .info-card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #f3f4f6; }
+      .cta-section { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+            <a href="/vehicle" class="text-gray-600 hover:text-gray-900 flex items-center gap-2"><i class="fas fa-arrow-left"></i><span class="text-sm font-medium">車種一覧</span></a>
+            <a href="/" class="text-red-500 font-bold text-lg">PARTS HUB</a>
+            <a href="/register" class="text-sm font-semibold text-white bg-red-500 hover:bg-red-600 px-4 py-1.5 rounded-lg transition-colors">無料登録</a>
+        </div>
+    </header>
+
+    <section class="hero-vehicle text-white py-12 sm:py-16">
+        <div class="max-w-4xl mx-auto px-4">
+            <div class="text-center mb-8">
+                <div class="inline-block px-3 py-1 bg-red-500/20 text-red-300 text-xs font-semibold rounded-full tracking-wider mb-4">${vehicle.maker} / ${vehicle.type}</div>
+                <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2">${vehicle.maker} ${vehicle.name}</h1>
+                <p class="text-slate-500 text-sm">${vehicle.nameEn} / ${vehicle.years}</p>
+            </div>
+            <div class="max-w-md mx-auto">
+                <div class="spec-item"><span class="spec-label">メーカー</span><span class="spec-value">${vehicle.maker}</span></div>
+                <div class="spec-item"><span class="spec-label">車種名</span><span class="spec-value">${vehicle.name}（${vehicle.nameEn}）</span></div>
+                <div class="spec-item"><span class="spec-label">年式</span><span class="spec-value">${vehicle.years}</span></div>
+                <div class="spec-item" style="border-bottom:none"><span class="spec-label">タイプ</span><span class="spec-value">${vehicle.type}</span></div>
+            </div>
+        </div>
+    </section>
+
+    <main class="max-w-4xl mx-auto px-4 py-10 sm:py-14">
+        <section class="mb-12">
+            <h2 class="section-heading mb-6">整備・パーツの特徴</h2>
+            <div class="info-card">
+                <p class="text-sm text-gray-700 leading-relaxed">${vehicle.desc}</p>
+            </div>
+        </section>
+
+        <section class="mb-12">
+            <h2 class="section-heading mb-6">よく交換されるパーツ</h2>
+            <div class="flex flex-wrap">${keywordsHtml}</div>
+            <div class="mt-4">
+                <a href="/search?q=${encodeURIComponent(vehicle.name)}" class="inline-flex items-center text-sm text-red-500 font-semibold hover:underline">
+                    ${vehicle.name}のパーツを検索する<i class="fas fa-chevron-right ml-1 text-xs"></i>
+                </a>
+            </div>
+        </section>
+
+        ${productsHtml ? '<section class="mb-12"><div class="flex items-center justify-between mb-6"><h2 class="section-heading">出品中のパーツ</h2><a href="/search" class="text-sm text-red-500 font-semibold hover:underline">すべて見る<i class="fas fa-chevron-right ml-1 text-xs"></i></a></div><div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">' + productsHtml + '</div></section>' : ''}
+
+        ${categoriesHtml ? '<section class="mb-12"><h2 class="section-heading mb-6">カテゴリから探す</h2><div class="flex flex-wrap">' + categoriesHtml + '</div></section>' : ''}
+
+        <section class="mb-12">
+            <h2 class="section-heading mb-6">PARTS HUBで中古パーツを探すメリット</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="info-card text-center">
+                    <div class="text-2xl font-black text-red-500 mb-2">0円</div>
+                    <p class="text-xs text-gray-500">出品手数料</p>
+                </div>
+                <div class="info-card text-center">
+                    <div class="text-2xl font-black text-red-500 mb-2">10%</div>
+                    <p class="text-xs text-gray-500">販売時手数料のみ</p>
+                </div>
+                <div class="info-card text-center">
+                    <div class="text-2xl font-black text-red-500 mb-2">Stripe</div>
+                    <p class="text-xs text-gray-500">安全なエスクロー決済</p>
+                </div>
+            </div>
+        </section>
+
+        ${sameMaker ? '<section class="mb-12"><h2 class="section-heading mb-6">' + vehicle.maker + 'の他の車種</h2><div class="flex flex-wrap">' + sameMaker + '</div></section>' : ''}
+    </main>
+
+    <section class="cta-section text-white py-14 sm:py-20">
+        <div class="max-w-3xl mx-auto px-4 text-center">
+            <h2 class="text-xl sm:text-2xl font-bold mb-4">${vehicle.name}のパーツをお探しですか？</h2>
+            <p class="text-slate-400 text-sm sm:text-base mb-8 leading-relaxed">PARTS HUBなら全国の整備工場が出品する中古・リビルトパーツから、<br class="hidden sm:block">お探しの${vehicle.name}用パーツが見つかるかもしれません。</p>
+            <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                <a href="/search?q=${encodeURIComponent(vehicle.name)}" class="inline-block px-8 py-3.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-colors text-base shadow-lg shadow-red-500/20">${vehicle.name}のパーツを検索</a>
+                <a href="/register" class="inline-block px-8 py-3.5 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl transition-colors text-base border border-white/20">無料で会員登録</a>
+            </div>
+        </div>
+    </section>
+
+    ${Footer()}
+    <script src="${v('/static/auth-header.js')}"></script>
+    <script src="${v('/static/notification-badge.js')}"></script>
+</body>
+</html>`)
+})
+
+// ========================================
+// 整備ガイド・コスト比較コンテンツ（/guide）
+// ========================================
+const GUIDES: Record<string, { title: string; desc: string; category: string; sections: { heading: string; body: string }[]; comparison?: { item: string; dealer: string; parts_hub: string; savings: string }[] }> = {
+  'brake-pad-cost': {
+    title: 'ブレーキパッド交換の費用比較',
+    desc: 'ブレーキパッド交換にかかる費用をディーラー・カー用品店・PARTS HUB活用の3パターンで徹底比較。整備工場が仕入れコストを削減する方法を解説します。',
+    category: '費用比較',
+    sections: [
+      { heading: 'ブレーキパッド交換の一般的な費用', body: 'ブレーキパッドの交換は、安全に直結する重要な整備項目です。一般的にフロント左右で部品代5,000円〜20,000円、工賃3,000円〜8,000円が相場です。ディーラーでは純正品を使用するため費用が高くなりがちですが、社外品や中古品を活用することで大幅なコスト削減が可能です。' },
+      { heading: 'なぜ整備工場はパーツ仕入れコストに悩むのか', body: '純正部品は品質が保証されている反面、メーカー希望小売価格での仕入れが基本です。特に緊急の修理対応時は、部品商からの即日配送に頼らざるを得ず、割引交渉の余地が少ないのが実情です。PARTS HUBでは全国の整備工場が余剰在庫を出品しているため、純正品を市価より安く入手できる可能性があります。' },
+      { heading: '中古・リビルトパーツ活用のメリット', body: '走行距離の少ない車両から取り外されたパーツは、新品と遜色ない性能を持つことが多くあります。特にブレーキキャリパーやローターは、リビルト品でも十分な制動力を発揮します。PARTS HUBでは出品者が状態を明記し、写真で確認できるため、品質に納得した上で購入できます。' }
+    ],
+    comparison: [
+      { item: 'フロントブレーキパッド（純正）', dealer: '12,000〜18,000円', parts_hub: '3,000〜8,000円', savings: '最大60%削減' },
+      { item: 'ブレーキローター（フロント左右）', dealer: '20,000〜35,000円', parts_hub: '8,000〜15,000円', savings: '最大55%削減' },
+      { item: 'ブレーキキャリパー（リビルト）', dealer: '30,000〜50,000円', parts_hub: '10,000〜25,000円', savings: '最大50%削減' }
+    ]
+  },
+  'genuine-vs-aftermarket': {
+    title: '純正品 vs 社外品 徹底比較ガイド',
+    desc: '自動車パーツの純正品と社外品、それぞれのメリット・デメリットを整備工場の視点から解説。お客様への提案にも使える実践的な情報をまとめました。',
+    category: '比較ガイド',
+    sections: [
+      { heading: '純正品の特徴と適するケース', body: '純正品はメーカーが品質を保証しており、適合性に問題が生じることはほぼありません。保証期間内の車両や、安全に関わる重要保安部品（ブレーキ系・ステアリング系）には純正品の使用が推奨されます。ディーラー入庫の多い整備工場では、純正品使用がお客様の安心感につながります。' },
+      { heading: '社外品の特徴とコストメリット', body: '社外品は純正品の30〜60%の価格で入手できることが多く、整備工場の利益率向上に直結します。近年は社外品の品質も向上しており、消耗品（フィルター類・ベルト類・ワイパー等）では純正品と遜色ない性能のものも増えています。ただし、電装系パーツは互換性の問題が生じやすいため注意が必要です。' },
+      { heading: 'PARTS HUBで最適なパーツを見つける', body: 'PARTS HUBでは純正品・社外品の両方が出品されています。チャット機能で出品者に直接質問できるため、適合確認や状態の詳細を事前に把握できます。「必要な時に、必要な品質のパーツを、適正価格で」調達する新しい選択肢として、ぜひご活用ください。' }
+    ],
+    comparison: [
+      { item: 'エアフィルター', dealer: '3,000〜5,000円', parts_hub: '800〜2,000円', savings: '最大70%削減' },
+      { item: 'オイルフィルター', dealer: '1,500〜3,000円', parts_hub: '300〜1,000円', savings: '最大80%削減' },
+      { item: 'ファンベルト', dealer: '5,000〜10,000円', parts_hub: '2,000〜5,000円', savings: '最大50%削減' }
+    ]
+  },
+  'deadstock-management': {
+    title: 'デッドストック（余剰在庫）の活用術',
+    desc: '整備工場に眠る余剰パーツを収益化する方法を解説。在庫管理コストの削減と新たな収益源の確保を同時に実現する実践ガイドです。',
+    category: '経営改善',
+    sections: [
+      { heading: 'デッドストックが生まれる原因', body: '整備工場の余剰在庫は、車検対応で取り寄せたが不要になったパーツ、廃車から取り外した良品パーツ、モデルチェンジで適合しなくなった在庫など、日常業務の中で自然に発生します。これらは帳簿上は資産ですが、保管スペースを圧迫し、時間の経過とともに価値が下がるリスクがあります。' },
+      { heading: '余剰在庫のコスト計算', body: '在庫を保有するコストは、パーツ代だけではありません。保管スペースの家賃・光熱費、棚卸しの人件費、そして資金が固定されることによる機会損失を含めると、仕入れ値の年間15〜25%が在庫保有コストとして発生していると言われています。1点でも早く現金化することが経営改善の鍵です。' },
+      { heading: 'PARTS HUBでの出品のすすめ', body: '出品は無料、写真を撮ってスマホから数分で完了します。全国の整備工場がお客様になるため、地域限定の対面販売よりも圧倒的に売れる可能性が高まります。「売れないかも」と思うパーツも、別の地域では需要があるケースは珍しくありません。まずは在庫棚を見直して、3ヶ月以上動いていないパーツから出品してみてください。' }
+    ]
+  },
+  'sst-tool-guide': {
+    title: 'SST（特殊工具）の選び方と調達ガイド',
+    desc: 'SST（特殊工具）は高価で使用頻度が限られるケースが多い工具です。新品購入以外の賢い調達方法と、不要SSTの売却について解説します。',
+    category: '工具ガイド',
+    sections: [
+      { heading: 'SSTが必要になるケース', body: 'メーカー指定の特殊工具は、タイミングチェーン交換、ミッション分解、ハブベアリング圧入など、特定の整備作業で必須となります。しかし、年に数回しか使わないSSTを新品で揃えると、工具代だけで数十万円の投資が必要になります。特に新車種対応のSSTは発売直後の価格が高い傾向にあります。' },
+      { heading: '中古SSTという選択肢', body: 'SSTは消耗品ではないため、中古品でも機能に問題がないケースがほとんどです。廃業した工場や、取り扱い車種を変更した工場から、良品のSSTが出品されることがあります。PARTS HUBでは工具・SST専用カテゴリがあり、全国の整備工場が出品するSSTを手軽に検索できます。' },
+      { heading: '使わなくなったSSTを売る', body: '逆に、自社で不要になったSSTは他の整備工場にとっては貴重な工具です。特にメーカー専用工具は汎用品では代替できないため、必要としている工場は確実に存在します。PARTS HUBで出品すれば、工具棚のスペース確保と収益化を同時に実現できます。' }
+    ]
+  }
+}
+
+// ガイド一覧ページ
+app.get('/guide', (c) => {
+  let cardsHtml = ''
+  for (const [slug, guide] of Object.entries(GUIDES)) {
+    cardsHtml += '<a href="/guide/' + slug + '" class="guide-card"><div class="guide-cat">' + guide.category + '</div><h3 class="guide-title">' + guide.title + '</h3><p class="guide-desc">' + guide.desc.slice(0, 80) + '...</p><span class="guide-link">詳しく読む<i class="fas fa-chevron-right ml-1 text-xs"></i></span></a>'
+  }
+
+  return c.html(`<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>整備ガイド・コスト比較 - PARTS HUB（パーツハブ）</title>
+    <meta name="description" content="整備工場向けの実践ガイド。パーツの費用比較、純正vs社外品の選び方、余剰在庫の活用術、SST調達など経営に役立つ情報をまとめています。">
+    <link rel="canonical" href="https://parts-hub-tci.com/guide">
+    <meta property="og:title" content="整備ガイド・コスト比較 - PARTS HUB">
+    <meta property="og:description" content="整備工場向けの実践ガイド。パーツ費用比較、余剰在庫活用術、SST調達ガイドなど。">
+    <meta property="og:url" content="https://parts-hub-tci.com/guide">
+    <meta property="og:site_name" content="PARTS HUB">
+    <meta property="og:image" content="https://parts-hub-tci.com/icons/og-default.png">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"PARTS HUB","item":"https://parts-hub-tci.com/"},{"@type":"ListItem","position":2,"name":"整備ガイド"}]}</script>
+    <meta name="theme-color" content="#ff4757">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+      body { font-family: 'Noto Sans JP', sans-serif; }
+      .guide-card { display: block; background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #f3f4f6; text-decoration: none; transition: all 0.2s; }
+      .guide-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.1); transform: translateY(-2px); }
+      .guide-cat { display: inline-block; font-size: 11px; font-weight: 600; color: #dc2626; background: #fef2f2; padding: 3px 10px; border-radius: 4px; margin-bottom: 10px; }
+      .guide-title { font-size: 16px; font-weight: 700; color: #1f2937; margin-bottom: 8px; line-height: 1.5; }
+      .guide-desc { font-size: 13px; color: #6b7280; line-height: 1.6; margin-bottom: 12px; }
+      .guide-link { font-size: 13px; font-weight: 600; color: #dc2626; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+            <a href="/" class="text-gray-600 hover:text-gray-900 flex items-center gap-2"><i class="fas fa-arrow-left"></i><span class="text-sm font-medium">トップ</span></a>
+            <a href="/" class="text-red-500 font-bold text-lg">PARTS HUB</a>
+            <div class="w-16"></div>
+        </div>
+    </header>
+    <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white py-12 sm:py-16">
+        <div class="max-w-6xl mx-auto px-4 text-center">
+            <p class="text-red-400 text-sm font-semibold tracking-wider mb-3">MAINTENANCE GUIDE</p>
+            <h1 class="text-2xl sm:text-3xl font-bold mb-3">整備ガイド・コスト比較</h1>
+            <p class="text-slate-400 text-sm sm:text-base max-w-xl mx-auto">整備工場の経営に役立つ実践的なガイドを掲載しています。</p>
+        </div>
+    </div>
+    <main class="max-w-4xl mx-auto px-4 py-8 sm:py-12">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">${cardsHtml}</div>
+    </main>
+    ${Footer()}
+    <script src="${v('/static/auth-header.js')}"></script>
+    <script src="${v('/static/notification-badge.js')}"></script>
+</body>
+</html>`)
+})
+
+// ガイド詳細ページ
+app.get('/guide/:slug', (c) => {
+  const slug = c.req.param('slug')
+  const guide = GUIDES[slug]
+  if (!guide) return c.redirect('/guide', 302)
+
+  let sectionsHtml = ''
+  for (const sec of guide.sections) {
+    sectionsHtml += '<section class="mb-10"><h2 class="section-heading mb-4">' + sec.heading + '</h2><div class="info-card"><p class="text-sm text-gray-700 leading-relaxed">' + sec.body + '</p></div></section>'
+  }
+
+  let comparisonHtml = ''
+  if (guide.comparison) {
+    let rows = ''
+    for (const row of guide.comparison) {
+      rows += '<tr><td class="py-3 px-4 text-sm font-medium text-gray-900">' + row.item + '</td><td class="py-3 px-4 text-sm text-gray-500 text-right">' + row.dealer + '</td><td class="py-3 px-4 text-sm text-red-600 font-semibold text-right">' + row.parts_hub + '</td><td class="py-3 px-4 text-right"><span class="inline-block text-xs font-bold text-white bg-red-500 rounded px-2 py-0.5">' + row.savings + '</span></td></tr>'
+    }
+    comparisonHtml = '<section class="mb-10"><h2 class="section-heading mb-4">費用比較表</h2><div class="info-card overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b border-gray-200"><th class="py-3 px-4 text-xs font-semibold text-gray-400 uppercase">パーツ</th><th class="py-3 px-4 text-xs font-semibold text-gray-400 uppercase text-right">ディーラー相場</th><th class="py-3 px-4 text-xs font-semibold text-red-400 uppercase text-right">PARTS HUB</th><th class="py-3 px-4 text-xs font-semibold text-gray-400 uppercase text-right">削減率</th></tr></thead><tbody class="divide-y divide-gray-100">' + rows + '</tbody></table></div></section>'
+  }
+
+  return c.html(`<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${guide.title} - PARTS HUB（パーツハブ）</title>
+    <meta name="description" content="${guide.desc}">
+    <link rel="canonical" href="https://parts-hub-tci.com/guide/${slug}">
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="${guide.title} - PARTS HUB">
+    <meta property="og:description" content="${guide.desc.slice(0, 120)}">
+    <meta property="og:url" content="https://parts-hub-tci.com/guide/${slug}">
+    <meta property="og:site_name" content="PARTS HUB">
+    <meta property="og:image" content="https://parts-hub-tci.com/icons/og-default.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="${guide.title}">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+    <script type="application/ld+json">${JSON.stringify({
+      "@context": "https://schema.org", "@type": "Article",
+      "headline": guide.title,
+      "description": guide.desc,
+      "url": "https://parts-hub-tci.com/guide/" + slug,
+      "publisher": { "@type": "Organization", "name": "PARTS HUB", "url": "https://parts-hub-tci.com/" },
+      "breadcrumb": { "@type": "BreadcrumbList", "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "PARTS HUB", "item": "https://parts-hub-tci.com/" },
+        { "@type": "ListItem", "position": 2, "name": "整備ガイド", "item": "https://parts-hub-tci.com/guide" },
+        { "@type": "ListItem", "position": 3, "name": guide.title }
+      ]}
+    })}</script>
+    <meta name="theme-color" content="#ff4757">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+      body { font-family: 'Noto Sans JP', sans-serif; }
+      .section-heading { font-size: 18px; font-weight: 700; color: #1f2937; position: relative; padding-left: 16px; }
+      .section-heading::before { content: ''; position: absolute; left: 0; top: 2px; bottom: 2px; width: 4px; background: linear-gradient(180deg, #ef4444, #f97316); border-radius: 2px; }
+      .info-card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #f3f4f6; }
+      .cta-section { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+            <a href="/guide" class="text-gray-600 hover:text-gray-900 flex items-center gap-2"><i class="fas fa-arrow-left"></i><span class="text-sm font-medium">ガイド一覧</span></a>
+            <a href="/" class="text-red-500 font-bold text-lg">PARTS HUB</a>
+            <a href="/register" class="text-sm font-semibold text-white bg-red-500 hover:bg-red-600 px-4 py-1.5 rounded-lg transition-colors">無料登録</a>
+        </div>
+    </header>
+    <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white py-12 sm:py-16">
+        <div class="max-w-4xl mx-auto px-4 text-center">
+            <div class="inline-block px-3 py-1 bg-red-500/20 text-red-300 text-xs font-semibold rounded-full tracking-wider mb-4">${guide.category}</div>
+            <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold leading-tight">${guide.title}</h1>
+        </div>
+    </div>
+    <main class="max-w-3xl mx-auto px-4 py-10 sm:py-14">
+        ${sectionsHtml}
+        ${comparisonHtml}
+    </main>
+    <section class="cta-section text-white py-14 sm:py-20">
+        <div class="max-w-3xl mx-auto px-4 text-center">
+            <h2 class="text-xl sm:text-2xl font-bold mb-4">パーツ調達コストを見直しませんか？</h2>
+            <p class="text-slate-400 text-sm sm:text-base mb-8 leading-relaxed">PARTS HUBなら全国の整備工場が出品する純正・社外・リビルトパーツから、<br class="hidden sm:block">最適な価格のパーツを見つけることができます。</p>
+            <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                <a href="/search" class="inline-block px-8 py-3.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-colors text-base shadow-lg shadow-red-500/20">パーツを検索する</a>
+                <a href="/register" class="inline-block px-8 py-3.5 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl transition-colors text-base border border-white/20">無料で会員登録</a>
+            </div>
+        </div>
+    </section>
+    ${Footer()}
+    <script src="${v('/static/auth-header.js')}"></script>
+    <script src="${v('/static/notification-badge.js')}"></script>
+</body>
+</html>`)
+})
+
+// ========================================
 // HTMLサイトマップページ
 // ========================================
 app.get('/sitemap', async (c) => {
@@ -10050,6 +10575,76 @@ app.get('/faq', (c) => {
               "@type": "Answer",
               "text": "大量の在庫や出品作業が困難な場合、当社スタッフがお客様に代わって撮影・出品・発送までを代行するサービスです。出張代理出品と郵送代理出品の2種類があります。詳細はお問い合わせください。"
             }
+          },{
+            "@type": "Question",
+            "name": "純正部品と社外品の違いは何ですか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "純正部品はメーカー品質保証で適合性が確実ですが価格は高めです。社外品は純正の30〜60%の価格で、消耗品は十分な品質があります。PARTS HUBでは両方を取り扱い、出品者にチャットで確認も可能です。"
+            }
+          },{
+            "@type": "Question",
+            "name": "余剰在庫（デッドストック）を処分するにはどうすれば？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "PARTS HUBに無料で出品できます。在庫保有コストは仕入れ値の年間15〜25%。写真を撮ってスマホから数分で出品完了、全国の整備工場に販売可能です。"
+            }
+          },{
+            "@type": "Question",
+            "name": "SST（特殊工具）の売買はできますか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "はい、SST専用カテゴリがあります。タイミングチェーン工具、ハブベアリングプーラー、診断機など、廃業や車種変更した工場から良品SSTが出品されています。"
+            }
+          },{
+            "@type": "Question",
+            "name": "エンジンやミッションなど大型部品の取引は可能ですか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "はい、路線便（西濃運輸・福山通運）で全国配送可能です。パレット積みにも対応。出品者との直接引き取りも可能です。写真・チャットで事前に状態確認ができます。"
+            }
+          },{
+            "@type": "Question",
+            "name": "品番（部品番号）で検索できますか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "はい、フリーワード検索でOEM品番や純正部品番号で検索できます。例：04465-28490（ブレーキパッド）や、車種名+パーツ名での検索も可能です。"
+            }
+          },{
+            "@type": "Question",
+            "name": "取引の安全性はどのように確保されていますか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Stripe社のSSL/TLS暗号化決済、取引完了までのエスクロー方式、出品者の本人確認、購入前のチャット機能で安全な取引を実現しています。"
+            }
+          },{
+            "@type": "Question",
+            "name": "商品が届かない場合はどうなりますか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "エスクロー方式により受取確認まで売上金は確定しません。追跡番号での確認、出品者へのチャット問い合わせ、PARTS HUB事務局への連絡で対応します。"
+            }
+          },{
+            "@type": "Question",
+            "name": "価格交渉はできますか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "はい、商品ページの価格交渉ボタンから希望金額を提示できます。出品者が承認すると提示金額で購入可能です。まとめ買いの意思を伝えると承認率が上がります。"
+            }
+          },{
+            "@type": "Question",
+            "name": "中古パーツの品質はどう判断すればよいですか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "PARTS HUBでは商品状態を6段階（新品〜ジャンク）で表示。複数枚の写真で外観確認、走行距離・使用期間の記載確認、チャットで出品者に直接質問、過去の取引評価を参考にできます。"
+            }
+          },{
+            "@type": "Question",
+            "name": "法人としての利用・請求書発行は可能ですか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "はい、法人・個人事業主として利用可能です。領収書はマイページから発行、年間取引明細のダウンロード、インボイス対応（適格請求書発行事業者の登録番号記載）も可能です。"
+            }
           }]
         }
         </script>
@@ -10495,6 +11090,306 @@ app.get('/faq', (c) => {
                                 <a href="/contact?type=proxy_shipping" class="inline-block bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-bold transition-colors">
                                     <i class="fas fa-box mr-2"></i>郵送代理出品
                                 </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- カテゴリ区切り: 整備工場の日常業務 -->
+            <div class="mt-10 mb-4">
+              <h2 class="text-lg font-bold text-gray-800 flex items-center">
+                <span class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center mr-3"><i class="fas fa-tools text-red-500 text-sm"></i></span>
+                整備工場の日常業務について
+              </h2>
+              <p class="text-sm text-gray-500 mt-1 ml-11">パーツの仕入れ・在庫管理に関するよくある質問</p>
+            </div>
+
+            <div class="space-y-4">
+                <!-- FAQ 11 -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <button onclick="toggleFAQ('faq11')" class="w-full text-left p-6 hover:bg-gray-50 transition-colors flex items-center justify-between">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-bold text-gray-900 mb-1">
+                                <i class="fas fa-circle text-red-500 text-xs mr-2"></i>
+                                純正部品と社外品の違いは何ですか？
+                            </h3>
+                        </div>
+                        <i class="fas fa-chevron-down text-gray-400 transition-transform" id="icon-faq11"></i>
+                    </button>
+                    <div id="faq11" class="hidden px-6 pb-6">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <div class="grid md:grid-cols-2 gap-4 mb-4">
+                                <div class="bg-white p-4 rounded border-l-4 border-blue-500">
+                                    <h4 class="font-bold text-blue-700 mb-2">純正部品（OEM）</h4>
+                                    <ul class="text-sm text-gray-700 space-y-1">
+                                        <li>- 自動車メーカー純正の品質保証</li>
+                                        <li>- 適合性が確実</li>
+                                        <li>- 価格は高め</li>
+                                        <li>- 安全部品は純正推奨</li>
+                                    </ul>
+                                </div>
+                                <div class="bg-white p-4 rounded border-l-4 border-green-500">
+                                    <h4 class="font-bold text-green-700 mb-2">社外品（アフターマーケット）</h4>
+                                    <ul class="text-sm text-gray-700 space-y-1">
+                                        <li>- 純正の30〜60%の価格</li>
+                                        <li>- 消耗品は十分な品質</li>
+                                        <li>- 選択肢が豊富</li>
+                                        <li>- 電装系は互換性に注意</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <p class="text-sm text-gray-600">PARTS HUBでは純正品・社外品の両方を出品者が明記しており、チャットで出品者に直接確認も可能です。<a href="/guide/genuine-vs-aftermarket" class="text-red-500 hover:underline font-semibold ml-1">詳しい比較ガイドはこちら</a></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ 12 -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <button onclick="toggleFAQ('faq12')" class="w-full text-left p-6 hover:bg-gray-50 transition-colors flex items-center justify-between">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-bold text-gray-900 mb-1">
+                                <i class="fas fa-circle text-red-500 text-xs mr-2"></i>
+                                余剰在庫（デッドストック）を処分するにはどうすれば？
+                            </h3>
+                        </div>
+                        <i class="fas fa-chevron-down text-gray-400 transition-transform" id="icon-faq12"></i>
+                    </button>
+                    <div id="faq12" class="hidden px-6 pb-6">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <p class="text-gray-700 mb-3">車検用に仕入れたが不要になったパーツ、廃車から取り外した良品パーツなど、工場に眠る在庫をPARTS HUBで全国の整備工場に販売できます。</p>
+                            <div class="bg-white p-4 rounded border-2 border-amber-200 mb-3">
+                                <h4 class="font-bold text-amber-700 mb-2"><i class="fas fa-lightbulb mr-1"></i>在庫保有コストの目安</h4>
+                                <p class="text-sm text-gray-700">仕入れ値の年間15〜25%が在庫保有コスト（保管スペース・棚卸し人件費・機会損失）として発生しています。1点でも早い現金化が経営改善の鍵です。</p>
+                            </div>
+                            <p class="text-sm text-gray-600">出品は無料、写真を撮ってスマホから数分で完了。<a href="/guide/deadstock-management" class="text-red-500 hover:underline font-semibold">デッドストック活用ガイド</a></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ 13 -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <button onclick="toggleFAQ('faq13')" class="w-full text-left p-6 hover:bg-gray-50 transition-colors flex items-center justify-between">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-bold text-gray-900 mb-1">
+                                <i class="fas fa-circle text-red-500 text-xs mr-2"></i>
+                                SST（特殊工具）の売買はできますか？
+                            </h3>
+                        </div>
+                        <i class="fas fa-chevron-down text-gray-400 transition-transform" id="icon-faq13"></i>
+                    </button>
+                    <div id="faq13" class="hidden px-6 pb-6">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <p class="text-gray-700 mb-3">はい、SST（特殊工具）専用カテゴリがあります。メーカー指定の特殊工具は新品で数十万円する場合もありますが、中古品であれば大幅にコストを抑えられます。</p>
+                            <div class="flex flex-wrap gap-2 mb-3">
+                                <span class="px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-700">タイミングチェーン工具</span>
+                                <span class="px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-700">ハブベアリングプーラー</span>
+                                <span class="px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-700">エンジンクレーン</span>
+                                <span class="px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-700">ミッションジャッキ</span>
+                                <span class="px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-700">診断機</span>
+                            </div>
+                            <p class="text-sm text-gray-600">廃業した工場や車種変更した工場から良品SSTが出品されることがあります。<a href="/guide/sst-tool-guide" class="text-red-500 hover:underline font-semibold">SST調達ガイド</a></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ 14 -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <button onclick="toggleFAQ('faq14')" class="w-full text-left p-6 hover:bg-gray-50 transition-colors flex items-center justify-between">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-bold text-gray-900 mb-1">
+                                <i class="fas fa-circle text-red-500 text-xs mr-2"></i>
+                                エンジンやミッションなど大型部品の取引は可能ですか？
+                            </h3>
+                        </div>
+                        <i class="fas fa-chevron-down text-gray-400 transition-transform" id="icon-faq14"></i>
+                    </button>
+                    <div id="faq14" class="hidden px-6 pb-6">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <p class="text-gray-700 mb-3">はい、エンジン・ミッション・デフ・足回りASSYなどの大型部品も多数取引されています。</p>
+                            <div class="space-y-2">
+                                <div class="flex items-start"><i class="fas fa-truck text-blue-500 mr-2 mt-1"></i><span class="text-gray-700"><strong>配送：</strong>路線便（西濃運輸・福山通運など）で全国配送可能。パレット積みにも対応。</span></div>
+                                <div class="flex items-start"><i class="fas fa-handshake text-green-500 mr-2 mt-1"></i><span class="text-gray-700"><strong>直接引き取り：</strong>出品者と相談のうえ、現地引き取りも可能です。</span></div>
+                                <div class="flex items-start"><i class="fas fa-camera text-red-500 mr-2 mt-1"></i><span class="text-gray-700"><strong>状態確認：</strong>写真・動画での状態確認、チャットでの詳細質問ができます。</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ 15 -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <button onclick="toggleFAQ('faq15')" class="w-full text-left p-6 hover:bg-gray-50 transition-colors flex items-center justify-between">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-bold text-gray-900 mb-1">
+                                <i class="fas fa-circle text-red-500 text-xs mr-2"></i>
+                                品番（部品番号）で検索できますか？
+                            </h3>
+                        </div>
+                        <i class="fas fa-chevron-down text-gray-400 transition-transform" id="icon-faq15"></i>
+                    </button>
+                    <div id="faq15" class="hidden px-6 pb-6">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <p class="text-gray-700 mb-3">はい、PARTS HUBの検索機能ではフリーワード検索に対応しており、OEM品番や純正部品番号で検索できます。出品者がタイトルや説明に品番を記載している場合、ヒットします。</p>
+                            <div class="bg-white p-4 rounded border-2 border-blue-200">
+                                <h4 class="font-bold text-blue-700 mb-2"><i class="fas fa-search mr-1"></i>検索のコツ</h4>
+                                <ul class="text-sm text-gray-700 space-y-1">
+                                    <li>- 純正品番：例「04465-28490」（ブレーキパッド）</li>
+                                    <li>- 車種 + パーツ名：例「プリウス ZVW30 ヘッドライト」</li>
+                                    <li>- メーカー + パーツ名：例「トヨタ エアフィルター」</li>
+                                </ul>
+                            </div>
+                            <div class="mt-3 text-center">
+                                <a href="/search" class="inline-block bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-bold transition-colors"><i class="fas fa-search mr-2"></i>商品を検索する</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- カテゴリ区切り: 取引の安全性 -->
+            <div class="mt-10 mb-4">
+              <h2 class="text-lg font-bold text-gray-800 flex items-center">
+                <span class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3"><i class="fas fa-shield-alt text-blue-500 text-sm"></i></span>
+                取引の安全性・トラブル対応
+              </h2>
+              <p class="text-sm text-gray-500 mt-1 ml-11">安心して取引するための仕組みについて</p>
+            </div>
+
+            <div class="space-y-4">
+                <!-- FAQ 16 -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <button onclick="toggleFAQ('faq16')" class="w-full text-left p-6 hover:bg-gray-50 transition-colors flex items-center justify-between">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-bold text-gray-900 mb-1">
+                                <i class="fas fa-circle text-red-500 text-xs mr-2"></i>
+                                取引の安全性はどのように確保されていますか？
+                            </h3>
+                        </div>
+                        <i class="fas fa-chevron-down text-gray-400 transition-transform" id="icon-faq16"></i>
+                    </button>
+                    <div id="faq16" class="hidden px-6 pb-6">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <div class="grid sm:grid-cols-2 gap-3 mb-3">
+                                <div class="bg-white p-3 rounded border-l-4 border-blue-500">
+                                    <h4 class="font-bold text-sm text-gray-900 mb-1"><i class="fas fa-lock text-blue-500 mr-1"></i>決済保護</h4>
+                                    <p class="text-xs text-gray-600">Stripe社のSSL/TLS暗号化決済で安全にお支払い</p>
+                                </div>
+                                <div class="bg-white p-3 rounded border-l-4 border-green-500">
+                                    <h4 class="font-bold text-sm text-gray-900 mb-1"><i class="fas fa-hand-holding-usd text-green-500 mr-1"></i>エスクロー</h4>
+                                    <p class="text-xs text-gray-600">取引完了まで売上金をPARTS HUBが預かる安心設計</p>
+                                </div>
+                                <div class="bg-white p-3 rounded border-l-4 border-purple-500">
+                                    <h4 class="font-bold text-sm text-gray-900 mb-1"><i class="fas fa-user-check text-purple-500 mr-1"></i>本人確認</h4>
+                                    <p class="text-xs text-gray-600">出品者は会員登録時に身元確認を実施</p>
+                                </div>
+                                <div class="bg-white p-3 rounded border-l-4 border-red-500">
+                                    <h4 class="font-bold text-sm text-gray-900 mb-1"><i class="fas fa-comments text-red-500 mr-1"></i>チャット機能</h4>
+                                    <p class="text-xs text-gray-600">購入前に出品者と直接やり取りが可能</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ 17 -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <button onclick="toggleFAQ('faq17')" class="w-full text-left p-6 hover:bg-gray-50 transition-colors flex items-center justify-between">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-bold text-gray-900 mb-1">
+                                <i class="fas fa-circle text-red-500 text-xs mr-2"></i>
+                                商品が届かない場合はどうなりますか？
+                            </h3>
+                        </div>
+                        <i class="fas fa-chevron-down text-gray-400 transition-transform" id="icon-faq17"></i>
+                    </button>
+                    <div id="faq17" class="hidden px-6 pb-6">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <p class="text-gray-700 mb-3">PARTS HUBではエスクロー方式を採用しています。購入者が受取確認をするまで売上金は確定しません。万が一商品が届かない場合は以下の手順で対応します。</p>
+                            <div class="space-y-2">
+                                <div class="flex items-start gap-3">
+                                    <div class="w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0">1</div>
+                                    <span class="text-sm text-gray-700">発送通知の追跡番号で配送状況を確認</span>
+                                </div>
+                                <div class="flex items-start gap-3">
+                                    <div class="w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0">2</div>
+                                    <span class="text-sm text-gray-700">チャットで出品者に配送状況を問い合わせ</span>
+                                </div>
+                                <div class="flex items-start gap-3">
+                                    <div class="w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0">3</div>
+                                    <span class="text-sm text-gray-700">解決しない場合はお問い合わせフォームからPARTS HUB事務局に連絡</span>
+                                </div>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-3">※配送事故の場合は配送会社の補償制度も適用されます。</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ 18 -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <button onclick="toggleFAQ('faq18')" class="w-full text-left p-6 hover:bg-gray-50 transition-colors flex items-center justify-between">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-bold text-gray-900 mb-1">
+                                <i class="fas fa-circle text-red-500 text-xs mr-2"></i>
+                                価格交渉はできますか？
+                            </h3>
+                        </div>
+                        <i class="fas fa-chevron-down text-gray-400 transition-transform" id="icon-faq18"></i>
+                    </button>
+                    <div id="faq18" class="hidden px-6 pb-6">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <p class="text-gray-700 mb-3">はい、商品ページの「価格交渉」ボタンから希望金額を提示できます。出品者が承認すると、提示した金額で購入が可能になります。</p>
+                            <div class="bg-blue-50 p-3 rounded border-l-4 border-blue-500">
+                                <p class="text-sm text-blue-900"><i class="fas fa-info-circle mr-1"></i><strong>交渉のコツ：</strong>まとめ買いの意思を伝えると承認率が上がる傾向にあります。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ 19 -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <button onclick="toggleFAQ('faq19')" class="w-full text-left p-6 hover:bg-gray-50 transition-colors flex items-center justify-between">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-bold text-gray-900 mb-1">
+                                <i class="fas fa-circle text-red-500 text-xs mr-2"></i>
+                                中古パーツの品質はどう判断すればよいですか？
+                            </h3>
+                        </div>
+                        <i class="fas fa-chevron-down text-gray-400 transition-transform" id="icon-faq19"></i>
+                    </button>
+                    <div id="faq19" class="hidden px-6 pb-6">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <p class="text-gray-700 mb-3">PARTS HUBでは出品時に商品の状態を「新品」「未使用に近い」「目立った傷や汚れなし」「やや傷や汚れあり」「傷や汚れあり」「ジャンク」の6段階で表示しています。</p>
+                            <div class="bg-white p-4 rounded border-2 border-green-200">
+                                <h4 class="font-bold text-green-700 mb-2"><i class="fas fa-check-double mr-1"></i>品質確認のポイント</h4>
+                                <ul class="text-sm text-gray-700 space-y-1">
+                                    <li>- 複数枚の写真で外観・傷を確認</li>
+                                    <li>- 走行距離・使用期間の記載を確認</li>
+                                    <li>- 不明点はチャットで出品者に直接質問</li>
+                                    <li>- 出品者の過去の取引評価を参考にする</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ 20 -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <button onclick="toggleFAQ('faq20')" class="w-full text-left p-6 hover:bg-gray-50 transition-colors flex items-center justify-between">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-bold text-gray-900 mb-1">
+                                <i class="fas fa-circle text-red-500 text-xs mr-2"></i>
+                                法人としての利用・請求書発行は可能ですか？
+                            </h3>
+                        </div>
+                        <i class="fas fa-chevron-down text-gray-400 transition-transform" id="icon-faq20"></i>
+                    </button>
+                    <div id="faq20" class="hidden px-6 pb-6">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <p class="text-gray-700 mb-3">はい、法人・個人事業主としてご利用いただけます。会員登録時に法人情報を登録することで、取引履歴の管理がしやすくなります。</p>
+                            <div class="space-y-2 text-sm text-gray-700">
+                                <div class="flex items-start"><i class="fas fa-file-invoice text-blue-500 mr-2 mt-1"></i><span><strong>領収書：</strong>取引完了後にマイページから発行可能です。</span></div>
+                                <div class="flex items-start"><i class="fas fa-building text-green-500 mr-2 mt-1"></i><span><strong>法人利用：</strong>仕入れ経費として計上可能。年間取引明細もダウンロードできます。</span></div>
+                                <div class="flex items-start"><i class="fas fa-receipt text-amber-500 mr-2 mt-1"></i><span><strong>インボイス：</strong>適格請求書発行事業者の場合はプロフィールに登録番号を記載できます。</span></div>
                             </div>
                         </div>
                     </div>

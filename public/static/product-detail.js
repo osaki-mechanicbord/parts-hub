@@ -239,6 +239,9 @@ function renderProduct() {
     
     // 手数料表示
     renderFeeInfo();
+    
+    // シェアボタン
+    setupShareButtons();
 }
 
 // 手数料情報を表示
@@ -693,3 +696,30 @@ function showError(message) {
 document.addEventListener('DOMContentLoaded', () => {
     loadProduct();
 });
+
+// シェアボタンURL設定
+function setupShareButtons() {
+    if (!product) return;
+    var url = encodeURIComponent(window.location.href);
+    var title = encodeURIComponent(product.title + ' - PARTS HUB');
+    var lineBtn = document.getElementById('share-line');
+    if (lineBtn) lineBtn.href = 'https://social-plugins.line.me/lineit/share?url=' + url;
+    var xBtn = document.getElementById('share-x');
+    if (xBtn) xBtn.href = 'https://twitter.com/intent/tweet?url=' + url + '&text=' + title;
+    var fbBtn = document.getElementById('share-facebook');
+    if (fbBtn) fbBtn.href = 'https://www.facebook.com/sharer/sharer.php?u=' + url;
+}
+
+function copyProductUrl() {
+    navigator.clipboard.writeText(window.location.href).then(function() {
+        var btn = document.getElementById('share-copy');
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-check text-sm"></i>';
+            btn.classList.add('bg-green-200', 'text-green-700');
+            setTimeout(function() {
+                btn.innerHTML = '<i class="fas fa-link text-sm"></i>';
+                btn.classList.remove('bg-green-200', 'text-green-700');
+            }, 2000);
+        }
+    });
+}
