@@ -427,19 +427,112 @@ function renderOemParts() {
 function renderSellerInfo() {
     const shopName = document.getElementById('seller-shop-name');
     const shopType = document.getElementById('seller-shop-type');
-    const rating = document.getElementById('seller-rating');
     const verified = document.getElementById('seller-verified');
+    const shopLink = document.getElementById('seller-shop-link');
     
-    if (shopName) shopName.textContent = product.shop_name || product.seller_name || product.company_name || '未設定';
+    const displayName = product.shop_name || product.seller_name || product.company_name || '未設定';
+    if (shopName) shopName.textContent = displayName;
     if (shopType) shopType.textContent = getShopTypeLabel(product.shop_type);
-    if (rating) rating.textContent = product.rating ? Number(product.rating).toFixed(1) : '新規出品者';
+    
+    // 出品者プロフィールリンク
+    if (shopLink && product.user_id) {
+        shopLink.href = '/seller/' + product.user_id;
+    }
     
     if (verified) {
         if (product.is_verified) {
-            verified.innerHTML = '<span class="inline-flex items-center px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-semibold rounded"><i class="fas fa-check-circle mr-1"></i>認証済み</span>';
+            verified.innerHTML = '<span class="inline-flex items-center px-1.5 py-0.5 bg-blue-100 text-blue-800 text-[10px] font-semibold rounded"><i class="fas fa-check-circle mr-0.5"></i>認証済み</span>';
         } else {
             verified.innerHTML = '';
         }
+    }
+
+    // レビューサマリーを非同期で読み込む
+    if (product.user_id) {
+        loadSellerReviewSummary(product.user_id);
+    }
+}
+
+// 出品者レビューサマリーを読み込み
+async function loadSellerReviewSummary(sellerId) {
+    try {
+        const res = await axios.get('/api/reviews/seller/' + sellerId + '/summary');
+        if (!res.data.success) return;
+        const d = res.data.data;
+
+        // バッジ表示
+        const badgeArea = document.getElementById('seller-badge-area');
+        if (badgeArea && d.badge) {
+            const b = d.badge;
+            badgeArea.innerHTML = '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold" style="background:' + b.bgColor + ';color:' + b.color + '"><i class="fas ' + b.icon + ' mr-1"></i>' + b.label + '</span>';
+        }
+
+        // 星表示
+        const starsEl = document.getElementById('seller-stars');
+        if (starsEl) {
+            let starsHtml = '';
+            const avg = d.avg_rating;
+            for (let i = 1; i <= 5; i++) {
+                if (i <= Math.floor(avg)) {
+                    starsHtml += '<i class="fas fa-star"></i>';
+                } else if (i - avg < 1 && i - avg > 0) {
+                    starsHtml += '<i class="fas fa-star-half-alt"></i>';
+                } else {
+                    starsHtml += '<i class="far fa-star text-gray-300"></i>';
+                }
+            }
+            starsEl.innerHTML = starsHtml;
+        }
+
+        // 評価数値
+        const ratingEl = document.getElementById('seller-rating');
+        if (ratingEl) ratingEl.textContent = d.avg_rating > 0 ? d.avg_rating.toFixed(1) : '新規';
+
+        // レビュー件数
+        const countEl = document.getElementById('seller-review-count');
+        if (countEl) countEl.textContent = 'レビュー ' + d.total_reviews + '件';
+
+        // 取引完了数
+        const txEl = document.getElementById('seller-tx-count');
+        if (txEl) txEl.textContent = d.completed_transactions;
+
+        // 全レビューリンク
+        const allLink = document.getElementById('seller-all-reviews-link');
+        if (allLink) allLink.href = '/seller/' + sellerId;
+
+        // 評価バー（5→1の順）
+        const barsEl = document.getElementById('seller-rating-bars');
+        if (barsEl && d.total_reviews > 0) {
+            const dist = d.distribution;
+            const labels = [
+                { star: 5, count: dist.five },
+                { star: 4, count: dist.four },
+                { star: 3, count: dist.three },
+                { star: 2, count: dist.two },
+                { star: 1, count: dist.one }
+            ];
+            barsEl.innerHTML = labels.map(function(item) {
+                const pct = d.total_reviews > 0 ? Math.round((item.count / d.total_reviews) * 100) : 0;
+                return '<div class="flex items-center gap-1.5 text-xs"><span class="w-3 text-gray-500">' + item.star + '</span><div class="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden"><div class="bg-yellow-400 h-full rounded-full transition-all" style="width:' + pct + '%"></div></div><span class="w-6 text-right text-gray-400">' + item.count + '</span></div>';
+            }).join('');
+        } else if (barsEl) {
+            barsEl.innerHTML = '<p class="text-xs text-gray-400 text-center py-1">まだレビューはありません</p>';
+        }
+
+        // 直近レビュー表示（最新1件）
+        const latestEl = document.getElementById('seller-latest-review');
+        if (latestEl && d.recent_reviews && d.recent_reviews.length > 0) {
+            const r = d.recent_reviews[0];
+            const stars = Array.from({length: 5}, function(_, i) {
+                return i < r.rating ? '<i class="fas fa-star text-yellow-400"></i>' : '<i class="far fa-star text-gray-300"></i>';
+            }).join('');
+            const date = new Date(r.created_at);
+            const dateStr = date.getFullYear() + '/' + (date.getMonth() + 1) + '/' + date.getDate();
+            latestEl.classList.remove('hidden');
+            latestEl.innerHTML = '<div class="bg-gray-50 rounded-lg p-3"><div class="flex items-center justify-between mb-1"><div class="flex items-center gap-1 text-xs">' + stars + '</div><span class="text-[10px] text-gray-400">' + dateStr + '</span></div><p class="text-xs text-gray-600 line-clamp-2">' + (r.comment || '').substring(0, 80) + (r.comment && r.comment.length > 80 ? '...' : '') + '</p><p class="text-[10px] text-gray-400 mt-1">' + (r.reviewer_name || '匿名') + ' - ' + (r.product_title || '') + '</p></div>';
+        }
+    } catch(e) {
+        console.log('レビューサマリー取得スキップ:', e.message);
     }
 }
 

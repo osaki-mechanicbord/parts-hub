@@ -28,6 +28,7 @@ import articlesRoutes from './routes/articles'
 import vehicleDemoRoutes from './routes/vehicle-demo'
 import argosDemoRoutes from './routes/argos-demo'
 import argosRoutes from './routes/argos'
+import guideApiRoutes from './routes/guide'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -472,6 +473,9 @@ app.get('/sitemap.xml', async (c) => {
     partnerSlugs.forEach(slug => {
       staticPages.push({ url: '/partner/' + slug, changefreq: 'monthly', priority: '0.6' })
     })
+
+    // ウィジェットページをsitemapに追加
+    staticPages.push({ url: '/widget', changefreq: 'monthly', priority: '0.5' })
     
     let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
@@ -759,6 +763,7 @@ app.route('/api/vehicle-demo', vehicleDemoRoutes)
 app.route('/api/argos-demo', argosDemoRoutes)
 app.route('/api/argos', argosRoutes)  // 本番用ARGOS JPC API（ARGOS_API_ENABLED=true時のみ有効、公開予定: 2026年6月〜）
 app.route('/api/admin', adminRoutes)
+app.route('/api/guides', guideApiRoutes) // ガイド記事自動生成API
 app.route('/admin', adminPagesRoutes)
 
 // トップページ
@@ -3464,27 +3469,49 @@ app.get('/products/:id', async (c) => {
                         </div>
                     </div>
                     
-                    <!-- 出品者情報カード -->
+                    <!-- 出品者情報カード（レビュー・バッジ付き） -->
                     <div class="bg-white rounded-xl shadow-sm p-5">
                         <div class="flex items-center justify-between mb-4">
                             <h2 class="font-bold text-gray-900 text-lg">出品者</h2>
-                            <div class="flex items-center text-sm">
-                                <i class="fas fa-star text-yellow-400 mr-1"></i>
-                                <span id="seller-rating" class="font-semibold">-</span>
+                            <div id="seller-badge-area" class="flex items-center text-sm">
+                                <!-- バッジがJSで挿入される -->
                             </div>
                         </div>
                         <div class="space-y-3">
                             <div class="flex items-center space-x-3">
-                                <div class="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
+                                <div class="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden" id="seller-avatar">
                                     <i class="fas fa-store text-gray-400 text-lg"></i>
                                 </div>
-                                <div class="flex-1">
-                                    <div id="seller-shop-name" class="font-semibold text-gray-900">-</div>
-                                    <div class="flex items-center text-sm text-gray-500">
+                                <div class="flex-1 min-w-0">
+                                    <a id="seller-shop-link" href="#" class="hover:underline">
+                                        <div id="seller-shop-name" class="font-semibold text-gray-900 truncate">-</div>
+                                    </a>
+                                    <div class="flex items-center flex-wrap gap-1 text-sm text-gray-500">
                                         <span id="seller-shop-type">-</span>
-                                        <span id="seller-verified" class="ml-2"><!-- バッジ --></span>
+                                        <span id="seller-verified" class="ml-1"><!-- 認証バッジ --></span>
                                     </div>
                                 </div>
+                            </div>
+                            <!-- 評価サマリー -->
+                            <div id="seller-review-summary" class="border-t pt-3 mt-2">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="flex items-center">
+                                        <div id="seller-stars" class="flex text-yellow-400 text-sm mr-1.5"></div>
+                                        <span id="seller-rating" class="font-bold text-gray-900">-</span>
+                                    </div>
+                                    <span id="seller-review-count" class="text-xs text-gray-500">レビュー 0件</span>
+                                </div>
+                                <!-- 評価バー -->
+                                <div id="seller-rating-bars" class="space-y-1"></div>
+                            </div>
+                            <!-- 取引実績 -->
+                            <div class="flex items-center justify-between text-xs text-gray-500 border-t pt-2">
+                                <span><i class="fas fa-handshake mr-1"></i>取引完了 <span id="seller-tx-count">0</span>件</span>
+                                <a id="seller-all-reviews-link" href="#" class="text-red-500 hover:underline font-semibold">全てのレビューを見る <i class="fas fa-chevron-right text-[10px]"></i></a>
+                            </div>
+                            <!-- 直近レビュー（最新1件） -->
+                            <div id="seller-latest-review" class="hidden border-t pt-3">
+                                <!-- JSで挿入 -->
                             </div>
                         </div>
                     </div>
@@ -5591,6 +5618,447 @@ app.get('/profile/edit', (c) => {
         <script src="${v('/static/notification-badge.js')}"></script>
         <script src="${v('/static/bank-db.js')}"></script>
         <script src="${v('/static/profile-edit.js?v=20260328')}"></script>
+    </body>
+    </html>
+  `)
+})
+
+// ===== 埋め込みウィジェット ドキュメント＆デモページ =====
+app.get('/widget', (c) => {
+  return c.html(`<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>埋め込みウィジェット - PARTS HUB（パーツハブ）</title>
+    <meta name="description" content="PARTS HUBのパーツ検索ウィジェットを外部サイトに埋め込む方法。整備工場のWebサイトやブログに貼り付けて、パーツ検索機能を提供できます。">
+    <link rel="canonical" href="https://parts-hub-tci.com/widget">
+    <meta property="og:title" content="埋め込みウィジェット - PARTS HUB">
+    <meta property="og:description" content="外部サイトにPARTS HUBのパーツ検索機能を埋め込むウィジェット">
+    <meta property="og:url" content="https://parts-hub-tci.com/widget">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#ff4757">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Sans JP', sans-serif; }
+        code, .code-block { font-family: 'JetBrains Mono', monospace; }
+        .code-block { background: #1e293b; color: #e2e8f0; padding: 20px; border-radius: 12px; overflow-x: auto; font-size: 13px; line-height: 1.7; position: relative; }
+        .code-block .copy-btn { position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,0.1); border: none; color: #94a3b8; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+        .code-block .copy-btn:hover { background: rgba(255,255,255,0.2); color: #fff; }
+        .tag { color: #f472b6; }
+        .attr { color: #67e8f9; }
+        .val { color: #a5f3fc; }
+        .str { color: #86efac; }
+        .cmt { color: #64748b; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+            <a href="/" class="text-gray-600 hover:text-gray-900 flex items-center gap-2"><i class="fas fa-arrow-left"></i><span class="text-sm font-medium">トップ</span></a>
+            <a href="/" class="text-red-500 font-bold text-lg">PARTS HUB</a>
+            <div class="w-16"></div>
+        </div>
+    </header>
+
+    <!-- ヒーロー -->
+    <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white py-12 sm:py-16">
+        <div class="max-w-4xl mx-auto px-4 text-center">
+            <span class="inline-block px-3 py-1 bg-red-500/20 text-red-300 text-xs font-semibold rounded-full mb-4"><i class="fas fa-code mr-1"></i>EMBED WIDGET</span>
+            <h1 class="text-2xl sm:text-3xl font-bold mb-3">埋め込みウィジェット</h1>
+            <p class="text-slate-400 text-sm sm:text-base max-w-xl mx-auto">あなたのWebサイトにPARTS HUBのパーツ検索機能を簡単に埋め込めます。<br>コピー&ペーストするだけで設置完了。</p>
+        </div>
+    </div>
+
+    <main class="max-w-4xl mx-auto px-4 py-8 sm:py-12">
+        <!-- ステップ -->
+        <div class="mb-12">
+            <h2 class="text-lg font-bold text-gray-900 mb-6"><i class="fas fa-list-ol text-red-500 mr-2"></i>設置方法（3ステップ）</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+                    <div class="w-10 h-10 bg-red-50 rounded-full flex items-center justify-center mb-3"><span class="text-red-500 font-bold">1</span></div>
+                    <h3 class="font-bold text-gray-900 mb-1 text-sm">コードをコピー</h3>
+                    <p class="text-xs text-gray-500">下記の埋め込みコードをコピーします</p>
+                </div>
+                <div class="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+                    <div class="w-10 h-10 bg-red-50 rounded-full flex items-center justify-center mb-3"><span class="text-red-500 font-bold">2</span></div>
+                    <h3 class="font-bold text-gray-900 mb-1 text-sm">HTMLに貼り付け</h3>
+                    <p class="text-xs text-gray-500">ウィジェットを表示したい場所に貼り付けます</p>
+                </div>
+                <div class="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+                    <div class="w-10 h-10 bg-red-50 rounded-full flex items-center justify-center mb-3"><span class="text-red-500 font-bold">3</span></div>
+                    <h3 class="font-bold text-gray-900 mb-1 text-sm">完了！</h3>
+                    <p class="text-xs text-gray-500">パーツ検索機能が自動的に表示されます</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 基本コード -->
+        <div class="mb-10">
+            <h2 class="text-lg font-bold text-gray-900 mb-4"><i class="fas fa-code text-red-500 mr-2"></i>基本の埋め込みコード</h2>
+            <div class="code-block" id="code-basic">
+                <button class="copy-btn" onclick="copyCode('code-basic')"><i class="far fa-copy mr-1"></i>コピー</button>
+<span class="cmt">&lt;!-- PARTS HUB パーツ検索ウィジェット --&gt;</span>
+<span class="tag">&lt;div</span> <span class="attr">id</span>=<span class="str">"parts-hub-widget"</span><span class="tag">&gt;&lt;/div&gt;</span>
+<span class="tag">&lt;script</span> <span class="attr">src</span>=<span class="str">"https://parts-hub-tci.com/static/widget.js"</span><span class="tag">&gt;&lt;/script&gt;</span>
+            </div>
+        </div>
+
+        <!-- カスタマイズオプション -->
+        <div class="mb-10">
+            <h2 class="text-lg font-bold text-gray-900 mb-4"><i class="fas fa-sliders-h text-red-500 mr-2"></i>カスタマイズオプション</h2>
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                <table class="w-full text-sm">
+                    <thead><tr class="bg-gray-50 border-b"><th class="px-4 py-3 text-left font-semibold text-gray-700">属性</th><th class="px-4 py-3 text-left font-semibold text-gray-700">説明</th><th class="px-4 py-3 text-left font-semibold text-gray-700">デフォルト</th></tr></thead>
+                    <tbody class="divide-y divide-gray-100">
+                        <tr><td class="px-4 py-3"><code class="text-red-500 text-xs bg-red-50 px-1.5 py-0.5 rounded">data-theme</code></td><td class="px-4 py-3 text-gray-600">テーマ（<code>light</code> / <code>dark</code>）</td><td class="px-4 py-3 text-gray-400">light</td></tr>
+                        <tr><td class="px-4 py-3"><code class="text-red-500 text-xs bg-red-50 px-1.5 py-0.5 rounded">data-category</code></td><td class="px-4 py-3 text-gray-600">初期カテゴリ（all/engine/body/tools等）</td><td class="px-4 py-3 text-gray-400">all</td></tr>
+                        <tr><td class="px-4 py-3"><code class="text-red-500 text-xs bg-red-50 px-1.5 py-0.5 rounded">data-compact</code></td><td class="px-4 py-3 text-gray-600">コンパクト表示（カテゴリ非表示）</td><td class="px-4 py-3 text-gray-400">false</td></tr>
+                        <tr><td class="px-4 py-3"><code class="text-red-500 text-xs bg-red-50 px-1.5 py-0.5 rounded">data-max-results</code></td><td class="px-4 py-3 text-gray-600">最大表示件数</td><td class="px-4 py-3 text-gray-400">6</td></tr>
+                        <tr><td class="px-4 py-3"><code class="text-red-500 text-xs bg-red-50 px-1.5 py-0.5 rounded">data-target</code></td><td class="px-4 py-3 text-gray-600">挿入先のHTML要素ID</td><td class="px-4 py-3 text-gray-400">parts-hub-widget</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ダークテーマコード -->
+        <div class="mb-10">
+            <h3 class="font-bold text-gray-900 mb-3 text-sm">ダークテーマの場合</h3>
+            <div class="code-block" id="code-dark">
+                <button class="copy-btn" onclick="copyCode('code-dark')"><i class="far fa-copy mr-1"></i>コピー</button>
+<span class="tag">&lt;div</span> <span class="attr">id</span>=<span class="str">"parts-hub-widget"</span><span class="tag">&gt;&lt;/div&gt;</span>
+<span class="tag">&lt;script</span> <span class="attr">src</span>=<span class="str">"https://parts-hub-tci.com/static/widget.js"</span>
+  <span class="attr">data-theme</span>=<span class="str">"dark"</span>
+  <span class="attr">data-max-results</span>=<span class="str">"4"</span><span class="tag">&gt;&lt;/script&gt;</span>
+            </div>
+        </div>
+
+        <!-- ライブデモ -->
+        <div class="mb-10">
+            <h2 class="text-lg font-bold text-gray-900 mb-4"><i class="fas fa-eye text-red-500 mr-2"></i>ライブデモ</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="text-sm font-bold text-gray-700 mb-3">ライトテーマ</h3>
+                    <div id="demo-light"></div>
+                </div>
+                <div class="bg-gray-900 rounded-xl p-4">
+                    <h3 class="text-sm font-bold text-gray-300 mb-3">ダークテーマ</h3>
+                    <div id="demo-dark"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 利用規約 -->
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-5 mb-8">
+            <h3 class="font-bold text-amber-800 mb-2 text-sm"><i class="fas fa-info-circle mr-1"></i>ご利用にあたって</h3>
+            <ul class="text-xs text-amber-700 space-y-1">
+                <li>・ウィジェットの利用は無料です</li>
+                <li>・商用サイトでもご利用いただけます</li>
+                <li>・ウィジェットのソースコードの改変は禁止です</li>
+                <li>・「PARTS HUB」のクレジット表示を削除しないでください</li>
+                <li>・大量のAPIリクエストが発生する場合は事前にご連絡ください</li>
+            </ul>
+        </div>
+    </main>
+
+    ${Footer()}
+
+    <!-- ウィジェット読み込み（デモ用） -->
+    <script>
+    function copyCode(id) {
+        var el = document.getElementById(id);
+        var text = el.innerText.replace('コピー', '').trim();
+        navigator.clipboard.writeText(text).then(function() {
+            var btn = el.querySelector('.copy-btn');
+            btn.innerHTML = '<i class="fas fa-check mr-1"></i>コピー済み';
+            setTimeout(function() { btn.innerHTML = '<i class="far fa-copy mr-1"></i>コピー'; }, 2000);
+        });
+    }
+    </script>
+    <script src="${v('/static/widget.js')}" data-theme="light" data-target="demo-light" data-max-results="3"></script>
+    <script src="${v('/static/widget.js')}" data-theme="dark" data-target="demo-dark" data-compact="true" data-max-results="3"></script>
+</body>
+</html>`)
+})
+
+// ===== 出品者公開プロフィール（レビュー一覧・バッジ付き） =====
+app.get('/seller/:id', async (c) => {
+  const sellerId = c.req.param('id')
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>出品者プロフィール - PARTS HUB（パーツハブ）</title>
+        <meta name="description" content="PARTS HUBの出品者プロフィールとレビュー一覧です。取引実績やバッジ、評価を確認できます。">
+        <meta name="robots" content="noindex">
+        <meta name="theme-color" content="#ff4757">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+        <style>
+            body { font-family: 'Noto Sans JP', 'Inter', sans-serif; }
+            .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+        </style>
+    </head>
+    <body class="bg-gray-50 min-h-screen">
+        <!-- ヘッダー -->
+        <header class="sticky top-0 z-50 bg-white shadow-sm">
+            <div class="max-w-4xl mx-auto px-4 py-3 flex items-center">
+                <button onclick="history.back()" class="mr-3 text-gray-600 hover:text-gray-900"><i class="fas fa-arrow-left"></i></button>
+                <h1 class="font-bold text-gray-900">出品者プロフィール</h1>
+            </div>
+        </header>
+
+        <main class="max-w-4xl mx-auto px-4 py-6">
+            <!-- プロフィールカード -->
+            <div class="bg-white rounded-2xl shadow-sm p-6 mb-6">
+                <div class="flex items-start gap-4">
+                    <div class="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden" id="seller-avatar">
+                        <i class="fas fa-store text-gray-400 text-2xl"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center flex-wrap gap-2 mb-1">
+                            <h2 id="seller-name" class="text-xl font-bold text-gray-900 truncate">読み込み中...</h2>
+                            <span id="seller-badge" class="hidden"></span>
+                        </div>
+                        <div id="seller-type" class="text-sm text-gray-500 mb-2"></div>
+                        <div class="flex items-center flex-wrap gap-3 text-sm">
+                            <div class="flex items-center">
+                                <div id="seller-stars" class="flex text-yellow-400 mr-1"></div>
+                                <span id="seller-avg" class="font-bold text-gray-900">-</span>
+                            </div>
+                            <span class="text-gray-400">|</span>
+                            <span class="text-gray-600"><i class="fas fa-comment-dots mr-1"></i><span id="review-total">0</span> レビュー</span>
+                            <span class="text-gray-400">|</span>
+                            <span class="text-gray-600"><i class="fas fa-handshake mr-1"></i><span id="tx-total">0</span> 取引</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- バッジ進捗 -->
+                <div id="badge-progress" class="hidden mt-4 p-3 bg-gray-50 rounded-xl">
+                    <div class="flex items-center justify-between text-xs text-gray-500 mb-1">
+                        <span id="badge-current-label">現在のバッジ</span>
+                        <span id="badge-next-label">次のバッジまで</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div id="badge-progress-bar" class="h-2 rounded-full transition-all duration-500" style="width:0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 評価内訳 -->
+            <div class="bg-white rounded-2xl shadow-sm p-6 mb-6">
+                <h3 class="font-bold text-gray-900 mb-4">評価内訳</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- 評価バー -->
+                    <div>
+                        <div id="rating-bars" class="space-y-2"></div>
+                    </div>
+                    <!-- 詳細評価 -->
+                    <div id="detail-ratings" class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-600"><i class="fas fa-box mr-2 text-blue-400"></i>商品状態</span>
+                            <div class="flex items-center"><div class="w-24 bg-gray-100 rounded-full h-2 mr-2"><div id="bar-condition" class="bg-blue-400 h-2 rounded-full" style="width:0%"></div></div><span id="avg-condition" class="text-sm font-bold w-6 text-right">-</span></div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-600"><i class="fas fa-comments mr-2 text-green-400"></i>コミュニケーション</span>
+                            <div class="flex items-center"><div class="w-24 bg-gray-100 rounded-full h-2 mr-2"><div id="bar-communication" class="bg-green-400 h-2 rounded-full" style="width:0%"></div></div><span id="avg-communication" class="text-sm font-bold w-6 text-right">-</span></div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-600"><i class="fas fa-truck mr-2 text-orange-400"></i>配送</span>
+                            <div class="flex items-center"><div class="w-24 bg-gray-100 rounded-full h-2 mr-2"><div id="bar-shipping" class="bg-orange-400 h-2 rounded-full" style="width:0%"></div></div><span id="avg-shipping" class="text-sm font-bold w-6 text-right">-</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- フィルター -->
+            <div class="flex items-center gap-2 mb-4 overflow-x-auto pb-2">
+                <button onclick="filterReviews(0)" class="filter-btn active px-3 py-1.5 text-xs font-semibold rounded-full bg-red-500 text-white" data-rating="0">すべて</button>
+                <button onclick="filterReviews(5)" class="filter-btn px-3 py-1.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200" data-rating="5"><i class="fas fa-star text-yellow-400 mr-0.5"></i>5</button>
+                <button onclick="filterReviews(4)" class="filter-btn px-3 py-1.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200" data-rating="4"><i class="fas fa-star text-yellow-400 mr-0.5"></i>4</button>
+                <button onclick="filterReviews(3)" class="filter-btn px-3 py-1.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200" data-rating="3"><i class="fas fa-star text-yellow-400 mr-0.5"></i>3</button>
+                <button onclick="filterReviews(2)" class="filter-btn px-3 py-1.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200" data-rating="2"><i class="fas fa-star text-yellow-400 mr-0.5"></i>2</button>
+                <button onclick="filterReviews(1)" class="filter-btn px-3 py-1.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200" data-rating="1"><i class="fas fa-star text-yellow-400 mr-0.5"></i>1</button>
+            </div>
+
+            <!-- レビュー一覧 -->
+            <div id="reviews-list" class="space-y-4">
+                <div class="text-center py-8 text-gray-400"><i class="fas fa-spinner fa-spin text-2xl"></i><p class="mt-2 text-sm">レビューを読み込み中...</p></div>
+            </div>
+
+            <!-- もっと見る -->
+            <div id="load-more" class="hidden text-center mt-6">
+                <button onclick="loadMoreReviews()" class="px-6 py-2.5 bg-white border border-gray-300 rounded-full text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+                    <i class="fas fa-chevron-down mr-1"></i>もっと見る
+                </button>
+            </div>
+        </main>
+
+        ${Footer()}
+
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script>
+        const SELLER_ID = '${sellerId}';
+        let currentOffset = 0;
+        let currentRatingFilter = 0;
+        const LIMIT = 20;
+
+        document.addEventListener('DOMContentLoaded', () => { loadSummary(); loadReviews(); });
+
+        async function loadSummary() {
+            try {
+                const res = await axios.get('/api/reviews/seller/' + SELLER_ID + '/summary');
+                if (!res.data.success) return;
+                const d = res.data.data;
+                const b = d.badge;
+
+                // 名前は別APIで取得
+                try {
+                    const uRes = await axios.get('/api/products?user_id=' + SELLER_ID + '&limit=1');
+                    if (uRes.data.success && uRes.data.data && uRes.data.data.length > 0) {
+                        const p = uRes.data.data[0];
+                        document.getElementById('seller-name').textContent = p.shop_name || p.seller_name || p.company_name || '出品者 #' + SELLER_ID;
+                        document.getElementById('seller-type').textContent = getShopTypeLabel(p.shop_type);
+                    } else {
+                        document.getElementById('seller-name').textContent = '出品者 #' + SELLER_ID;
+                    }
+                } catch(e) {
+                    document.getElementById('seller-name').textContent = '出品者 #' + SELLER_ID;
+                }
+
+                // バッジ
+                if (b && b.level !== 'new') {
+                    const badge = document.getElementById('seller-badge');
+                    badge.classList.remove('hidden');
+                    badge.innerHTML = '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold" style="background:' + b.bgColor + ';color:' + b.color + '"><i class="fas ' + b.icon + ' mr-1"></i>' + b.label + '</span>';
+                }
+
+                // バッジ進捗
+                if (b && b.nextLevel) {
+                    const prog = document.getElementById('badge-progress');
+                    prog.classList.remove('hidden');
+                    document.getElementById('badge-current-label').textContent = b.label;
+                    document.getElementById('badge-next-label').textContent = b.nextLevel + 'まであと' + Math.max(0, b.nextThreshold - d.total_reviews) + '件';
+                    const bar = document.getElementById('badge-progress-bar');
+                    bar.style.width = b.progress + '%';
+                    bar.style.background = b.color;
+                }
+
+                // 星
+                let starsHtml = '';
+                for (let i = 1; i <= 5; i++) {
+                    if (i <= Math.floor(d.avg_rating)) starsHtml += '<i class="fas fa-star"></i>';
+                    else if (i - d.avg_rating < 1 && i - d.avg_rating > 0) starsHtml += '<i class="fas fa-star-half-alt"></i>';
+                    else starsHtml += '<i class="far fa-star text-gray-300"></i>';
+                }
+                document.getElementById('seller-stars').innerHTML = starsHtml;
+                document.getElementById('seller-avg').textContent = d.avg_rating > 0 ? d.avg_rating.toFixed(1) : '-';
+                document.getElementById('review-total').textContent = d.total_reviews;
+                document.getElementById('tx-total').textContent = d.completed_transactions;
+
+                // 評価バー
+                const dist = d.distribution;
+                const labels = [{s:5,c:dist.five},{s:4,c:dist.four},{s:3,c:dist.three},{s:2,c:dist.two},{s:1,c:dist.one}];
+                document.getElementById('rating-bars').innerHTML = labels.map(function(item) {
+                    const pct = d.total_reviews > 0 ? Math.round((item.c / d.total_reviews) * 100) : 0;
+                    return '<div class="flex items-center gap-2"><span class="text-sm font-medium text-gray-500 w-4">' + item.s + '</span><div class="flex-1 bg-gray-100 rounded-full h-2.5"><div class="bg-yellow-400 h-full rounded-full" style="width:' + pct + '%"></div></div><span class="text-sm text-gray-400 w-8 text-right">' + item.c + '</span></div>';
+                }).join('');
+
+                // 詳細評価
+                const da = d.detail_averages;
+                ['condition','communication','shipping'].forEach(function(key) {
+                    const val = da[key] || 0;
+                    const bar = document.getElementById('bar-' + key);
+                    const avg = document.getElementById('avg-' + key);
+                    if (bar) bar.style.width = (val / 5 * 100) + '%';
+                    if (avg) avg.textContent = val > 0 ? val.toFixed(1) : '-';
+                });
+            } catch(e) {
+                console.error('Summary load error:', e);
+            }
+        }
+
+        async function loadReviews() {
+            try {
+                let url = '/api/reviews/user/' + SELLER_ID + '/received?limit=' + LIMIT + '&offset=' + currentOffset;
+                if (currentRatingFilter > 0) url += '&rating=' + currentRatingFilter;
+                const res = await axios.get(url);
+                const reviews = res.data.data || [];
+
+                if (currentOffset === 0 && reviews.length === 0) {
+                    document.getElementById('reviews-list').innerHTML = '<div class="text-center py-12 bg-white rounded-2xl"><i class="far fa-comment-dots text-4xl text-gray-300 mb-3"></i><p class="text-gray-500">まだレビューはありません</p></div>';
+                    document.getElementById('load-more').classList.add('hidden');
+                    return;
+                }
+
+                const html = reviews.map(function(r) {
+                    let stars = '';
+                    for (let i = 1; i <= 5; i++) stars += i <= r.rating ? '<i class="fas fa-star text-yellow-400"></i>' : '<i class="far fa-star text-gray-300"></i>';
+                    const date = new Date(r.created_at);
+                    const dateStr = date.getFullYear() + '/' + (date.getMonth()+1) + '/' + date.getDate();
+                    return '<div class="bg-white rounded-xl shadow-sm p-4 sm:p-5">' +
+                        '<div class="flex items-start justify-between mb-2">' +
+                        '<div class="flex items-center gap-2">' +
+                        '<div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center"><i class="fas fa-user text-gray-400 text-xs"></i></div>' +
+                        '<div><div class="text-sm font-semibold text-gray-900">' + (r.reviewer_name || '匿名') + '</div><div class="flex items-center gap-1 text-xs">' + stars + '</div></div>' +
+                        '</div>' +
+                        '<span class="text-xs text-gray-400 flex-shrink-0">' + dateStr + '</span>' +
+                        '</div>' +
+                        (r.product_title ? '<div class="text-xs text-gray-400 mb-2 flex items-center"><i class="fas fa-box mr-1"></i>' + r.product_title + '</div>' : '') +
+                        '<p class="text-sm text-gray-700 leading-relaxed">' + (r.comment || '') + '</p>' +
+                        (r.product_condition_rating || r.communication_rating || r.shipping_rating ?
+                            '<div class="flex flex-wrap gap-3 mt-3 text-xs text-gray-500 border-t pt-2">' +
+                            (r.product_condition_rating ? '<span><i class="fas fa-box text-blue-400 mr-1"></i>商品状態 ' + r.product_condition_rating + '</span>' : '') +
+                            (r.communication_rating ? '<span><i class="fas fa-comments text-green-400 mr-1"></i>対応 ' + r.communication_rating + '</span>' : '') +
+                            (r.shipping_rating ? '<span><i class="fas fa-truck text-orange-400 mr-1"></i>配送 ' + r.shipping_rating + '</span>' : '') +
+                            '</div>' : '') +
+                        '</div>';
+                }).join('');
+
+                if (currentOffset === 0) {
+                    document.getElementById('reviews-list').innerHTML = html;
+                } else {
+                    document.getElementById('reviews-list').insertAdjacentHTML('beforeend', html);
+                }
+
+                document.getElementById('load-more').classList.toggle('hidden', reviews.length < LIMIT);
+                currentOffset += reviews.length;
+            } catch(e) {
+                console.error('Reviews load error:', e);
+                if (currentOffset === 0) {
+                    document.getElementById('reviews-list').innerHTML = '<div class="text-center py-8 text-gray-400"><p>レビューの読み込みに失敗しました</p></div>';
+                }
+            }
+        }
+
+        function filterReviews(rating) {
+            currentRatingFilter = rating;
+            currentOffset = 0;
+            document.querySelectorAll('.filter-btn').forEach(function(btn) {
+                if (parseInt(btn.dataset.rating) === rating) {
+                    btn.className = 'filter-btn active px-3 py-1.5 text-xs font-semibold rounded-full bg-red-500 text-white';
+                } else {
+                    btn.className = 'filter-btn px-3 py-1.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200';
+                }
+            });
+            loadReviews();
+        }
+
+        function loadMoreReviews() { loadReviews(); }
+
+        function getShopTypeLabel(type) {
+            const labels = { factory:'整備工場', dealer:'ディーラー', parts_shop:'パーツショップ', recycler:'リサイクルショップ', individual:'個人' };
+            return labels[type] || type || '';
+        }
+        </script>
     </body>
     </html>
   `)
@@ -8417,15 +8885,95 @@ const GUIDES: Record<string, { title: string; desc: string; category: string; se
       { heading: '中古SSTという選択肢', body: 'SSTは消耗品ではないため、中古品でも機能に問題がないケースがほとんどです。廃業した工場や、取り扱い車種を変更した工場から、良品のSSTが出品されることがあります。PARTS HUBでは工具・SST専用カテゴリがあり、全国の整備工場が出品するSSTを手軽に検索できます。' },
       { heading: '使わなくなったSSTを売る', body: '逆に、自社で不要になったSSTは他の整備工場にとっては貴重な工具です。特にメーカー専用工具は汎用品では代替できないため、必要としている工場は確実に存在します。PARTS HUBで出品すれば、工具棚のスペース確保と収益化を同時に実現できます。' }
     ]
+  },
+  'google-business-profile': {
+    title: 'Googleビジネスプロフィール最適化ガイド【整備工場向け】',
+    desc: 'Googleマップで「近くの整備工場」と検索する顧客を集客するために、Googleビジネスプロフィール（旧Googleマイビジネス）を最適化する方法を整備工場向けに解説します。',
+    category: 'Web集客',
+    sections: [
+      { heading: 'なぜGoogleビジネスプロフィールが重要なのか', body: '「近くの整備工場」「車検 〇〇市」などのローカル検索で、Googleマップの上位3件（ローカルパック）に表示されると、問い合わせや来店が大幅に増加します。国土交通省の統計によると、自動車整備工場は全国に約92,000事業場あり、競争は激しいですが、Googleビジネスプロフィール（GBP）を適切に設定している工場は意外と少ないのが現状です。無料で始められ、効果が出やすい集客施策として、今すぐ取り組むことをおすすめします。' },
+      { heading: '基本情報を100%埋める', body: '店名・住所・電話番号（NAP情報）は一字一句正確に入力しましょう。住所はWebサイトや看板と完全に一致させることが重要です。次に、営業時間は曜日ごとに設定し、祝日や臨時休業も事前に登録します。カテゴリは「自動車修理店」をメインに、「自動車板金塗装」「自動車電装品店」「自動車部品店」などサブカテゴリも追加してください。電話番号はフリーダイヤルではなく市外局番付きのローカル番号を推奨します（地域性のシグナルになります）。' },
+      { heading: '写真を充実させる', body: 'Googleの公式データによると、写真が充実しているビジネスは、写真がないビジネスと比較してウェブサイトへのクリックが35%多く、ルート検索が42%多くなります。外観写真（正面・看板）、内観写真（作業場・待合室）、スタッフ写真、整備作業中の写真、設備（リフト・診断機）の写真を最低10枚は登録しましょう。スマートフォンで十分ですが、明るい時間帯に撮影し、作業場が整理整頓された状態の写真を使いましょう。毎月2〜3枚の新しい写真を追加することで、アクティブなビジネスとしてGoogleに認識されます。' },
+      { heading: '口コミを増やす仕組みを作る', body: 'GBPの検索順位に最も影響するのが口コミの数と評価です。車検や修理の完了時にお客様へ口コミを依頼しましょう。具体的には、①会計時にQRコード付きカードを渡す ②完了報告メールに口コミリンクを添付 ③待合室にPOPを設置 といった方法が効果的です。口コミリンクは「Googleマップでお店を検索 → 共有 → リンクをコピー」で取得できます。口コミには必ず返信しましょう。感謝の言葉と具体的な内容への言及が効果的です。低評価の口コミにも丁寧に返信することで、他の閲覧者への印象が良くなります。' },
+      { heading: '投稿機能を活用する', body: 'GBPの「投稿」機能を使って、最新情報を定期的に発信しましょう。おすすめの投稿内容は、①季節の整備キャンペーン（夏前のエアコン点検、冬前のバッテリーチェック等） ②お客様の声・施工事例 ③新しい設備や資格取得のお知らせ ④スタッフ紹介 です。投稿は7日間で非表示になるため、週1回のペースで更新するのが理想的です。写真付きの投稿はクリック率が高いため、作業写真やビフォーアフターを積極的に使いましょう。' },
+      { heading: 'PARTS HUBと組み合わせた集客戦略', body: 'Googleビジネスプロフィールで新規顧客を獲得し、PARTS HUBで仕入れコストを抑えることで、競争力のある価格で修理サービスを提供できます。「当店はリサイクルパーツも活用し、品質を保ちながらお客様のご負担を軽減しています」という訴求は、コスト意識の高いお客様に響きます。また、PARTS HUBで余剰パーツを販売して得た収益を、GBP広告やGoogle広告の予算に充てるといった相乗効果も期待できます。地域密着の整備工場だからこそ、デジタルとリアルの両面から集客を強化していきましょう。' }
+    ]
+  },
+  'car-inspection-cost': {
+    title: '車検整備のパーツ費用を削減する方法',
+    desc: '車検時に必要になる消耗部品の仕入れコストを大幅に削減するノウハウ。ブレーキ、ベルト類、フィルター類の賢い調達方法を解説します。',
+    category: '費用比較',
+    sections: [
+      { heading: '車検整備で交換頻度が高いパーツ一覧', body: '車検時に交換が必要になるパーツは、ブレーキパッド・ディスク、ファンベルト・タイミングベルト、エアフィルター・オイルフィルター、ワイパーゴム、ブーツ類（ドライブシャフト・ステアリングラック）、各種オイル・液類です。これらの消耗品は車検ごとに発注するため、仕入れ単価の差が年間を通して大きなコスト差を生みます。例えば月に30台の車検を扱う工場であれば、1台あたり2,000円の仕入れコスト削減で年間72万円の利益向上になります。' },
+      { heading: '仕入れルートの多様化で価格競争力を確保', body: '部品商からの仕入れ一択では、価格交渉力に限界があります。PARTS HUBのような中古パーツプラットフォームを2つ目の仕入れルートとして活用することで、①緊急度の低いパーツは安価な中古品を事前に確保 ②定番交換パーツはロットで安く仕入れ ③レアパーツは全国から検索して調達、という使い分けが可能です。特にブーツ類やフィルター類は、中古品でも品質に大差がない場合が多く、コスト削減の効果が高いカテゴリです。' },
+      { heading: 'お客様への説明で信頼を獲得', body: '中古パーツやリビルトパーツを使用する場合、お客様への丁寧な説明が不可欠です。「新品パーツの場合は○○円、リサイクルパーツ利用の場合は△△円でご提供できます」と選択肢を提示することで、お客様の満足度が向上します。PARTS HUBで購入したパーツは出品者の状態説明と写真記録が残るため、お客様への説明資料としても活用できます。この透明性が、リピーター獲得と口コミ向上につながります。' }
+    ],
+    comparison: [
+      { item: 'ドライブシャフトブーツ（左右）', dealer: '8,000〜15,000円', parts_hub: '2,000〜5,000円', savings: '最大70%削減' },
+      { item: 'ファンベルトセット', dealer: '6,000〜12,000円', parts_hub: '2,000〜5,000円', savings: '最大60%削減' },
+      { item: 'ブレーキパッド＋ローターセット', dealer: '30,000〜50,000円', parts_hub: '10,000〜20,000円', savings: '最大60%削減' }
+    ]
+  },
+  'insurance-repair-profit': {
+    title: '保険修理の利益率を最大化する方法',
+    desc: '保険会社からの修理見積もりと実際の仕入れ原価の差を最大化する戦略。中古パーツ・リビルトパーツ活用で修理利益を向上させるノウハウを解説。',
+    category: '経営改善',
+    sections: [
+      { heading: '保険修理の利益構造を理解する', body: '保険修理では、アジャスターとの協定金額が修理代金となります。この協定金額は基本的に新品純正パーツの価格をベースに算出されるため、実際の修理に中古パーツやリビルトパーツを活用した場合、その差額が利益になります。例えば、フロントバンパーの新品価格が50,000円の場合、中古品を15,000円で調達できれば35,000円の差額が生まれます。もちろん、パーツの品質が修理基準を満たすことが大前提です。' },
+      { heading: '中古パーツ活用のポイント', body: '保険修理で中古パーツを活用する際の重要ポイントは、①品質基準の明確化（年式・走行距離・外観状態の基準を社内で設定） ②保険会社との事前合意（中古パーツ使用について了承を得る） ③写真記録の保持（交換前後の状態を必ず記録） ④お客様への同意取得（中古パーツ使用について説明し書面で同意を得る）です。PARTS HUBでは出品者が状態を明記しているため、品質の事前確認が容易です。同色のボディパーツが見つかれば、再塗装コストも削減できます。' },
+      { heading: '利益率改善のシミュレーション', body: '月10件の保険修理を扱う鈑金工場の場合、1件あたり平均3万円のパーツコスト削減ができれば、月間30万円・年間360万円の利益向上になります。全ての修理で中古パーツを使えるわけではありませんが、ドアパネル・バンパー・ヘッドライト・テールランプなどの外装パーツは中古品の活用率が高いカテゴリです。PARTS HUBでは車種名や品番で検索できるため、必要なパーツをすぐに見つけられます。仕入れコストを抑えた分をお客様の自己負担額の軽減に充てれば、紹介や口コミにもつながります。' }
+    ]
+  },
+  'ev-hybrid-parts': {
+    title: 'EV・ハイブリッド車パーツの取り扱いガイド',
+    desc: '増加するEV・ハイブリッド車の整備需要に対応するために。駆動用バッテリー、インバーター、モーター等の調達方法と取り扱い注意点を解説します。',
+    category: '技術ガイド',
+    sections: [
+      { heading: 'EV・HV市場の急拡大と整備需要', body: '2025年時点で、日本の新車販売の約40%がハイブリッド車（HV）、約3%が電気自動車（EV）です。これらの車両が初回車検を迎える時期に入り、整備需要が急増しています。しかし、EV・HVの高圧系パーツは新品価格が非常に高く、駆動用バッテリー交換で30〜80万円、インバーター交換で20〜50万円といった見積もりも珍しくありません。中古パーツやリビルトパーツの活用は、整備工場とお客様の双方にとって大きなメリットがあります。' },
+      { heading: '取り扱い時の安全対策', body: 'EV・HVの高圧パーツを取り扱う際は、「低圧電気取扱業務特別教育」の受講が労働安全衛生法で義務付けられています。作業前の高圧遮断（サービスプラグの取り外し）、絶縁手袋・絶縁工具の使用、感電防止の二重確認体制は必須です。PARTS HUBで中古の高圧パーツを購入する際は、出品者に取り外し時の手順や状態を確認し、適合車種（型式・年式）を必ずダブルチェックしてください。安全に関わるパーツは「安い」よりも「確実」を優先しましょう。' },
+      { heading: 'リビルトバッテリーという選択肢', body: '駆動用バッテリーの劣化は、セル単位で進行します。リビルトバッテリーは劣化したセルのみを交換し、残りの正常セルを再利用するため、新品の1/3〜1/2の価格で交換が可能です。プリウス（ZVW30/50）やアクア（NHP10）など台数の多い車種はリビルトバッテリーの流通量も多く、PARTS HUBでも常時出品されています。補機バッテリーも専用品が必要な車種が多いため、中古品の需要があります。' },
+      { heading: 'PARTS HUBでEV・HVパーツを探す', body: 'PARTS HUBの検索機能では、車種名・型式で絞り込み検索が可能です。「プリウス バッテリー」「アクア インバーター」などで検索すれば、対応するパーツが一覧表示されます。出品者とのチャット機能で、パーツの状態・適合確認・保証の有無を購入前に確認できるため、安心して取引を進められます。EV・HV整備のノウハウと、コスト効率の良いパーツ調達を組み合わせて、新時代の整備需要に対応していきましょう。' }
+    ]
+  },
+  'used-parts-quality': {
+    title: '中古パーツの品質見極めガイド',
+    desc: '中古パーツの品質を正しく見極めるポイントを解説。外観チェック、動作確認、出品者とのコミュニケーションなど、プロの整備士が知っておくべき知識をまとめました。',
+    category: '実践ガイド',
+    sections: [
+      { heading: '中古パーツの品質グレードを理解する', body: '中古パーツの品質は大きく4段階に分けられます。①Aグレード：走行距離3万km未満、外観に目立つキズ・サビなし、動作確認済み ②Bグレード：走行距離3〜10万km、軽微な使用感あり、動作に問題なし ③Cグレード：走行距離10万km以上、外観の劣化あり、基本機能は動作 ④ジャンク：動作未確認・一部不具合あり、修理素材向け。PARTS HUBでは出品者が状態を明記する仕組みですが、これらのグレード感を自分なりの基準で持っておくと、購入判断がスムーズになります。' },
+      { heading: '写真からわかる品質チェックポイント', body: '出品写真で確認すべきポイントは、①品番・ラベルの鮮明さ（新しいほど劣化が少ない傾向） ②接続部・端子部の状態（腐食や変色がないか） ③ゴム部品の硬化・ひび割れ ④オイル漏れや液漏れの痕跡 ⑤ボルト穴周辺の錆や変形です。写真が不十分な場合は、チャット機能で追加写真を依頼しましょう。「品番が見える角度の写真をお願いします」「裏側の写真も見せてください」と具体的にリクエストすることが大切です。' },
+      { heading: '到着後の検品と万が一の対処', body: 'パーツが届いたら、まず出品情報と実物を照合します。品番確認、外観状態の確認、動作確認（電装品の場合）を行い、問題があれば7日以内に連絡しましょう。PARTS HUBでは「商品説明と著しく異なる場合」「初期不良の場合」は返品・返金の対象となります。検品時の写真を記録しておくことが、万が一のトラブル時の重要な証拠になります。信頼できる出品者（高評価・バッジ付き）からの購入を優先することで、品質トラブルのリスクを大幅に低減できます。' }
+    ]
+  },
+  'workshop-digital': {
+    title: '整備工場のデジタル化入門ガイド',
+    desc: 'IT化が遅れがちな整備業界で、低コストで始められるデジタル化施策を紹介。予約管理、顧客管理、在庫管理、SNS活用まで実践的に解説します。',
+    category: 'Web集客',
+    sections: [
+      { heading: 'なぜ今、整備工場のデジタル化が必要なのか', body: '自動車整備業界の就業者の平均年齢は約45歳と高齢化が進んでおり、人手不足が深刻です。限られた人員で効率よく業務を回すためには、デジタルツールの活用が不可欠です。また、お客様の行動もデジタル化しており、「スマホで整備工場を探す」「LINEで予約したい」というニーズが増えています。デジタル化は大規模なIT投資ではなく、無料〜低コストのツールから段階的に始めることが成功のポイントです。' },
+      { heading: '今日から始められる3つのデジタル施策', body: '①Googleビジネスプロフィールの登録（無料）：Googleマップからの集客は、整備工場にとって最もROIの高いデジタル施策です。詳しくは当サイトの「Googleビジネスプロフィール最適化ガイド」をご覧ください。②LINE公式アカウントの開設（無料〜）：お客様との連絡手段をLINEに移行することで、電話対応の時間を削減。車検の案内や完了報告もLINEで送れます。③クラウド型予約管理の導入（無料〜月数千円）：電話での予約対応を減らし、24時間Web予約を受付。ダブルブッキング防止にもなります。' },
+      { heading: 'パーツ調達のデジタル化', body: '電話やFAXでの部品発注から、オンラインプラットフォームの活用に移行しましょう。PARTS HUBのようなC2Cプラットフォームを使えば、①24時間いつでもパーツを検索 ②価格を比較して最適な出品者から購入 ③チャットで適合確認 ④取引履歴がデジタルで残る、というメリットがあります。従来の部品商との取引を完全に置き換えるものではなく、2つ目の仕入れルートとして活用するのが現実的です。デジタルとアナログを適材適所で使い分けることが、これからの整備工場経営の鍵になります。' }
+    ]
   }
 }
 
-// ガイド一覧ページ
-app.get('/guide', (c) => {
+// ガイド一覧ページ（静的 + DB記事の両方を表示）
+app.get('/guide', async (c) => {
   let cardsHtml = ''
   for (const [slug, guide] of Object.entries(GUIDES)) {
     cardsHtml += '<a href="/guide/' + slug + '" class="guide-card"><div class="guide-cat">' + guide.category + '</div><h3 class="guide-title">' + guide.title + '</h3><p class="guide-desc">' + guide.desc.slice(0, 80) + '...</p><span class="guide-link">詳しく読む<i class="fas fa-chevron-right ml-1 text-xs"></i></span></a>'
   }
+
+  // DB記事も追加
+  try {
+    const { DB } = c.env
+    const { results } = await DB.prepare('SELECT slug, title, description, category FROM guide_articles WHERE status = ? ORDER BY published_at DESC').bind('published').all() as any
+    for (const article of results || []) {
+      if (!GUIDES[article.slug]) { // 静的と重複しない場合のみ追加
+        cardsHtml += '<a href="/guide/' + article.slug + '" class="guide-card"><div class="guide-cat">' + (article.category || '実践ガイド') + '</div><h3 class="guide-title">' + article.title + '</h3><p class="guide-desc">' + (article.description || '').slice(0, 80) + '...</p><span class="guide-link">詳しく読む<i class="fas fa-chevron-right ml-1 text-xs"></i></span></a>'
+      }
+    }
+  } catch (e) { /* DB未接続時は無視 */ }
 
   return c.html(`<!DOCTYPE html>
 <html lang="ja">
@@ -8482,10 +9030,30 @@ app.get('/guide', (c) => {
 </html>`)
 })
 
-// ガイド詳細ページ
-app.get('/guide/:slug', (c) => {
+// ガイド詳細ページ（静的GUIDES + DB記事の両方に対応）
+app.get('/guide/:slug', async (c) => {
   const slug = c.req.param('slug')
-  const guide = GUIDES[slug]
+  let guide = GUIDES[slug] as { title: string; desc: string; category: string; sections: { heading: string; body: string }[]; comparison?: { item: string; dealer: string; parts_hub: string; savings: string }[] } | undefined
+
+  // 静的GUIDESにない場合はDBから取得
+  if (!guide) {
+    try {
+      const { DB } = c.env
+      const article = await DB.prepare('SELECT * FROM guide_articles WHERE slug = ? AND status = ?').bind(slug, 'published').first() as any
+      if (article) {
+        guide = {
+          title: article.title,
+          desc: article.description,
+          category: article.category,
+          sections: JSON.parse(article.sections_json || '[]'),
+          comparison: article.comparison_json ? JSON.parse(article.comparison_json) : undefined
+        }
+        // 閲覧数カウント
+        await DB.prepare('UPDATE guide_articles SET view_count = view_count + 1 WHERE slug = ?').bind(slug).run()
+      }
+    } catch (e) { /* DB未接続時は無視 */ }
+  }
+
   if (!guide) return c.redirect('/guide', 302)
 
   let sectionsHtml = ''
@@ -8811,6 +9379,12 @@ app.get('/sitemap', async (c) => {
                         <li><a href="/guide/genuine-vs-aftermarket" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>純正品 vs 社外品</a></li>
                         <li><a href="/guide/deadstock-management" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>デッドストック活用術</a></li>
                         <li><a href="/guide/sst-tool-guide" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>SST（特殊工具）調達</a></li>
+                        <li><a href="/guide/google-business-profile" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>Googleビジネスプロフィール最適化</a></li>
+                        <li><a href="/guide/car-inspection-cost" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>車検パーツ費用削減</a></li>
+                        <li><a href="/guide/insurance-repair-profit" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>保険修理の利益率最大化</a></li>
+                        <li><a href="/guide/ev-hybrid-parts" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>EV・ハイブリッド車パーツ</a></li>
+                        <li><a href="/guide/used-parts-quality" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>中古パーツ品質見極め</a></li>
+                        <li><a href="/guide/workshop-digital" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>整備工場デジタル化入門</a></li>
                     </ul></div>
                 </div>
 
@@ -8827,6 +9401,7 @@ app.get('/sitemap', async (c) => {
                         <li><a href="/partner/body-shop" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>車体整備事業者（鈑金塗装）</a></li>
                         <li><a href="/partner/denso-seibi" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>自動車電装整備事業者</a></li>
                         <li><a href="/partner/parts-dealer" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>自動車部品卸商</a></li>
+                        <li><a href="/widget" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>埋め込みウィジェット</a></li>
                     </ul></div>
                 </div>
 
