@@ -83,6 +83,7 @@ const Footer = () => `
                     <li><a href="/privacy" class="hover:text-white transition-colors">プライバシー</a></li>
                     <li><a href="/security" class="hover:text-white transition-colors">セキュリティ</a></li>
                     <li><a href="/legal" class="hover:text-white transition-colors">特商法表記</a></li>
+                    <li><a href="/sitemap" class="hover:text-white transition-colors">サイトマップ</a></li>
                 </ul>
             </div>
         </div>
@@ -323,6 +324,7 @@ app.get('/sitemap.xml', async (c) => {
       { url: '/listing', changefreq: 'monthly', priority: '0.7' },
       { url: '/faq', changefreq: 'monthly', priority: '0.6' },
       { url: '/contact', changefreq: 'monthly', priority: '0.5' },
+      { url: '/sitemap', changefreq: 'weekly', priority: '0.4' },
       { url: '/legal', changefreq: 'yearly', priority: '0.3' },
       { url: '/security', changefreq: 'yearly', priority: '0.3' },
       { url: '/terms', changefreq: 'yearly', priority: '0.3' },
@@ -2073,6 +2075,7 @@ function getArticleDetailBody() {
                     <a href="/terms" class="hover:text-gray-300 transition-colors">利用規約</a>
                     <a href="/privacy" class="hover:text-gray-300 transition-colors">プライバシー</a>
                     <a href="/legal" class="hover:text-gray-300 transition-colors">特商法表記</a>
+                    <a href="/sitemap" class="hover:text-gray-300 transition-colors">サイトマップ</a>
                 </div>
                 <div class="border-t border-gray-800 pt-4 text-center">
                     <p class="text-xs text-gray-500">&copy; 2026 PARTS HUB. All rights reserved.</p>
@@ -7213,6 +7216,224 @@ app.get('/security', (c) => {
     </body>
     </html>
   `)
+})
+
+// ========================================
+// HTMLサイトマップページ
+// ========================================
+app.get('/sitemap', async (c) => {
+  const { DB } = c.env as any
+  let categoriesHtml = ''
+  let articlesHtml = ''
+  let productsHtml = ''
+  
+  try {
+    // カテゴリ取得
+    const cats = await DB.prepare('SELECT id, name, slug FROM categories ORDER BY id').all()
+    categoriesHtml = cats.results.map((cat: any) => 
+      '<li><a href="/search?category=' + encodeURIComponent(cat.name) + '" class="sitemap-link group">' +
+      '<i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>' + cat.name +
+      '</a></li>'
+    ).join('')
+
+    // 最新記事取得（30件）
+    const arts = await DB.prepare(
+      "SELECT title, slug, category, published_at FROM articles WHERE status = 'published' ORDER BY published_at DESC LIMIT 30"
+    ).all()
+    const catLabels: Record<string,string> = { 'parts-guide':'パーツガイド','maintenance':'メンテナンス','tips':'お役立ち情報','deadstock':'デッドストック活用','news':'ニュース' }
+    articlesHtml = arts.results.map((a: any) => {
+      const d = a.published_at ? new Date(a.published_at) : new Date()
+      const dateStr = d.getFullYear() + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + String(d.getDate()).padStart(2,'0')
+      const catLabel = catLabels[a.category] || a.category || '総合'
+      const safeTitle = String(a.title || '').replace(/</g,'&lt;')
+      return '<li><a href="/news/' + a.slug + '" class="sitemap-link group">' +
+        '<div class="flex items-start gap-2">' +
+        '<i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-1 mt-1.5 flex-shrink-0"></i>' +
+        '<div class="min-w-0">' +
+        '<span class="block text-sm leading-snug">' + safeTitle + '</span>' +
+        '<span class="text-xs text-gray-400 mt-0.5 block"><span class="inline-block bg-gray-100 text-gray-500 rounded px-1.5 py-0.5 text-[10px] mr-1.5">' + catLabel + '</span>' + dateStr + '</span>' +
+        '</div></div></a></li>'
+    }).join('')
+
+    // 最新商品取得（20件）
+    const prods = await DB.prepare(
+      "SELECT id, title, price, condition, created_at FROM products WHERE status = 'active' ORDER BY created_at DESC LIMIT 20"
+    ).all()
+    const condMap: Record<string,string> = { new:'新品', like_new:'未使用に近い', good:'良好', fair:'やや傷あり', poor:'状態不良' }
+    productsHtml = prods.results.map((p: any) => {
+      const price = Number(p.price || 0).toLocaleString()
+      const cond = condMap[p.condition] || p.condition || '中古'
+      const safeTitle = String(p.title || '').replace(/</g,'&lt;')
+      return '<li><a href="/products/' + p.id + '" class="sitemap-link group">' +
+        '<div class="flex items-start gap-2">' +
+        '<i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-1 mt-1.5 flex-shrink-0"></i>' +
+        '<div class="min-w-0">' +
+        '<span class="block text-sm leading-snug">' + safeTitle + '</span>' +
+        '<span class="text-xs text-gray-400 mt-0.5 block">&yen;' + price + '・' + cond + '</span>' +
+        '</div></div></a></li>'
+    }).join('')
+  } catch(e) { console.error('Sitemap page error:', e) }
+
+  // 商品セクション
+  const productsSection = productsHtml ? (
+    '<div class="section-card mb-8">' +
+    '<div class="section-header">' +
+    '<div class="section-icon bg-purple-50 text-purple-500"><i class="fas fa-box-open"></i></div>' +
+    '<div><h2 class="font-bold text-gray-900">出品中の商品</h2><p class="text-xs text-gray-400">最新の出品商品一覧</p></div>' +
+    '<a href="/search" class="ml-auto text-xs text-red-500 font-medium hover:underline">すべて見る &rarr;</a>' +
+    '</div>' +
+    '<div class="section-body"><ul class="grid grid-cols-1 sm:grid-cols-2">' + productsHtml + '</ul></div>' +
+    '</div>'
+  ) : ''
+
+  // 記事セクション
+  const articlesSection = articlesHtml ? (
+    '<div class="section-card mb-8">' +
+    '<div class="section-header">' +
+    '<div class="section-icon bg-teal-50 text-teal-500"><i class="fas fa-newspaper"></i></div>' +
+    '<div><h2 class="font-bold text-gray-900">ニュース・コラム記事</h2><p class="text-xs text-gray-400">最新の記事一覧</p></div>' +
+    '<a href="/news" class="ml-auto text-xs text-red-500 font-medium hover:underline">すべて見る &rarr;</a>' +
+    '</div>' +
+    '<div class="section-body"><ul>' + articlesHtml + '</ul></div>' +
+    '</div>'
+  ) : ''
+
+  return c.html(`<!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>サイトマップ - PARTS HUB（パーツハブ）</title>
+        <meta name="description" content="PARTS HUBの全ページ一覧。商品検索、カテゴリ別パーツ、ニュース記事、会社情報など、サイト内の全コンテンツへのリンクを掲載しています。">
+        <link rel="canonical" href="https://parts-hub-tci.com/sitemap">
+        <meta property="og:title" content="サイトマップ - PARTS HUB">
+        <meta property="og:description" content="PARTS HUBの全ページ一覧。商品検索、カテゴリ、ニュース記事へのリンクを掲載。">
+        <meta property="og:url" content="https://parts-hub-tci.com/sitemap">
+        <meta property="og:site_name" content="PARTS HUB">
+        <meta name="robots" content="index, follow">
+        <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"PARTS HUB","item":"https://parts-hub-tci.com/"},{"@type":"ListItem","position":2,"name":"サイトマップ"}]}</script>
+        <meta name="theme-color" content="#ff4757">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>
+          .sitemap-link { display:block; padding:8px 12px; border-radius:8px; color:#374151; text-decoration:none; transition:all 0.15s ease; }
+          .sitemap-link:hover { background:#fef2f2; color:#dc2626; }
+          .section-card { background:white; border-radius:16px; box-shadow:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04); border:1px solid #f3f4f6; overflow:hidden; transition:box-shadow 0.2s; }
+          .section-card:hover { box-shadow:0 4px 12px rgba(0,0,0,0.08); }
+          .section-header { display:flex; align-items:center; gap:12px; padding:20px 24px 16px; border-bottom:1px solid #f9fafb; }
+          .section-icon { width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+          .section-body { padding:8px 12px 16px; }
+          .section-body ul { list-style:none; padding:0; margin:0; }
+          .section-body li { border-bottom:1px solid #f9fafb; }
+          .section-body li:last-child { border-bottom:none; }
+          .hero-gradient { background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%); }
+        </style>
+    </head>
+    <body class="bg-gray-50 min-h-screen">
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+            <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+                <a href="/" class="text-gray-600 hover:text-gray-900 flex items-center gap-2">
+                    <i class="fas fa-arrow-left"></i>
+                    <span class="text-sm font-medium">戻る</span>
+                </a>
+                <a href="/" class="text-red-500 font-bold text-lg">PARTS HUB</a>
+                <div class="w-16"></div>
+            </div>
+        </header>
+
+        <div class="hero-gradient text-white py-10 sm:py-14">
+            <div class="max-w-6xl mx-auto px-4 text-center">
+                <div class="inline-flex items-center justify-center w-16 h-16 bg-white/10 rounded-2xl mb-4">
+                    <i class="fas fa-sitemap text-2xl text-red-400"></i>
+                </div>
+                <h1 class="text-2xl sm:text-3xl font-bold mb-2">サイトマップ</h1>
+                <p class="text-gray-300 text-sm sm:text-base">PARTS HUBの全ページ一覧</p>
+            </div>
+        </div>
+
+        <main class="max-w-6xl mx-auto px-4 py-8 sm:py-12">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                <div class="section-card">
+                    <div class="section-header">
+                        <div class="section-icon bg-red-50 text-red-500"><i class="fas fa-home"></i></div>
+                        <div><h2 class="font-bold text-gray-900">メインページ</h2><p class="text-xs text-gray-400">サービスの主要ページ</p></div>
+                    </div>
+                    <div class="section-body"><ul>
+                        <li><a href="/" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>トップページ</a></li>
+                        <li><a href="/search" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>商品検索</a></li>
+                        <li><a href="/listing" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>出品する</a></li>
+                        <li><a href="/news" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>ニュース・コラム</a></li>
+                    </ul></div>
+                </div>
+
+                <div class="section-card">
+                    <div class="section-header">
+                        <div class="section-icon bg-blue-50 text-blue-500"><i class="fas fa-life-ring"></i></div>
+                        <div><h2 class="font-bold text-gray-900">サポート</h2><p class="text-xs text-gray-400">ヘルプ・お問い合わせ</p></div>
+                    </div>
+                    <div class="section-body"><ul>
+                        <li><a href="/faq" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>よくある質問（FAQ）</a></li>
+                        <li><a href="/contact" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>お問い合わせ</a></li>
+                        <li><a href="/contact?type=proxy" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>代理出品のご依頼</a></li>
+                    </ul></div>
+                </div>
+
+                <div class="section-card">
+                    <div class="section-header">
+                        <div class="section-icon bg-gray-100 text-gray-500"><i class="fas fa-gavel"></i></div>
+                        <div><h2 class="font-bold text-gray-900">法的情報</h2><p class="text-xs text-gray-400">規約・ポリシー</p></div>
+                    </div>
+                    <div class="section-body"><ul>
+                        <li><a href="/terms" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>利用規約</a></li>
+                        <li><a href="/privacy" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>プライバシーポリシー</a></li>
+                        <li><a href="/security" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>セキュリティポリシー</a></li>
+                        <li><a href="/legal" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>特定商取引法に基づく表記</a></li>
+                    </ul></div>
+                </div>
+
+                <div class="section-card">
+                    <div class="section-header">
+                        <div class="section-icon bg-green-50 text-green-500"><i class="fas fa-user"></i></div>
+                        <div><h2 class="font-bold text-gray-900">アカウント</h2><p class="text-xs text-gray-400">登録・ログイン・管理</p></div>
+                    </div>
+                    <div class="section-body"><ul>
+                        <li><a href="/register" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>新規会員登録（無料）</a></li>
+                        <li><a href="/login" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>ログイン</a></li>
+                        <li><a href="/mypage" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>マイページ</a></li>
+                        <li><a href="/favorites" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>お気に入り</a></li>
+                        <li><a href="/notifications" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>通知</a></li>
+                    </ul></div>
+                </div>
+
+                <div class="section-card md:col-span-2">
+                    <div class="section-header">
+                        <div class="section-icon bg-orange-50 text-orange-500"><i class="fas fa-th-large"></i></div>
+                        <div><h2 class="font-bold text-gray-900">カテゴリから探す</h2><p class="text-xs text-gray-400">パーツカテゴリ一覧</p></div>
+                    </div>
+                    <div class="section-body"><ul class="grid grid-cols-1 sm:grid-cols-2">
+                        ${categoriesHtml}
+                    </ul></div>
+                </div>
+            </div>
+
+            ${productsSection}
+
+            ${articlesSection}
+
+            <div class="text-center py-6">
+                <p class="text-xs text-gray-400 mb-2">検索エンジン向けXMLサイトマップ</p>
+                <a href="/sitemap.xml" class="text-sm text-red-500 hover:underline font-medium">
+                    <i class="fas fa-code mr-1"></i>sitemap.xml
+                </a>
+            </div>
+        </main>
+
+        ${Footer()}
+        <script src="${v('/static/auth-header.js')}"></script>
+        <script src="${v('/static/notification-badge.js')}"></script>
+    </body>
+    </html>`)
 })
 
 // 特定商取引法に基づく表記
