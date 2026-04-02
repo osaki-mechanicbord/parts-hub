@@ -49,8 +49,8 @@ const Footer = () => `
             <p class="text-xs text-gray-400 mt-1">自動車部品のフリーマーケット</p>
         </div>
 
-        <!-- リンクグリッド：スマホ2列 / PC4列 -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-6 mb-8 text-sm">
+        <!-- リンクグリッド：スマホ2列 / PC5列 -->
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-x-4 gap-y-6 mb-8 text-sm">
             <div>
                 <h4 class="font-semibold text-gray-300 mb-2 text-xs uppercase tracking-wider">サービス</h4>
                 <ul class="space-y-1.5 text-gray-400">
@@ -58,6 +58,15 @@ const Footer = () => `
                     <li><a href="/listing" class="hover:text-white transition-colors">出品する</a></li>
                     <li><a href="/search" class="hover:text-white transition-colors">検索</a></li>
                     <li><a href="/contact" class="hover:text-white transition-colors">代理出品</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="font-semibold text-gray-300 mb-2 text-xs uppercase tracking-wider">コンテンツ</h4>
+                <ul class="space-y-1.5 text-gray-400">
+                    <li><a href="/area" class="hover:text-white transition-colors">エリア別</a></li>
+                    <li><a href="/vehicle" class="hover:text-white transition-colors">車種別パーツ</a></li>
+                    <li><a href="/guide" class="hover:text-white transition-colors">整備ガイド</a></li>
+                    <li><a href="/news" class="hover:text-white transition-colors">ニュース</a></li>
                 </ul>
             </div>
             <div>
@@ -73,7 +82,6 @@ const Footer = () => `
                 <ul class="space-y-1.5 text-gray-400">
                     <li><a href="/notifications" class="hover:text-white transition-colors">通知</a></li>
                     <li><a href="/favorites" class="hover:text-white transition-colors">お気に入り</a></li>
-                    <li><a href="/news" class="hover:text-white transition-colors">ニュース</a></li>
                 </ul>
             </div>
             <div>
@@ -2185,6 +2193,9 @@ function getArticleDetailBody() {
                     <a href="/news" class="hover:text-white transition-colors">ニュース</a>
                     <a href="/search" class="hover:text-white transition-colors">パーツ検索</a>
                     <a href="/listing" class="hover:text-white transition-colors">出品する</a>
+                    <a href="/area" class="hover:text-white transition-colors">エリア別</a>
+                    <a href="/vehicle" class="hover:text-white transition-colors">車種別</a>
+                    <a href="/guide" class="hover:text-white transition-colors">整備ガイド</a>
                     <a href="/faq" class="hover:text-white transition-colors">FAQ</a>
                     <a href="/contact" class="hover:text-white transition-colors">お問い合わせ</a>
                 </div>
@@ -8405,6 +8416,53 @@ app.get('/sitemap', async (c) => {
                         <li><a href="/mypage" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>マイページ</a></li>
                         <li><a href="/favorites" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>お気に入り</a></li>
                         <li><a href="/notifications" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>通知</a></li>
+                    </ul></div>
+                </div>
+
+                <div class="section-card">
+                    <div class="section-header">
+                        <div class="section-icon bg-indigo-50 text-indigo-500"><i class="fas fa-map-marked-alt"></i></div>
+                        <div><h2 class="font-bold text-gray-900">エリア別</h2><p class="text-xs text-gray-400">都道府県別ランディングページ</p></div>
+                        <a href="/area" class="ml-auto text-xs text-red-500 font-medium hover:underline">一覧へ &rarr;</a>
+                    </div>
+                    <div class="section-body"><ul>
+                        <li><a href="/area" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>エリア一覧（全47都道府県）</a></li>
+                        <li><a href="/area/tokyo" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>東京都</a></li>
+                        <li><a href="/area/osaka" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>大阪府</a></li>
+                        <li><a href="/area/aichi" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>愛知県</a></li>
+                        <li><a href="/area/fukuoka" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>福岡県</a></li>
+                        <li><a href="/area/hokkaido" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>北海道</a></li>
+                    </ul></div>
+                </div>
+
+                <div class="section-card">
+                    <div class="section-header">
+                        <div class="section-icon bg-cyan-50 text-cyan-500"><i class="fas fa-car"></i></div>
+                        <div><h2 class="font-bold text-gray-900">車種別パーツ</h2><p class="text-xs text-gray-400">人気車種のパーツガイド</p></div>
+                        <a href="/vehicle" class="ml-auto text-xs text-red-500 font-medium hover:underline">一覧へ &rarr;</a>
+                    </div>
+                    <div class="section-body"><ul>
+                        <li><a href="/vehicle" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>車種別パーツ一覧</a></li>
+                        <li><a href="/vehicle/toyota-prius" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>トヨタ プリウス</a></li>
+                        <li><a href="/vehicle/toyota-hiace" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>トヨタ ハイエース</a></li>
+                        <li><a href="/vehicle/nissan-note" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>日産 ノート</a></li>
+                        <li><a href="/vehicle/honda-nbox" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>ホンダ N-BOX</a></li>
+                        <li><a href="/vehicle/suzuki-jimny" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>スズキ ジムニー</a></li>
+                    </ul></div>
+                </div>
+
+                <div class="section-card">
+                    <div class="section-header">
+                        <div class="section-icon bg-amber-50 text-amber-500"><i class="fas fa-book-open"></i></div>
+                        <div><h2 class="font-bold text-gray-900">整備ガイド</h2><p class="text-xs text-gray-400">コスト比較・実践ガイド</p></div>
+                        <a href="/guide" class="ml-auto text-xs text-red-500 font-medium hover:underline">一覧へ &rarr;</a>
+                    </div>
+                    <div class="section-body"><ul>
+                        <li><a href="/guide" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>整備ガイド一覧</a></li>
+                        <li><a href="/guide/brake-pad-cost" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>ブレーキパッド費用比較</a></li>
+                        <li><a href="/guide/genuine-vs-aftermarket" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>純正品 vs 社外品</a></li>
+                        <li><a href="/guide/deadstock-management" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>デッドストック活用術</a></li>
+                        <li><a href="/guide/sst-tool-guide" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>SST（特殊工具）調達</a></li>
                     </ul></div>
                 </div>
 
