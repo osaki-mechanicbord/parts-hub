@@ -476,6 +476,17 @@ app.get('/sitemap.xml', async (c) => {
 
     // ウィジェットページをsitemapに追加
     staticPages.push({ url: '/widget', changefreq: 'monthly', priority: '0.5' })
+
+    // DB生成のガイド記事をsitemapに追加（重複排除）
+    const dbGuides = await env.DB.prepare(
+      "SELECT slug FROM guide_articles WHERE status = 'published'"
+    ).all()
+    const staticGuideSlugs = new Set(guideSlugs)
+    ;(dbGuides.results || []).forEach((g: any) => {
+      if (!staticGuideSlugs.has(g.slug)) {
+        staticPages.push({ url: '/guide/' + g.slug, changefreq: 'weekly', priority: '0.6' })
+      }
+    })
     
     let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
