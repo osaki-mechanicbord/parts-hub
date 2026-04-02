@@ -66,6 +66,7 @@ const Footer = () => `
                     <li><a href="/area" class="hover:text-white transition-colors">エリア別</a></li>
                     <li><a href="/vehicle" class="hover:text-white transition-colors">車種別パーツ</a></li>
                     <li><a href="/guide" class="hover:text-white transition-colors">整備ガイド</a></li>
+                    <li><a href="/partner" class="hover:text-white transition-colors">パートナー</a></li>
                     <li><a href="/news" class="hover:text-white transition-colors">ニュース</a></li>
                 </ul>
             </div>
@@ -456,6 +457,20 @@ app.get('/sitemap.xml', async (c) => {
     const vehicleSlugs = Object.keys(VEHICLES)
     vehicleSlugs.forEach(slug => {
       staticPages.push({ url: '/vehicle/' + slug, changefreq: 'weekly', priority: '0.6' })
+    })
+
+    // 整備ガイドページをsitemapに追加
+    staticPages.push({ url: '/guide', changefreq: 'monthly', priority: '0.6' })
+    const guideSlugs = Object.keys(GUIDES)
+    guideSlugs.forEach(slug => {
+      staticPages.push({ url: '/guide/' + slug, changefreq: 'monthly', priority: '0.6' })
+    })
+
+    // パートナーページをsitemapに追加
+    staticPages.push({ url: '/partner', changefreq: 'monthly', priority: '0.6' })
+    const partnerSlugs = Object.keys(PARTNERS)
+    partnerSlugs.forEach(slug => {
+      staticPages.push({ url: '/partner/' + slug, changefreq: 'monthly', priority: '0.6' })
     })
     
     let xml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -2196,6 +2211,7 @@ function getArticleDetailBody() {
                     <a href="/area" class="hover:text-white transition-colors">エリア別</a>
                     <a href="/vehicle" class="hover:text-white transition-colors">車種別</a>
                     <a href="/guide" class="hover:text-white transition-colors">整備ガイド</a>
+                    <a href="/partner" class="hover:text-white transition-colors">パートナー</a>
                     <a href="/faq" class="hover:text-white transition-colors">FAQ</a>
                     <a href="/contact" class="hover:text-white transition-colors">お問い合わせ</a>
                 </div>
@@ -8017,6 +8033,338 @@ app.get('/vehicle/:slug', async (c) => {
 })
 
 // ========================================
+// 整備団体向けパートナーLP（/partner）
+// ========================================
+
+const PARTNERS: Record<string, {
+  name: string; abbr: string; fullName: string; type: string;
+  memberCount: string; desc: string; targetAudience: string;
+  benefits: { icon: string; title: string; text: string }[];
+  stats: { label: string; value: string }[];
+  useCases: { title: string; text: string }[];
+}> = {
+  'jaspa': {
+    name: '自動車整備振興会',
+    abbr: 'JASPA',
+    fullName: '一般社団法人 日本自動車整備振興会連合会',
+    type: '振興会',
+    memberCount: '約92,000事業場',
+    desc: '全国の自動車整備振興会の会員工場向けに、パーツ調達コスト削減と余剰在庫の収益化を支援します。日整連加盟の整備工場が安心して利用できるプラットフォームです。',
+    targetAudience: '振興会加盟の認証工場・指定工場',
+    benefits: [
+      { icon: 'fa-yen-sign', title: '仕入れコスト平均30〜60%削減', text: '純正品・社外品を全国の整備工場から直接調達。部品商経由の中間マージンをカット。' },
+      { icon: 'fa-warehouse', title: '余剰在庫の即時現金化', text: '車検用に仕入れたが不要になった部品、廃車取り外しパーツを全国に販売。在庫保有コスト年間15〜25%を削減。' },
+      { icon: 'fa-shield-alt', title: '安心の取引保証', text: 'Stripe決済・エスクロー方式で代金を保全。会員同士の信頼性の高い取引を実現。' },
+      { icon: 'fa-truck', title: '全国配送ネットワーク', text: 'ヤマト・佐川・西濃・福山の主要運送会社対応。大型部品のパレット配送も可能。' }
+    ],
+    stats: [
+      { label: '全国整備事業場数', value: '92,000+' },
+      { label: '整備士数', value: '333,000+人' },
+      { label: '業界総売上高', value: '6.6兆円' },
+      { label: 'PARTS HUB手数料', value: '10%のみ' }
+    ],
+    useCases: [
+      { title: '緊急パーツ調達', text: '車検期限が迫る中、ディーラー取り寄せでは間に合わないケースで、PARTS HUBなら在庫を持つ工場から即日出荷のパーツを見つけられます。' },
+      { title: '専用工具(SST)のシェア', text: '年に数回しか使わない高額SSTを、必要な時だけ中古で調達。使い終わったら再出品して次の工場へ。' },
+      { title: '廃業工場の在庫一括処分', text: '代理出品サービスを活用して、閉業する工場の在庫を一括で出品。スタッフが訪問して撮影・出品を代行します。' }
+    ]
+  },
+  'jasca': {
+    name: '自動車整備商工組合',
+    abbr: 'JASCA',
+    fullName: '日本自動車整備商工組合連合会（整商連）',
+    type: '商工組合',
+    memberCount: '全国46都府県組合',
+    desc: '整商連加盟の中小整備事業者向けに、経営改善と収益向上を支援するパーツ売買プラットフォームです。組合員同士のパーツ流通で仕入れコストを最適化できます。',
+    targetAudience: '商工組合加盟の中小整備事業者',
+    benefits: [
+      { icon: 'fa-handshake', title: '中小事業者に最適な仕入れ', text: '大量仕入れが難しい中小工場でも、必要な分だけ適正価格で調達。少量多品種の仕入れニーズに対応。' },
+      { icon: 'fa-chart-line', title: '経営改善に直結', text: '仕入れコスト削減＋余剰在庫の売却で、キャッシュフローを改善。年間数十万円の経費削減を実現した工場も。' },
+      { icon: 'fa-mobile-alt', title: 'スマホで簡単出品', text: '写真を撮って数分で出品完了。ITに不慣れなスタッフでも直感的に操作できるシンプルUI。' },
+      { icon: 'fa-users', title: '全国の工場とつながる', text: '地域の部品商だけでなく、全国92,000の整備工場が取引相手に。売れ残りリスクを大幅に低減。' }
+    ],
+    stats: [
+      { label: '加盟組合数', value: '46組合' },
+      { label: '中小事業者比率', value: '約85%' },
+      { label: '出品手数料', value: '0円' },
+      { label: '販売手数料', value: '10%のみ' }
+    ],
+    useCases: [
+      { title: '組合内でのパーツ共有', text: '近隣の組合員同士で在庫情報を共有。「うちに余っているパーツが隣の工場で必要」というマッチングを実現。' },
+      { title: '共同仕入れの代替手段', text: '共同購入では最低ロットが大きすぎる場合、PARTS HUBで必要な分だけ調達。無駄な在庫を持たない経営へ。' },
+      { title: '技術情報の共有', text: 'チャット機能を活用して、パーツの適合確認や整備のコツを出品者に質問。同業者ならではの実践的アドバイスを得られます。' }
+    ]
+  },
+  'body-shop': {
+    name: '車体整備事業者',
+    abbr: '鈑金塗装',
+    fullName: '自動車車体整備事業者・鈑金塗装工場',
+    type: '車体整備',
+    memberCount: '全国約15,000事業場',
+    desc: '鈑金塗装・車体整備を行う事業者向けに、外装パーツの調達コスト削減を支援します。ドアパネル、バンパー、ライト類など、車体修理に必要なパーツを全国から調達できます。',
+    targetAudience: '鈑金塗装工場・車体整備事業者',
+    benefits: [
+      { icon: 'fa-car-crash', title: '外装パーツの豊富な在庫', text: 'ドア・バンパー・フェンダー・ボンネット・テールランプなど、車体修理で需要の高いパーツが多数出品されています。' },
+      { icon: 'fa-palette', title: '色付きパーツで工程短縮', text: '同色のパーツを見つければ再塗装が不要に。作業時間と塗料コストを大幅に削減できます。' },
+      { icon: 'fa-search', title: '車種・型式で簡単検索', text: '車種名や型式番号で検索して、適合パーツをすぐに見つけられます。品番検索にも対応。' },
+      { icon: 'fa-hand-holding-usd', title: '保険修理の利益率向上', text: '修理見積もりと実際のパーツ調達コストの差額を最大化。中古パーツ活用で利益率を改善。' }
+    ],
+    stats: [
+      { label: '車体整備工場数', value: '15,000+' },
+      { label: '外装パーツ比率', value: '出品の約40%' },
+      { label: '平均調達削減率', value: '40〜70%' },
+      { label: '送料', value: '出品者設定' }
+    ],
+    useCases: [
+      { title: '事故車修理のコスト削減', text: '保険会社の見積もりでは新品パーツ代が計上されますが、中古パーツを活用すれば差額が利益に。お客様の自己負担軽減にもつながります。' },
+      { title: '同色パーツの調達', text: '再塗装なしで交換可能な同色パーツを検索。色番号と車種名で絞り込み、チャットで色味を確認してから購入できます。' },
+      { title: '廃車からのパーツ販売', text: '修理不能と判断した事故車から取り外した良品パーツを出品。廃車処理費用の一部を回収できます。' }
+    ]
+  },
+  'denso-seibi': {
+    name: '自動車電装整備事業者',
+    abbr: '電装整備',
+    fullName: '全国自動車電装品整備商工組合連合会',
+    type: '電装整備',
+    memberCount: '全国約3,500事業場',
+    desc: 'カーエアコン・オルタネーター・スターター・ECU等の電装品を専門に扱う整備事業者向けに、リビルト電装品の調達と不要電装品の販売を支援します。',
+    targetAudience: '電装品整備専門事業者・電装品取扱工場',
+    benefits: [
+      { icon: 'fa-bolt', title: 'リビルト電装品の豊富な品揃え', text: 'オルタネーター、スターター、コンプレッサー等のリビルト品を、新品の50〜70%の価格で調達可能。' },
+      { icon: 'fa-microchip', title: 'ECU・センサー類の調達', text: '新品では高額なECU・各種センサーの中古品を全国から検索。適合確認はチャットで出品者に直接質問可能。' },
+      { icon: 'fa-recycle', title: 'コア返却不要', text: 'リビルトメーカーへのコア返却が不要な場合も。出品者との条件交渉で柔軟な取引が可能です。' },
+      { icon: 'fa-tools', title: '診断機・テスターの売買', text: '高額な電装系診断機やテスターの中古品も出品。設備投資コストを抑えて最新機器を導入。' }
+    ],
+    stats: [
+      { label: '電装品整備事業場数', value: '3,500+' },
+      { label: '電装品リビルト品', value: '出品多数' },
+      { label: 'ECU・センサー', value: '常時出品' },
+      { label: '販売手数料', value: '10%のみ' }
+    ],
+    useCases: [
+      { title: 'エアコン修理のコスト削減', text: 'コンプレッサーやエバポレーター等の高額部品をリビルト品で調達し、修理コストを50%以上削減。' },
+      { title: '旧車の電装品確保', text: '生産終了した旧車の電装品は新品入手が困難。PARTS HUBで全国の在庫から必要な電装品を見つけられます。' },
+      { title: '取り外し電装品の販売', text: '交換で取り外した動作品のオルタネーター・スターターを出品。修理のコア材料として需要があります。' }
+    ]
+  },
+  'parts-dealer': {
+    name: '自動車部品卸商',
+    abbr: '部品商',
+    fullName: '全日本自動車部品卸商協同組合',
+    type: '部品販売',
+    memberCount: '全国約5,000事業者',
+    desc: '自動車部品の卸売・小売を行う事業者向けに、新たな販売チャネルとしてPARTS HUBを活用いただけます。在庫の回転率向上と販路拡大を支援します。',
+    targetAudience: '部品卸売業者・小売業者・パーツ販売店',
+    benefits: [
+      { icon: 'fa-store', title: '全国への販路拡大', text: '地域限定の営業圏を全国に拡大。これまでリーチできなかった遠方の整備工場にもパーツを販売可能。' },
+      { icon: 'fa-boxes', title: '滞留在庫の収益化', text: '長期在庫や動きの遅い品番を全国市場に出品。地域では売れにくいパーツも、全国なら需要が見つかります。' },
+      { icon: 'fa-tags', title: '出品無料・成功報酬型', text: '出品にかかる費用はゼロ。売れた時だけ10%の手数料。リスクなく新しい販売チャネルを試せます。' },
+      { icon: 'fa-truck-loading', title: '代理出品で大量処理', text: '在庫が大量にある場合、代理出品サービスで撮影・出品を一括代行。手間をかけずに販路開拓が可能です。' }
+    ],
+    stats: [
+      { label: '部品卸商数', value: '5,000+' },
+      { label: '出品費用', value: '0円' },
+      { label: '販売手数料', value: '10%のみ' },
+      { label: '代理出品', value: '対応可' }
+    ],
+    useCases: [
+      { title: '品番別の在庫整理', text: '特定車種向けの在庫が余っている場合、品番を明記して出品。全国の整備工場から品番検索でアクセスされます。' },
+      { title: 'リビルト品の販売強化', text: '自社リビルト品の販売チャネルとしてPARTS HUBを活用。製品写真と詳細スペックで品質をアピール。' },
+      { title: '季節商品の在庫処分', text: 'エアコン関連部品やスタッドレスタイヤなど、季節性の高い在庫をシーズン前に集中出品。' }
+    ]
+  }
+}
+
+// パートナー一覧ページ
+app.get('/partner', (c) => {
+  let cardsHtml = ''
+  for (const [slug, p] of Object.entries(PARTNERS)) {
+    cardsHtml += '<a href="/partner/' + slug + '" class="partner-card group">' +
+      '<div class="flex items-start gap-4">' +
+      '<div class="w-14 h-14 rounded-xl bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center flex-shrink-0 group-hover:from-red-100 group-hover:to-red-200 transition-colors">' +
+      '<span class="text-red-500 font-bold text-xs">' + p.abbr + '</span></div>' +
+      '<div class="min-w-0 flex-1">' +
+      '<div class="flex items-center gap-2 mb-1"><span class="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded font-medium">' + p.type + '</span>' +
+      '<span class="text-xs text-gray-400">' + p.memberCount + '</span></div>' +
+      '<h3 class="font-bold text-gray-900 text-base mb-1 group-hover:text-red-600 transition-colors">' + p.name + '</h3>' +
+      '<p class="text-sm text-gray-500 leading-relaxed line-clamp-2">' + p.desc.slice(0, 80) + '...</p>' +
+      '</div>' +
+      '<i class="fas fa-chevron-right text-gray-300 group-hover:text-red-400 transition-colors mt-4 flex-shrink-0"></i>' +
+      '</div></a>'
+  }
+
+  return c.html('<!DOCTYPE html><html lang="ja"><head>' +
+    '<meta charset="UTF-8"><meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">' +
+    '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+    '<title>パートナー（整備団体向け） - PARTS HUB（パーツハブ）</title>' +
+    '<meta name="description" content="PARTS HUBは全国の自動車整備振興会、商工組合、車体整備、電装整備事業者、部品卸商向けにパーツ調達コスト削減と余剰在庫の収益化を支援するプラットフォームです。">' +
+    '<link rel="canonical" href="https://parts-hub-tci.com/partner">' +
+    '<meta property="og:title" content="パートナー（整備団体向け） - PARTS HUB">' +
+    '<meta property="og:description" content="自動車整備振興会・商工組合・車体整備事業者向けのパーツ売買プラットフォーム">' +
+    '<meta property="og:url" content="https://parts-hub-tci.com/partner">' +
+    '<meta property="og:site_name" content="PARTS HUB"><meta property="og:image" content="https://parts-hub-tci.com/icons/og-default.png">' +
+    '<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">' +
+    '<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"PARTS HUB","item":"https://parts-hub-tci.com/"},{"@type":"ListItem","position":2,"name":"パートナー"}]}</script>' +
+    '<meta name="theme-color" content="#ff4757">' +
+    '<script src="https://cdn.tailwindcss.com"></script>' +
+    '<link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">' +
+    '<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">' +
+    '<style>' +
+    'body{font-family:"Noto Sans JP",sans-serif}' +
+    '.partner-card{display:block;background:white;border-radius:16px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.06);border:1px solid #f3f4f6;text-decoration:none;transition:all 0.2s}' +
+    '.partner-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.1);transform:translateY(-2px)}' +
+    '.hero-gradient{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%)}' +
+    '.line-clamp-2{overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}' +
+    '</style></head>' +
+    '<body class="bg-gray-50 min-h-screen">' +
+    '<header class="bg-white border-b border-gray-200 sticky top-0 z-50">' +
+    '<div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">' +
+    '<a href="/" class="text-gray-600 hover:text-gray-900 flex items-center gap-2"><i class="fas fa-arrow-left"></i><span class="text-sm font-medium">トップ</span></a>' +
+    '<a href="/" class="text-red-500 font-bold text-lg">PARTS HUB</a>' +
+    '<div class="w-16"></div></div></header>' +
+    '<div class="hero-gradient text-white py-12 sm:py-16"><div class="max-w-5xl mx-auto px-4 text-center">' +
+    '<div class="inline-flex items-center justify-center w-16 h-16 bg-white/10 rounded-2xl mb-4"><i class="fas fa-handshake text-2xl text-red-400"></i></div>' +
+    '<h1 class="text-2xl sm:text-3xl font-bold mb-3">パートナープログラム</h1>' +
+    '<p class="text-gray-300 text-sm sm:text-base max-w-xl mx-auto">全国の自動車整備団体・事業者団体向けに、PARTS HUBを活用した<br class="hidden sm:inline">パーツ調達コスト削減と余剰在庫の収益化を支援します。</p>' +
+    '</div></div>' +
+    '<main class="max-w-5xl mx-auto px-4 py-8 sm:py-12">' +
+    '<div class="mb-8 text-center"><p class="text-sm text-gray-500">対象団体を選択してください</p></div>' +
+    '<div class="grid grid-cols-1 gap-4">' + cardsHtml + '</div>' +
+    '<div class="mt-12 bg-white rounded-2xl p-8 sm:p-10 text-center shadow-sm border border-gray-100">' +
+    '<h2 class="text-xl font-bold text-gray-900 mb-3">団体・組合単位でのご導入について</h2>' +
+    '<p class="text-gray-600 text-sm mb-6 max-w-lg mx-auto">組合員への一括案内、専用ページの作成、説明会の実施など、団体単位でのPARTS HUB導入をサポートいたします。まずはお気軽にご相談ください。</p>' +
+    '<div class="flex flex-col sm:flex-row gap-3 justify-center">' +
+    '<a href="/contact" class="inline-block bg-red-500 hover:bg-red-600 text-white px-8 py-3.5 rounded-xl font-bold transition-colors text-sm"><i class="fas fa-envelope mr-2"></i>お問い合わせ</a>' +
+    '<a href="tel:06-6151-3697" class="inline-block bg-gray-900 hover:bg-gray-800 text-white px-8 py-3.5 rounded-xl font-bold transition-colors text-sm"><i class="fas fa-phone mr-2"></i>06-6151-3697</a>' +
+    '</div></div></main>' +
+    Footer() +
+    '<script src="' + v('/static/auth-header.js') + '"></script>' +
+    '<script src="' + v('/static/notification-badge.js') + '"></script>' +
+    '</body></html>')
+})
+
+// パートナー個別LP
+app.get('/partner/:slug', (c) => {
+  const slug = c.req.param('slug')
+  const p = PARTNERS[slug]
+  if (!p) return c.redirect('/partner', 302)
+
+  let benefitsHtml = ''
+  for (const b of p.benefits) {
+    benefitsHtml += '<div class="benefit-card"><div class="benefit-icon"><i class="fas ' + b.icon + '"></i></div>' +
+      '<h3 class="font-bold text-gray-900 mb-2">' + b.title + '</h3>' +
+      '<p class="text-sm text-gray-600 leading-relaxed">' + b.text + '</p></div>'
+  }
+
+  let statsHtml = ''
+  for (const s of p.stats) {
+    statsHtml += '<div class="stat-card"><div class="stat-value">' + s.value + '</div>' +
+      '<div class="stat-label">' + s.label + '</div></div>'
+  }
+
+  let useCasesHtml = ''
+  for (let i = 0; i < p.useCases.length; i++) {
+    const uc = p.useCases[i]
+    useCasesHtml += '<div class="usecase-card"><div class="usecase-num">' + (i + 1) + '</div>' +
+      '<div><h3 class="font-bold text-gray-900 mb-2">' + uc.title + '</h3>' +
+      '<p class="text-sm text-gray-600 leading-relaxed">' + uc.text + '</p></div></div>'
+  }
+
+  let stepsHtml = '<div class="step-card"><div class="step-num">1</div><div><h4 class="font-bold text-gray-900 mb-1">無料会員登録</h4><p class="text-sm text-gray-600">メールアドレスだけで簡単登録。最短1分で完了します。</p></div></div>' +
+    '<div class="step-card"><div class="step-num">2</div><div><h4 class="font-bold text-gray-900 mb-1">商品を検索 / 出品</h4><p class="text-sm text-gray-600">必要なパーツを検索して購入、または余剰在庫を出品して販売。</p></div></div>' +
+    '<div class="step-card"><div class="step-num">3</div><div><h4 class="font-bold text-gray-900 mb-1">安心の取引</h4><p class="text-sm text-gray-600">チャットで出品者と直接やり取り。Stripe決済で安全にお支払い。</p></div></div>' +
+    '<div class="step-card"><div class="step-num">4</div><div><h4 class="font-bold text-gray-900 mb-1">配送・受取完了</h4><p class="text-sm text-gray-600">追跡番号付きで全国配送。受取確認で取引完了。</p></div></div>'
+
+  return c.html('<!DOCTYPE html><html lang="ja"><head>' +
+    '<meta charset="UTF-8"><meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">' +
+    '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+    '<title>' + p.name + '向け パーツ売買プラットフォーム - PARTS HUB（パーツハブ）</title>' +
+    '<meta name="description" content="' + p.desc.slice(0, 140) + '">' +
+    '<link rel="canonical" href="https://parts-hub-tci.com/partner/' + slug + '">' +
+    '<meta property="og:title" content="' + p.name + '向け - PARTS HUB">' +
+    '<meta property="og:description" content="' + p.desc.slice(0, 120) + '">' +
+    '<meta property="og:url" content="https://parts-hub-tci.com/partner/' + slug + '">' +
+    '<meta property="og:site_name" content="PARTS HUB"><meta property="og:image" content="https://parts-hub-tci.com/icons/og-default.png">' +
+    '<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">' +
+    '<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="' + p.name + '向け - PARTS HUB">' +
+    '<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"PARTS HUB","item":"https://parts-hub-tci.com/"},{"@type":"ListItem","position":2,"name":"パートナー","item":"https://parts-hub-tci.com/partner"},{"@type":"ListItem","position":3,"name":"' + p.name + '"}]}</script>' +
+    '<meta name="theme-color" content="#ff4757">' +
+    '<script src="https://cdn.tailwindcss.com"></script>' +
+    '<link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">' +
+    '<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">' +
+    '<style>' +
+    'body{font-family:"Noto Sans JP",sans-serif}' +
+    '.hero-gradient{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%)}' +
+    '.benefit-card{background:white;border-radius:16px;padding:28px;box-shadow:0 1px 3px rgba(0,0,0,0.06);border:1px solid #f3f4f6;transition:all 0.2s}' +
+    '.benefit-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08);transform:translateY(-2px)}' +
+    '.benefit-icon{width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#fef2f2,#fee2e2);color:#ef4444;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:16px}' +
+    '.stat-card{background:white;border-radius:16px;padding:24px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.06);border:1px solid #f3f4f6}' +
+    '.stat-value{font-size:28px;font-weight:900;color:#1f2937;line-height:1.2}' +
+    '.stat-label{font-size:12px;color:#9ca3af;margin-top:4px;font-weight:500}' +
+    '.usecase-card{display:flex;gap:16px;padding:24px;background:white;border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);border:1px solid #f3f4f6}' +
+    '.usecase-num{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#ef4444,#dc2626);color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0}' +
+    '.step-card{display:flex;gap:16px;align-items:flex-start;padding:20px 24px;background:white;border-radius:12px;border-left:3px solid #ef4444}' +
+    '.step-num{width:32px;height:32px;border-radius:50%;background:#fef2f2;color:#ef4444;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}' +
+    '.cta-section{background:linear-gradient(135deg,#1e293b 0%,#0f172a 50%,#1e293b 100%);position:relative;overflow:hidden}' +
+    '.cta-section::before{content:"";position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(circle,rgba(239,68,68,0.08) 0%,transparent 50%)}' +
+    '</style></head>' +
+    '<body class="bg-gray-50 min-h-screen">' +
+    '<header class="bg-white border-b border-gray-200 sticky top-0 z-50">' +
+    '<div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">' +
+    '<a href="/partner" class="text-gray-600 hover:text-gray-900 flex items-center gap-2"><i class="fas fa-arrow-left"></i><span class="text-sm font-medium">パートナー一覧</span></a>' +
+    '<a href="/" class="text-red-500 font-bold text-lg">PARTS HUB</a>' +
+    '<div class="w-16"></div></div></header>' +
+
+    // Hero
+    '<div class="hero-gradient text-white py-12 sm:py-16"><div class="max-w-5xl mx-auto px-4">' +
+    '<div class="flex flex-col sm:flex-row items-center sm:items-start gap-6">' +
+    '<div class="w-20 h-20 rounded-2xl bg-white/10 flex items-center justify-center flex-shrink-0"><span class="text-red-400 font-bold text-sm">' + p.abbr + '</span></div>' +
+    '<div class="text-center sm:text-left">' +
+    '<div class="flex flex-wrap justify-center sm:justify-start gap-2 mb-3"><span class="text-xs px-3 py-1 bg-white/10 rounded-full">' + p.type + '</span><span class="text-xs px-3 py-1 bg-white/10 rounded-full">' + p.memberCount + '</span></div>' +
+    '<h1 class="text-2xl sm:text-3xl font-bold mb-3">' + p.name + '向け<br class="sm:hidden">パーツ売買プラットフォーム</h1>' +
+    '<p class="text-gray-300 text-sm sm:text-base leading-relaxed max-w-xl">' + p.desc + '</p>' +
+    '<div class="mt-6 flex flex-col sm:flex-row gap-3 justify-center sm:justify-start">' +
+    '<a href="/register" class="inline-block bg-red-500 hover:bg-red-600 text-white px-8 py-3.5 rounded-xl font-bold transition-colors text-sm"><i class="fas fa-user-plus mr-2"></i>無料で会員登録</a>' +
+    '<a href="/search" class="inline-block bg-white/10 hover:bg-white/20 text-white px-8 py-3.5 rounded-xl font-bold transition-colors text-sm"><i class="fas fa-search mr-2"></i>商品を探す</a>' +
+    '</div></div></div></div></div>' +
+
+    // Stats
+    '<div class="max-w-5xl mx-auto px-4 -mt-6"><div class="grid grid-cols-2 sm:grid-cols-4 gap-3">' + statsHtml + '</div></div>' +
+
+    '<main class="max-w-5xl mx-auto px-4 py-10 sm:py-14">' +
+
+    // Benefits
+    '<section class="mb-14"><div class="text-center mb-8"><h2 class="text-xl sm:text-2xl font-bold text-gray-900">PARTS HUBが選ばれる理由</h2><p class="text-sm text-gray-500 mt-2">' + p.targetAudience + 'のための4つのメリット</p></div>' +
+    '<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">' + benefitsHtml + '</div></section>' +
+
+    // Use Cases
+    '<section class="mb-14"><div class="text-center mb-8"><h2 class="text-xl sm:text-2xl font-bold text-gray-900">活用事例</h2><p class="text-sm text-gray-500 mt-2">実際の利用シーンをご紹介</p></div>' +
+    '<div class="grid grid-cols-1 gap-4">' + useCasesHtml + '</div></section>' +
+
+    // Steps
+    '<section class="mb-14"><div class="text-center mb-8"><h2 class="text-xl sm:text-2xl font-bold text-gray-900">ご利用の流れ</h2><p class="text-sm text-gray-500 mt-2">最短1分で利用開始</p></div>' +
+    '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">' + stepsHtml + '</div></section>' +
+
+    // CTA
+    '<section class="cta-section rounded-2xl p-8 sm:p-12 text-center text-white relative">' +
+    '<div class="relative z-10">' +
+    '<h2 class="text-xl sm:text-2xl font-bold mb-3">今すぐPARTS HUBを始めませんか？</h2>' +
+    '<p class="text-gray-300 text-sm mb-8 max-w-md mx-auto">会員登録は無料。出品も無料。売れた時だけ10%の手数料。<br>リスクゼロでパーツの調達コスト削減と在庫の収益化を始められます。</p>' +
+    '<div class="flex flex-col sm:flex-row gap-3 justify-center">' +
+    '<a href="/register" class="inline-block bg-red-500 hover:bg-red-600 text-white px-10 py-4 rounded-xl font-bold transition-colors"><i class="fas fa-user-plus mr-2"></i>無料で会員登録</a>' +
+    '<a href="/contact" class="inline-block bg-white/10 hover:bg-white/20 text-white px-10 py-4 rounded-xl font-bold transition-colors border border-white/20"><i class="fas fa-envelope mr-2"></i>お問い合わせ</a>' +
+    '</div>' +
+    '<p class="text-xs text-gray-400 mt-4">団体・組合単位での導入相談も承ります。お電話: 06-6151-3697</p>' +
+    '</div></section>' +
+
+    '</main>' +
+    Footer() +
+    '<script src="' + v('/static/auth-header.js') + '"></script>' +
+    '<script src="' + v('/static/notification-badge.js') + '"></script>' +
+    '</body></html>')
+})
+
+// ========================================
 // 整備ガイド・コスト比較コンテンツ（/guide）
 // ========================================
 const GUIDES: Record<string, { title: string; desc: string; category: string; sections: { heading: string; body: string }[]; comparison?: { item: string; dealer: string; parts_hub: string; savings: string }[] }> = {
@@ -8463,6 +8811,22 @@ app.get('/sitemap', async (c) => {
                         <li><a href="/guide/genuine-vs-aftermarket" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>純正品 vs 社外品</a></li>
                         <li><a href="/guide/deadstock-management" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>デッドストック活用術</a></li>
                         <li><a href="/guide/sst-tool-guide" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>SST（特殊工具）調達</a></li>
+                    </ul></div>
+                </div>
+
+                <div class="section-card">
+                    <div class="section-header">
+                        <div class="section-icon bg-rose-50 text-rose-500"><i class="fas fa-handshake"></i></div>
+                        <div><h2 class="font-bold text-gray-900">パートナー</h2><p class="text-xs text-gray-400">整備団体向け専用ページ</p></div>
+                        <a href="/partner" class="ml-auto text-xs text-red-500 font-medium hover:underline">一覧へ &rarr;</a>
+                    </div>
+                    <div class="section-body"><ul>
+                        <li><a href="/partner" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>パートナー一覧</a></li>
+                        <li><a href="/partner/jaspa" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>自動車整備振興会（JASPA）</a></li>
+                        <li><a href="/partner/jasca" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>自動車整備商工組合（JASCA）</a></li>
+                        <li><a href="/partner/body-shop" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>車体整備事業者（鈑金塗装）</a></li>
+                        <li><a href="/partner/denso-seibi" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>自動車電装整備事業者</a></li>
+                        <li><a href="/partner/parts-dealer" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>自動車部品卸商</a></li>
                     </ul></div>
                 </div>
 
