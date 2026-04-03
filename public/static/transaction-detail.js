@@ -106,14 +106,16 @@ function renderTransaction() {
 
     <!-- 商品情報 -->
     <div class="bg-white rounded-xl shadow-sm p-5">
-      <div class="flex items-center gap-4">
-        <img src="${transactionData.product_image || '/icons/icon.svg'}" 
-             alt="${transactionData.product_title}" 
-             class="w-20 h-20 object-cover rounded-lg bg-gray-100 flex-shrink-0"
-             onerror="this.src='/icons/icon.svg'">
-        <div class="flex-1 min-w-0">
-          <h3 class="font-bold text-base text-gray-900 truncate">${transactionData.product_title}</h3>
-          <div class="text-xl font-bold text-red-500 mt-1">¥${formatPrice(amount)}</div>
+      <div class="flex items-start gap-4">
+        <div class="w-24 h-24 sm:w-28 sm:h-28 flex-shrink-0 rounded-xl overflow-hidden bg-gray-100 border border-gray-200">
+          <img src="${getProductImageUrl(transactionData.product_image)}" 
+               alt="${escapeHtml(transactionData.product_title)}" 
+               class="w-full h-full object-cover"
+               onerror="this.onerror=null; this.src='https://placehold.co/200x200/e2e8f0/64748b?text=No+Image';">
+        </div>
+        <div class="flex-1 min-w-0 py-1">
+          <h3 class="font-bold text-base text-gray-900 leading-snug line-clamp-2">${escapeHtml(transactionData.product_title)}</h3>
+          <div class="text-xl font-bold text-red-500 mt-1.5">¥${formatPrice(amount)}</div>
           ${fee > 0 ? `<div class="text-xs text-gray-400">（手数料 ¥${formatPrice(fee)}込み）</div>` : ''}
           <div class="text-xs text-gray-500 mt-1">注文 #${transactionData.id} ・ ${formatDate(transactionData.created_at)}</div>
         </div>
@@ -580,4 +582,11 @@ function formatShortDate(dateString) {
 function escapeHtml(str) {
   if (!str) return '';
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// 商品画像URLを正規化（R2キー → /r2/ パス、完全URL → そのまま）
+function getProductImageUrl(imageUrl) {
+  if (!imageUrl) return 'https://placehold.co/200x200/e2e8f0/64748b?text=No+Image';
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || imageUrl.startsWith('/r2/') || imageUrl.startsWith('/')) return imageUrl;
+  return '/r2/' + imageUrl;
 }

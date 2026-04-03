@@ -11,6 +11,13 @@ type Bindings = {
 
 const transactions = new Hono<{ Bindings: Bindings }>()
 
+// R2キーを表示用URLに変換するヘルパー
+function toImageUrl(key: string | null | undefined): string | null {
+  if (!key) return null
+  if (key.startsWith('http://') || key.startsWith('https://') || key.startsWith('/r2/')) return key
+  return `/r2/${key}`
+}
+
 // 取引詳細取得（認証必須 + 当事者のみアクセス可能）
 transactions.get('/:transactionId', authMiddleware, async (c) => {
   try {
@@ -83,6 +90,7 @@ transactions.get('/:transactionId', authMiddleware, async (c) => {
       success: true, 
       data: {
         ...transaction,
+        product_image: toImageUrl(transaction.product_image as string),
         has_review: !!review,
         review: review || null,
         shipping_address_info: shippingAddress,
