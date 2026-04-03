@@ -6261,8 +6261,8 @@ app.get('/reviews/new', (c) => {
                 <!-- コメント -->
                 <div>
                     <label class="block text-lg font-bold text-gray-900 mb-3">コメント<span class="text-red-500">*</span></label>
-                    <textarea id="comment" required rows="6" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors resize-none" placeholder="商品の状態、対応、配送などについてお書きください（100文字以上）"></textarea>
-                    <p class="text-sm text-gray-600 mt-2"><span id="char-count">0</span> / 100文字（最低）</p>
+                    <textarea id="comment" required rows="6" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none transition-colors resize-none" placeholder="商品の状態、対応、配送などについてお書きください（5文字以上）"></textarea>
+                    <p class="text-sm text-gray-600 mt-2"><span id="char-count">0</span> 文字（5文字以上）</p>
                 </div>
 
                 <!-- 評価項目（任意） -->

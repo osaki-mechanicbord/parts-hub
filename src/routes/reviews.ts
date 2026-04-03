@@ -156,8 +156,8 @@ reviews.post('/', authMiddleware, async (c) => {
       return c.json({ success: false, error: '評価は1〜5の範囲で指定してください' }, 400)
     }
 
-    if (comment.length < 10) {
-      return c.json({ success: false, error: 'コメントは10文字以上入力してください' }, 400)
+    if (comment.length < 5) {
+      return c.json({ success: false, error: 'コメントは5文字以上入力してください' }, 400)
     }
 
     // 認証ユーザーとreviewer_idの一致確認
