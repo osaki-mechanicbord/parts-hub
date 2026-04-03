@@ -16,6 +16,8 @@ let favoritesData = [];
 let negotiationsReceivedData = [];
 let negotiationsSentData = [];
 let salesHistoryData = [];
+let activeTransactionsData = [];
+let txFilter = 'all';
 
 function getAuthHeaders() {
     return { headers: { 'Authorization': 'Bearer ' + token } };
@@ -59,7 +61,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     loadUserStats();
-    showTab('listings');
+    showTab('transactions');
 });
 
 function getShopTypeLabel(type) {
@@ -109,6 +111,20 @@ function renderUserStats() {
     if (el('purchase-count')) el('purchase-count').textContent = statsData.purchase_count || '0';
     if (el('withdrawable-detail')) el('withdrawable-detail').textContent = formatPrice(statsData.withdrawable_amount || 0);
     
+    // 進行中取引
+    if (el('active-tx-count')) el('active-tx-count').textContent = statsData.active_transaction_count || '0';
+    const actionCount = statsData.action_required_count || 0;
+    if (actionCount > 0) {
+        if (el('action-required-line')) el('action-required-line').classList.remove('hidden');
+        if (el('action-required-count')) el('action-required-count').textContent = actionCount;
+        // タブにバッジ表示
+        const txBadge = document.getElementById('tx-action-badge');
+        if (txBadge) {
+            txBadge.textContent = actionCount > 9 ? '9+' : actionCount;
+            txBadge.classList.remove('hidden');
+        }
+    }
+
     // 通知バッジ
     const unreadCount = statsData.unread_notifications || 0;
     if (unreadCount > 0) {
@@ -143,12 +159,229 @@ function showTab(tabName) {
     }
     
     switch(tabName) {
+        case 'transactions': loadActiveTransactions(); break;
         case 'listings': loadListings(); break;
         case 'sales': loadSalesData(); break;
         case 'purchases': loadPurchases(); break;
         case 'favorites': loadFavorites(); break;
         case 'negotiations': loadNegotiations('received'); break;
     }
+}
+
+// ==== 【取引管理】進行中の取引 ====
+async function loadActiveTransactions() {
+    try {
+        const response = await axios.get(`/api/mypage/active-transactions/${currentUserId}`, getAuthHeaders());
+        if (response.data.success) {
+            activeTransactionsData = response.data.data || [];
+            renderActiveTransactions();
+        }
+    } catch (error) {
+        console.error('Failed to load active transactions:', error);
+        document.getElementById('transactions-container').innerHTML =
+            '<div class="text-center py-8 text-gray-500">取引情報の読み込みに失敗しました</div>';
+    }
+}
+
+function filterTransactions(value) {
+    txFilter = value;
+    renderActiveTransactions();
+}
+
+function renderActiveTransactions() {
+    const container = document.getElementById('transactions-container');
+    const banner = document.getElementById('tx-action-required-banner');
+    const bannerText = document.getElementById('tx-action-required-text');
+
+    // フィルタ適用
+    let filtered = activeTransactionsData;
+    if (txFilter === 'action') {
+        filtered = filtered.filter(t =>
+            (t.is_seller && t.status === 'paid') ||
+            (t.is_buyer && t.status === 'shipped')
+        );
+    } else if (txFilter !== 'all') {
+        filtered = filtered.filter(t => t.status === txFilter);
+    }
+
+    // 要対応カウント
+    const actionItems = activeTransactionsData.filter(t =>
+        (t.is_seller && t.status === 'paid') ||
+        (t.is_buyer && t.status === 'shipped')
+    );
+    if (actionItems.length > 0 && banner) {
+        banner.classList.remove('hidden');
+        bannerText.textContent = `${actionItems.length}件の対応が必要な取引があります`;
+    } else if (banner) {
+        banner.classList.add('hidden');
+    }
+
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-12">
+                <i class="fas fa-handshake text-gray-300 text-5xl mb-4"></i>
+                <p class="text-gray-500">${txFilter === 'all' ? '進行中の取引がありません' : '該当する取引がありません'}</p>
+            </div>`;
+        return;
+    }
+
+    container.innerHTML = filtered.map(tx => renderTransactionCard(tx)).join('');
+}
+
+function renderTransactionCard(tx) {
+    const isBuyer = tx.is_buyer;
+    const isSeller = tx.is_seller;
+    const todo = getTodoForTransaction(tx);
+    const statusInfo = getTxStatusInfo(tx.status);
+    const amount = Number(tx.amount || 0);
+    const counterpart = isBuyer ? tx.seller_name : tx.buyer_name;
+    const roleLabel = isBuyer ? '購入' : '出品';
+    const roleBg = isBuyer ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700';
+
+    return `
+    <div class="bg-white border ${todo.urgent ? 'border-red-300 shadow-md' : 'border-gray-200'} rounded-xl overflow-hidden">
+        <!-- ヘッダー: 商品情報 -->
+        <div class="p-4 flex items-start gap-3">
+            <img src="${tx.product_image || 'https://placehold.co/100x100/e2e8f0/64748b?text=No+Image'}"
+                 alt="${tx.product_title}"
+                 class="w-14 h-14 sm:w-16 sm:h-16 object-cover rounded-lg flex-shrink-0 bg-gray-100"
+                 onerror="this.src='https://placehold.co/100x100/e2e8f0/64748b?text=No+Image'">
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1 flex-wrap">
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${roleBg}">${roleLabel}</span>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${statusInfo.bgClass}">
+                        <i class="fas ${statusInfo.icon} mr-1"></i>${statusInfo.text}
+                    </span>
+                </div>
+                <h4 class="font-semibold text-gray-900 text-sm truncate">${tx.product_title}</h4>
+                <div class="flex items-center gap-3 mt-1">
+                    <span class="text-red-500 font-bold">¥${formatPrice(amount)}</span>
+                    <span class="text-xs text-gray-400"><i class="fas fa-user mr-1"></i>${counterpart || '不明'}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- TODO: やることリスト -->
+        ${todo.html}
+
+        <!-- 配送情報（発送済みの場合） -->
+        ${tx.status === 'shipped' || tx.status === 'completed' ? renderTxShippingBrief(tx) : ''}
+
+        <!-- アクション -->
+        <div class="px-4 pb-3 pt-2 border-t border-gray-100 flex items-center justify-between">
+            <span class="text-[10px] text-gray-400">#${tx.transaction_id} ・ ${formatDate(tx.created_at)}</span>
+            <a href="/transactions/${tx.transaction_id}" class="text-sm text-blue-600 hover:underline font-semibold">
+                詳細 <i class="fas fa-chevron-right ml-0.5 text-xs"></i>
+            </a>
+        </div>
+    </div>`;
+}
+
+function getTxStatusInfo(status) {
+    const map = {
+        'pending': { text: '支払い待ち', icon: 'fa-clock', bgClass: 'bg-yellow-100 text-yellow-700' },
+        'paid':    { text: '発送待ち',   icon: 'fa-box',   bgClass: 'bg-orange-100 text-orange-700' },
+        'shipped': { text: '配送中',     icon: 'fa-truck',  bgClass: 'bg-indigo-100 text-indigo-700' },
+        'completed':{ text: '取引完了',  icon: 'fa-check-circle', bgClass: 'bg-green-100 text-green-700' },
+        'cancelled':{ text: 'キャンセル',icon: 'fa-times-circle', bgClass: 'bg-red-100 text-red-700' },
+    };
+    return map[status] || map['pending'];
+}
+
+function getTodoForTransaction(tx) {
+    const isBuyer = tx.is_buyer;
+    const isSeller = tx.is_seller;
+    let items = [];
+    let urgent = false;
+
+    if (tx.status === 'pending') {
+        if (isBuyer) {
+            items.push({ icon: 'fa-credit-card', color: 'text-yellow-500', text: 'お支払いを完了してください', done: false, urgent: true });
+        } else {
+            items.push({ icon: 'fa-clock', color: 'text-gray-400', text: '購入者のお支払いをお待ちください', done: false, urgent: false });
+        }
+    }
+
+    if (tx.status === 'paid') {
+        items.push({ icon: 'fa-credit-card', color: 'text-green-500', text: 'お支払い完了', done: true, urgent: false });
+        if (isSeller) {
+            items.push({ icon: 'fa-box-open', color: 'text-orange-500', text: '商品を梱包・発送してください', done: false, urgent: true, action: 'ship', txId: tx.transaction_id });
+            urgent = true;
+        } else {
+            items.push({ icon: 'fa-clock', color: 'text-gray-400', text: '出品者の発送をお待ちください', done: false, urgent: false });
+        }
+    }
+
+    if (tx.status === 'shipped') {
+        items.push({ icon: 'fa-credit-card', color: 'text-green-500', text: 'お支払い完了', done: true, urgent: false });
+        items.push({ icon: 'fa-truck', color: 'text-green-500', text: '発送完了', done: true, urgent: false });
+        if (isBuyer) {
+            items.push({ icon: 'fa-hand-holding-box', color: 'text-indigo-500', text: '商品到着後「受取完了」を押してください', done: false, urgent: true, action: 'receive', txId: tx.transaction_id });
+            urgent = true;
+        } else {
+            items.push({ icon: 'fa-clock', color: 'text-gray-400', text: '購入者の受取確認をお待ちください', done: false, urgent: false });
+        }
+    }
+
+    if (tx.status === 'completed') {
+        items.push({ icon: 'fa-credit-card', color: 'text-green-500', text: 'お支払い完了', done: true, urgent: false });
+        items.push({ icon: 'fa-truck', color: 'text-green-500', text: '発送完了', done: true, urgent: false });
+        items.push({ icon: 'fa-check-circle', color: 'text-green-500', text: '受取完了・取引完了', done: true, urgent: false });
+        if (isBuyer) {
+            items.push({ icon: 'fa-star', color: 'text-yellow-500', text: 'レビューを書きましょう', done: false, urgent: false, action: 'review', txId: tx.transaction_id });
+        }
+    }
+
+    if (items.length === 0) return { html: '', urgent: false };
+
+    const html = `
+    <div class="px-4 pb-3">
+        <div class="bg-gray-50 rounded-lg p-3">
+            <div class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                <i class="fas fa-list-check mr-1"></i>やることリスト
+            </div>
+            <div class="space-y-2">
+                ${items.map(item => `
+                <div class="flex items-start gap-2.5">
+                    <div class="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center ${item.done ? 'bg-green-100' : (item.urgent ? 'bg-red-50' : 'bg-gray-100')}">
+                        <i class="fas ${item.done ? 'fa-check text-green-500' : item.icon + ' ' + item.color} text-xs"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <span class="text-sm ${item.done ? 'text-gray-400 line-through' : (item.urgent ? 'text-gray-900 font-semibold' : 'text-gray-600')}">${item.text}</span>
+                        ${item.action ? renderTodoAction(item.action, item.txId) : ''}
+                    </div>
+                </div>
+                `).join('')}
+            </div>
+        </div>
+    </div>`;
+
+    return { html, urgent };
+}
+
+function renderTodoAction(action, txId) {
+    if (action === 'ship') {
+        return `<a href="/transactions/${txId}" class="inline-flex items-center mt-1 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold rounded-lg transition-colors"><i class="fas fa-truck mr-1"></i>発送報告へ</a>`;
+    }
+    if (action === 'receive') {
+        return `<a href="/transactions/${txId}" class="inline-flex items-center mt-1 px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white text-xs font-bold rounded-lg transition-colors"><i class="fas fa-check-circle mr-1"></i>受取完了へ</a>`;
+    }
+    if (action === 'review') {
+        return `<a href="/reviews/new?transaction=${txId}" class="inline-flex items-center mt-1 px-3 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold rounded-lg transition-colors"><i class="fas fa-star mr-1"></i>レビューを書く</a>`;
+    }
+    return '';
+}
+
+function renderTxShippingBrief(tx) {
+    if (!tx.shipping_carrier && !tx.tracking_number) return '';
+    return `
+    <div class="px-4 pb-2">
+        <div class="bg-blue-50 rounded-lg px-3 py-2 flex items-center gap-2 text-xs">
+            <i class="fas fa-truck text-blue-500"></i>
+            ${tx.shipping_carrier ? `<span class="text-gray-700">${tx.shipping_carrier}</span>` : ''}
+            ${tx.tracking_number ? `<span class="font-mono font-bold text-blue-700">${tx.tracking_number}</span>` : ''}
+        </div>
+    </div>`;
 }
 
 // 【出品管理】出品中の商品を読み込み

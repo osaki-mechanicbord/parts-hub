@@ -5230,6 +5230,13 @@ app.get('/mypage', (c) => {
 
             <!-- 統計カード -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 mb-6">
+                <div class="bg-white rounded-xl shadow-sm p-3 sm:p-4 cursor-pointer hover:shadow-md transition-shadow" onclick="showTab('transactions')">
+                    <div class="text-gray-600 text-xs sm:text-sm mb-1">進行中取引</div>
+                    <div class="text-lg sm:text-2xl font-bold text-orange-500 flex items-baseline gap-1">
+                        <span id="active-tx-count">0</span><span class="text-sm font-normal text-gray-500">件</span>
+                    </div>
+                    <div id="action-required-line" class="hidden text-xs text-red-500 font-semibold mt-0.5"><i class="fas fa-exclamation-circle mr-1"></i><span id="action-required-count">0</span>件 要対応</div>
+                </div>
                 <div class="bg-white rounded-xl shadow-sm p-3 sm:p-4">
                     <div class="text-gray-600 text-xs sm:text-sm mb-1">売上合計</div>
                     <div class="text-lg sm:text-2xl font-bold text-gray-900">¥<span id="total-sales">0</span></div>
@@ -5239,18 +5246,17 @@ app.get('/mypage', (c) => {
                     <div class="text-lg sm:text-2xl font-bold text-green-600">¥<span id="withdrawable">0</span></div>
                 </div>
                 <div class="bg-white rounded-xl shadow-sm p-3 sm:p-4">
-                    <div class="text-gray-600 text-xs sm:text-sm mb-1">売却済み</div>
-                    <div class="text-lg sm:text-2xl font-bold text-gray-900"><span id="sold-count">0</span>件</div>
-                </div>
-                <div class="bg-white rounded-xl shadow-sm p-3 sm:p-4">
-                    <div class="text-gray-600 text-xs sm:text-sm mb-1">購入数</div>
-                    <div class="text-lg sm:text-2xl font-bold text-gray-900"><span id="purchase-count">0</span>件</div>
+                    <div class="text-gray-600 text-xs sm:text-sm mb-1">売却済み / 購入</div>
+                    <div class="text-lg sm:text-2xl font-bold text-gray-900"><span id="sold-count">0</span> / <span id="purchase-count">0</span></div>
                 </div>
             </div>
 
             <!-- メニュータブ -->
             <div class="bg-white rounded-xl shadow-sm mb-6">
                 <div class="flex border-b border-gray-200 overflow-x-auto scrollbar-hide" style="-webkit-overflow-scrolling: touch; -ms-overflow-style: none; scrollbar-width: none;">
+                    <button onclick="showTab('transactions')" class="tab-btn flex-shrink-0 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-gray-600 hover:text-red-500 border-b-2 border-transparent whitespace-nowrap relative" data-tab="transactions">
+                        <i class="fas fa-exchange-alt sm:mr-1"></i><span class="hidden sm:inline"> </span>取引<span id="tx-action-badge" class="hidden absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center font-bold leading-none"></span>
+                    </button>
                     <button onclick="showTab('listings')" class="tab-btn flex-shrink-0 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-gray-600 hover:text-red-500 border-b-2 border-transparent whitespace-nowrap" data-tab="listings">
                         <i class="fas fa-box sm:mr-1"></i><span class="hidden sm:inline"> </span>出品中
                     </button>
@@ -5268,8 +5274,34 @@ app.get('/mypage', (c) => {
                     </button>
                 </div>
 
+                <!-- 取引タブ -->
+                <div id="tab-transactions" class="tab-content p-3 sm:p-6 hidden">
+                    <!-- 要対応バナー -->
+                    <div id="tx-action-required-banner" class="hidden bg-red-50 border-l-4 border-red-500 rounded-r-xl p-4 mb-4">
+                        <div class="flex items-center gap-2 text-red-800 font-bold text-sm">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <span id="tx-action-required-text">対応が必要な取引があります</span>
+                        </div>
+                    </div>
+                    <!-- フィルター -->
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-base sm:text-lg font-bold text-gray-900">取引一覧</h3>
+                        <select id="tx-filter" onchange="filterTransactions(this.value)" class="text-sm px-3 py-1.5 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none">
+                            <option value="all">すべて</option>
+                            <option value="action">要対応</option>
+                            <option value="pending">支払い待ち</option>
+                            <option value="paid">発送待ち</option>
+                            <option value="shipped">受取待ち</option>
+                            <option value="completed">完了</option>
+                        </select>
+                    </div>
+                    <div id="transactions-container" class="space-y-3">
+                        <!-- JavaScriptで動的に生成 -->
+                    </div>
+                </div>
+
                 <!-- 出品中タブ -->
-                <div id="tab-listings" class="tab-content p-3 sm:p-6">
+                <div id="tab-listings" class="tab-content p-3 sm:p-6 hidden">
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="text-base sm:text-lg font-bold text-gray-900">出品中の商品</h3>
                         <select id="listing-status-filter" onchange="filterListings(this.value)" class="text-sm px-3 py-1.5 sm:px-4 sm:py-2 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none">

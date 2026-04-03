@@ -31,6 +31,8 @@ mypage.get('/stats/:userId', async (c) => {
     let avg_rating = 0;
     let unread_notifications = 0;
     let unread_messages = 0;
+    let active_transaction_count = 0;
+    let action_required_count = 0;
 
     // 出品中の商品数
     try {
@@ -107,6 +109,31 @@ mypage.get('/stats/:userId', async (c) => {
       avg_rating = 0
     }
 
+    // 進行中の取引数
+    try {
+      const result = await DB.prepare(`
+        SELECT COUNT(*) as count FROM transactions 
+        WHERE (buyer_id = ? OR seller_id = ?) AND status IN ('pending', 'paid', 'shipped')
+      `).bind(userId, userId).first()
+      active_transaction_count = result?.count || 0
+    } catch (error) {
+      active_transaction_count = 0
+    }
+
+    // 要対応の取引数（自分がアクション必要なもの）
+    try {
+      const result = await DB.prepare(`
+        SELECT COUNT(*) as count FROM transactions 
+        WHERE (
+          (seller_id = ? AND status = 'paid')
+          OR (buyer_id = ? AND status = 'shipped')
+        )
+      `).bind(userId, userId).first()
+      action_required_count = result?.count || 0
+    } catch (error) {
+      action_required_count = 0
+    }
+
     // 未読通知数
     try {
       const result = await DB.prepare(`
@@ -160,12 +187,72 @@ mypage.get('/stats/:userId', async (c) => {
         review_count,
         average_rating: Math.round(avg_rating * 10) / 10,
         unread_notifications,
-        unread_messages
+        unread_messages,
+        active_transaction_count,
+        action_required_count
       }
     })
   } catch (error) {
     console.error('Get stats error:', error)
     return c.json({ success: false, error: '統計情報の取得に失敗しました' }, 500)
+  }
+})
+
+// 進行中の取引一覧（出品者・購入者両方）
+mypage.get('/active-transactions/:userId', async (c) => {
+  try {
+    const { DB } = c.env
+    const userId = c.req.param('userId')
+
+    const { results } = await DB.prepare(`
+      SELECT 
+        t.id as transaction_id,
+        t.product_id,
+        t.amount,
+        t.fee,
+        t.status,
+        t.created_at,
+        t.paid_at,
+        t.shipped_at,
+        t.completed_at,
+        t.cancelled_at,
+        t.tracking_number,
+        t.shipping_carrier,
+        t.shipping_note,
+        t.buyer_id,
+        t.seller_id,
+        p.title as product_title,
+        COALESCE(buyer.company_name, buyer.nickname, buyer.name) as buyer_name,
+        COALESCE(seller.company_name, seller.nickname, seller.name) as seller_name,
+        (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as product_image
+      FROM transactions t
+      JOIN products p ON t.product_id = p.id
+      JOIN users buyer ON t.buyer_id = buyer.id
+      JOIN users seller ON t.seller_id = seller.id
+      WHERE (t.buyer_id = ? OR t.seller_id = ?)
+        AND t.status IN ('pending', 'paid', 'shipped', 'completed')
+      ORDER BY 
+        CASE t.status
+          WHEN 'paid' THEN 1
+          WHEN 'shipped' THEN 2
+          WHEN 'pending' THEN 3
+          WHEN 'completed' THEN 4
+        END,
+        t.created_at DESC
+      LIMIT 50
+    `).bind(userId, userId).all()
+
+    const data = results.map((t: any) => ({
+      ...t,
+      product_image: toImageUrl(t.product_image),
+      is_buyer: Number(t.buyer_id) === Number(userId),
+      is_seller: Number(t.seller_id) === Number(userId),
+    }))
+
+    return c.json({ success: true, data })
+  } catch (error) {
+    console.error('Get active transactions error:', error)
+    return c.json({ success: false, error: '取引情報の取得に失敗しました' }, 500)
   }
 })
 
