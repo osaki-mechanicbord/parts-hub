@@ -1,5 +1,5 @@
 // PARTS HUB メールテンプレート集
-import { SITE_URL, SUPPORT_EMAIL } from './email-config'
+import { SITE_URL } from './email-config'
 
 // ========== 共通ベーステンプレート ==========
 function baseTemplate(title: string, content: string): string {
@@ -26,7 +26,6 @@ function baseTemplate(title: string, content: string): string {
         <!-- フッター -->
         <tr><td style="padding:20px 28px;background:#f9fafb;border-top:1px solid #e5e7eb;text-align:center;font-size:12px;color:#9ca3af;">
           <p style="margin:0 0 4px;">このメールに心当たりがない場合は、お手数ですが削除してください。</p>
-          <p style="margin:0 0 4px;">お問い合わせ: <a href="mailto:${SUPPORT_EMAIL}" style="color:#ef4444;">${SUPPORT_EMAIL}</a></p>
           <p style="margin:0;">&copy; 2026 PARTS HUB. All rights reserved.</p>
         </td></tr>
       </table>
