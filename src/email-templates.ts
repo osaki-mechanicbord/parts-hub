@@ -272,6 +272,35 @@ export function transactionCompleted(p: {
 }
 
 // ================================================================
+// 7b. 受取完了確認（購入者向け）
+// ================================================================
+export function receiptConfirmed(p: {
+  buyerName: string; productName: string; amount: number; transactionId: number
+}) {
+  const amt = p.amount.toLocaleString('ja-JP')
+  const url = `${SITE_URL}/transactions/${p.transactionId}`
+  const reviewUrl = `${SITE_URL}/reviews/new?transaction=${p.transactionId}`
+  const content = `
+    <h2 style="margin:0 0 16px;font-size:20px;color:#111;">✅ 受取完了 - お取引ありがとうございました</h2>
+    <p>${p.buyerName} 様</p>
+    <p>商品の受け取り完了を確認いたしました。お取引いただきありがとうございます。</p>
+    ${infoBox([
+      infoRow('商品名', p.productName),
+      infoRow('お支払い金額', `¥${amt}`),
+      infoRow('注文番号', `#${p.transactionId}`),
+      infoRow('ステータス', '<span style="color:#16a34a;font-weight:700;">✅ 取引完了</span>'),
+    ])}
+    <p>出品者への<strong>レビュー</strong>にご協力いただけると幸いです。今後のお取引の参考になります。</p>
+    ${actionButton('レビューを書く', reviewUrl)}
+    <p style="font-size:13px;color:#6b7280;">商品に問題がある場合は、<a href="${url}" style="color:#ef4444;">取引ページ</a>からお問い合わせください。</p>
+  `
+  return {
+    subject: `【PARTS HUB】受取完了 - ${p.productName}`,
+    html: baseTemplate('受取完了', content),
+  }
+}
+
+// ================================================================
 // 8. パスワードリセット
 // ================================================================
 export function passwordReset(p: { userName: string; resetUrl: string }) {

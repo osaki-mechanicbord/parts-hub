@@ -725,17 +725,77 @@ payment.post('/transaction/:id/complete', authMiddleware, async (c) => {
       WHERE id = ?
     `).bind(transactionId).run()
 
-    // 出品者に完了通知
+    // 取引詳細を取得（通知用）
+    const txDetail = await c.env.DB.prepare(`
+      SELECT 
+        p.title as product_name,
+        t.amount,
+        seller.name as seller_name, seller.email as seller_email,
+        buyer.name as buyer_name, buyer.email as buyer_email
+      FROM transactions t
+      JOIN products p ON t.product_id = p.id
+      JOIN users seller ON t.seller_id = seller.id
+      JOIN users buyer ON t.buyer_id = buyer.id
+      WHERE t.id = ?
+    `).bind(transactionId).first()
+
+    const productName = (txDetail?.product_name as string) || '商品'
+
+    // 出品者へのアプリ内通知
     await createNotification(
       c.env.DB,
       transaction.seller_id as number,
       'transaction',
       '取引が完了しました',
-      '購入者が商品の受取を確認しました。お疲れ様でした！',
+      `「${productName}」の受取が確認されました。お疲れ様でした！`,
       parseInt(transactionId),
       'transaction',
       `/transactions/${transactionId}`
     )
+
+    // 購入者自身へのアプリ内通知（受取完了確認）
+    await createNotification(
+      c.env.DB,
+      transaction.buyer_id as number,
+      'transaction',
+      '受取完了しました',
+      `「${productName}」の受取が完了しました。レビューをお願いします。`,
+      parseInt(transactionId),
+      'transaction',
+      `/reviews/new?transaction=${transactionId}`
+    )
+
+    // メール通知
+    if ((c.env as any).RESEND_API_KEY && txDetail) {
+      const txId = parseInt(transactionId)
+      const amount = txDetail.amount as number
+
+      // 出品者へのメール通知（取引完了）
+      try {
+        const sellerMail = tpl.transactionCompleted({
+          sellerName: txDetail.seller_name as string,
+          productName: productName,
+          amount: amount,
+          transactionId: txId,
+        })
+        await sendEmail((c.env as any).RESEND_API_KEY, { to: txDetail.seller_email as string, ...sellerMail })
+      } catch (emailErr) {
+        console.error('Failed to send completion email to seller:', emailErr)
+      }
+
+      // 購入者へのメール通知（受取完了確認）
+      try {
+        const buyerMail = tpl.receiptConfirmed({
+          buyerName: txDetail.buyer_name as string,
+          productName: productName,
+          amount: amount,
+          transactionId: txId,
+        })
+        await sendEmail((c.env as any).RESEND_API_KEY, { to: txDetail.buyer_email as string, ...buyerMail })
+      } catch (emailErr) {
+        console.error('Failed to send receipt confirmation email to buyer:', emailErr)
+      }
+    }
 
     return c.json({
       success: true,
