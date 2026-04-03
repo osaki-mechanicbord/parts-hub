@@ -447,13 +447,24 @@ auth.post('/password-reset-request', async (c) => {
       VALUES (?, ?, 'password_reset', datetime('now', '+30 minutes'), datetime('now'))
     `).bind(user.id, resetTokenHash).run()
 
-    // TODO: メール送信（Day 5で実装）
-    // 開発中は resetToken をレスポンスに含める
+    // メール送信
+    try {
+      const apiKey = (c.env as any)?.RESEND_API_KEY
+      if (apiKey) {
+        const mail = tpl.passwordReset({
+          userName: user.name as string,
+          resetCode: resetToken,
+          resetUrl: `https://parts-hub-tci.com/password-reset?email=${encodeURIComponent(email)}`
+        })
+        await sendEmail(apiKey, { to: email, ...mail })
+      }
+    } catch (emailErr) {
+      console.error('Failed to send password reset email:', emailErr)
+    }
+
     return c.json({
       success: true,
-      message: 'パスワードリセット用のメールを送信しました',
-      // 開発用（本番では削除）
-      debug_reset_token: resetToken
+      message: 'パスワードリセット用のメールを送信しました'
     })
 
   } catch (error: any) {

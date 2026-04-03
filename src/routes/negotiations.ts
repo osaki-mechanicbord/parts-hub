@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { authMiddleware } from '../auth'
 
 type Bindings = {
   DB: D1Database
@@ -6,6 +7,9 @@ type Bindings = {
 }
 
 const negotiations = new Hono<{ Bindings: Bindings }>()
+
+// 全エンドポイントにJWT認証を適用
+negotiations.use('/*', authMiddleware)
 
 // 値下げリクエスト一覧取得（商品別）
 negotiations.get('/product/:productId', async (c) => {

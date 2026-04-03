@@ -39,10 +39,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-// 通知を読み込み
+// 通知を読み込み（認証ベースAPIを使用）
 async function loadNotifications() {
     try {
-        const response = await axios.get(`/api/notifications/${currentUserId}`, getAuthHeaders());
+        const response = await axios.get('/api/notifications/me', getAuthHeaders());
 
         if (response.data.success) {
             allNotifications = response.data.data || [];
@@ -99,7 +99,8 @@ function renderNotifications() {
             n.type === 'purchase' ||
             n.type === 'payment' ||
             n.type === 'shipped' ||
-            n.type === 'completed'
+            n.type === 'completed' ||
+            n.type === 'message'
         );
     }
 
@@ -176,12 +177,10 @@ function getNotificationIcon(type) {
     `;
 }
 
-// 通知クリック処理
+// 通知クリック処理（認証ベースAPI使用）
 async function handleNotificationClick(notificationId, actionUrl) {
     try {
-        await axios.put(`/api/notifications/${notificationId}/read`, {
-            user_id: currentUserId
-        }, getAuthHeaders());
+        await axios.put(`/api/notifications/${notificationId}/read`, {}, getAuthHeaders());
 
         const notification = allNotifications.find(n => n.id === notificationId);
         if (notification) {
@@ -203,7 +202,7 @@ async function handleNotificationClick(notificationId, actionUrl) {
     }
 }
 
-// すべて既読にする
+// すべて既読にする（認証ベースAPI使用）
 async function markAllAsRead() {
     const unreadCount = allNotifications.filter(n => !n.is_read).length;
     if (unreadCount === 0) {
@@ -214,9 +213,7 @@ async function markAllAsRead() {
     if (!confirm(`${unreadCount}件の通知をすべて既読にしますか？`)) return;
 
     try {
-        const response = await axios.put(`/api/notifications/read-all`, {
-            user_id: currentUserId
-        }, getAuthHeaders());
+        const response = await axios.put('/api/notifications/read-all', {}, getAuthHeaders());
 
         if (response.data.success) {
             allNotifications.forEach(n => n.is_read = true);

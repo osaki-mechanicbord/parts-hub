@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { authMiddleware } from '../auth'
 
 type Bindings = {
   DB: D1Database
@@ -130,10 +131,11 @@ reviews.get('/seller/:userId/summary', async (c) => {
   }
 })
 
-// レビュー投稿
-reviews.post('/', async (c) => {
+// レビュー投稿（認証必須）
+reviews.post('/', authMiddleware, async (c) => {
   try {
     const { DB } = c.env
+    const authUserId = c.get('userId')
     const body = await c.req.json()
     const {
       transaction_id,
@@ -156,6 +158,11 @@ reviews.post('/', async (c) => {
 
     if (comment.length < 10) {
       return c.json({ success: false, error: 'コメントは10文字以上入力してください' }, 400)
+    }
+
+    // 認証ユーザーとreviewer_idの一致確認
+    if (String(authUserId) !== String(reviewer_id)) {
+      return c.json({ success: false, error: '権限がありません' }, 403)
     }
 
     // トランザクション情報取得

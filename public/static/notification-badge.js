@@ -56,51 +56,86 @@
     }
   }
 
-  // 未読数を取得
+  // 未読数を取得（認証ベースAPI優先）
   function fetchUnreadCount() {
     var token = getToken();
-    var userId = getUserId();
-    if (!token || !userId) {
+    if (!token) {
       updateBadges(0);
       return;
     }
 
+    var userId = getUserId();
+
     // user情報がまだない場合はまず取得を試みる
-    if (!userId && token && typeof axios !== 'undefined') {
-      axios.get('/api/auth/me', { headers: { Authorization: 'Bearer ' + token } })
-        .then(function(res) {
-          if (res.data && res.data.success && res.data.user) {
-            localStorage.setItem('user', JSON.stringify(res.data.user));
-            doFetch(res.data.user.id);
-          }
-        })
-        .catch(function() {});
+    if (!userId) {
+      if (typeof axios !== 'undefined') {
+        axios.get('/api/auth/me', { headers: { Authorization: 'Bearer ' + token } })
+          .then(function(res) {
+            if (res.data && res.data.success && (res.data.user || res.data.data)) {
+              var u = res.data.user || res.data.data;
+              localStorage.setItem('user', JSON.stringify(u));
+              doFetchAuth(token);
+            }
+          })
+          .catch(function() {});
+      }
       return;
     }
 
-    doFetch(userId);
+    doFetchAuth(token);
   }
 
-  function doFetch(uid) {
+  // 認証ベースで未読数取得
+  function doFetchAuth(tok) {
+    if (!tok) return;
+    var headers = { Authorization: 'Bearer ' + tok };
+
+    if (typeof axios !== 'undefined') {
+      axios.get('/api/notifications/me/unread-count', { headers: headers })
+        .then(function(res) {
+          if (res.data && res.data.success) {
+            updateBadges(res.data.data.count);
+          }
+        })
+        .catch(function(err) {
+          // 401の場合はフォールバック（レガシー互換）
+          if (err && err.response && err.response.status === 401) {
+            var uid = getUserId();
+            if (uid) doFetchLegacy(uid);
+          }
+        });
+    } else {
+      fetch('/api/notifications/me/unread-count', { headers: headers })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.success) updateBadges(data.data.count);
+        })
+        .catch(function() {
+          var uid = getUserId();
+          if (uid) doFetchLegacy(uid);
+        });
+    }
+  }
+
+  // レガシーフォールバック
+  function doFetchLegacy(uid) {
     if (!uid) return;
-    if (typeof axios === 'undefined') {
-      // axios未読み込みの場合はfetch使用
+    if (typeof axios !== 'undefined') {
+      axios.get('/api/notifications/' + uid + '/unread-count')
+        .then(function(res) {
+          if (res.data && res.data.success) {
+            updateBadges(res.data.data.count);
+          }
+        })
+        .catch(function() {});
+    } else {
       fetch('/api/notifications/' + uid + '/unread-count')
         .then(function(r) { return r.json(); })
         .then(function(data) {
           if (data.success) updateBadges(data.data.count);
         })
         .catch(function() {});
-      return;
     }
-
-    axios.get('/api/notifications/' + uid + '/unread-count')
-      .then(function(res) {
-        if (res.data && res.data.success) {
-          updateBadges(res.data.data.count);
-        }
-      })
-      .catch(function() {});
   }
 
   // 初期化

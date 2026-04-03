@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { authMiddleware } from '../auth'
 
 type Bindings = {
   DB: D1Database
@@ -6,6 +7,9 @@ type Bindings = {
 }
 
 const mypage = new Hono<{ Bindings: Bindings }>()
+
+// 全エンドポイントにJWT認証を適用
+mypage.use('/*', authMiddleware)
 
 // R2キーを表示用URLに変換するヘルパー
 function toImageUrl(key: string | null | undefined): string | null {
@@ -18,7 +22,13 @@ function toImageUrl(key: string | null | undefined): string | null {
 mypage.get('/stats/:userId', async (c) => {
   try {
     const { DB } = c.env
+    const authUserId = c.get('userId')
     const userId = c.req.param('userId')
+
+    // 自分のデータのみアクセス可能
+    if (String(authUserId) !== String(userId)) {
+      return c.json({ success: false, error: 'アクセス権限がありません' }, 403)
+    }
 
     // 簡略化: 各統計を個別にtry-catchで囲む
     let listing_count = 0;
@@ -202,7 +212,12 @@ mypage.get('/stats/:userId', async (c) => {
 mypage.get('/active-transactions/:userId', async (c) => {
   try {
     const { DB } = c.env
+    const authUserId = c.get('userId')
     const userId = c.req.param('userId')
+
+    if (String(authUserId) !== String(userId)) {
+      return c.json({ success: false, error: 'アクセス権限がありません' }, 403)
+    }
 
     const { results } = await DB.prepare(`
       SELECT 
@@ -260,7 +275,12 @@ mypage.get('/active-transactions/:userId', async (c) => {
 mypage.get('/listings/:userId', async (c) => {
   try {
     const { DB } = c.env
+    const authUserId = c.get('userId')
     const userId = c.req.param('userId')
+
+    if (String(authUserId) !== String(userId)) {
+      return c.json({ success: false, error: 'アクセス権限がありません' }, 403)
+    }
     const status = c.req.query('status') || 'all' // all, active, draft, sold
 
     let query = `
@@ -302,7 +322,12 @@ mypage.get('/listings/:userId', async (c) => {
 mypage.get('/purchases/:userId', async (c) => {
   try {
     const { DB } = c.env
+    const authUserId = c.get('userId')
     const userId = c.req.param('userId')
+
+    if (String(authUserId) !== String(userId)) {
+      return c.json({ success: false, error: 'アクセス権限がありません' }, 403)
+    }
 
     const { results } = await DB.prepare(`
       SELECT 
@@ -355,7 +380,12 @@ mypage.get('/purchases/:userId', async (c) => {
 mypage.get('/sales/:userId', async (c) => {
   try {
     const { DB } = c.env
+    const authUserId = c.get('userId')
     const userId = c.req.param('userId')
+
+    if (String(authUserId) !== String(userId)) {
+      return c.json({ success: false, error: 'アクセス権限がありません' }, 403)
+    }
 
     const { results } = await DB.prepare(`
       SELECT 
@@ -404,7 +434,12 @@ mypage.get('/sales/:userId', async (c) => {
 mypage.get('/sales-summary/:userId', async (c) => {
   try {
     const { DB } = c.env
+    const authUserId = c.get('userId')
     const userId = c.req.param('userId')
+
+    if (String(authUserId) !== String(userId)) {
+      return c.json({ success: false, error: 'アクセス権限がありません' }, 403)
+    }
 
     const { results } = await DB.prepare(`
       SELECT 
@@ -431,7 +466,12 @@ mypage.get('/sales-summary/:userId', async (c) => {
 mypage.get('/favorites/:userId', async (c) => {
   try {
     const { DB } = c.env
+    const authUserId = c.get('userId')
     const userId = c.req.param('userId')
+
+    if (String(authUserId) !== String(userId)) {
+      return c.json({ success: false, error: 'アクセス権限がありません' }, 403)
+    }
 
     const { results } = await DB.prepare(`
       SELECT 
