@@ -568,24 +568,52 @@ async function loadSalesData() {
 
 // 売上データを表示
 function renderSalesData() {
-    const monthlySales = aggregateMonthlySales(salesHistoryData);
+    // 進行中と完了を分離
+    const inProgress = salesHistoryData.filter(s => s.status === 'paid' || s.status === 'shipped');
+    const completed = salesHistoryData.filter(s => s.status === 'completed');
+
+    const monthlySales = aggregateMonthlySales(completed);
     const summaryContainer = document.getElementById('sales-summary');
     
-    if (monthlySales.length === 0) {
+    if (monthlySales.length === 0 && inProgress.length === 0) {
         summaryContainer.innerHTML = '<div class="text-center py-8 text-gray-500">売上データがありません</div>';
     } else {
-        summaryContainer.innerHTML = monthlySales.map(month => `
-            <div class="bg-gray-50 rounded-lg p-4 flex items-center justify-between">
-                <div>
-                    <div class="font-semibold text-gray-900">${month.year}年${month.month}月</div>
-                    <div class="text-sm text-gray-600">${month.count}件の取引</div>
+        let summaryHtml = '';
+
+        // 進行中取引バナー
+        if (inProgress.length > 0) {
+            const inProgressTotal = inProgress.reduce((sum, s) => sum + Number(s.sale_price || 0), 0);
+            const needsShipping = inProgress.filter(s => s.status === 'paid').length;
+            const awaitingReceipt = inProgress.filter(s => s.status === 'shipped').length;
+
+            summaryHtml += `
+            <div class="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-3">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="font-bold text-orange-800 text-sm"><i class="fas fa-clock mr-1"></i>進行中の売上</div>
+                    <div class="text-lg font-bold text-orange-600">¥${formatPrice(inProgressTotal)}</div>
                 </div>
-                <div class="text-right">
-                    <div class="text-xl font-bold text-gray-900">¥${formatPrice(month.total)}</div>
-                    <div class="text-sm text-gray-600">手数料: ¥${formatPrice(month.fee)}</div>
+                <div class="flex gap-3 text-xs">
+                    ${needsShipping > 0 ? `<span class="bg-orange-100 text-orange-700 px-2 py-1 rounded-full font-semibold"><i class="fas fa-box mr-1"></i>発送待ち ${needsShipping}件</span>` : ''}
+                    ${awaitingReceipt > 0 ? `<span class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full font-semibold"><i class="fas fa-truck mr-1"></i>受取待ち ${awaitingReceipt}件</span>` : ''}
                 </div>
-            </div>
-        `).join('');
+            </div>`;
+        }
+
+        if (monthlySales.length > 0) {
+            summaryHtml += monthlySales.map(month => `
+                <div class="bg-gray-50 rounded-lg p-4 flex items-center justify-between">
+                    <div>
+                        <div class="font-semibold text-gray-900">${month.year}年${month.month}月</div>
+                        <div class="text-sm text-gray-600">${month.count}件の取引</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-xl font-bold text-gray-900">¥${formatPrice(month.total)}</div>
+                        <div class="text-sm text-gray-600">手数料: ¥${formatPrice(month.fee)}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        summaryContainer.innerHTML = summaryHtml;
     }
     
     const historyContainer = document.getElementById('sales-history');
@@ -593,22 +621,54 @@ function renderSalesData() {
     if (salesHistoryData.length === 0) {
         historyContainer.innerHTML = '<div class="text-center py-8 text-gray-500">売上履歴がありません</div>';
     } else {
-        historyContainer.innerHTML = salesHistoryData.map(sale => `
-            <div class="bg-white border border-gray-200 rounded-lg p-4">
-                <div class="flex items-center gap-3 mb-2">
+        historyContainer.innerHTML = salesHistoryData.map(sale => {
+            const statusInfo = getSaleStatusInfo(sale.status);
+            return `
+            <div class="bg-white border ${sale.status === 'paid' ? 'border-orange-300' : 'border-gray-200'} rounded-lg p-4">
+                <div class="flex items-start gap-3">
                     <img loading="lazy" src="${sale.product_image || 'https://placehold.co/100x100/e2e8f0/64748b?text=No+Image'}" 
                          alt="${sale.product_title}" 
                          class="w-14 h-14 object-cover rounded-lg flex-shrink-0"
                          onerror="this.src='https://placehold.co/100x100/e2e8f0/64748b?text=No+Image'">
                     <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${statusInfo.bgClass}">
+                                <i class="fas ${statusInfo.icon} mr-1"></i>${statusInfo.text}
+                            </span>
+                            <span class="text-xs text-gray-400">#${sale.transaction_id}</span>
+                        </div>
                         <h4 class="font-semibold text-gray-900 text-sm truncate">${sale.product_title}</h4>
-                        <div class="text-xs text-gray-500">${formatDate(sale.sold_at)}</div>
-                        <div class="text-lg font-bold text-gray-900">¥${formatPrice(sale.sale_price)}</div>
+                        <div class="flex items-center justify-between mt-1">
+                            <div>
+                                <span class="text-lg font-bold text-gray-900">¥${formatPrice(sale.sale_price)}</span>
+                                <span class="text-xs text-gray-400 ml-1">${sale.buyer_name ? '← ' + sale.buyer_name : ''}</span>
+                            </div>
+                        </div>
+                        ${sale.status === 'paid' ? `
+                        <a href="/transactions/${sale.transaction_id}" class="inline-flex items-center mt-2 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold rounded-lg transition-colors">
+                            <i class="fas fa-truck mr-1"></i>発送報告へ
+                        </a>` : ''}
+                        ${sale.status === 'shipped' ? `
+                        <div class="mt-2 text-xs text-gray-500">
+                            <i class="fas fa-truck text-indigo-500 mr-1"></i>${sale.shipping_carrier || '発送済み'}
+                            ${sale.tracking_number ? ' ・ ' + sale.tracking_number : ''}
+                        </div>` : ''}
+                        ${sale.status === 'completed' ? `
+                        <div class="text-xs text-gray-400 mt-1">${formatDate(sale.sold_at)}</div>` : ''}
                     </div>
                 </div>
-            </div>
-        `).join('');
+            </div>`;
+        }).join('');
     }
+}
+
+function getSaleStatusInfo(status) {
+    const map = {
+        'paid':     { text: '発送待ち', icon: 'fa-box',          bgClass: 'bg-orange-100 text-orange-700' },
+        'shipped':  { text: '配送中',   icon: 'fa-truck',         bgClass: 'bg-indigo-100 text-indigo-700' },
+        'completed':{ text: '完了',     icon: 'fa-check-circle',  bgClass: 'bg-green-100 text-green-700' },
+    };
+    return map[status] || { text: status, icon: 'fa-circle', bgClass: 'bg-gray-100 text-gray-700' };
 }
 
 // 月別売上を集計
@@ -677,32 +737,55 @@ function renderPurchases() {
         return;
     }
     
-    container.innerHTML = purchasesData.map(purchase => `
-        <div class="bg-white border border-gray-200 rounded-lg p-4">
-            <div class="flex items-center gap-3 mb-3">
+    container.innerHTML = purchasesData.map(purchase => {
+        const actionHtml = getPurchaseActionHtml(purchase);
+        return `
+        <div class="bg-white border ${purchase.status === 'shipped' ? 'border-indigo-300' : 'border-gray-200'} rounded-lg p-4">
+            <div class="flex items-start gap-3 mb-3">
                 <img loading="lazy" src="${purchase.product_image || 'https://placehold.co/100x100/e2e8f0/64748b?text=No+Image'}" 
                      alt="${purchase.product_title}" 
-                     class="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                     class="w-14 h-14 sm:w-16 sm:h-16 object-cover rounded-lg flex-shrink-0"
                      onerror="this.src='https://placehold.co/100x100/e2e8f0/64748b?text=No+Image'">
                 <div class="flex-1 min-w-0">
                     <h4 class="font-semibold text-gray-900 text-sm truncate">${purchase.product_title}</h4>
-                    <div class="text-xs text-gray-500">${formatDate(purchase.purchased_at)}</div>
-                    <div class="text-lg font-bold text-red-500">¥${formatPrice(purchase.total_price)}</div>
+                    <div class="text-xs text-gray-500 mt-0.5">${purchase.seller_name ? purchase.seller_name + ' ・ ' : ''}${formatDate(purchase.purchased_at)}</div>
+                    <div class="text-lg font-bold text-red-500 mt-0.5">¥${formatPrice(purchase.total_price)}</div>
                 </div>
             </div>
             <div class="flex items-center justify-between pt-3 border-t border-gray-100">
                 ${renderTransactionStatus(purchase.status)}
-                <button onclick="viewPurchaseDetail(${purchase.transaction_id})" class="text-sm text-blue-600 hover:underline">
+                <button onclick="viewPurchaseDetail(${purchase.transaction_id})" class="text-sm text-blue-600 hover:underline font-semibold">
                     詳細 <i class="fas fa-chevron-right ml-1"></i>
                 </button>
             </div>
-            ${purchase.status === 'completed' && !purchase.reviewed ? `
-                <button onclick="writeReview(${purchase.transaction_id})" class="w-full mt-3 bg-yellow-500 hover:bg-yellow-600 text-white py-2 px-4 rounded-lg font-semibold transition-colors text-sm">
-                    <i class="fas fa-star mr-2"></i>レビューを書く
-                </button>
-            ` : ''}
-        </div>
-    `).join('');
+            ${actionHtml}
+        </div>`;
+    }).join('');
+}
+
+function getPurchaseActionHtml(purchase) {
+    if (purchase.status === 'shipped') {
+        return `
+        <div class="mt-3 bg-indigo-50 border border-indigo-200 rounded-lg p-3">
+            <p class="text-xs text-indigo-700 mb-2"><i class="fas fa-info-circle mr-1"></i>商品が発送されました。届いたら受取完了を押してください。</p>
+            <a href="/transactions/${purchase.transaction_id}" class="inline-flex items-center px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-bold rounded-lg transition-colors">
+                <i class="fas fa-check-circle mr-1"></i>受取完了へ
+            </a>
+        </div>`;
+    }
+    if (purchase.status === 'paid') {
+        return `
+        <div class="mt-3 bg-blue-50 border border-blue-100 rounded-lg p-3">
+            <p class="text-xs text-blue-700"><i class="fas fa-clock mr-1"></i>出品者が発送準備を進めています。しばらくお待ちください。</p>
+        </div>`;
+    }
+    if (purchase.status === 'completed' && !purchase.reviewed) {
+        return `
+        <button onclick="writeReview(${purchase.transaction_id})" class="w-full mt-3 bg-yellow-500 hover:bg-yellow-600 text-white py-2 px-4 rounded-lg font-semibold transition-colors text-sm">
+            <i class="fas fa-star mr-2"></i>レビューを書く
+        </button>`;
+    }
+    return '';
 }
 
 function renderTransactionStatus(status) {

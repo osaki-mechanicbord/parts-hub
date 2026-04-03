@@ -5339,7 +5339,7 @@ app.get('/mypage', (c) => {
 
                         <!-- 売上履歴 -->
                         <div>
-                            <h3 class="text-lg font-bold text-gray-900 mb-4">売上履歴</h3>
+                            <h3 class="text-lg font-bold text-gray-900 mb-4">販売状況</h3>
                             <div id="sales-history" class="space-y-3">
                                 <!-- JavaScriptで動的に生成 -->
                             </div>

@@ -310,7 +310,13 @@ mypage.get('/purchases/:userId', async (c) => {
         t.product_id,
         t.amount as total_price,
         t.status,
+        t.created_at,
+        t.paid_at,
+        t.shipped_at,
+        t.completed_at,
         t.updated_at as purchased_at,
+        t.tracking_number,
+        t.shipping_carrier,
         p.title as product_title,
         COALESCE(u.company_name, u.nickname, u.name) as seller_name,
         (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as product_image,
@@ -322,7 +328,15 @@ mypage.get('/purchases/:userId', async (c) => {
       JOIN products p ON t.product_id = p.id
       JOIN users u ON t.seller_id = u.id
       WHERE t.buyer_id = ?
-      ORDER BY t.created_at DESC
+      ORDER BY 
+        CASE t.status
+          WHEN 'shipped' THEN 1
+          WHEN 'paid' THEN 2
+          WHEN 'pending' THEN 3
+          WHEN 'completed' THEN 4
+          WHEN 'cancelled' THEN 5
+        END,
+        t.created_at DESC
     `).bind(userId, userId).all()
 
     const data = results.map((p: any) => ({
@@ -337,7 +351,7 @@ mypage.get('/purchases/:userId', async (c) => {
   }
 })
 
-// 売上履歴
+// 売上履歴（進行中取引も含む）
 mypage.get('/sales/:userId', async (c) => {
   try {
     const { DB } = c.env
@@ -349,18 +363,29 @@ mypage.get('/sales/:userId', async (c) => {
         t.product_id,
         t.amount as sale_price,
         t.fee as commission_fee,
-        (t.amount - t.fee) as seller_revenue,
+        (t.amount - COALESCE(t.fee, 0)) as seller_revenue,
+        t.created_at,
+        t.paid_at,
+        t.shipped_at,
+        t.completed_at,
         t.updated_at as sold_at,
         t.status,
+        t.tracking_number,
+        t.shipping_carrier,
         p.title as product_title,
         COALESCE(u.company_name, u.nickname, u.name) as buyer_name,
-        (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as product_image,
-        'pending' as withdrawal_status
+        (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as product_image
       FROM transactions t
       JOIN products p ON t.product_id = p.id
       JOIN users u ON t.buyer_id = u.id
-      WHERE t.seller_id = ? AND t.status = 'completed'
-      ORDER BY t.updated_at DESC
+      WHERE t.seller_id = ? AND t.status IN ('paid', 'shipped', 'completed')
+      ORDER BY 
+        CASE t.status
+          WHEN 'paid' THEN 1
+          WHEN 'shipped' THEN 2
+          WHEN 'completed' THEN 3
+        END,
+        t.created_at DESC
     `).bind(userId).all()
 
     const data = results.map((s: any) => ({

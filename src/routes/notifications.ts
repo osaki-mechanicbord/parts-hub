@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { authMiddleware } from '../auth'
 
 type Bindings = {
   DB: D1Database
@@ -7,7 +8,27 @@ type Bindings = {
 
 const notifications = new Hono<{ Bindings: Bindings }>()
 
-// 通知一覧取得
+// 通知一覧取得（認証ベース）
+notifications.get('/me', authMiddleware, async (c) => {
+  try {
+    const { DB } = c.env
+    const userId = c.get('userId')
+    const limit = parseInt(c.req.query('limit') || '50')
+    const onlyUnread = c.req.query('unread') === 'true'
+
+    let query = `SELECT * FROM notifications WHERE user_id = ?`
+    if (onlyUnread) query += ` AND is_read = 0`
+    query += ` ORDER BY created_at DESC LIMIT ?`
+
+    const { results } = await DB.prepare(query).bind(userId, limit).all()
+    return c.json({ success: true, data: results })
+  } catch (error) {
+    console.error('Get notifications error:', error)
+    return c.json({ success: false, error: '通知の取得に失敗しました' }, 500)
+  }
+})
+
+// 通知一覧取得（レガシー互換 - userId パラメータ版）
 notifications.get('/:userId', async (c) => {
   try {
     const { DB } = c.env
@@ -15,19 +36,11 @@ notifications.get('/:userId', async (c) => {
     const limit = parseInt(c.req.query('limit') || '50')
     const onlyUnread = c.req.query('unread') === 'true'
 
-    let query = `
-      SELECT * FROM notifications 
-      WHERE user_id = ?
-    `
-    
-    if (onlyUnread) {
-      query += ` AND is_read = 0`
-    }
-    
+    let query = `SELECT * FROM notifications WHERE user_id = ?`
+    if (onlyUnread) query += ` AND is_read = 0`
     query += ` ORDER BY created_at DESC LIMIT ?`
 
     const { results } = await DB.prepare(query).bind(userId, limit).all()
-
     return c.json({ success: true, data: results })
   } catch (error) {
     console.error('Get notifications error:', error)
@@ -53,6 +66,30 @@ notifications.get('/:userId/unread-count', async (c) => {
   }
 })
 
+// 全通知を既読にする（read-allはパラメータルートより先に定義）
+notifications.put('/read-all', async (c) => {
+  try {
+    const { DB } = c.env
+    const body = await c.req.json()
+    const { user_id } = body
+
+    if (!user_id) {
+      return c.json({ success: false, error: 'ユーザーIDが必要です' }, 400)
+    }
+
+    await DB.prepare(`
+      UPDATE notifications 
+      SET is_read = 1, read_at = CURRENT_TIMESTAMP 
+      WHERE user_id = ? AND is_read = 0
+    `).bind(user_id).run()
+
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('Mark all as read error:', error)
+    return c.json({ success: false, error: '一括既読処理に失敗しました' }, 500)
+  }
+})
+
 // 通知を既読にする
 notifications.put('/:notificationId/read', async (c) => {
   try {
@@ -75,30 +112,6 @@ notifications.put('/:notificationId/read', async (c) => {
   } catch (error) {
     console.error('Mark as read error:', error)
     return c.json({ success: false, error: '既読処理に失敗しました' }, 500)
-  }
-})
-
-// 全通知を既読にする
-notifications.put('/read-all', async (c) => {
-  try {
-    const { DB } = c.env
-    const body = await c.req.json()
-    const { user_id } = body
-
-    if (!user_id) {
-      return c.json({ success: false, error: 'ユーザーIDが必要です' }, 400)
-    }
-
-    await DB.prepare(`
-      UPDATE notifications 
-      SET is_read = 1, read_at = CURRENT_TIMESTAMP 
-      WHERE user_id = ? AND is_read = 0
-    `).bind(user_id).run()
-
-    return c.json({ success: true })
-  } catch (error) {
-    console.error('Mark all as read error:', error)
-    return c.json({ success: false, error: '一括既読処理に失敗しました' }, 500)
   }
 })
 
