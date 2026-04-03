@@ -34,10 +34,18 @@ import { breadcrumbHtml, BREADCRUMB_CSS } from './breadcrumb'
 const app = new Hono<{ Bindings: Bindings }>()
 
 // キャッシュバスティング用バージョン（デプロイ毎に更新）
-const BUILD_VERSION = '20260329c'
+const BUILD_VERSION = '20260403a'
 
 // 静的ファイルURLにバージョンを付与するヘルパー
 const v = (path: string) => `${path}?v=${BUILD_VERSION}`
+
+// ページ速度最適化: preconnect + DNS prefetch
+const PERF_HINTS = `<link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="dns-prefetch" href="https://cdn.tailwindcss.com">
+<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">`
 
 // 共通フッターコンポーネント
 const Footer = () => `
@@ -786,6 +794,7 @@ app.get('/', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
         <title>PARTS HUB（パーツハブ）- 自動車パーツ売買プラットフォーム</title>
         <meta name="description" content="整備工場専門の自動車パーツ売買プラットフォーム。純正部品・社外品・工具・SSTを全国の整備工場同士で売買。Stripe安全決済・配送追跡・チャット機能完備。">
@@ -1597,7 +1606,7 @@ app.get('/', (c) => {
                          onclick="window.location.href='/products/\${product.id}'">
                         <!-- 商品画像 -->
                         <div class="relative aspect-square bg-gray-100">
-                            <img src="\${product.main_image || 'https://placehold.co/400x400/e2e8f0/64748b?text=No+Image'}" 
+                            <img loading="lazy" src="\${product.main_image || 'https://placehold.co/400x400/e2e8f0/64748b?text=No+Image'}" 
                                  alt="\${product.title}" 
                                  class="w-full h-full object-cover\${product.status === 'sold' ? ' opacity-60' : ''}"
                                  loading="lazy"
@@ -1775,7 +1784,7 @@ app.get('/', (c) => {
             // 記事カードHTML生成（PC用）
             function articleCardPC(article) {
                 return \`<a href="/news/\${article.slug}" class="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all">
-                    <img src="\${article.thumbnail_url || 'https://placehold.co/600x400/e2e8f0/64748b?text=PARTS+HUB+NEWS'}"
+                    <img loading="lazy" src="\${article.thumbnail_url || 'https://placehold.co/600x400/e2e8f0/64748b?text=PARTS+HUB+NEWS'}"
                          alt="\${article.title}" class="w-full h-48 object-cover">
                     <div class="p-6">
                         <div class="flex items-center text-xs text-gray-500 mb-3">
@@ -1795,7 +1804,7 @@ app.get('/', (c) => {
             // 記事カードHTML生成（スマホスライダー用）
             function articleCardMobile(article) {
                 return \`<a href="/news/\${article.slug}" class="flex-shrink-0 bg-white rounded-xl overflow-hidden shadow-sm" style="width: 280px;">
-                    <img src="\${article.thumbnail_url || 'https://placehold.co/600x400/e2e8f0/64748b?text=PARTS+HUB+NEWS'}"
+                    <img loading="lazy" src="\${article.thumbnail_url || 'https://placehold.co/600x400/e2e8f0/64748b?text=PARTS+HUB+NEWS'}"
                          alt="\${article.title}" class="w-full h-40 object-cover">
                     <div class="p-4">
                         <div class="flex items-center text-xs text-gray-500 mb-2">
@@ -1891,6 +1900,7 @@ app.get('/news', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>PARTS HUBニュース - 自動車パーツ・整備の最新情報 | PARTS HUB</title>
         <meta name="description" content="自動車整備・パーツに関する最新ニュース、メンテナンスガイド、デッドストック活用術、コスト削減のコツを配信。整備工場の経営改善に役立つ情報が満載。">
@@ -1977,7 +1987,7 @@ app.get('/news', (c) => {
                     
                     grid.innerHTML = articles.map(article => \`
                         <a href="/news/\${article.slug}" class="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
-                            <img src="\${article.thumbnail_url || 'https://placehold.co/600x400/e2e8f0/64748b?text=PARTS+HUB+NEWS'}" 
+                            <img loading="lazy" src="\${article.thumbnail_url || 'https://placehold.co/600x400/e2e8f0/64748b?text=PARTS+HUB+NEWS'}" 
                                  alt="\${article.title}" 
                                  class="w-full h-48 object-cover">
                             <div class="p-4">
@@ -2431,6 +2441,7 @@ app.get('/news/:category/:year/:month/:slug', async (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>${seoTitle}</title>
         <meta name="description" content="${seoDesc}">
@@ -2496,6 +2507,7 @@ app.get('/news/:slug', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>記事詳細 - PARTS HUBニュース</title>
         <script src="https://cdn.tailwindcss.com"></script>
@@ -2544,6 +2556,7 @@ app.get('/login', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>ログイン - PARTS HUB（パーツハブ）</title>
         <meta name="description" content="PARTS HUBにログイン。自動車パーツの売買・出品を始めましょう。">
@@ -2857,6 +2870,7 @@ app.get('/register', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>新規会員登録 - PARTS HUB（パーツハブ）</title>
         <meta name="description" content="PARTS HUBに新規登録。無料で自動車パーツの売買が始められます。">
@@ -3361,6 +3375,7 @@ app.get('/products/:id', async (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>${seoTitle}</title>
         <meta name="description" content="${seoDesc}">
@@ -3692,6 +3707,7 @@ app.get('/listing', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>商品を出品 - PARTS HUB（パーツハブ）</title>
         <meta name="theme-color" content="#ff4757">
@@ -4604,6 +4620,7 @@ app.get('/chat', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>メッセージ - PARTS HUB（パーツハブ）</title>
         <meta name="theme-color" content="#ff4757">
@@ -4794,6 +4811,7 @@ app.get('/chat/:roomId', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>メッセージ - PARTS HUB（パーツハブ）</title>
         <meta name="theme-color" content="#ff4757">
@@ -5129,6 +5147,7 @@ app.get('/mypage', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>マイページ - PARTS HUB（パーツハブ）</title>
         <meta name="robots" content="noindex, nofollow">
@@ -5342,6 +5361,7 @@ app.get('/notifications', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>通知 - PARTS HUB（パーツハブ）</title>
         <meta name="robots" content="noindex, nofollow">
@@ -5417,6 +5437,7 @@ app.get('/profile/edit', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>プロフィール編集 - PARTS HUB（パーツハブ）</title>
         <meta name="theme-color" content="#ff4757">
@@ -5851,6 +5872,7 @@ app.get('/seller/:id', async (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>出品者プロフィール - PARTS HUB（パーツハブ）</title>
         <meta name="description" content="PARTS HUBの出品者プロフィールとレビュー一覧です。取引実績やバッジ、評価を確認できます。">
@@ -6130,6 +6152,7 @@ app.get('/reviews/new', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>レビューを書く - PARTS HUB（パーツハブ）</title>
         <meta name="theme-color" content="#ff4757">
@@ -6266,6 +6289,7 @@ app.get('/transactions/:id', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>取引詳細 - PARTS HUB（パーツハブ）</title>
         <meta name="theme-color" content="#ff4757">
@@ -6314,6 +6338,7 @@ app.get('/transaction/:id/success', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>購入完了 - PARTS HUB（パーツハブ）</title>
         <meta name="theme-color" content="#ff4757">
@@ -6582,6 +6607,7 @@ app.get('/transaction/:id/cancel', async (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>決済キャンセル - PARTS HUB（パーツハブ）</title>
         <meta name="theme-color" content="#ff4757">
@@ -6640,6 +6666,7 @@ app.get('/contact', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>お問い合わせ - PARTS HUB（パーツハブ）</title>
         <meta name="description" content="PARTS HUBへのお問い合わせはこちら。サービスに関するご質問、代理出品のご依頼、不具合報告などお気軽にご連絡ください。">
@@ -6817,6 +6844,7 @@ app.get('/favorites', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>お気に入り - PARTS HUB（パーツハブ）</title>
         <meta name="robots" content="noindex, nofollow">
@@ -6883,7 +6911,7 @@ app.get('/favorites', (c) => {
                         grid.innerHTML = response.data.data.map(item => \`
                             <div class="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow">
                                 <a href="/products/\${item.id}" class="block relative">
-                                    <img src="\${item.image_url}" alt="\${item.title}" class="w-full aspect-square object-cover\${item.status === 'sold' ? ' opacity-60' : ''}">
+                                    <img loading="lazy" src="\${item.image_url}" alt="\${item.title}" class="w-full aspect-square object-cover\${item.status === 'sold' ? ' opacity-60' : ''}">
                                     \${item.status === 'sold' ? '<div class="absolute inset-0 flex items-center justify-center pointer-events-none"><div style="background:rgba(220,38,38,0.85);transform:rotate(-20deg);padding:8px 36px;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.3);"><span style="font-size:1.5rem;font-weight:900;color:#fff;letter-spacing:0.15em;text-shadow:1px 1px 2px rgba(0,0,0,0.3);">SOLD</span></div></div>' : ''}
                                 </a>
                                 <div class="p-3">
@@ -6956,6 +6984,7 @@ app.get('/search', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>商品検索 - PARTS HUB（パーツハブ）</title>
         <meta name="description" content="自動車パーツ・純正部品・工具をキーワード・カテゴリ・車種から検索。全国の整備工場が出品する中古・新品パーツを簡単に見つけられます。">
@@ -7141,7 +7170,7 @@ app.get('/search', (c) => {
                         grid.innerHTML = response.data.products.map(product => \`
                             <a href="/products/\${product.id}" class="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow block">
                                 <div class="relative">
-                                    <img src="\${product.image_url}" alt="\${product.title}" class="w-full aspect-square object-cover\${product.status === 'sold' ? ' opacity-60' : ''}">
+                                    <img loading="lazy" src="\${product.image_url}" alt="\${product.title}" class="w-full aspect-square object-cover\${product.status === 'sold' ? ' opacity-60' : ''}">
                                     \${product.status === 'sold' ? '<div class="absolute inset-0 flex items-center justify-center pointer-events-none"><div style="background:rgba(220,38,38,0.85);transform:rotate(-20deg);padding:8px 36px;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.3);"><span style="font-size:1.5rem;font-weight:900;color:#fff;letter-spacing:0.15em;text-shadow:1px 1px 2px rgba(0,0,0,0.3);">SOLD</span></div></div>' : ''}
                                 </div>
                                 <div class="p-3">
@@ -7209,6 +7238,7 @@ app.get('/privacy', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>プライバシーポリシー - PARTS HUB（パーツハブ）</title>
         <meta name="description" content="PARTS HUBのプライバシーポリシー。個人情報の取り扱い、利用目的、第三者提供、Cookie利用について定めています。">
@@ -7356,6 +7386,7 @@ app.get('/terms', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>利用規約 - PARTS HUB（パーツハブ）</title>
         <meta name="description" content="PARTS HUBの利用規約。サービス利用条件、禁止事項、手数料、取引ルール、免責事項について定めています。">
@@ -7599,6 +7630,7 @@ app.get('/password-reset', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>パスワード再設定 - PARTS HUB（パーツハブ）</title>
         <meta name="theme-color" content="#ff4757">
@@ -7711,6 +7743,7 @@ app.get('/security', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>セキュリティポリシー - PARTS HUB（パーツハブ）</title>
         <meta name="description" content="PARTS HUBのセキュリティポリシー。Stripe決済の安全性、SSL暗号化、データ保護、不正利用対策について説明しています。">
@@ -9290,6 +9323,7 @@ app.get('/sitemap', async (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>サイトマップ - PARTS HUB（パーツハブ）</title>
         <meta name="description" content="PARTS HUBの全ページ一覧。商品検索、カテゴリ別パーツ、ニュース記事、会社情報など、サイト内の全コンテンツへのリンクを掲載しています。">
@@ -9502,6 +9536,7 @@ app.get('/legal', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>特定商取引法に基づく表記 - PARTS HUB（パーツハブ）</title>
         <meta name="description" content="PARTS HUBの特定商取引法に基づく表記。販売事業者情報、返品・返金ポリシー、支払方法について記載しています。">
@@ -10925,6 +10960,7 @@ app.get('/bank-demo', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>銀行口座情報入力デモ - PARTS HUB</title>
         <script src="https://cdn.tailwindcss.com"></script>
@@ -11532,6 +11568,7 @@ app.get('/faq', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>よくある質問（FAQ） - PARTS HUB（パーツハブ）</title>
         <meta name="description" content="PARTS HUBの利用方法、手数料、配送、返品などについてのよくある質問をまとめています。">
@@ -12497,6 +12534,7 @@ app.get('/admin/login', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>管理者ログイン - PARTS HUB</title>
         <meta name="robots" content="noindex, nofollow">
@@ -12631,6 +12669,7 @@ app.get('/admin-old-unused', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
+        ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>管理画面 - PARTS HUB</title>
         <meta name="robots" content="noindex, nofollow">

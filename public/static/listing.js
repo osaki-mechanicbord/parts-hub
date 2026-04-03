@@ -121,7 +121,7 @@ class ProductListingForm {
     var self = this
     var previews = this.uploadedImages.map(function(img, index) {
       return '<div class="image-preview-item" style="position:relative;border-radius:12px;overflow:hidden;aspect-ratio:1;background:#f3f4f6;">' +
-        '<img src="' + (img.preview || img.url || '') + '" alt="商品画像 ' + (index + 1) + '"' +
+        '<img loading="lazy" src="' + (img.preview || img.url || '') + '" alt="商品画像 ' + (index + 1) + '"' +
         ' style="width:100%;height:100%;object-fit:cover;">' +
         (index === 0 ? '<span style="position:absolute;top:4px;left:4px;background:#ef4444;color:#fff;font-size:10px;padding:1px 6px;border-radius:4px;font-weight:600;">メイン</span>' : '') +
         '<button type="button" onclick="productForm.removeImage(' + index + ')"' +

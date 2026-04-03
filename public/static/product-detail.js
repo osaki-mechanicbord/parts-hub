@@ -293,7 +293,7 @@ function renderImageGallery() {
     thumbnailsContainer.innerHTML = product.images.map((img, index) => `
         <div class="aspect-square bg-white rounded-lg overflow-hidden cursor-pointer border-2 ${index === 0 ? 'border-primary' : 'border-gray-200'} hover:border-primary transition-all shadow-sm hover:shadow-md"
              onclick="changeImage(${index})">
-            <img src="${img.image_url}" 
+            <img loading="lazy" src="${img.image_url}" 
                  alt="${product.title} - 画像${index + 1}"
                  class="w-full h-full object-cover"
                  loading="lazy">

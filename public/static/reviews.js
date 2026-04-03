@@ -50,7 +50,7 @@ async function loadTransactionInfo() {
 function renderTransactionInfo(transaction) {
     document.getElementById('transaction-info').innerHTML = `
         <div class="flex items-center gap-4">
-            <img src="${transaction.product_image || '/icons/icon-192x192.png'}" 
+            <img loading="lazy" src="${transaction.product_image || '/icons/icon-192x192.png'}" 
                  alt="${transaction.product_title}" 
                  class="w-24 h-24 object-cover rounded-lg">
             <div class="flex-1">

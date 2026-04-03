@@ -187,7 +187,7 @@ function renderListings() {
         <div class="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow">
             <a href="/products/${product.slug || product.id}" class="block">
                 <div class="relative">
-                    <img src="${product.image_url || 'https://placehold.co/400x300/e2e8f0/64748b?text=No+Image'}" 
+                    <img loading="lazy" src="${product.image_url || 'https://placehold.co/400x300/e2e8f0/64748b?text=No+Image'}" 
                          alt="${product.title}" 
                          class="w-full aspect-square object-cover${product.status === 'sold' ? ' opacity-60' : ''}"
                          onerror="this.src='https://placehold.co/400x300/e2e8f0/64748b?text=No+Image'">
@@ -363,7 +363,7 @@ function renderSalesData() {
         historyContainer.innerHTML = salesHistoryData.map(sale => `
             <div class="bg-white border border-gray-200 rounded-lg p-4">
                 <div class="flex items-center gap-3 mb-2">
-                    <img src="${sale.product_image || 'https://placehold.co/100x100/e2e8f0/64748b?text=No+Image'}" 
+                    <img loading="lazy" src="${sale.product_image || 'https://placehold.co/100x100/e2e8f0/64748b?text=No+Image'}" 
                          alt="${sale.product_title}" 
                          class="w-14 h-14 object-cover rounded-lg flex-shrink-0"
                          onerror="this.src='https://placehold.co/100x100/e2e8f0/64748b?text=No+Image'">
@@ -447,7 +447,7 @@ function renderPurchases() {
     container.innerHTML = purchasesData.map(purchase => `
         <div class="bg-white border border-gray-200 rounded-lg p-4">
             <div class="flex items-center gap-3 mb-3">
-                <img src="${purchase.product_image || 'https://placehold.co/100x100/e2e8f0/64748b?text=No+Image'}" 
+                <img loading="lazy" src="${purchase.product_image || 'https://placehold.co/100x100/e2e8f0/64748b?text=No+Image'}" 
                      alt="${purchase.product_title}" 
                      class="w-16 h-16 object-cover rounded-lg flex-shrink-0"
                      onerror="this.src='https://placehold.co/100x100/e2e8f0/64748b?text=No+Image'">
@@ -517,7 +517,7 @@ function renderFavorites() {
     container.innerHTML = favoritesData.map(product => `
         <a href="/products/${product.slug || product.id}" class="block bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow">
             <div class="relative">
-                <img src="${product.image_url || 'https://placehold.co/400x300/e2e8f0/64748b?text=No+Image'}" 
+                <img loading="lazy" src="${product.image_url || 'https://placehold.co/400x300/e2e8f0/64748b?text=No+Image'}" 
                      alt="${product.title}" 
                      class="w-full aspect-square object-cover"
                      onerror="this.src='https://placehold.co/400x300/e2e8f0/64748b?text=No+Image'">
@@ -598,7 +598,7 @@ function renderNegotiations(type) {
     container.innerHTML = data.map(nego => `
         <div class="bg-white border border-gray-200 rounded-lg p-4">
             <div class="flex items-center gap-3 mb-3">
-                <img src="${nego.product_image || 'https://placehold.co/100x100/e2e8f0/64748b?text=No+Image'}" 
+                <img loading="lazy" src="${nego.product_image || 'https://placehold.co/100x100/e2e8f0/64748b?text=No+Image'}" 
                      alt="${nego.product_title}" 
                      class="w-16 h-16 object-cover rounded-lg flex-shrink-0"
                      onerror="this.src='https://placehold.co/100x100/e2e8f0/64748b?text=No+Image'">
