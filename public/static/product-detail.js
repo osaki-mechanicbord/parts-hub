@@ -81,6 +81,9 @@ async function loadProduct() {
             renderProduct();
             updateActionButtons();
             checkFavoriteStatus();
+            // パンくずリストにタイトルをセット
+            var bcTitle = document.getElementById('bc-product-title');
+            if (bcTitle && product.title) bcTitle.textContent = product.title;
         } else {
             showError('商品が見つかりませんでした');
         }

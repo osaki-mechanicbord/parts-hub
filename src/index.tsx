@@ -29,6 +29,7 @@ import vehicleDemoRoutes from './routes/vehicle-demo'
 import argosDemoRoutes from './routes/argos-demo'
 import argosRoutes from './routes/argos'
 import guideApiRoutes from './routes/guide'
+import { breadcrumbHtml, BREADCRUMB_CSS } from './breadcrumb'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -1916,18 +1917,9 @@ app.get('/news', (c) => {
           "isPartOf": { "@type": "WebSite", "name": "PARTS HUB", "url": "https://parts-hub-tci.com" }
         }
         </script>
-        <script type="application/ld+json">
-        {
-          "@context": "https://schema.org",
-          "@type": "BreadcrumbList",
-          "itemListElement": [
-            { "@type": "ListItem", "position": 1, "name": "PARTS HUB", "item": "https://parts-hub-tci.com/" },
-            { "@type": "ListItem", "position": 2, "name": "ニュース" }
-          ]
-        }
-        </script>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>${BREADCRUMB_CSS}</style>
     </head>
     <body class="bg-gray-50">
         <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -1941,6 +1933,7 @@ app.get('/news', (c) => {
                 <div class="w-16"></div>
             </div>
         </header>
+        ${breadcrumbHtml([{name:'PARTS HUB',url:'/'},{name:'ニュース'}])}
 
         <main class="max-w-7xl mx-auto px-4 py-8">
             <div class="mb-8">
@@ -3408,6 +3401,7 @@ app.get('/products/:id', async (c) => {
                 background: #cbd5e0;
                 border-radius: 4px;
             }
+            ${BREADCRUMB_CSS}
         </style>
     </head>
     <body class="bg-gray-50">
@@ -3423,6 +3417,7 @@ app.get('/products/:id', async (c) => {
                 <div class="w-16"></div> <!-- スペーサー -->
             </div>
         </header>
+        <nav aria-label="パンくずリスト" class="bc-nav"><div class="bc-wrap"><a href="/" class="bc-link">PARTS HUB</a><span class="bc-sep"><i class="fas fa-chevron-right"></i></span><a href="/search" class="bc-link">パーツ検索</a><span class="bc-sep"><i class="fas fa-chevron-right"></i></span><span id="bc-product-title" class="bc-current">商品詳細</span></div></nav>
 
         <!-- メインコンテンツ -->
         <main id="product-detail-container" class="max-w-6xl mx-auto px-4 py-6">
@@ -3707,7 +3702,6 @@ app.get('/listing', (c) => {
         <meta property="og:url" content="https://parts-hub-tci.com/listing">
         <meta property="og:site_name" content="PARTS HUB">
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
-        <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"PARTS HUB","item":"https://parts-hub-tci.com/"},{"@type":"ListItem","position":2,"name":"出品する"}]}</script>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -3873,6 +3867,7 @@ app.get('/listing', (c) => {
                 </a>
             </div>
         </header>
+        ${breadcrumbHtml([{name:'PARTS HUB',url:'/'},{name:'出品する'}])}
 
         <!-- ステップインジケーター -->
         <div class="max-w-2xl mx-auto px-6 py-4">
@@ -6654,10 +6649,10 @@ app.get('/contact', (c) => {
         <meta property="og:url" content="https://parts-hub-tci.com/contact">
         <meta property="og:site_name" content="PARTS HUB">
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
-        <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"PARTS HUB","item":"https://parts-hub-tci.com/"},{"@type":"ListItem","position":2,"name":"お問い合わせ"}]}</script>
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>${BREADCRUMB_CSS}</style>
     </head>
     <body class="bg-gray-50 min-h-screen">
         <!-- ヘッダー -->
@@ -6670,6 +6665,7 @@ app.get('/contact', (c) => {
                 <div class="w-16"></div>
             </div>
         </header>
+        ${breadcrumbHtml([{name:'PARTS HUB',url:'/'},{name:'お問い合わせ'}])}
 
         <main class="max-w-4xl mx-auto px-4 py-6">
             ${type === 'proxy_onsite' || type === 'proxy_shipping' ? `
@@ -6983,19 +6979,10 @@ app.get('/search', (c) => {
           "isPartOf": { "@type": "WebSite", "name": "PARTS HUB", "url": "https://parts-hub-tci.com" }
         }
         </script>
-        <script type="application/ld+json">
-        {
-          "@context": "https://schema.org",
-          "@type": "BreadcrumbList",
-          "itemListElement": [
-            { "@type": "ListItem", "position": 1, "name": "PARTS HUB", "item": "https://parts-hub-tci.com/" },
-            { "@type": "ListItem", "position": 2, "name": "パーツ検索" }
-          ]
-        }
-        </script>
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>${BREADCRUMB_CSS}</style>
     </head>
     <body class="bg-gray-50 min-h-screen">
         <!-- ヘッダー -->
@@ -7026,6 +7013,7 @@ app.get('/search', (c) => {
                 </div>
             </div>
         </header>
+        ${breadcrumbHtml([{name:'PARTS HUB',url:'/'},{name:'パーツ検索'}])}
 
         <!-- 詳細フィルターパネル -->
         <div id="filter-panel" class="hidden bg-white border-b border-gray-200">
@@ -7229,10 +7217,10 @@ app.get('/privacy', (c) => {
         <meta property="og:url" content="https://parts-hub-tci.com/privacy">
         <meta property="og:site_name" content="PARTS HUB">
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
-        <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"PARTS HUB","item":"https://parts-hub-tci.com/"},{"@type":"ListItem","position":2,"name":"プライバシーポリシー"}]}</script>
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>${BREADCRUMB_CSS}</style>
     </head>
     <body class="bg-gray-50 min-h-screen">
         <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -7244,6 +7232,7 @@ app.get('/privacy', (c) => {
                 <div class="w-16"></div>
             </div>
         </header>
+        ${breadcrumbHtml([{name:'PARTS HUB',url:'/'},{name:'プライバシーポリシー'}])}
 
         <main class="max-w-4xl mx-auto px-4 py-8">
             <div class="bg-white rounded-xl shadow-sm p-8 space-y-6">
@@ -7375,10 +7364,10 @@ app.get('/terms', (c) => {
         <meta property="og:url" content="https://parts-hub-tci.com/terms">
         <meta property="og:site_name" content="PARTS HUB">
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
-        <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"PARTS HUB","item":"https://parts-hub-tci.com/"},{"@type":"ListItem","position":2,"name":"利用規約"}]}</script>
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>${BREADCRUMB_CSS}</style>
     </head>
     <body class="bg-gray-50 min-h-screen">
         <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -7390,13 +7379,9 @@ app.get('/terms', (c) => {
                 <div class="w-16"></div>
             </div>
         </header>
+        ${breadcrumbHtml([{name:'PARTS HUB',url:'/'},{name:'利用規約'}])}
 
         <main class="max-w-4xl mx-auto px-4 py-8">
-            <div class="bg-white rounded-xl shadow-sm p-8 space-y-6">
-                <div>
-                    <p class="text-sm text-gray-600 mb-4">最終更新日：2026年3月22日</p>
-                    <p class="text-gray-700 leading-relaxed mb-4">
-                        この利用規約（以下「本規約」）は、株式会社TCI（以下「当社」）が運営するPARTS HUB（パーツハブ、以下「本サービス」）の利用条件を定めるものです。本サービスをご利用いただく前に、必ずお読みください。
                     </p>
                     <div class="bg-gray-50 p-4 rounded-lg text-gray-700 leading-relaxed text-sm">
                         <p><strong>運営会社：</strong>株式会社TCI</p>
@@ -7734,10 +7719,10 @@ app.get('/security', (c) => {
         <meta property="og:url" content="https://parts-hub-tci.com/security">
         <meta property="og:site_name" content="PARTS HUB">
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
-        <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"PARTS HUB","item":"https://parts-hub-tci.com/"},{"@type":"ListItem","position":2,"name":"セキュリティポリシー"}]}</script>
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>${BREADCRUMB_CSS}</style>
     </head>
     <body class="bg-gray-50 min-h-screen">
         <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -7749,6 +7734,7 @@ app.get('/security', (c) => {
                 <div class="w-16"></div>
             </div>
         </header>
+        ${breadcrumbHtml([{name:'PARTS HUB',url:'/'},{name:'セキュリティポリシー'}])}
 
         <main class="max-w-4xl mx-auto px-4 py-8">
             <div class="bg-white rounded-xl shadow-sm p-8 space-y-6">
@@ -7993,7 +7979,6 @@ app.get('/area', (c) => {
     <meta property="og:site_name" content="PARTS HUB">
     <meta property="og:image" content="https://parts-hub-tci.com/icons/og-default.png">
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
-    <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"PARTS HUB","item":"https://parts-hub-tci.com/"},{"@type":"ListItem","position":2,"name":"エリアから探す"}]}</script>
     <meta name="theme-color" content="#ff4757">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
@@ -8015,6 +8000,7 @@ app.get('/area', (c) => {
             <div class="w-16"></div>
         </div>
     </header>
+    ${breadcrumbHtml([{name:'PARTS HUB',url:'/'},{name:'エリアから探す'}])}
     <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white py-12 sm:py-16">
         <div class="max-w-6xl mx-auto px-4 text-center">
             <p class="text-red-400 text-sm font-semibold tracking-wider mb-3">AREA NETWORK</p>
@@ -8147,6 +8133,7 @@ app.get('/area/:pref', async (c) => {
       .step-line:last-child::before { display: none; }
       .step-num { position: absolute; left: 0; top: 0; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; color: white; }
       .cta-section { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); }
+      ${BREADCRUMB_CSS}
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -8158,6 +8145,7 @@ app.get('/area/:pref', async (c) => {
             <a href="/register" class="text-sm font-semibold text-white bg-red-500 hover:bg-red-600 px-4 py-1.5 rounded-lg transition-colors">無料登録</a>
         </div>
     </header>
+    ${breadcrumbHtml([{name:'PARTS HUB',url:'/'},{name:'エリア',url:'/area'},{name:pref.name}])}
 
     <!-- ヒーロー -->
     <section class="hero-area text-white py-12 sm:py-20">
@@ -8333,7 +8321,6 @@ app.get('/vehicle', (c) => {
     <meta property="og:site_name" content="PARTS HUB">
     <meta property="og:image" content="https://parts-hub-tci.com/icons/og-default.png">
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
-    <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"PARTS HUB","item":"https://parts-hub-tci.com/"},{"@type":"ListItem","position":2,"name":"車種別パーツガイド"}]}</script>
     <meta name="theme-color" content="#ff4757">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
@@ -8357,6 +8344,7 @@ app.get('/vehicle', (c) => {
             <div class="w-16"></div>
         </div>
     </header>
+    ${breadcrumbHtml([{name:'PARTS HUB',url:'/'},{name:'車種別パーツガイド'}])}
     <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white py-12 sm:py-16">
         <div class="max-w-6xl mx-auto px-4 text-center">
             <p class="text-red-400 text-sm font-semibold tracking-wider mb-3">VEHICLE PARTS GUIDE</p>
@@ -8475,6 +8463,7 @@ app.get('/vehicle/:slug', async (c) => {
       .nearby-link:hover { background: #fef2f2; border-color: #fca5a5; color: #dc2626; }
       .info-card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #f3f4f6; }
       .cta-section { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); }
+      ${BREADCRUMB_CSS}
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -8485,6 +8474,7 @@ app.get('/vehicle/:slug', async (c) => {
             <a href="/register" class="text-sm font-semibold text-white bg-red-500 hover:bg-red-600 px-4 py-1.5 rounded-lg transition-colors">無料登録</a>
         </div>
     </header>
+    ${breadcrumbHtml([{name:'PARTS HUB',url:'/'},{name:'車種別パーツガイド',url:'/vehicle'},{name:vehicle.maker+' '+vehicle.name}])}
 
     <section class="hero-vehicle text-white py-12 sm:py-16">
         <div class="max-w-4xl mx-auto px-4">
@@ -8753,6 +8743,7 @@ app.get('/partner', (c) => {
     '<a href="/" class="text-gray-600 hover:text-gray-900 flex items-center gap-2"><i class="fas fa-arrow-left"></i><span class="text-sm font-medium">トップ</span></a>' +
     '<a href="/" class="text-red-500 font-bold text-lg">PARTS HUB</a>' +
     '<div class="w-16"></div></div></header>' +
+    breadcrumbHtml([{name:'PARTS HUB',url:'/'},{name:'パートナー'}]) +
     '<div class="hero-gradient text-white py-12 sm:py-16"><div class="max-w-5xl mx-auto px-4 text-center">' +
     '<div class="inline-flex items-center justify-center w-16 h-16 bg-white/10 rounded-2xl mb-4"><i class="fas fa-handshake text-2xl text-red-400"></i></div>' +
     '<h1 class="text-2xl sm:text-3xl font-bold mb-3">パートナープログラム</h1>' +
@@ -8818,7 +8809,6 @@ app.get('/partner/:slug', (c) => {
     '<meta property="og:site_name" content="PARTS HUB"><meta property="og:image" content="https://parts-hub-tci.com/icons/og-default.png">' +
     '<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">' +
     '<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="' + p.name + '向け - PARTS HUB">' +
-    '<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"PARTS HUB","item":"https://parts-hub-tci.com/"},{"@type":"ListItem","position":2,"name":"パートナー","item":"https://parts-hub-tci.com/partner"},{"@type":"ListItem","position":3,"name":"' + p.name + '"}]}</script>' +
     '<meta name="theme-color" content="#ff4757">' +
     '<script src="https://cdn.tailwindcss.com"></script>' +
     '<link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">' +
@@ -8838,6 +8828,7 @@ app.get('/partner/:slug', (c) => {
     '.step-num{width:32px;height:32px;border-radius:50%;background:#fef2f2;color:#ef4444;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}' +
     '.cta-section{background:linear-gradient(135deg,#1e293b 0%,#0f172a 50%,#1e293b 100%);position:relative;overflow:hidden}' +
     '.cta-section::before{content:"";position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(circle,rgba(239,68,68,0.08) 0%,transparent 50%)}' +
+    BREADCRUMB_CSS +
     '</style></head>' +
     '<body class="bg-gray-50 min-h-screen">' +
     '<header class="bg-white border-b border-gray-200 sticky top-0 z-50">' +
@@ -8845,6 +8836,7 @@ app.get('/partner/:slug', (c) => {
     '<a href="/partner" class="text-gray-600 hover:text-gray-900 flex items-center gap-2"><i class="fas fa-arrow-left"></i><span class="text-sm font-medium">パートナー一覧</span></a>' +
     '<a href="/" class="text-red-500 font-bold text-lg">PARTS HUB</a>' +
     '<div class="w-16"></div></div></header>' +
+    breadcrumbHtml([{name:'PARTS HUB',url:'/'},{name:'パートナー',url:'/partner'},{name:p.name}]) +
 
     // Hero
     '<div class="hero-gradient text-white py-12 sm:py-16"><div class="max-w-5xl mx-auto px-4">' +
@@ -9053,7 +9045,6 @@ app.get('/guide', async (c) => {
     <meta property="og:site_name" content="PARTS HUB">
     <meta property="og:image" content="https://parts-hub-tci.com/icons/og-default.png">
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
-    <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"PARTS HUB","item":"https://parts-hub-tci.com/"},{"@type":"ListItem","position":2,"name":"整備ガイド"}]}</script>
     <meta name="theme-color" content="#ff4757">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
@@ -9066,6 +9057,7 @@ app.get('/guide', async (c) => {
       .guide-title { font-size: 16px; font-weight: 700; color: #1f2937; margin-bottom: 8px; line-height: 1.5; }
       .guide-desc { font-size: 13px; color: #6b7280; line-height: 1.6; margin-bottom: 12px; }
       .guide-link { font-size: 13px; font-weight: 600; color: #dc2626; }
+      ${BREADCRUMB_CSS}
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -9076,6 +9068,7 @@ app.get('/guide', async (c) => {
             <div class="w-16"></div>
         </div>
     </header>
+    ${breadcrumbHtml([{name:'PARTS HUB',url:'/'},{name:'整備ガイド'}])}
     <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white py-12 sm:py-16">
         <div class="max-w-6xl mx-auto px-4 text-center">
             <p class="text-red-400 text-sm font-semibold tracking-wider mb-3">MAINTENANCE GUIDE</p>
@@ -9173,6 +9166,7 @@ app.get('/guide/:slug', async (c) => {
       .section-heading::before { content: ''; position: absolute; left: 0; top: 2px; bottom: 2px; width: 4px; background: linear-gradient(180deg, #ef4444, #f97316); border-radius: 2px; }
       .info-card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #f3f4f6; }
       .cta-section { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); }
+      ${BREADCRUMB_CSS}
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -9183,6 +9177,7 @@ app.get('/guide/:slug', async (c) => {
             <a href="/register" class="text-sm font-semibold text-white bg-red-500 hover:bg-red-600 px-4 py-1.5 rounded-lg transition-colors">無料登録</a>
         </div>
     </header>
+    ${breadcrumbHtml([{name:'PARTS HUB',url:'/'},{name:'整備ガイド',url:'/guide'},{name:guide.title}])}
     <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white py-12 sm:py-16">
         <div class="max-w-4xl mx-auto px-4 text-center">
             <div class="inline-block px-3 py-1 bg-red-500/20 text-red-300 text-xs font-semibold rounded-full tracking-wider mb-4">${guide.category}</div>
@@ -9304,7 +9299,6 @@ app.get('/sitemap', async (c) => {
         <meta property="og:url" content="https://parts-hub-tci.com/sitemap">
         <meta property="og:site_name" content="PARTS HUB">
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
-        <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"PARTS HUB","item":"https://parts-hub-tci.com/"},{"@type":"ListItem","position":2,"name":"サイトマップ"}]}</script>
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
@@ -9320,6 +9314,7 @@ app.get('/sitemap', async (c) => {
           .section-body li { border-bottom:1px solid #f9fafb; }
           .section-body li:last-child { border-bottom:none; }
           .hero-gradient { background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%); }
+          ${BREADCRUMB_CSS}
         </style>
     </head>
     <body class="bg-gray-50 min-h-screen">
@@ -9333,6 +9328,7 @@ app.get('/sitemap', async (c) => {
                 <div class="w-16"></div>
             </div>
         </header>
+        ${breadcrumbHtml([{name:'PARTS HUB',url:'/'},{name:'サイトマップ'}])}
 
         <div class="hero-gradient text-white py-10 sm:py-14">
             <div class="max-w-6xl mx-auto px-4 text-center">
@@ -9514,10 +9510,10 @@ app.get('/legal', (c) => {
         <meta property="og:url" content="https://parts-hub-tci.com/legal">
         <meta property="og:site_name" content="PARTS HUB">
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
-        <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"PARTS HUB","item":"https://parts-hub-tci.com/"},{"@type":"ListItem","position":2,"name":"特定商取引法に基づく表記"}]}</script>
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>${BREADCRUMB_CSS}</style>
     </head>
     <body class="bg-gray-50 min-h-screen">
         <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -9529,6 +9525,7 @@ app.get('/legal', (c) => {
                 <div class="w-16"></div>
             </div>
         </header>
+        ${breadcrumbHtml([{name:'PARTS HUB',url:'/'},{name:'特定商取引法に基づく表記'}])}
 
         <main class="max-w-4xl mx-auto px-4 py-8">
             <div class="bg-white rounded-xl shadow-sm p-8 space-y-6">
@@ -11546,19 +11543,10 @@ app.get('/faq', (c) => {
         <meta property="og:site_name" content="PARTS HUB">
         <meta property="og:locale" content="ja_JP">
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
-        <script type="application/ld+json">
-        {
-          "@context": "https://schema.org",
-          "@type": "BreadcrumbList",
-          "itemListElement": [
-            { "@type": "ListItem", "position": 1, "name": "PARTS HUB", "item": "https://parts-hub-tci.com/" },
-            { "@type": "ListItem", "position": 2, "name": "よくある質問" }
-          ]
-        }
-        </script>
         <meta name="theme-color" content="#ff4757">
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>${BREADCRUMB_CSS}</style>
 
         <!-- 構造化データ（JSON-LD） - FAQ -->
         <script type="application/ld+json">
@@ -11726,6 +11714,7 @@ app.get('/faq', (c) => {
                 <div class="w-16"></div>
             </div>
         </header>
+        ${breadcrumbHtml([{name:'PARTS HUB',url:'/'},{name:'よくある質問'}])}
 
         <main class="max-w-4xl mx-auto px-4 py-8">
             <!-- ページ説明 -->
