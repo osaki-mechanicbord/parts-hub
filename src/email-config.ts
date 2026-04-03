@@ -2,7 +2,7 @@
 
 export const FROM_EMAIL = 'noreply@parts-hub-tci.com'
 export const FROM_NAME = 'PARTS HUB'
-export const SUPPORT_EMAIL = 'osaki.mf@gmail.com'
+export const SUPPORT_EMAIL = 'support@parts-hub-tci.com'
 export const SITE_URL = 'https://parts-hub-tci.com'
 
 export interface SendEmailParams {
