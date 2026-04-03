@@ -47,6 +47,13 @@ const PERF_HINTS = `<link rel="preconnect" href="https://cdn.tailwindcss.com" cr
 <link rel="dns-prefetch" href="https://cdn.tailwindcss.com">
 <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">`
 
+// 多言語SEO: hreflangタグ生成ヘルパー
+const hreflang = (path: string) => `<link rel="alternate" hreflang="ja" href="https://parts-hub-tci.com${path}">
+<link rel="alternate" hreflang="en" href="https://parts-hub-tci.com${path}">
+<link rel="alternate" hreflang="zh" href="https://parts-hub-tci.com${path}">
+<link rel="alternate" hreflang="ko" href="https://parts-hub-tci.com${path}">
+<link rel="alternate" hreflang="x-default" href="https://parts-hub-tci.com${path}">`
+
 // 共通フッターコンポーネント
 const Footer = () => `
 <footer class="bg-gray-900 text-white mt-16">
@@ -799,6 +806,7 @@ app.get('/', (c) => {
         <title>PARTS HUB（パーツハブ）- 自動車パーツ売買プラットフォーム</title>
         <meta name="description" content="整備工場専門の自動車パーツ売買プラットフォーム。純正部品・社外品・工具・SSTを全国の整備工場同士で売買。Stripe安全決済・配送追跡・チャット機能完備。">
         <link rel="canonical" href="https://parts-hub-tci.com/">
+        ${hreflang("/")}
         <meta property="og:type" content="website">
         <meta property="og:title" content="PARTS HUB（パーツハブ）- 自動車パーツ売買プラットフォーム">
         <meta property="og:description" content="整備工場専門の自動車パーツ売買プラットフォーム。純正部品・社外品・工具・SSTを全国の整備工場同士で売買。">
@@ -1905,6 +1913,7 @@ app.get('/news', (c) => {
         <title>PARTS HUBニュース - 自動車パーツ・整備の最新情報 | PARTS HUB</title>
         <meta name="description" content="自動車整備・パーツに関する最新ニュース、メンテナンスガイド、デッドストック活用術、コスト削減のコツを配信。整備工場の経営改善に役立つ情報が満載。">
         <link rel="canonical" href="https://parts-hub-tci.com/news">
+        ${hreflang("/news")}
         <meta property="og:type" content="website">
         <meta property="og:title" content="PARTS HUBニュース - 自動車パーツ・整備の最新情報">
         <meta property="og:description" content="自動車整備・パーツに関する最新ニュース、メンテナンスガイド、デッドストック活用術を配信。">
@@ -3380,6 +3389,7 @@ app.get('/products/:id', async (c) => {
         <title>${seoTitle}</title>
         <meta name="description" content="${seoDesc}">
         <link rel="canonical" href="${seoUrl}">
+        ${hreflang("/products/" + productId)}
         <meta property="og:type" content="product">
         <meta property="og:title" content="${seoTitle}">
         <meta property="og:description" content="${seoDesc}">
@@ -3713,6 +3723,7 @@ app.get('/listing', (c) => {
         <meta name="theme-color" content="#ff4757">
         <meta name="description" content="PARTS HUBで自動車パーツを出品。写真撮影・価格設定・カテゴリ選択の簡単ステップで今すぐ出品できます。出品手数料無料。">
         <link rel="canonical" href="https://parts-hub-tci.com/listing">
+        ${hreflang("/listing")}
         <meta property="og:title" content="商品を出品 - PARTS HUB">
         <meta property="og:description" content="自動車パーツを簡単3ステップで出品。手数料は売れた時だけ10%。出品無料。">
         <meta property="og:url" content="https://parts-hub-tci.com/listing">
@@ -6671,6 +6682,7 @@ app.get('/contact', (c) => {
         <title>お問い合わせ - PARTS HUB（パーツハブ）</title>
         <meta name="description" content="PARTS HUBへのお問い合わせはこちら。サービスに関するご質問、代理出品のご依頼、不具合報告などお気軽にご連絡ください。">
         <link rel="canonical" href="https://parts-hub-tci.com/contact">
+        ${hreflang("/contact")}
         <meta property="og:title" content="お問い合わせ - PARTS HUB">
         <meta property="og:description" content="PARTS HUBへのお問い合わせ。サービスに関するご質問、代理出品のご依頼などお気軽にどうぞ。">
         <meta property="og:url" content="https://parts-hub-tci.com/contact">
@@ -6989,6 +7001,7 @@ app.get('/search', (c) => {
         <title>商品検索 - PARTS HUB（パーツハブ）</title>
         <meta name="description" content="自動車パーツ・純正部品・工具をキーワード・カテゴリ・車種から検索。全国の整備工場が出品する中古・新品パーツを簡単に見つけられます。">
         <link rel="canonical" href="https://parts-hub-tci.com/search">
+        ${hreflang("/search")}
         <meta property="og:type" content="website">
         <meta property="og:title" content="自動車パーツ検索 - PARTS HUB">
         <meta property="og:description" content="純正部品・社外品・工具を全国の整備工場から検索。中古パーツも新品パーツも見つかる。">
@@ -7243,6 +7256,7 @@ app.get('/privacy', (c) => {
         <title>プライバシーポリシー - PARTS HUB（パーツハブ）</title>
         <meta name="description" content="PARTS HUBのプライバシーポリシー。個人情報の取り扱い、利用目的、第三者提供、Cookie利用について定めています。">
         <link rel="canonical" href="https://parts-hub-tci.com/privacy">
+        ${hreflang("/privacy")}
         <meta property="og:title" content="プライバシーポリシー - PARTS HUB">
         <meta property="og:url" content="https://parts-hub-tci.com/privacy">
         <meta property="og:site_name" content="PARTS HUB">
@@ -7391,6 +7405,7 @@ app.get('/terms', (c) => {
         <title>利用規約 - PARTS HUB（パーツハブ）</title>
         <meta name="description" content="PARTS HUBの利用規約。サービス利用条件、禁止事項、手数料、取引ルール、免責事項について定めています。">
         <link rel="canonical" href="https://parts-hub-tci.com/terms">
+        ${hreflang("/terms")}
         <meta property="og:title" content="利用規約 - PARTS HUB">
         <meta property="og:url" content="https://parts-hub-tci.com/terms">
         <meta property="og:site_name" content="PARTS HUB">
@@ -7748,6 +7763,7 @@ app.get('/security', (c) => {
         <title>セキュリティポリシー - PARTS HUB（パーツハブ）</title>
         <meta name="description" content="PARTS HUBのセキュリティポリシー。Stripe決済の安全性、SSL暗号化、データ保護、不正利用対策について説明しています。">
         <link rel="canonical" href="https://parts-hub-tci.com/security">
+        ${hreflang("/security")}
         <meta property="og:title" content="セキュリティポリシー - PARTS HUB">
         <meta property="og:url" content="https://parts-hub-tci.com/security">
         <meta property="og:site_name" content="PARTS HUB">
@@ -8006,6 +8022,7 @@ app.get('/area', (c) => {
     <title>エリアから探す - PARTS HUB（パーツハブ）</title>
     <meta name="description" content="PARTS HUBは全国47都道府県の整備工場をつなぐパーツ売買プラットフォームです。お近くのエリアの出品状況をご覧ください。">
     <link rel="canonical" href="https://parts-hub-tci.com/area">
+        ${hreflang("/area")}
     <meta property="og:title" content="エリアから探す - PARTS HUB">
     <meta property="og:description" content="全国47都道府県の整備工場をつなぐパーツ売買プラットフォーム">
     <meta property="og:url" content="https://parts-hub-tci.com/area">
@@ -8108,6 +8125,7 @@ app.get('/area/:pref', async (c) => {
     <title>${pref.name}の整備工場向けパーツ売買 - PARTS HUB（パーツハブ）</title>
     <meta name="description" content="${pref.name}の整備工場の皆様へ。PARTS HUBは余剰パーツ・工具・SSTを全国の整備工場同士で売買できるプラットフォームです。${pref.desc}">
     <link rel="canonical" href="https://parts-hub-tci.com/area/${prefSlug}">
+    ${hreflang("/area/" + prefSlug)}
     <meta property="og:type" content="website">
     <meta property="og:title" content="${pref.name}の整備工場向けパーツ売買 - PARTS HUB">
     <meta property="og:description" content="${pref.name}の整備工場の皆様へ。余剰パーツを全国の整備工場と売買。登録無料・Stripe安全決済。">
@@ -8348,6 +8366,7 @@ app.get('/vehicle', (c) => {
     <title>車種別パーツガイド - PARTS HUB（パーツハブ）</title>
     <meta name="description" content="車種別の整備・交換パーツガイド。トヨタ、日産、ホンダ、スズキなど主要メーカーの人気車種ごとに、よく交換されるパーツと整備のポイントを解説します。">
     <link rel="canonical" href="https://parts-hub-tci.com/vehicle">
+        ${hreflang("/vehicle")}
     <meta property="og:title" content="車種別パーツガイド - PARTS HUB">
     <meta property="og:description" content="主要メーカーの人気車種ごとに、よく交換されるパーツと整備のポイントを解説">
     <meta property="og:url" content="https://parts-hub-tci.com/vehicle">
@@ -8442,6 +8461,7 @@ app.get('/vehicle/:slug', async (c) => {
     <title>${vehicle.maker} ${vehicle.name}のパーツ・整備ガイド - PARTS HUB</title>
     <meta name="description" content="${vehicle.maker} ${vehicle.name}（${vehicle.years}）の整備・交換パーツガイド。${vehicle.keywords.slice(0,3).join('、')}など、よく交換されるパーツの情報と中古パーツの探し方を解説。">
     <link rel="canonical" href="https://parts-hub-tci.com/vehicle/${slug}">
+    ${hreflang("/vehicle/" + slug)}
     <meta property="og:type" content="article">
     <meta property="og:title" content="${vehicle.maker} ${vehicle.name}のパーツ・整備ガイド - PARTS HUB">
     <meta property="og:description" content="${vehicle.name}の整備・交換パーツガイド。${vehicle.keywords.slice(0,3).join('、')}など主要パーツの情報。">
@@ -8753,6 +8773,7 @@ app.get('/partner', (c) => {
     '<title>パートナー（整備団体向け） - PARTS HUB（パーツハブ）</title>' +
     '<meta name="description" content="PARTS HUBは全国の自動車整備振興会、商工組合、車体整備、電装整備事業者、部品卸商向けにパーツ調達コスト削減と余剰在庫の収益化を支援するプラットフォームです。">' +
     '<link rel="canonical" href="https://parts-hub-tci.com/partner">' +
+    hreflang('/partner') +
     '<meta property="og:title" content="パートナー（整備団体向け） - PARTS HUB">' +
     '<meta property="og:description" content="自動車整備振興会・商工組合・車体整備事業者向けのパーツ売買プラットフォーム">' +
     '<meta property="og:url" content="https://parts-hub-tci.com/partner">' +
@@ -8836,6 +8857,7 @@ app.get('/partner/:slug', (c) => {
     '<title>' + p.name + '向け パーツ売買プラットフォーム - PARTS HUB（パーツハブ）</title>' +
     '<meta name="description" content="' + p.desc.slice(0, 140) + '">' +
     '<link rel="canonical" href="https://parts-hub-tci.com/partner/' + slug + '">' +
+    hreflang('/partner/' + slug) +
     '<meta property="og:title" content="' + p.name + '向け - PARTS HUB">' +
     '<meta property="og:description" content="' + p.desc.slice(0, 120) + '">' +
     '<meta property="og:url" content="https://parts-hub-tci.com/partner/' + slug + '">' +
@@ -9072,6 +9094,7 @@ app.get('/guide', async (c) => {
     <title>整備ガイド・コスト比較 - PARTS HUB（パーツハブ）</title>
     <meta name="description" content="整備工場向けの実践ガイド。パーツの費用比較、純正vs社外品の選び方、余剰在庫の活用術、SST調達など経営に役立つ情報をまとめています。">
     <link rel="canonical" href="https://parts-hub-tci.com/guide">
+        ${hreflang("/guide")}
     <meta property="og:title" content="整備ガイド・コスト比較 - PARTS HUB">
     <meta property="og:description" content="整備工場向けの実践ガイド。パーツ費用比較、余剰在庫活用術、SST調達ガイドなど。">
     <meta property="og:url" content="https://parts-hub-tci.com/guide">
@@ -9168,6 +9191,7 @@ app.get('/guide/:slug', async (c) => {
     <title>${guide.title} - PARTS HUB（パーツハブ）</title>
     <meta name="description" content="${guide.desc}">
     <link rel="canonical" href="https://parts-hub-tci.com/guide/${slug}">
+    ${hreflang("/guide/" + slug)}
     <meta property="og:type" content="article">
     <meta property="og:title" content="${guide.title} - PARTS HUB">
     <meta property="og:description" content="${guide.desc.slice(0, 120)}">
@@ -9328,6 +9352,7 @@ app.get('/sitemap', async (c) => {
         <title>サイトマップ - PARTS HUB（パーツハブ）</title>
         <meta name="description" content="PARTS HUBの全ページ一覧。商品検索、カテゴリ別パーツ、ニュース記事、会社情報など、サイト内の全コンテンツへのリンクを掲載しています。">
         <link rel="canonical" href="https://parts-hub-tci.com/sitemap">
+        ${hreflang("/sitemap")}
         <meta property="og:title" content="サイトマップ - PARTS HUB">
         <meta property="og:description" content="PARTS HUBの全ページ一覧。商品検索、カテゴリ、ニュース記事へのリンクを掲載。">
         <meta property="og:url" content="https://parts-hub-tci.com/sitemap">
@@ -9541,6 +9566,7 @@ app.get('/legal', (c) => {
         <title>特定商取引法に基づく表記 - PARTS HUB（パーツハブ）</title>
         <meta name="description" content="PARTS HUBの特定商取引法に基づく表記。販売事業者情報、返品・返金ポリシー、支払方法について記載しています。">
         <link rel="canonical" href="https://parts-hub-tci.com/legal">
+        ${hreflang("/legal")}
         <meta property="og:title" content="特定商取引法に基づく表記 - PARTS HUB">
         <meta property="og:url" content="https://parts-hub-tci.com/legal">
         <meta property="og:site_name" content="PARTS HUB">
@@ -11573,6 +11599,7 @@ app.get('/faq', (c) => {
         <title>よくある質問（FAQ） - PARTS HUB（パーツハブ）</title>
         <meta name="description" content="PARTS HUBの利用方法、手数料、配送、返品などについてのよくある質問をまとめています。">
         <link rel="canonical" href="https://parts-hub-tci.com/faq">
+        ${hreflang("/faq")}
         <meta property="og:type" content="website">
         <meta property="og:title" content="よくある質問（FAQ） - PARTS HUB">
         <meta property="og:description" content="PARTS HUBの利用方法、手数料、配送、返品などについてのよくある質問をまとめています。">
