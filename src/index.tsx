@@ -8067,11 +8067,17 @@ app.get('/area', (c) => {
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <style>
       body { font-family: 'Noto Sans JP', sans-serif; }
-      .region-card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #f3f4f6; }
-      .region-title { font-size: 15px; font-weight: 700; color: #1f2937; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid #fee2e2; }
-      .pref-grid { display: flex; flex-wrap: wrap; gap: 8px; }
-      .area-chip { display: inline-block; padding: 8px 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; color: #374151; font-size: 14px; font-weight: 500; text-decoration: none; transition: all 0.15s; }
+      .region-card { background: white; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #f3f4f6; }
+      .region-title { font-size: 14px; font-weight: 700; color: #1f2937; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #fee2e2; }
+      .pref-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+      .area-chip { display: inline-block; padding: 7px 12px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; color: #374151; font-size: 13px; font-weight: 500; text-decoration: none; transition: all 0.15s; }
       .area-chip:hover { background: #fef2f2; border-color: #fca5a5; color: #dc2626; }
+      @media (min-width: 640px) {
+        .region-card { padding: 24px; }
+        .region-title { font-size: 15px; margin-bottom: 14px; padding-bottom: 10px; }
+        .pref-grid { gap: 8px; }
+        .area-chip { padding: 8px 16px; font-size: 14px; }
+      }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -8083,15 +8089,15 @@ app.get('/area', (c) => {
         </div>
     </header>
     ${breadcrumbHtml([{name:'PARTS HUB',url:'/'},{name:'エリアから探す'}])}
-    <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white py-12 sm:py-16">
+    <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white py-10 sm:py-14 lg:py-16">
         <div class="max-w-6xl mx-auto px-4 text-center">
-            <p class="text-red-400 text-sm font-semibold tracking-wider mb-3">AREA NETWORK</p>
-            <h1 class="text-2xl sm:text-3xl font-bold mb-3">エリアから探す</h1>
-            <p class="text-slate-400 text-sm sm:text-base max-w-xl mx-auto">全国47都道府県の整備工場をつなぐネットワーク。お近くのエリアを選んで、地域の出品状況をご確認ください。</p>
+            <p class="text-red-400 text-xs sm:text-sm font-semibold tracking-wider mb-2 sm:mb-3">AREA NETWORK</p>
+            <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold mb-2 sm:mb-3">エリアから探す</h1>
+            <p class="text-slate-400 text-xs sm:text-sm lg:text-base max-w-xl mx-auto px-2">全国47都道府県の整備工場をつなぐネットワーク。お近くのエリアを選んで、地域の出品状況をご確認ください。</p>
         </div>
     </div>
-    <main class="max-w-6xl mx-auto px-4 py-8 sm:py-12">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <main class="max-w-6xl mx-auto px-3 sm:px-4 py-6 sm:py-10 lg:py-12">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             ${regionCards}
         </div>
     </main>
@@ -8192,29 +8198,60 @@ app.get('/area/:pref', async (c) => {
     <style>
       body { font-family: 'Noto Sans JP', sans-serif; }
       .hero-area { background: linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #334155 100%); }
-      .stat-card { background: rgba(255,255,255,0.06); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 20px; text-align: center; }
-      .stat-number { font-size: 28px; font-weight: 900; background: linear-gradient(135deg, #f87171, #fb923c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-      .stat-label { font-size: 12px; color: #94a3b8; margin-top: 4px; }
-      .section-heading { font-size: 20px; font-weight: 700; color: #1f2937; position: relative; padding-left: 16px; }
-      .section-heading::before { content: ''; position: absolute; left: 0; top: 2px; bottom: 2px; width: 4px; background: linear-gradient(180deg, #ef4444, #f97316); border-radius: 2px; }
-      .product-card { display: block; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #f3f4f6; text-decoration: none; transition: all 0.2s; }
+      .stat-card { background: rgba(255,255,255,0.06); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 14px 10px; text-align: center; }
+      .stat-number { font-size: 20px; font-weight: 900; background: linear-gradient(135deg, #f87171, #fb923c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; white-space: nowrap; }
+      .stat-label { font-size: 10px; color: #94a3b8; margin-top: 4px; line-height: 1.4; }
+      @media (min-width: 400px) {
+        .stat-card { padding: 16px 12px; }
+        .stat-number { font-size: 24px; }
+        .stat-label { font-size: 11px; }
+      }
+      @media (min-width: 640px) {
+        .stat-card { padding: 20px; }
+        .stat-number { font-size: 30px; }
+        .stat-label { font-size: 12px; }
+      }
+      .section-heading { font-size: 17px; font-weight: 700; color: #1f2937; position: relative; padding-left: 14px; }
+      .section-heading::before { content: ''; position: absolute; left: 0; top: 2px; bottom: 2px; width: 3px; background: linear-gradient(180deg, #ef4444, #f97316); border-radius: 2px; }
+      @media (min-width: 640px) { .section-heading { font-size: 20px; padding-left: 16px; } .section-heading::before { width: 4px; } }
+      .product-card { display: block; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #f3f4f6; text-decoration: none; transition: all 0.2s; }
       .product-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.1); transform: translateY(-2px); }
       .product-img-wrap { aspect-ratio: 1; overflow: hidden; background: #f9fafb; }
       .product-img { width: 100%; height: 100%; object-fit: cover; }
-      .product-info { padding: 12px; }
-      .product-title { font-size: 13px; font-weight: 600; color: #1f2937; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 36px; }
-      .product-price { font-size: 16px; font-weight: 800; color: #dc2626; margin-top: 6px; }
-      .product-cond { font-size: 11px; font-weight: 400; color: #9ca3af; margin-left: 8px; }
-      .feature-card { background: white; border-radius: 12px; padding: 28px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #f3f4f6; }
-      .feature-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 16px; }
-      .cat-tag { display: inline-block; padding: 6px 14px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 20px; color: #374151; font-size: 13px; font-weight: 500; text-decoration: none; transition: all 0.15s; margin: 3px; }
+      .product-info { padding: 10px; }
+      .product-title { font-size: 12px; font-weight: 600; color: #1f2937; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 34px; }
+      .product-price { font-size: 14px; font-weight: 800; color: #dc2626; margin-top: 4px; }
+      .product-cond { font-size: 10px; font-weight: 400; color: #9ca3af; margin-left: 6px; }
+      @media (min-width: 640px) {
+        .product-card { border-radius: 12px; }
+        .product-info { padding: 12px; }
+        .product-title { font-size: 13px; min-height: 36px; }
+        .product-price { font-size: 16px; margin-top: 6px; }
+        .product-cond { font-size: 11px; margin-left: 8px; }
+      }
+      .feature-card { background: white; border-radius: 12px; padding: 20px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #f3f4f6; }
+      .feature-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-bottom: 12px; }
+      @media (min-width: 640px) {
+        .feature-card { padding: 28px 24px; }
+        .feature-icon { width: 48px; height: 48px; border-radius: 12px; font-size: 20px; margin-bottom: 16px; }
+      }
+      .cat-tag { display: inline-block; padding: 5px 10px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 20px; color: #374151; font-size: 12px; font-weight: 500; text-decoration: none; transition: all 0.15s; margin: 2px; }
       .cat-tag:hover { background: #fef2f2; border-color: #fca5a5; color: #dc2626; }
-      .nearby-link { display: inline-block; padding: 8px 16px; background: white; border: 1px solid #e5e7eb; border-radius: 8px; color: #374151; font-size: 14px; font-weight: 500; text-decoration: none; transition: all 0.15s; margin: 3px; }
+      .nearby-link { display: inline-block; padding: 7px 12px; background: white; border: 1px solid #e5e7eb; border-radius: 8px; color: #374151; font-size: 13px; font-weight: 500; text-decoration: none; transition: all 0.15s; margin: 2px; }
       .nearby-link:hover { background: #fef2f2; border-color: #fca5a5; color: #dc2626; }
-      .step-line { position: relative; padding-left: 48px; }
-      .step-line::before { content: ''; position: absolute; left: 19px; top: 40px; bottom: -20px; width: 2px; background: #e5e7eb; }
+      @media (min-width: 640px) {
+        .cat-tag { padding: 6px 14px; font-size: 13px; margin: 3px; }
+        .nearby-link { padding: 8px 16px; font-size: 14px; margin: 3px; }
+      }
+      .step-line { position: relative; padding-left: 44px; }
+      .step-line::before { content: ''; position: absolute; left: 15px; top: 36px; bottom: -20px; width: 2px; background: #e5e7eb; }
       .step-line:last-child::before { display: none; }
-      .step-num { position: absolute; left: 0; top: 0; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; color: white; }
+      .step-num { position: absolute; left: 0; top: 0; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; color: white; }
+      @media (min-width: 640px) {
+        .step-line { padding-left: 48px; }
+        .step-line::before { left: 19px; top: 40px; }
+        .step-num { width: 40px; height: 40px; font-size: 14px; }
+      }
       .cta-section { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); }
       ${BREADCRUMB_CSS}
     </style>
@@ -8231,21 +8268,21 @@ app.get('/area/:pref', async (c) => {
     ${breadcrumbHtml([{name:'PARTS HUB',url:'/'},{name:'エリア',url:'/area'},{name:pref.name}])}
 
     <!-- ヒーロー -->
-    <section class="hero-area text-white py-12 sm:py-20">
+    <section class="hero-area text-white py-10 sm:py-16 lg:py-20">
         <div class="max-w-6xl mx-auto px-4">
-            <div class="text-center mb-10">
-                <div class="inline-block px-3 py-1 bg-red-500/20 text-red-300 text-xs font-semibold rounded-full tracking-wider mb-4">${pref.region} / ${pref.name}</div>
-                <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight mb-4">${pref.name}の整備工場の皆様へ</h1>
-                <p class="text-slate-400 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">${pref.desc}</p>
+            <div class="text-center mb-8 sm:mb-10">
+                <div class="inline-block px-3 py-1 bg-red-500/20 text-red-300 text-xs font-semibold rounded-full tracking-wider mb-3 sm:mb-4">${pref.region} / ${pref.name}</div>
+                <h1 class="text-xl sm:text-2xl lg:text-4xl font-bold leading-tight mb-3 sm:mb-4">${pref.name}の整備工場の皆様へ</h1>
+                <p class="text-slate-400 text-xs sm:text-sm lg:text-base max-w-2xl mx-auto leading-relaxed px-2">${pref.desc}</p>
             </div>
-            <div class="grid grid-cols-3 gap-3 sm:gap-5 max-w-lg mx-auto">
+            <div class="grid grid-cols-3 gap-2 sm:gap-4 max-w-md sm:max-w-lg mx-auto">
                 <div class="stat-card">
                     <div class="stat-number">${pref.shops.toLocaleString()}</div>
-                    <div class="stat-label">${pref.name}の整備工場数</div>
+                    <div class="stat-label">${pref.name}の<br class="sm:hidden">整備工場数</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-number">${totalShops.toLocaleString()}</div>
-                    <div class="stat-label">全国の整備工場数</div>
+                    <div class="stat-label">全国の<br class="sm:hidden">整備工場数</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-number">0%</div>
@@ -8255,12 +8292,12 @@ app.get('/area/:pref', async (c) => {
         </div>
     </section>
 
-    <main class="max-w-6xl mx-auto px-4 py-10 sm:py-14">
+    <main class="max-w-6xl mx-auto px-3 sm:px-4 py-8 sm:py-12 lg:py-14">
 
         <!-- PARTS HUBの特長 -->
-        <section class="mb-14">
-            <h2 class="section-heading mb-8">PARTS HUBが選ばれる理由</h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <section class="mb-10 sm:mb-14">
+            <h2 class="section-heading mb-6 sm:mb-8">PARTS HUBが選ばれる理由</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
                 <div class="feature-card">
                     <div class="feature-icon bg-red-50 text-red-500"><i class="fas fa-yen-sign"></i></div>
                     <h3 class="font-bold text-gray-900 mb-2">出品無料・低手数料</h3>
@@ -8285,15 +8322,15 @@ app.get('/area/:pref', async (c) => {
         </section>
 
         <!-- 出品中の商品 -->
-        ${productsHtml ? '<section class="mb-14"><div class="flex items-center justify-between mb-8"><h2 class="section-heading">出品中のパーツ</h2><a href="/search" class="text-sm text-red-500 font-semibold hover:underline">すべて見る<i class="fas fa-chevron-right ml-1 text-xs"></i></a></div><div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">' + productsHtml + '</div></section>' : ''}
+        ${productsHtml ? '<section class="mb-10 sm:mb-14"><div class="flex items-center justify-between mb-6 sm:mb-8"><h2 class="section-heading">出品中のパーツ</h2><a href="/search" class="text-xs sm:text-sm text-red-500 font-semibold hover:underline">すべて見る<i class="fas fa-chevron-right ml-1 text-xs"></i></a></div><div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">' + productsHtml + '</div></section>' : ''}
 
         <!-- カテゴリ -->
-        ${categoriesHtml ? '<section class="mb-14"><h2 class="section-heading mb-6">カテゴリから探す</h2><div class="flex flex-wrap">' + categoriesHtml + '</div></section>' : ''}
+        ${categoriesHtml ? '<section class="mb-10 sm:mb-14"><h2 class="section-heading mb-4 sm:mb-6">カテゴリから探す</h2><div class="flex flex-wrap">' + categoriesHtml + '</div></section>' : ''}
 
         <!-- 取引の流れ -->
-        <section class="mb-14">
-            <h2 class="section-heading mb-8">取引の流れ</h2>
-            <div class="max-w-xl mx-auto space-y-8">
+        <section class="mb-10 sm:mb-14">
+            <h2 class="section-heading mb-6 sm:mb-8">取引の流れ</h2>
+            <div class="max-w-xl mx-auto space-y-6 sm:space-y-8">
                 <div class="step-line">
                     <div class="step-num bg-red-500">1</div>
                     <h3 class="font-bold text-gray-900 mb-1">無料会員登録</h3>
@@ -8318,17 +8355,17 @@ app.get('/area/:pref', async (c) => {
         </section>
 
         <!-- 近隣エリア -->
-        ${sameRegion ? '<section class="mb-14"><h2 class="section-heading mb-6">' + pref.region + 'の他のエリア</h2><div class="flex flex-wrap">' + sameRegion + '</div></section>' : ''}
+        ${sameRegion ? '<section class="mb-10 sm:mb-14"><h2 class="section-heading mb-4 sm:mb-6">' + pref.region + 'の他のエリア</h2><div class="flex flex-wrap">' + sameRegion + '</div></section>' : ''}
     </main>
 
     <!-- CTA -->
-    <section class="cta-section text-white py-14 sm:py-20">
+    <section class="cta-section text-white py-12 sm:py-16 lg:py-20">
         <div class="max-w-3xl mx-auto px-4 text-center">
-            <h2 class="text-xl sm:text-2xl font-bold mb-4">眠っているパーツを、必要としている工場へ</h2>
-            <p class="text-slate-400 text-sm sm:text-base mb-8 leading-relaxed">PARTS HUBは全国の整備工場同士をつなぐプラットフォームです。<br class="hidden sm:block">余剰在庫の削減と、必要なパーツの効率的な調達を実現します。</p>
+            <h2 class="text-lg sm:text-xl lg:text-2xl font-bold mb-3 sm:mb-4">眠っているパーツを、必要としている工場へ</h2>
+            <p class="text-slate-400 text-xs sm:text-sm lg:text-base mb-6 sm:mb-8 leading-relaxed">PARTS HUBは全国の整備工場同士をつなぐプラットフォームです。<br class="hidden sm:block">余剰在庫の削減と、必要なパーツの効率的な調達を実現します。</p>
             <div class="flex flex-col sm:flex-row gap-3 justify-center">
-                <a href="/register" class="inline-block px-8 py-3.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-colors text-base shadow-lg shadow-red-500/20">無料で会員登録</a>
-                <a href="/search" class="inline-block px-8 py-3.5 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl transition-colors text-base border border-white/20">商品を探す</a>
+                <a href="/register" class="inline-block px-6 sm:px-8 py-3 sm:py-3.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-colors text-sm sm:text-base shadow-lg shadow-red-500/20">無料で会員登録</a>
+                <a href="/search" class="inline-block px-6 sm:px-8 py-3 sm:py-3.5 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl transition-colors text-sm sm:text-base border border-white/20">商品を探す</a>
             </div>
         </div>
     </section>
@@ -8531,21 +8568,33 @@ app.get('/vehicle/:slug', async (c) => {
       .spec-item { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
       .spec-label { font-size: 12px; color: #94a3b8; width: 80px; flex-shrink: 0; }
       .spec-value { font-size: 14px; font-weight: 600; color: white; }
-      .section-heading { font-size: 20px; font-weight: 700; color: #1f2937; position: relative; padding-left: 16px; }
-      .section-heading::before { content: ''; position: absolute; left: 0; top: 2px; bottom: 2px; width: 4px; background: linear-gradient(180deg, #ef4444, #f97316); border-radius: 2px; }
+      .section-heading { font-size: 17px; font-weight: 700; color: #1f2937; position: relative; padding-left: 14px; }
+      .section-heading::before { content: ''; position: absolute; left: 0; top: 2px; bottom: 2px; width: 3px; background: linear-gradient(180deg, #ef4444, #f97316); border-radius: 2px; }
+      @media (min-width: 640px) { .section-heading { font-size: 20px; padding-left: 16px; } .section-heading::before { width: 4px; } }
       .keyword-tag { display: inline-block; padding: 8px 16px; background: white; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 13px; font-weight: 500; color: #374151; margin: 3px; }
-      .product-card { display: block; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #f3f4f6; text-decoration: none; transition: all 0.2s; }
+      .product-card { display: block; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #f3f4f6; text-decoration: none; transition: all 0.2s; }
       .product-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.1); transform: translateY(-2px); }
       .product-img-wrap { aspect-ratio: 1; overflow: hidden; background: #f9fafb; }
       .product-img { width: 100%; height: 100%; object-fit: cover; }
-      .product-info { padding: 12px; }
-      .product-title { font-size: 13px; font-weight: 600; color: #1f2937; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 36px; }
-      .product-price { font-size: 16px; font-weight: 800; color: #dc2626; margin-top: 6px; }
-      .product-cond { font-size: 11px; font-weight: 400; color: #9ca3af; margin-left: 8px; }
-      .cat-tag { display: inline-block; padding: 6px 14px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 20px; color: #374151; font-size: 13px; font-weight: 500; text-decoration: none; transition: all 0.15s; margin: 3px; }
+      .product-info { padding: 10px; }
+      .product-title { font-size: 12px; font-weight: 600; color: #1f2937; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 34px; }
+      .product-price { font-size: 14px; font-weight: 800; color: #dc2626; margin-top: 4px; }
+      .product-cond { font-size: 10px; font-weight: 400; color: #9ca3af; margin-left: 6px; }
+      @media (min-width: 640px) {
+        .product-card { border-radius: 12px; }
+        .product-info { padding: 12px; }
+        .product-title { font-size: 13px; min-height: 36px; }
+        .product-price { font-size: 16px; margin-top: 6px; }
+        .product-cond { font-size: 11px; margin-left: 8px; }
+      }
+      .cat-tag { display: inline-block; padding: 5px 10px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 20px; color: #374151; font-size: 12px; font-weight: 500; text-decoration: none; transition: all 0.15s; margin: 2px; }
       .cat-tag:hover { background: #fef2f2; border-color: #fca5a5; color: #dc2626; }
-      .nearby-link { display: inline-block; padding: 8px 16px; background: white; border: 1px solid #e5e7eb; border-radius: 8px; color: #374151; font-size: 14px; font-weight: 500; text-decoration: none; transition: all 0.15s; margin: 3px; }
+      .nearby-link { display: inline-block; padding: 7px 12px; background: white; border: 1px solid #e5e7eb; border-radius: 8px; color: #374151; font-size: 13px; font-weight: 500; text-decoration: none; transition: all 0.15s; margin: 2px; }
       .nearby-link:hover { background: #fef2f2; border-color: #fca5a5; color: #dc2626; }
+      @media (min-width: 640px) {
+        .cat-tag { padding: 6px 14px; font-size: 13px; margin: 3px; }
+        .nearby-link { padding: 8px 16px; font-size: 14px; margin: 3px; }
+      }
       .info-card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #f3f4f6; }
       .cta-section { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); }
       ${BREADCRUMB_CSS}
