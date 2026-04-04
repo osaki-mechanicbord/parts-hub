@@ -2179,4 +2179,128 @@ adminRoutes.get('/logs', async (c) => {
   }
 });
 
+// ===== お知らせ管理API =====
+
+// お知らせ一覧取得（管理画面用 - 全ステータス）
+adminRoutes.get('/announcements', async (c) => {
+  try {
+    const { DB } = c.env
+    const page = parseInt(c.req.query('page') || '1')
+    const limit = parseInt(c.req.query('limit') || '20')
+    const offset = (page - 1) * limit
+    const typeFilter = c.req.query('type') || ''
+    const statusFilter = c.req.query('status') || ''
+
+    let whereClause = '1=1'
+    const params: any[] = []
+
+    if (typeFilter) {
+      whereClause += ' AND type = ?'
+      params.push(typeFilter)
+    }
+    if (statusFilter === 'active') {
+      whereClause += ' AND is_active = 1'
+    } else if (statusFilter === 'inactive') {
+      whereClause += ' AND is_active = 0'
+    }
+
+    const total = await DB.prepare(`SELECT COUNT(*) as count FROM announcements WHERE ${whereClause}`).bind(...params).first() as any
+    const { results } = await DB.prepare(`
+      SELECT * FROM announcements WHERE ${whereClause}
+      ORDER BY is_pinned DESC, priority DESC, published_at DESC
+      LIMIT ? OFFSET ?
+    `).bind(...params, limit, offset).all()
+
+    return c.json({
+      success: true,
+      data: results,
+      total: total?.count || 0,
+      page,
+      totalPages: Math.ceil((total?.count || 0) / limit)
+    })
+  } catch (error) {
+    console.error('Get announcements error:', error)
+    return c.json({ success: true, data: [], total: 0, page: 1, totalPages: 0 })
+  }
+})
+
+// お知らせ作成
+adminRoutes.post('/announcements', async (c) => {
+  try {
+    const { DB } = c.env
+    const body = await c.req.json()
+    const { title, content, type, priority, is_pinned, published_at, expires_at } = body
+
+    if (!title || !content) {
+      return c.json({ success: false, error: 'タイトルと内容は必須です' }, 400)
+    }
+
+    const result = await DB.prepare(`
+      INSERT INTO announcements (title, content, type, priority, is_pinned, published_at, expires_at, created_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'admin')
+    `).bind(
+      title,
+      content,
+      type || 'info',
+      priority || 0,
+      is_pinned ? 1 : 0,
+      published_at || new Date().toISOString(),
+      expires_at || null
+    ).run()
+
+    return c.json({ success: true, data: { id: result.meta.last_row_id } })
+  } catch (error) {
+    console.error('Create announcement error:', error)
+    return c.json({ success: false, error: 'お知らせの作成に失敗しました' }, 500)
+  }
+})
+
+// お知らせ更新
+adminRoutes.put('/announcements/:id', async (c) => {
+  try {
+    const { DB } = c.env
+    const id = c.req.param('id')
+    const body = await c.req.json()
+    const { title, content, type, priority, is_active, is_pinned, published_at, expires_at } = body
+
+    if (!title || !content) {
+      return c.json({ success: false, error: 'タイトルと内容は必須です' }, 400)
+    }
+
+    await DB.prepare(`
+      UPDATE announcements SET
+        title = ?, content = ?, type = ?, priority = ?,
+        is_active = ?, is_pinned = ?, published_at = ?,
+        expires_at = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(
+      title, content, type || 'info', priority || 0,
+      is_active !== undefined ? (is_active ? 1 : 0) : 1,
+      is_pinned ? 1 : 0,
+      published_at || new Date().toISOString(),
+      expires_at || null,
+      id
+    ).run()
+
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('Update announcement error:', error)
+    return c.json({ success: false, error: 'お知らせの更新に失敗しました' }, 500)
+  }
+})
+
+// お知らせ削除
+adminRoutes.delete('/announcements/:id', async (c) => {
+  try {
+    const { DB } = c.env
+    const id = c.req.param('id')
+
+    await DB.prepare('DELETE FROM announcements WHERE id = ?').bind(id).run()
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('Delete announcement error:', error)
+    return c.json({ success: false, error: 'お知らせの削除に失敗しました' }, 500)
+  }
+})
+
 export default adminRoutes

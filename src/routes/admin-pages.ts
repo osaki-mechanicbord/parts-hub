@@ -2218,4 +2218,335 @@ adminPagesRoutes.get('/withdrawals', (c) => {
   return c.html(AdminLayout('withdrawals', '出金管理', content));
 });
 
+// お知らせ管理ページ
+adminPagesRoutes.get('/announcements', (c) => {
+  const content = `
+    <div class="mb-8 flex items-center justify-between">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">お知らせ管理</h2>
+            <p class="text-gray-600">メンテナンス情報や重要なお知らせを管理します</p>
+        </div>
+        <button onclick="showCreateModal()" class="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-bold shadow-sm transition-colors">
+            <i class="fas fa-plus mr-2"></i>新規作成
+        </button>
+    </div>
+
+    <!-- フィルター -->
+    <div class="bg-white rounded-lg shadow-sm p-4 mb-6 flex items-center gap-4 flex-wrap">
+        <select id="filter-type" onchange="loadAnnouncements()" class="border rounded-lg px-3 py-2 text-sm">
+            <option value="">すべての種類</option>
+            <option value="info">お知らせ</option>
+            <option value="maintenance">メンテナンス</option>
+            <option value="important">重要</option>
+            <option value="update">アップデート</option>
+            <option value="campaign">キャンペーン</option>
+        </select>
+        <select id="filter-status" onchange="loadAnnouncements()" class="border rounded-lg px-3 py-2 text-sm">
+            <option value="">すべてのステータス</option>
+            <option value="active">公開中</option>
+            <option value="inactive">非公開</option>
+        </select>
+        <span id="total-count" class="text-sm text-gray-500 ml-auto">0件</span>
+    </div>
+
+    <!-- お知らせ一覧 -->
+    <div id="announcements-list" class="space-y-4">
+        <div class="text-center py-12 text-gray-500">読み込み中...</div>
+    </div>
+
+    <!-- ページネーション -->
+    <div id="pagination" class="mt-6 flex justify-center gap-2"></div>
+
+    <!-- 作成・編集モーダル -->
+    <div id="modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this)closeModal()">
+        <div class="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
+                <h3 id="modal-title" class="text-lg font-bold text-gray-800">お知らせ作成</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <form id="announcement-form" onsubmit="saveAnnouncement(event)" class="p-6 space-y-4">
+                <input type="hidden" id="form-id">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">タイトル <span class="text-red-500">*</span></label>
+                    <input type="text" id="form-title" required class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-red-500 focus:outline-none" placeholder="例: システムメンテナンスのお知らせ">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">内容 <span class="text-red-500">*</span></label>
+                    <textarea id="form-content" required rows="5" class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-red-500 focus:outline-none resize-y" placeholder="お知らせの詳細を入力してください..."></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">種類</label>
+                        <select id="form-type" class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-red-500 focus:outline-none">
+                            <option value="info">📢 お知らせ</option>
+                            <option value="maintenance">🔧 メンテナンス</option>
+                            <option value="important">⚠️ 重要</option>
+                            <option value="update">🔄 アップデート</option>
+                            <option value="campaign">🎁 キャンペーン</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">優先度</label>
+                        <select id="form-priority" class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-red-500 focus:outline-none">
+                            <option value="0">通常</option>
+                            <option value="1">やや高い</option>
+                            <option value="2">高い</option>
+                            <option value="3">緊急</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">公開日時</label>
+                        <input type="datetime-local" id="form-published-at" class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-red-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">有効期限 <span class="text-gray-400 font-normal">(任意)</span></label>
+                        <input type="datetime-local" id="form-expires-at" class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-red-500 focus:outline-none">
+                    </div>
+                </div>
+                <div class="flex items-center gap-6">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="form-is-active" checked class="w-4 h-4 text-red-500 rounded">
+                        <span class="text-sm text-gray-700">公開する</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="form-is-pinned" class="w-4 h-4 text-red-500 rounded">
+                        <span class="text-sm text-gray-700">ピン留め（常に上部に表示）</span>
+                    </label>
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="submit" id="save-btn" class="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-bold transition-colors">
+                        <i class="fas fa-save mr-2"></i>保存
+                    </button>
+                    <button type="button" onclick="closeModal()" class="px-6 py-3 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors">
+                        キャンセル
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    const TOKEN = localStorage.getItem('admin_token');
+    const HEADERS = { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' };
+
+    const typeLabels = {
+        'info': { emoji: '📢', label: 'お知らせ', cls: 'bg-gray-100 text-gray-700' },
+        'maintenance': { emoji: '🔧', label: 'メンテナンス', cls: 'bg-yellow-100 text-yellow-700' },
+        'important': { emoji: '⚠️', label: '重要', cls: 'bg-red-100 text-red-700' },
+        'update': { emoji: '🔄', label: 'アップデート', cls: 'bg-blue-100 text-blue-700' },
+        'campaign': { emoji: '🎁', label: 'キャンペーン', cls: 'bg-green-100 text-green-700' }
+    };
+
+    let currentPage = 1;
+
+    async function loadAnnouncements(page = 1) {
+        currentPage = page;
+        const type = document.getElementById('filter-type').value;
+        const status = document.getElementById('filter-status').value;
+        const params = new URLSearchParams({ page: String(page), limit: '20' });
+        if (type) params.set('type', type);
+        if (status) params.set('status', status);
+
+        try {
+            const res = await fetch('/api/admin/announcements?' + params.toString(), { headers: HEADERS });
+            const data = await res.json();
+
+            document.getElementById('total-count').textContent = (data.total || 0) + '件';
+
+            const list = document.getElementById('announcements-list');
+            if (!data.data || data.data.length === 0) {
+                list.innerHTML = '<div class="text-center py-12 bg-white rounded-lg"><i class="fas fa-bullhorn text-4xl text-gray-300 mb-4"></i><p class="text-gray-500">お知らせがありません</p><p class="text-sm text-gray-400 mt-1">「新規作成」ボタンから最初のお知らせを投稿しましょう</p></div>';
+                document.getElementById('pagination').innerHTML = '';
+                return;
+            }
+
+            list.innerHTML = data.data.map(function(a) {
+                var t = typeLabels[a.type] || typeLabels['info'];
+                var date = a.published_at ? new Date(a.published_at).toLocaleString('ja-JP') : '';
+                var expDate = a.expires_at ? new Date(a.expires_at).toLocaleString('ja-JP') : '';
+                var isExpired = a.expires_at && new Date(a.expires_at) < new Date();
+                var statusBadge = !a.is_active
+                    ? '<span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-200 text-gray-600">非公開</span>'
+                    : isExpired
+                    ? '<span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700">期限切れ</span>'
+                    : '<span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">公開中</span>';
+                var pinBadge = a.is_pinned ? '<span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-600"><i class="fas fa-thumbtack mr-1"></i>ピン留め</span>' : '';
+
+                return '<div class="bg-white rounded-lg shadow-sm p-5 border-l-4 ' + (a.is_active ? (a.type === 'important' ? 'border-red-500' : a.type === 'maintenance' ? 'border-yellow-500' : 'border-blue-500') : 'border-gray-300') + '">' +
+                    '<div class="flex items-start justify-between gap-4">' +
+                        '<div class="flex-1 min-w-0">' +
+                            '<div class="flex items-center gap-2 mb-2 flex-wrap">' +
+                                '<span class="px-2 py-0.5 rounded-full text-xs font-semibold ' + t.cls + '">' + t.emoji + ' ' + t.label + '</span>' +
+                                statusBadge + pinBadge +
+                                '<span class="text-xs text-gray-400">#' + a.id + '</span>' +
+                            '</div>' +
+                            '<h3 class="font-bold text-gray-800 mb-1">' + escapeHtml(a.title) + '</h3>' +
+                            '<p class="text-sm text-gray-600 mb-2 line-clamp-2">' + escapeHtml(a.content) + '</p>' +
+                            '<div class="flex items-center gap-4 text-xs text-gray-400">' +
+                                '<span><i class="far fa-calendar mr-1"></i>公開: ' + date + '</span>' +
+                                (expDate ? '<span><i class="far fa-clock mr-1"></i>期限: ' + expDate + '</span>' : '') +
+                                '<span>優先度: ' + a.priority + '</span>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="flex items-center gap-2 flex-shrink-0">' +
+                            '<button onclick="editAnnouncement(' + a.id + ')" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="編集"><i class="fas fa-edit"></i></button>' +
+                            '<button onclick="toggleActive(' + a.id + ', ' + (a.is_active ? 'false' : 'true') + ')" class="p-2 ' + (a.is_active ? 'text-yellow-600 hover:bg-yellow-50' : 'text-green-600 hover:bg-green-50') + ' rounded-lg transition-colors" title="' + (a.is_active ? '非公開にする' : '公開する') + '"><i class="fas ' + (a.is_active ? 'fa-eye-slash' : 'fa-eye') + '"></i></button>' +
+                            '<button onclick="deleteAnnouncement(' + a.id + ')" class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="削除"><i class="fas fa-trash"></i></button>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+            }).join('');
+
+            // ページネーション
+            var pagHtml = '';
+            if (data.totalPages > 1) {
+                for (var i = 1; i <= data.totalPages; i++) {
+                    pagHtml += '<button onclick="loadAnnouncements(' + i + ')" class="px-3 py-1 rounded ' + (i === page ? 'bg-red-500 text-white' : 'bg-white border hover:bg-gray-50') + '">' + i + '</button>';
+                }
+            }
+            document.getElementById('pagination').innerHTML = pagHtml;
+        } catch (error) {
+            console.error('Load error:', error);
+            document.getElementById('announcements-list').innerHTML = '<div class="text-center py-8 text-red-500">読み込みに失敗しました</div>';
+        }
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function showCreateModal() {
+        document.getElementById('modal-title').textContent = 'お知らせ作成';
+        document.getElementById('form-id').value = '';
+        document.getElementById('form-title').value = '';
+        document.getElementById('form-content').value = '';
+        document.getElementById('form-type').value = 'info';
+        document.getElementById('form-priority').value = '0';
+        document.getElementById('form-is-active').checked = true;
+        document.getElementById('form-is-pinned').checked = false;
+        // デフォルトで現在時刻をセット
+        var now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        document.getElementById('form-published-at').value = now.toISOString().slice(0, 16);
+        document.getElementById('form-expires-at').value = '';
+        document.getElementById('modal').classList.remove('hidden');
+    }
+
+    async function editAnnouncement(id) {
+        try {
+            const res = await fetch('/api/admin/announcements?limit=100', { headers: HEADERS });
+            const data = await res.json();
+            const a = data.data.find(function(x) { return x.id === id; });
+            if (!a) { alert('お知らせが見つかりません'); return; }
+
+            document.getElementById('modal-title').textContent = 'お知らせ編集';
+            document.getElementById('form-id').value = a.id;
+            document.getElementById('form-title').value = a.title;
+            document.getElementById('form-content').value = a.content;
+            document.getElementById('form-type').value = a.type;
+            document.getElementById('form-priority').value = String(a.priority);
+            document.getElementById('form-is-active').checked = !!a.is_active;
+            document.getElementById('form-is-pinned').checked = !!a.is_pinned;
+            if (a.published_at) {
+                var d = new Date(a.published_at);
+                d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+                document.getElementById('form-published-at').value = d.toISOString().slice(0, 16);
+            }
+            if (a.expires_at) {
+                var d2 = new Date(a.expires_at);
+                d2.setMinutes(d2.getMinutes() - d2.getTimezoneOffset());
+                document.getElementById('form-expires-at').value = d2.toISOString().slice(0, 16);
+            } else {
+                document.getElementById('form-expires-at').value = '';
+            }
+            document.getElementById('modal').classList.remove('hidden');
+        } catch (error) {
+            alert('読み込みに失敗しました');
+        }
+    }
+
+    async function saveAnnouncement(event) {
+        event.preventDefault();
+        var id = document.getElementById('form-id').value;
+        var publishedAt = document.getElementById('form-published-at').value;
+        var expiresAt = document.getElementById('form-expires-at').value;
+
+        var body = {
+            title: document.getElementById('form-title').value,
+            content: document.getElementById('form-content').value,
+            type: document.getElementById('form-type').value,
+            priority: parseInt(document.getElementById('form-priority').value),
+            is_active: document.getElementById('form-is-active').checked,
+            is_pinned: document.getElementById('form-is-pinned').checked,
+            published_at: publishedAt ? new Date(publishedAt).toISOString() : new Date().toISOString(),
+            expires_at: expiresAt ? new Date(expiresAt).toISOString() : null
+        };
+
+        var btn = document.getElementById('save-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>保存中...';
+
+        try {
+            var url = id ? '/api/admin/announcements/' + id : '/api/admin/announcements';
+            var method = id ? 'PUT' : 'POST';
+            var res = await fetch(url, { method: method, headers: HEADERS, body: JSON.stringify(body) });
+            var data = await res.json();
+            if (data.success) {
+                closeModal();
+                loadAnnouncements(currentPage);
+            } else {
+                alert(data.error || '保存に失敗しました');
+            }
+        } catch (error) {
+            alert('保存に失敗しました');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save mr-2"></i>保存';
+        }
+    }
+
+    async function toggleActive(id, active) {
+        try {
+            // まずデータ取得
+            var res = await fetch('/api/admin/announcements?limit=100', { headers: HEADERS });
+            var data = await res.json();
+            var a = data.data.find(function(x) { return x.id === id; });
+            if (!a) return;
+
+            await fetch('/api/admin/announcements/' + id, {
+                method: 'PUT',
+                headers: HEADERS,
+                body: JSON.stringify({ ...a, is_active: active })
+            });
+            loadAnnouncements(currentPage);
+        } catch (error) {
+            alert('更新に失敗しました');
+        }
+    }
+
+    async function deleteAnnouncement(id) {
+        if (!confirm('このお知らせを削除しますか？')) return;
+        try {
+            await fetch('/api/admin/announcements/' + id, { method: 'DELETE', headers: HEADERS });
+            loadAnnouncements(currentPage);
+        } catch (error) {
+            alert('削除に失敗しました');
+        }
+    }
+
+    function closeModal() {
+        document.getElementById('modal').classList.add('hidden');
+    }
+
+    // 初期読み込み
+    loadAnnouncements(1);
+    </script>
+  `;
+
+  return c.html(AdminLayout('announcements', 'お知らせ管理', content));
+});
+
 export default adminPagesRoutes

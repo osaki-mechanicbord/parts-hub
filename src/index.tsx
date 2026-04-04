@@ -793,6 +793,30 @@ app.route('/api/admin', adminRoutes)
 app.route('/api/guides', guideApiRoutes) // ガイド記事自動生成API
 app.route('/admin', adminPagesRoutes)
 
+// 公開お知らせAPI（認証不要）
+app.get('/api/announcements', async (c) => {
+  try {
+    const { DB } = (c.env as any)
+    const limit = parseInt(c.req.query('limit') || '10')
+    const now = new Date().toISOString()
+
+    const { results } = await DB.prepare(`
+      SELECT id, title, content, type, priority, is_pinned, published_at, expires_at
+      FROM announcements
+      WHERE is_active = 1
+        AND published_at <= ?
+        AND (expires_at IS NULL OR expires_at > ?)
+      ORDER BY is_pinned DESC, priority DESC, published_at DESC
+      LIMIT ?
+    `).bind(now, now, limit).all()
+
+    return c.json({ success: true, data: results || [] })
+  } catch (error) {
+    // テーブルが存在しない場合も空配列を返す
+    return c.json({ success: true, data: [] })
+  }
+})
+
 // トップページ
 app.get('/', (c) => {
   return c.html(`
@@ -1384,6 +1408,19 @@ app.get('/', (c) => {
             </div>
         </section>
 
+        <!-- お知らせセクション -->
+        <section id="announcements-section" class="hidden py-10 bg-white">
+            <div class="max-w-7xl mx-auto px-4">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-1">
+                        <i class="fas fa-bullhorn text-red-500 mr-2"></i>お知らせ
+                    </h2>
+                    <p class="text-gray-500 text-sm">メンテナンス情報や重要なお知らせをお届けします</p>
+                </div>
+                <div id="announcements-container" class="space-y-3"></div>
+            </div>
+        </section>
+
         <!-- ボトムナビゲーション（モバイル） -->
         <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
             <div class="grid grid-cols-5 h-16">
@@ -1885,12 +1922,62 @@ app.get('/', (c) => {
                 }
             }
             
+            // お知らせ読み込み
+            async function loadAnnouncements() {
+                try {
+                    const res = await fetch('/api/announcements?limit=5');
+                    const data = await res.json();
+                    if (!data.success || !data.data || data.data.length === 0) return;
+
+                    const section = document.getElementById('announcements-section');
+                    const container = document.getElementById('announcements-container');
+                    if (!section || !container) return;
+
+                    const typeConfig = {
+                        'maintenance': { icon: 'fa-wrench', bg: 'bg-yellow-50', border: 'border-yellow-300', text: 'text-yellow-800', badge: 'bg-yellow-100 text-yellow-700', label: 'メンテナンス' },
+                        'important':   { icon: 'fa-exclamation-triangle', bg: 'bg-red-50', border: 'border-red-300', text: 'text-red-800', badge: 'bg-red-100 text-red-700', label: '重要' },
+                        'update':      { icon: 'fa-sync-alt', bg: 'bg-blue-50', border: 'border-blue-300', text: 'text-blue-800', badge: 'bg-blue-100 text-blue-700', label: 'アップデート' },
+                        'campaign':    { icon: 'fa-gift', bg: 'bg-green-50', border: 'border-green-300', text: 'text-green-800', badge: 'bg-green-100 text-green-700', label: 'キャンペーン' },
+                        'info':        { icon: 'fa-info-circle', bg: 'bg-gray-50', border: 'border-gray-300', text: 'text-gray-800', badge: 'bg-gray-100 text-gray-700', label: 'お知らせ' }
+                    };
+
+                    container.innerHTML = data.data.map(function(a) {
+                        var cfg = typeConfig[a.type] || typeConfig['info'];
+                        var dateStr = '';
+                        if (a.published_at) {
+                            var d = new Date(a.published_at);
+                            dateStr = d.getFullYear() + '/' + (d.getMonth()+1) + '/' + d.getDate();
+                        }
+                        var pinIcon = a.is_pinned ? '<i class="fas fa-thumbtack text-red-400 mr-1" title="ピン留め"></i>' : '';
+                        return '<div class="' + cfg.bg + ' border ' + cfg.border + ' rounded-xl p-4 transition-all hover:shadow-sm">' +
+                            '<div class="flex items-start gap-3">' +
+                                '<div class="flex-shrink-0 mt-0.5"><i class="fas ' + cfg.icon + ' ' + cfg.text + ' text-lg"></i></div>' +
+                                '<div class="flex-1 min-w-0">' +
+                                    '<div class="flex items-center gap-2 mb-1 flex-wrap">' +
+                                        '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ' + cfg.badge + '">' + cfg.label + '</span>' +
+                                        pinIcon +
+                                        '<span class="text-xs text-gray-400">' + dateStr + '</span>' +
+                                    '</div>' +
+                                    '<h3 class="font-bold ' + cfg.text + ' text-sm mb-1">' + a.title + '</h3>' +
+                                    '<p class="text-sm text-gray-600 leading-relaxed whitespace-pre-line">' + a.content + '</p>' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>';
+                    }).join('');
+
+                    section.classList.remove('hidden');
+                } catch (e) {
+                    console.log('お知らせ読み込みスキップ:', e);
+                }
+            }
+
             // ページ読み込み時に実行
             window.addEventListener('DOMContentLoaded', () => {
                 loadCategories();
                 loadMakers();
                 loadProducts();
                 loadFeaturedArticles();
+                loadAnnouncements();
             });
         </script>
 
