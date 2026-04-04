@@ -57,12 +57,19 @@ transactions.get('/:transactionId', authMiddleware, async (c) => {
       return c.json({ success: false, error: 'この取引へのアクセス権限がありません' }, 403)
     }
 
-    // レビュー情報も取得
+    // レビュー情報も取得（全体 + 当該ユーザー）
     const review = await DB.prepare(`
       SELECT id, reviewer_id, rating, comment 
       FROM reviews 
       WHERE transaction_id = ?
     `).bind(transactionId).first()
+
+    // 当該ユーザーが既にレビュー済みかチェック
+    const myReview = await DB.prepare(`
+      SELECT id, rating, comment 
+      FROM reviews 
+      WHERE transaction_id = ? AND reviewer_id = ?
+    `).bind(transactionId, userId).first()
 
     // 出品者には購入者の住所を表示（発送に必要）
     const isSeller = transaction.seller_id === userId
@@ -92,7 +99,9 @@ transactions.get('/:transactionId', authMiddleware, async (c) => {
         ...transaction,
         product_image: toImageUrl(transaction.product_image as string),
         has_review: !!review,
+        has_my_review: !!myReview,
         review: review || null,
+        my_review: myReview || null,
         shipping_address_info: shippingAddress,
       }
     })

@@ -268,13 +268,19 @@ function renderShippingInfo(isBuyer, isSeller) {
           <span class="text-gray-500 w-24 flex-shrink-0">追跡番号</span>
           <span class="font-mono font-bold text-lg text-blue-600">${trackNum}</span>
         </div>
-        ${trackUrl ? `
+        ${trackUrl ? (status === 'completed' ? `
+        <div class="flex items-center justify-center gap-2 bg-gray-100 border border-gray-200 text-gray-400 font-semibold py-3 px-4 rounded-lg text-sm cursor-not-allowed">
+          <i class="fas fa-external-link-alt"></i>
+          ${carrier || '配送業者'}のサイトで追跡する
+          <span class="text-xs">（取引完了済み）</span>
+        </div>
+        ` : `
         <a href="${trackUrl}" target="_blank" rel="noopener" 
            class="flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 font-semibold py-3 px-4 rounded-lg transition-colors text-sm">
           <i class="fas fa-external-link-alt"></i>
           ${carrier || '配送業者'}のサイトで追跡する
         </a>
-        ` : ''}
+        `) : ''}
         ` : `
         <div class="flex items-center text-sm">
           <span class="text-gray-500 w-24 flex-shrink-0">追跡番号</span>
@@ -365,12 +371,31 @@ function renderActionButtons(isBuyer, isSeller) {
     `);
   }
 
-  // 購入者: 取引完了後にレビュー
-  if (isBuyer && status === 'completed' && !transactionData.has_review) {
+  // 購入者: 取引完了後にレビュー（まだレビューしていない場合のみ）
+  if (isBuyer && status === 'completed' && !transactionData.has_my_review) {
     buttons.push(`
       <button onclick="window.location.href='/reviews/new?transaction=${transactionId}'" class="w-full bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-white py-4 px-6 rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98]">
         <i class="fas fa-star mr-2"></i>レビューを書く
       </button>
+    `);
+  }
+
+  // 出品者: 取引完了後にレビュー（まだレビューしていない場合のみ）
+  if (isSeller && status === 'completed' && !transactionData.has_my_review) {
+    buttons.push(`
+      <button onclick="window.location.href='/reviews/new?transaction=${transactionId}'" class="w-full bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-white py-4 px-6 rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98]">
+        <i class="fas fa-star mr-2"></i>レビューを書く
+      </button>
+    `);
+  }
+
+  // レビュー投稿済みの場合は完了メッセージ表示
+  if (status === 'completed' && transactionData.has_my_review) {
+    buttons.push(`
+      <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center">
+        <i class="fas fa-check-circle text-green-500 mr-2"></i>
+        <span class="text-sm text-gray-600 font-semibold">レビュー投稿済み</span>
+      </div>
     `);
   }
 
@@ -517,11 +542,22 @@ async function submitShipping() {
 }
 
 // 取引完了
+let isCompletingTransaction = false;
 async function completeTransaction() {
+  if (isCompletingTransaction) return;
   if (!confirm('商品を受け取りましたか？\n\n受取完了を確認すると取引が完了します。\n問題がある場合は先に出品者にご連絡ください。')) return;
 
+  isCompletingTransaction = true;
+  // ボタンを即座に無効化
+  const btn = document.querySelector('[onclick="completeTransaction()"]');
+  if (btn) {
+    btn.disabled = true;
+    btn.classList.add('opacity-50', 'cursor-not-allowed');
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>処理中...';
+  }
+
   const auth = getAuthHeaders();
-  if (!auth) { alert('ログインが必要です'); return; }
+  if (!auth) { alert('ログインが必要です'); isCompletingTransaction = false; return; }
 
   try {
     const response = await axios.post(`/api/payment/transaction/${transactionId}/complete`, {}, auth);
@@ -534,6 +570,12 @@ async function completeTransaction() {
   } catch (error) {
     console.error('Failed to complete transaction:', error);
     alert(error?.response?.data?.error || error.message || '取引完了に失敗しました');
+    isCompletingTransaction = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.classList.remove('opacity-50', 'cursor-not-allowed');
+      btn.innerHTML = '<i class="fas fa-check-circle mr-2"></i>受取完了';
+    }
   }
 }
 

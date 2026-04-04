@@ -61,6 +61,45 @@ async function loadTransactionInfo() {
         
         if (response.data.success) {
             const transaction = response.data.data;
+
+            // 既にレビュー済みの場合はフォームを非表示にして案内を表示
+            if (transaction.has_my_review) {
+                renderTransactionInfo(transaction);
+                const form = document.getElementById('review-form');
+                if (form) {
+                    form.innerHTML = `
+                        <div class="text-center py-10">
+                            <i class="fas fa-check-circle text-green-500 text-5xl mb-4"></i>
+                            <p class="text-lg font-bold text-gray-800 mb-2">レビューは投稿済みです</p>
+                            <p class="text-sm text-gray-500 mb-6">この取引へのレビューは既に完了しています。ありがとうございました。</p>
+                            <a href="/mypage" class="inline-block bg-red-500 hover:bg-red-600 text-white px-8 py-3 rounded-lg font-bold transition-colors">
+                                <i class="fas fa-arrow-left mr-2"></i>マイページへ戻る
+                            </a>
+                        </div>
+                    `;
+                }
+                return;
+            }
+
+            // 取引が完了していない場合はレビュー不可
+            if (transaction.status !== 'completed') {
+                renderTransactionInfo(transaction);
+                const form = document.getElementById('review-form');
+                if (form) {
+                    form.innerHTML = `
+                        <div class="text-center py-10">
+                            <i class="fas fa-exclamation-triangle text-yellow-500 text-5xl mb-4"></i>
+                            <p class="text-lg font-bold text-gray-800 mb-2">まだレビューを書けません</p>
+                            <p class="text-sm text-gray-500 mb-6">取引が完了した後にレビューを投稿できます。</p>
+                            <a href="/transactions/${transactionId}" class="inline-block bg-red-500 hover:bg-red-600 text-white px-8 py-3 rounded-lg font-bold transition-colors">
+                                <i class="fas fa-arrow-left mr-2"></i>取引詳細に戻る
+                            </a>
+                        </div>
+                    `;
+                }
+                return;
+            }
+
             renderTransactionInfo(transaction);
         } else {
             throw new Error(response.data.error || '取引情報の取得に失敗しました');
