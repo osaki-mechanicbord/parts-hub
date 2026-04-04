@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { authMiddleware } from '../auth'
+import { commentRateLimit } from '../rate-limit'
 import { sendEmail } from '../email-config'
 import * as tpl from '../email-templates'
 
@@ -66,7 +67,7 @@ comments.get('/:productId/:commentId/replies', async (c) => {
 })
 
 // コメント投稿（認証必須）
-comments.post('/:productId', authMiddleware, async (c) => {
+comments.post('/:productId', authMiddleware, commentRateLimit, async (c) => {
   try {
     const { DB } = c.env
     const productId = c.req.param('productId')

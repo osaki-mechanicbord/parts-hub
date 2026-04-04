@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { authMiddleware } from '../auth'
+import { negotiationRateLimit } from '../rate-limit'
 
 type Bindings = {
   DB: D1Database
@@ -80,7 +81,7 @@ negotiations.get('/user/:userId', async (c) => {
 })
 
 // 値下げリクエスト送信
-negotiations.post('/', async (c) => {
+negotiations.post('/', negotiationRateLimit, async (c) => {
   try {
     const { DB } = c.env
     const authUserId = c.get('userId')

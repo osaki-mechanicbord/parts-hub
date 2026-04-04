@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { authMiddleware } from '../auth'
+import { reviewRateLimit } from '../rate-limit'
 
 type Bindings = {
   DB: D1Database
@@ -132,7 +133,7 @@ reviews.get('/seller/:userId/summary', async (c) => {
 })
 
 // レビュー投稿（認証必須）
-reviews.post('/', authMiddleware, async (c) => {
+reviews.post('/', authMiddleware, reviewRateLimit, async (c) => {
   try {
     const { DB } = c.env
     const authUserId = c.get('userId')

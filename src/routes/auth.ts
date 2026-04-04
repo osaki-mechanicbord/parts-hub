@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { loginRateLimit, registerRateLimit, passwordResetRateLimit } from '../rate-limit'
 import { 
   hashPassword, 
   verifyPassword, 
@@ -19,7 +20,7 @@ type Bindings = {
 const auth = new Hono<{ Bindings: Bindings }>()
 
 // ユーザー登録
-auth.post('/register', async (c) => {
+auth.post('/register', registerRateLimit, async (c) => {
   try {
     const { name, email, password, phone, company_name, nickname, shop_name, shop_type, postal_code, prefecture, city, address } = await c.req.json()
 
@@ -178,7 +179,7 @@ auth.get('/verify-email', async (c) => {
 })
 
 // ログイン
-auth.post('/login', async (c) => {
+auth.post('/login', loginRateLimit, async (c) => {
   try {
     const { email, password } = await c.req.json()
 
@@ -413,7 +414,7 @@ auth.post('/change-password', authMiddleware, async (c) => {
 })
 
 // パスワードリセットリクエスト（メール送信は後で実装）
-auth.post('/password-reset-request', async (c) => {
+auth.post('/password-reset-request', passwordResetRateLimit, async (c) => {
   try {
     const { email } = await c.req.json()
 
