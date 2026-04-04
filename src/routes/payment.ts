@@ -459,6 +459,157 @@ payment.post('/verify-session', authMiddleware, async (c) => {
   }
 })
 
+// ============================================================
+// ★ 支払いリトライ（未完了取引の再決済）
+// 購入者がカード入力に失敗して画面を閉じた場合、
+// マイページや取引詳細から再度決済を開始できるようにする
+// ============================================================
+payment.post('/retry-checkout', authMiddleware, async (c) => {
+  try {
+    const userId = c.get('userId')
+    const { transaction_id } = await c.req.json()
+
+    if (!transaction_id) {
+      return c.json({ success: false, error: '取引IDが必要です' }, 400)
+    }
+
+    // 取引情報取得（購入者のみリトライ可能）
+    const transaction = await c.env.DB.prepare(`
+      SELECT t.*, p.title as product_title, p.price as product_price,
+             p.status as product_status, p.user_id as product_seller_id,
+             COALESCE(s.company_name, s.nickname, s.name) as seller_name
+      FROM transactions t
+      JOIN products p ON t.product_id = p.id
+      JOIN users s ON t.seller_id = s.id
+      WHERE t.id = ? AND t.buyer_id = ?
+    `).bind(transaction_id, userId).first()
+
+    if (!transaction) {
+      return c.json({ success: false, error: '取引が見つかりません' }, 404)
+    }
+
+    // pendingステータスの取引のみリトライ可能
+    if (transaction.status !== 'pending') {
+      const statusMessages: Record<string, string> = {
+        'paid': 'この取引は既にお支払い済みです',
+        'shipped': 'この取引は既に発送済みです',
+        'completed': 'この取引は既に完了しています',
+        'cancelled': 'この取引はキャンセルされています。商品ページから再度購入してください',
+      }
+      return c.json({ 
+        success: false, 
+        error: statusMessages[transaction.status as string] || 'この取引の状態では再決済できません' 
+      }, 400)
+    }
+
+    // 既存のStripeセッションがまだ有効か確認
+    if (transaction.stripe_session_id) {
+      try {
+        const stripe = getStripeClient(c)
+        const existingSession = await stripe.checkout.sessions.retrieve(
+          transaction.stripe_session_id as string
+        )
+        
+        // セッションがまだ有効で未払いの場合はそのURLを返す
+        if (existingSession.status === 'open' && existingSession.payment_status === 'unpaid') {
+          return c.json({
+            success: true,
+            session_id: existingSession.id,
+            session_url: existingSession.url,
+            transaction_id: transaction.id,
+            reused_session: true
+          })
+        }
+
+        // 既にpaidだった場合 → processPaymentCompleted で処理する
+        if (existingSession.payment_status === 'paid') {
+          const result = await processPaymentCompleted(
+            c.env.DB,
+            (c.env as any).RESEND_API_KEY,
+            transaction_id.toString(),
+            existingSession.payment_intent as string | null
+          )
+          return c.json({
+            success: true,
+            already_paid: true,
+            message: '既にお支払いが完了しています',
+            transaction_id: transaction.id,
+          })
+        }
+      } catch (e) {
+        // セッション取得失敗 → 新しいセッションを作る
+        console.log('Existing session retrieval failed, creating new one:', e)
+      }
+    }
+
+    // 手数料計算
+    const fees = calculateFees(transaction.amount as number)
+
+    // 新しいStripe Checkout Session作成
+    const stripe = getStripeClient(c)
+    
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: STRIPE_CONFIG.CURRENCY,
+            product_data: {
+              name: transaction.product_title as string,
+              description: `出品者: ${transaction.seller_name}`,
+            },
+            unit_amount: fees.total,
+          },
+          quantity: 1,
+        },
+      ],
+      mode: 'payment',
+      success_url: `https://parts-hub-tci.com/transaction/${transaction.id}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `https://parts-hub-tci.com/transaction/${transaction.id}/cancel`,
+      metadata: {
+        transaction_id: transaction.id!.toString(),
+        product_id: (transaction.product_id as number).toString(),
+        buyer_id: userId.toString(),
+        seller_id: (transaction.seller_id as number).toString(),
+      },
+      // 30分のタイムアウト
+      expires_at: Math.floor(Date.now() / 1000) + 1800,
+    })
+
+    // 新しいセッションIDで取引を更新
+    await c.env.DB.prepare(`
+      UPDATE transactions 
+      SET stripe_session_id = ?, updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(session.id, transaction.id).run()
+
+    // 商品がactiveに戻っていた場合は再度soldに戻す
+    if (transaction.product_status === 'active') {
+      await c.env.DB.prepare(`
+        UPDATE products SET status = 'sold', updated_at = datetime('now')
+        WHERE id = ? AND status = 'active'
+      `).bind(transaction.product_id).run()
+    }
+
+    return c.json({
+      success: true,
+      session_id: session.id,
+      session_url: session.url,
+      transaction_id: transaction.id,
+      fees: fees,
+      reused_session: false
+    })
+
+  } catch (error: any) {
+    console.error('Retry checkout error:', error)
+    return c.json({ 
+      success: false, 
+      error: '再決済の準備に失敗しました',
+      details: error.message
+    }, 500)
+  }
+})
+
 // 取引ステータス確認
 payment.get('/transaction/:id/status', authMiddleware, async (c) => {
   try {

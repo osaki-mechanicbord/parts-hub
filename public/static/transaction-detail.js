@@ -167,7 +167,9 @@ function renderTransaction() {
 // ステータスバナー
 function renderStatusBanner(status, isBuyer, isSeller) {
   const banners = {
-    pending: { bg: 'bg-yellow-50 border-yellow-300', icon: 'fa-clock text-yellow-500', title: '注文受付中', desc: 'お支払いをお待ちしています。' },
+    pending: isBuyer 
+      ? { bg: 'bg-yellow-50 border-yellow-300', icon: 'fa-credit-card text-yellow-500', title: 'お支払いが完了していません', desc: '決済が中断されたか、カード情報の入力が完了していません。「支払いをやり直す」ボタンからお支払いをお願いします。' }
+      : { bg: 'bg-yellow-50 border-yellow-300', icon: 'fa-clock text-yellow-500', title: '注文受付中', desc: '購入者のお支払いをお待ちしています。' },
     paid: isSeller 
       ? { bg: 'bg-orange-50 border-orange-300', icon: 'fa-box text-orange-500', title: '発送をお願いします', desc: '購入者がお支払いを完了しました。できるだけ早く発送してください。' }
       : { bg: 'bg-blue-50 border-blue-300', icon: 'fa-credit-card text-blue-500', title: 'お支払い完了', desc: '出品者が発送準備を進めています。しばらくお待ちください。' },
@@ -344,6 +346,22 @@ function renderShippingAddress(isSeller) {
 function renderActionButtons(isBuyer, isSeller) {
   let buttons = [];
   const status = transactionData.status;
+
+  // 購入者: pending状態で再支払いボタン表示
+  if (isBuyer && status === 'pending') {
+    buttons.push(`
+      <div class="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-5">
+        <h3 class="font-bold text-yellow-800 mb-2"><i class="fas fa-credit-card mr-1"></i>お支払いが完了していません</h3>
+        <p class="text-sm text-yellow-700 mb-4">決済が中断されたか、カード情報の入力が完了していません。<br>下のボタンから再度お支払い手続きを行ってください。</p>
+        <button onclick="retryPayment()" id="retry-payment-btn" class="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white py-4 px-6 rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98]">
+          <i class="fas fa-redo mr-2"></i>支払いをやり直す
+        </button>
+        <p class="text-xs text-gray-400 mt-3 text-center">
+          <i class="fas fa-info-circle mr-1"></i>Stripeの安全な決済ページに移動します
+        </p>
+      </div>
+    `);
+  }
 
   // 出品者: 支払い完了後に「発送完了を報告」
   if (isSeller && status === 'paid') {
@@ -543,6 +561,61 @@ async function submitShipping() {
 
 // 取引完了
 let isCompletingTransaction = false;
+
+// ==== 再支払い機能 ====
+async function retryPayment() {
+  const btn = document.getElementById('retry-payment-btn');
+  if (!btn) return;
+  
+  const auth = getAuthHeaders();
+  if (!auth) { 
+    alert('ログインが必要です。ログインページに移動します。');
+    window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
+    return; 
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>決済ページを準備中...';
+
+  try {
+    const response = await axios.post('/api/payment/retry-checkout', {
+      transaction_id: parseInt(transactionId)
+    }, auth);
+
+    if (response.data.success) {
+      if (response.data.already_paid) {
+        // 既に支払い済みだった
+        showToast('既にお支払いが完了しています。ページを更新します。', 'success');
+        setTimeout(() => loadTransaction(), 1500);
+        return;
+      }
+      
+      if (response.data.session_url) {
+        // Stripeの決済ページにリダイレクト
+        window.location.href = response.data.session_url;
+      } else {
+        throw new Error('決済URLが取得できませんでした');
+      }
+    } else {
+      throw new Error(response.data.error || '再決済の準備に失敗しました');
+    }
+  } catch (error) {
+    console.error('Retry payment error:', error);
+    
+    if (error?.response?.status === 401) {
+      localStorage.removeItem('token');
+      alert('ログインセッションが切れました。再度ログインしてください。');
+      window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
+      return;
+    }
+    
+    const errorMsg = error?.response?.data?.error || error.message || '再決済の準備に失敗しました';
+    alert(errorMsg);
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-redo mr-2"></i>支払いをやり直す';
+  }
+}
+
 async function completeTransaction() {
   if (isCompletingTransaction) return;
   if (!confirm('商品を受け取りましたか？\n\n受取完了を確認すると取引が完了します。\n問題がある場合は先に出品者にご連絡ください。')) return;

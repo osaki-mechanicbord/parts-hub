@@ -34,7 +34,7 @@ import { breadcrumbHtml, BREADCRUMB_CSS } from './breadcrumb'
 const app = new Hono<{ Bindings: Bindings }>()
 
 // キャッシュバスティング用バージョン（デプロイ毎に更新）
-const BUILD_VERSION = '20260403b'
+const BUILD_VERSION = '20260404a'
 
 // 静的ファイルURLにバージョンを付与するヘルパー
 const v = (path: string) => `${path}?v=${BUILD_VERSION}`

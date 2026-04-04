@@ -296,7 +296,7 @@ function getTodoForTransaction(tx) {
 
     if (tx.status === 'pending') {
         if (isBuyer) {
-            items.push({ icon: 'fa-credit-card', color: 'text-yellow-500', text: 'お支払いを完了してください', done: false, urgent: true });
+            items.push({ icon: 'fa-credit-card', color: 'text-yellow-500', text: 'お支払いを完了してください', done: false, urgent: true, action: 'retry_payment', txId: tx.transaction_id });
         } else {
             items.push({ icon: 'fa-clock', color: 'text-gray-400', text: '購入者のお支払いをお待ちください', done: false, urgent: false });
         }
@@ -360,6 +360,9 @@ function getTodoForTransaction(tx) {
 }
 
 function renderTodoAction(action, txId) {
+    if (action === 'retry_payment') {
+        return `<button onclick="retryPaymentFromMypage(${txId})" id="retry-btn-${txId}" class="inline-flex items-center mt-1 px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-lg transition-colors"><i class="fas fa-redo mr-1"></i>支払いをやり直す</button>`;
+    }
     if (action === 'ship') {
         return `<a href="/transactions/${txId}" class="inline-flex items-center mt-1 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold rounded-lg transition-colors"><i class="fas fa-truck mr-1"></i>発送報告へ</a>`;
     }
@@ -370,6 +373,55 @@ function renderTodoAction(action, txId) {
         return `<a href="/reviews/new?transaction=${txId}" class="inline-flex items-center mt-1 px-3 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold rounded-lg transition-colors"><i class="fas fa-star mr-1"></i>レビューを書く</a>`;
     }
     return '';
+}
+
+// マイページから再支払い
+async function retryPaymentFromMypage(txId) {
+    const btn = document.getElementById('retry-btn-' + txId);
+    if (!btn) return;
+    
+    const auth = getAuthHeaders();
+    if (!auth) {
+        alert('ログインが必要です');
+        window.location.href = '/login?redirect=/mypage';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>準備中...';
+
+    try {
+        const response = await axios.post('/api/payment/retry-checkout', {
+            transaction_id: txId
+        }, auth);
+
+        if (response.data.success) {
+            if (response.data.already_paid) {
+                alert('既にお支払いが完了しています。ページを更新します。');
+                window.location.reload();
+                return;
+            }
+            if (response.data.session_url) {
+                window.location.href = response.data.session_url;
+            } else {
+                throw new Error('決済URLが取得できませんでした');
+            }
+        } else {
+            throw new Error(response.data.error || '再決済の準備に失敗しました');
+        }
+    } catch (error) {
+        console.error('Retry payment error:', error);
+        if (error?.response?.status === 401) {
+            localStorage.removeItem('token');
+            alert('ログインセッションが切れました。再度ログインしてください。');
+            window.location.href = '/login?redirect=/mypage';
+            return;
+        }
+        const errorMsg = error?.response?.data?.error || error.message || '再決済の準備に失敗しました';
+        alert(errorMsg);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-redo mr-1"></i>支払いをやり直す';
+    }
 }
 
 function renderTxShippingBrief(tx) {
@@ -767,6 +819,15 @@ function renderPurchases() {
 }
 
 function getPurchaseActionHtml(purchase) {
+    if (purchase.status === 'pending') {
+        return `
+        <div class="mt-3 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+            <p class="text-xs text-yellow-700 mb-2"><i class="fas fa-exclamation-triangle mr-1"></i>お支払いが完了していません。下のボタンから再度決済してください。</p>
+            <button onclick="retryPaymentFromMypage(${purchase.transaction_id})" id="retry-btn-p-${purchase.transaction_id}" class="inline-flex items-center px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded-lg transition-colors">
+                <i class="fas fa-redo mr-1"></i>支払いをやり直す
+            </button>
+        </div>`;
+    }
     if (purchase.status === 'shipped') {
         return `
         <div class="mt-3 bg-indigo-50 border border-indigo-200 rounded-lg p-3">
