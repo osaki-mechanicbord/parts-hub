@@ -664,6 +664,12 @@ adminRoutes.put('/products/:id/status', async (c) => {
   const { env } = c;
   const productId = c.req.param('id');
   const { status } = await c.req.json();
+
+  // バリデーション
+  const validStatuses = ['active', 'sold', 'pending', 'suspended', 'deleted'];
+  if (!validStatuses.includes(status)) {
+    return c.json({ success: false, error: `無効なステータスです。有効な値: ${validStatuses.join(', ')}` }, 400);
+  }
   
   try {
     await env.DB.prepare(`
@@ -832,6 +838,12 @@ adminRoutes.put('/users/:id/status', async (c) => {
   const { env } = c;
   const userId = c.req.param('id');
   const { status } = await c.req.json();
+
+  // バリデーション
+  const validStatuses = ['active', 'suspended', 'banned', 'deleted'];
+  if (!validStatuses.includes(status)) {
+    return c.json({ success: false, error: `無効なステータスです。有効な値: ${validStatuses.join(', ')}` }, 400);
+  }
   
   try {
     await env.DB.prepare(`
@@ -851,12 +863,42 @@ adminRoutes.put('/users/:id/status', async (c) => {
 adminRoutes.delete('/users/:id', async (c) => {
   const { env } = c
   const userId = c.req.param('id')
+  const forceDelete = c.req.query('force') === 'true'
 
   try {
     // ユーザーの存在確認
     const user = await env.DB.prepare(`SELECT id, name, email FROM users WHERE id = ?`).bind(userId).first()
     if (!user) {
       return c.json({ success: false, error: 'ユーザーが見つかりません' }, 404)
+    }
+
+    // 進行中の取引があるかチェック（安全装置）
+    const activeTx = await env.DB.prepare(`
+      SELECT COUNT(*) as count FROM transactions 
+      WHERE (buyer_id = ? OR seller_id = ?) 
+      AND status IN ('pending', 'paid', 'shipped', 'dispute')
+    `).bind(userId, userId).first()
+
+    if ((activeTx?.count as number) > 0 && !forceDelete) {
+      return c.json({ 
+        success: false, 
+        error: `このユーザーには進行中の取引が${activeTx?.count}件あります。取引を完了またはキャンセルしてから削除してください。強制削除する場合は force=true パラメータを使用してください。`,
+        active_transactions: activeTx?.count
+      }, 409)
+    }
+
+    // 未処理の出金申請があるかチェック
+    const pendingWithdrawals = await env.DB.prepare(`
+      SELECT COUNT(*) as count FROM withdrawals 
+      WHERE user_id = ? AND status IN ('pending', 'processing')
+    `).bind(userId).first()
+
+    if ((pendingWithdrawals?.count as number) > 0 && !forceDelete) {
+      return c.json({ 
+        success: false, 
+        error: `このユーザーには未処理の出金申請が${pendingWithdrawals?.count}件あります。先に処理してから削除してください。`,
+        pending_withdrawals: pendingWithdrawals?.count
+      }, 409)
     }
 
     // 関連データを削除（外部キー制約対応）
@@ -871,6 +913,7 @@ adminRoutes.delete('/users/:id', async (c) => {
       { table: 'chat_rooms', column: 'buyer_id' },
       { table: 'chat_rooms', column: 'seller_id' },
       { table: 'notifications', column: 'user_id' },
+      { table: 'withdrawals', column: 'user_id' },
       { table: 'transactions', column: 'buyer_id' },
       { table: 'transactions', column: 'seller_id' },
     ]
@@ -959,13 +1002,39 @@ adminRoutes.put('/transactions/:id/status', async (c) => {
   const { env } = c;
   const transactionId = c.req.param('id');
   const { status } = await c.req.json();
+
+  // バリデーション
+  const validStatuses = ['pending', 'paid', 'shipped', 'completed', 'cancelled', 'dispute', 'refunded'];
+  if (!validStatuses.includes(status)) {
+    return c.json({ success: false, error: `無効なステータスです。有効な値: ${validStatuses.join(', ')}` }, 400);
+  }
   
   try {
+    // 取引情報を取得
+    const transaction = await env.DB.prepare('SELECT * FROM transactions WHERE id = ?').bind(transactionId).first();
+    if (!transaction) {
+      return c.json({ success: false, error: '取引が見つかりません' }, 404);
+    }
+
     await env.DB.prepare(`
       UPDATE transactions
       SET status = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).bind(status, transactionId).run();
+
+    // 取引完了時: 商品ステータスをsoldに更新
+    if (status === 'completed' && transaction.product_id) {
+      await env.DB.prepare(`
+        UPDATE products SET status = 'sold', updated_at = CURRENT_TIMESTAMP WHERE id = ?
+      `).bind(transaction.product_id).run();
+    }
+
+    // 取引キャンセル時: 商品ステータスをactiveに戻す
+    if (status === 'cancelled' && transaction.product_id) {
+      await env.DB.prepare(`
+        UPDATE products SET status = 'active', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'sold'
+      `).bind(transaction.product_id).run();
+    }
 
     return c.json({ success: true, message: '取引ステータスを更新しました' });
   } catch (error) {
@@ -1114,6 +1183,12 @@ adminRoutes.put('/reports/:id/status', async (c) => {
   const { env } = c;
   const reportId = c.req.param('id');
   const { status } = await c.req.json();
+
+  // バリデーション
+  const validStatuses = ['pending', 'resolved', 'rejected'];
+  if (!validStatuses.includes(status)) {
+    return c.json({ success: false, error: `無効なステータスです。有効な値: ${validStatuses.join(', ')}` }, 400);
+  }
   
   try {
     await env.DB.prepare(`
@@ -1893,6 +1968,214 @@ adminRoutes.post('/articles/:id/fix-image', async (c) => {
   } catch (error) {
     console.error('画像修正エラー:', error);
     return c.json({ error: '画像の修正に失敗しました: ' + (error as Error).message }, 500);
+  }
+});
+
+// ===== 出金管理API =====
+
+// 出金申請一覧
+adminRoutes.get('/withdrawals', async (c) => {
+  const { env } = c;
+  const page = parseInt(c.req.query('page') || '1');
+  const status = c.req.query('status');
+  const limit = 20;
+  const offset = (page - 1) * limit;
+
+  try {
+    let query = `
+      SELECT 
+        w.id,
+        w.user_id,
+        w.amount,
+        w.bank_name,
+        w.branch_name,
+        w.account_type,
+        w.account_number,
+        w.account_holder,
+        w.status,
+        w.requested_at,
+        w.processed_at,
+        w.transferred_at,
+        w.notes,
+        w.rejection_reason,
+        u.name as user_name,
+        u.email as user_email
+      FROM withdrawals w
+      LEFT JOIN users u ON w.user_id = u.id
+    `;
+
+    const conditions: string[] = [];
+    const bindings: any[] = [];
+
+    if (status) {
+      conditions.push('w.status = ?');
+      bindings.push(status);
+    }
+
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    query += ' ORDER BY w.requested_at DESC LIMIT ? OFFSET ?';
+    bindings.push(limit, offset);
+
+    const withdrawals = await env.DB.prepare(query).bind(...bindings).all();
+
+    // 合計件数
+    let countQuery = 'SELECT COUNT(*) as count FROM withdrawals';
+    const countBindings: any[] = [];
+    if (status) {
+      countQuery += ' WHERE status = ?';
+      countBindings.push(status);
+    }
+    const total = countBindings.length > 0 
+      ? await env.DB.prepare(countQuery).bind(...countBindings).first()
+      : await env.DB.prepare(countQuery).first();
+
+    // 統計情報
+    const stats = await env.DB.prepare(`
+      SELECT 
+        COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_count,
+        COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0) as pending_amount,
+        COUNT(CASE WHEN status = 'processing' THEN 1 END) as processing_count,
+        COALESCE(SUM(CASE WHEN status = 'processing' THEN amount ELSE 0 END), 0) as processing_amount,
+        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_count,
+        COALESCE(SUM(CASE WHEN status = 'completed' THEN amount ELSE 0 END), 0) as completed_amount
+      FROM withdrawals
+    `).first();
+
+    return c.json({
+      withdrawals: withdrawals.results || [],
+      total: total?.count || 0,
+      page,
+      totalPages: Math.ceil((total?.count || 0) / limit),
+      stats: stats || {}
+    });
+  } catch (error) {
+    console.error('出金一覧取得エラー:', error);
+    return c.json({ error: '出金一覧の取得に失敗しました' }, 500);
+  }
+});
+
+// 出金申請ステータス更新（承認→処理中→完了 or 却下）
+adminRoutes.put('/withdrawals/:id/status', async (c) => {
+  const { env } = c;
+  const withdrawalId = c.req.param('id');
+  const { status, notes, rejection_reason } = await c.req.json();
+
+  // バリデーション
+  const validStatuses = ['pending', 'processing', 'completed', 'rejected'];
+  if (!validStatuses.includes(status)) {
+    return c.json({ success: false, error: `無効なステータスです。有効な値: ${validStatuses.join(', ')}` }, 400);
+  }
+
+  try {
+    // 現在の出金申請を取得
+    const withdrawal = await env.DB.prepare('SELECT * FROM withdrawals WHERE id = ?').bind(withdrawalId).first();
+    if (!withdrawal) {
+      return c.json({ success: false, error: '出金申請が見つかりません' }, 404);
+    }
+
+    // ステータス遷移の妥当性チェック
+    const validTransitions: Record<string, string[]> = {
+      'pending': ['processing', 'rejected'],
+      'processing': ['completed', 'rejected'],
+      'completed': [],
+      'rejected': ['pending'], // 却下を撤回して再度pendingに戻すことは可能
+    };
+
+    if (!validTransitions[withdrawal.status as string]?.includes(status)) {
+      return c.json({ 
+        success: false, 
+        error: `「${withdrawal.status}」から「${status}」への変更はできません` 
+      }, 400);
+    }
+
+    // 更新クエリ構築
+    let updateQuery = `UPDATE withdrawals SET status = ?`;
+    const updateBindings: any[] = [status];
+
+    if (status === 'processing') {
+      updateQuery += `, processed_at = datetime('now')`;
+    }
+    if (status === 'completed') {
+      updateQuery += `, transferred_at = datetime('now')`;
+    }
+    if (notes) {
+      updateQuery += `, notes = ?`;
+      updateBindings.push(notes);
+    }
+    if (rejection_reason && status === 'rejected') {
+      updateQuery += `, rejection_reason = ?`;
+      updateBindings.push(rejection_reason);
+    }
+
+    updateQuery += ` WHERE id = ?`;
+    updateBindings.push(withdrawalId);
+
+    await env.DB.prepare(updateQuery).bind(...updateBindings).run();
+
+    // 管理操作ログを記録
+    await logAdminAction(env.DB, c.get('adminUser') || 'admin', 'withdrawal_status_change', 
+      `出金申請 #${withdrawalId} のステータスを「${withdrawal.status}」→「${status}」に変更`);
+
+    const statusLabels: Record<string, string> = {
+      'processing': '処理中',
+      'completed': '振込完了',
+      'rejected': '却下',
+      'pending': '保留中',
+    };
+
+    return c.json({ 
+      success: true, 
+      message: `出金申請を「${statusLabels[status] || status}」に更新しました` 
+    });
+  } catch (error) {
+    console.error('出金ステータス更新エラー:', error);
+    return c.json({ error: '出金ステータスの更新に失敗しました' }, 500);
+  }
+});
+
+// ===== 管理操作ログ =====
+
+// ログ記録ヘルパー関数
+async function logAdminAction(db: D1Database, adminUser: string, action: string, detail: string) {
+  try {
+    await db.prepare(`
+      INSERT INTO admin_logs (admin_user, action, detail, created_at)
+      VALUES (?, ?, ?, datetime('now'))
+    `).bind(adminUser, action, detail).run();
+  } catch (e) {
+    // admin_logs テーブルが存在しない場合はスキップ（後でマイグレーションで作成）
+    console.log('管理ログ記録スキップ:', e);
+  }
+}
+
+// 管理操作ログ一覧
+adminRoutes.get('/logs', async (c) => {
+  const { env } = c;
+  const page = parseInt(c.req.query('page') || '1');
+  const limit = 50;
+  const offset = (page - 1) * limit;
+
+  try {
+    const logs = await env.DB.prepare(`
+      SELECT * FROM admin_logs 
+      ORDER BY created_at DESC 
+      LIMIT ? OFFSET ?
+    `).bind(limit, offset).all();
+
+    const total = await env.DB.prepare('SELECT COUNT(*) as count FROM admin_logs').first();
+
+    return c.json({
+      logs: logs.results || [],
+      total: total?.count || 0,
+      page,
+      totalPages: Math.ceil((total?.count || 0) / limit)
+    });
+  } catch (error) {
+    // テーブルが存在しない場合は空配列を返す
+    return c.json({ logs: [], total: 0, page: 1, totalPages: 0 });
   }
 });
 

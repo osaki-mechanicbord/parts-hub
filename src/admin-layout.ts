@@ -54,6 +54,10 @@ export const AdminSidebar = (currentPage: string) => `
             <i class="fas fa-newspaper w-5"></i>
             <span class="ml-3 ${currentPage === 'articles' ? 'font-medium' : ''}">コラム管理</span>
         </a>
+        <a href="/admin/withdrawals" class="flex items-center px-4 py-3 mb-2 ${currentPage === 'withdrawals' ? 'bg-red-50 text-red-600' : 'text-gray-700 hover:bg-gray-50'} rounded-lg">
+            <i class="fas fa-money-bill-wave w-5"></i>
+            <span class="ml-3 ${currentPage === 'withdrawals' ? 'font-medium' : ''}">出金管理</span>
+        </a>
         <a href="/admin/sales" class="flex items-center px-4 py-3 mb-2 ${currentPage === 'sales' ? 'bg-red-50 text-red-600' : 'text-gray-700 hover:bg-gray-50'} rounded-lg">
             <i class="fas fa-yen-sign w-5"></i>
             <span class="ml-3 ${currentPage === 'sales' ? 'font-medium' : ''}">売上レポート</span>
@@ -95,9 +99,15 @@ export const AdminPasswordModal = () => `
 </div>
 `;
 
-// 管理者認証チェック・共通JS（body末尾用：ログアウト・パスワード変更のみ）
+// 管理者認証チェック・共通JS（body末尾用：ログアウト・パスワード変更・XSSエスケープ）
 export const AdminAuthScript = () => `
 <script>
+    // XSSエスケープ関数（全管理画面で使用）
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+    }
+
     // ログアウト
     function adminLogout() {
         if (confirm('ログアウトしますか？')) {

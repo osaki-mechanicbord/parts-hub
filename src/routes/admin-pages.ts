@@ -1963,4 +1963,259 @@ adminPagesRoutes.get('/articles', (c) => {
   return c.html(AdminLayout('articles', 'コラム管理', content));
 })
 
+// 出金管理ページ
+adminPagesRoutes.get('/withdrawals', (c) => {
+  const content = `
+    <h2 class="text-2xl font-bold text-gray-800 mb-6">出金管理</h2>
+
+    <!-- 統計カード -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-yellow-700 font-medium">承認待ち</p>
+                    <p class="text-2xl font-bold text-yellow-800" id="pending-count">0件</p>
+                    <p class="text-sm text-yellow-600" id="pending-amount">&yen;0</p>
+                </div>
+                <div class="bg-yellow-100 rounded-full p-3"><i class="fas fa-clock text-yellow-600 text-xl"></i></div>
+            </div>
+        </div>
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-blue-700 font-medium">処理中</p>
+                    <p class="text-2xl font-bold text-blue-800" id="processing-count">0件</p>
+                    <p class="text-sm text-blue-600" id="processing-amount">&yen;0</p>
+                </div>
+                <div class="bg-blue-100 rounded-full p-3"><i class="fas fa-spinner text-blue-600 text-xl"></i></div>
+            </div>
+        </div>
+        <div class="bg-green-50 border border-green-200 rounded-lg p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-green-700 font-medium">振込完了</p>
+                    <p class="text-2xl font-bold text-green-800" id="completed-count">0件</p>
+                    <p class="text-sm text-green-600" id="completed-amount">&yen;0</p>
+                </div>
+                <div class="bg-green-100 rounded-full p-3"><i class="fas fa-check-circle text-green-600 text-xl"></i></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="bg-white p-4 rounded-lg shadow mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <select id="status-filter" class="px-4 py-2 border rounded-lg">
+                <option value="">すべてのステータス</option>
+                <option value="pending">承認待ち</option>
+                <option value="processing">処理中</option>
+                <option value="completed">振込完了</option>
+                <option value="rejected">却下</option>
+            </select>
+            <div></div>
+            <button onclick="searchWithdrawals()" class="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600">
+                <i class="fas fa-search mr-2"></i>検索
+            </button>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50 border-b">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">申請者</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">金額</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">振込先</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">口座名義</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ステータス</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">申請日</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="withdrawals-tbody" class="divide-y divide-gray-200">
+                    <tr><td colspan="8" class="px-6 py-12 text-center"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500 mx-auto"></div></td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div id="pagination" class="px-6 py-4 border-t flex justify-between items-center"></div>
+    </div>
+
+    <!-- 詳細・処理モーダル -->
+    <div id="withdrawal-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+        <div class="bg-white rounded-lg p-8 max-w-lg w-full mx-4">
+            <h3 class="text-xl font-bold text-gray-900 mb-4" id="modal-title">出金申請詳細</h3>
+            <div id="modal-body" class="space-y-3 text-sm"></div>
+            <div id="modal-actions" class="mt-6 flex space-x-3"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentPage = 1;
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        async function loadWithdrawals(page = 1) {
+            try {
+                const status = document.getElementById('status-filter').value;
+                let url = '/api/admin/withdrawals?page=' + page;
+                if (status) url += '&status=' + status;
+                
+                const response = await axios.get(url);
+                const { withdrawals, total, totalPages, stats } = response.data;
+                
+                // 統計更新
+                if (stats) {
+                    document.getElementById('pending-count').textContent = (stats.pending_count || 0) + '件';
+                    document.getElementById('pending-amount').textContent = '&yen;' + (stats.pending_amount || 0).toLocaleString();
+                    document.getElementById('processing-count').textContent = (stats.processing_count || 0) + '件';
+                    document.getElementById('processing-amount').textContent = '&yen;' + (stats.processing_amount || 0).toLocaleString();
+                    document.getElementById('completed-count').textContent = (stats.completed_count || 0) + '件';
+                    document.getElementById('completed-amount').textContent = '&yen;' + (stats.completed_amount || 0).toLocaleString();
+                }
+                
+                renderWithdrawals(withdrawals);
+                renderPagination(page, totalPages);
+                currentPage = page;
+            } catch (error) {
+                console.error('出金一覧読み込みエラー:', error);
+            }
+        }
+
+        function statusBadge(status) {
+            var m = {
+                pending: ['承認待ち', 'bg-yellow-100 text-yellow-700'],
+                processing: ['処理中', 'bg-blue-100 text-blue-700'],
+                completed: ['振込完了', 'bg-green-100 text-green-700'],
+                rejected: ['却下', 'bg-red-100 text-red-700']
+            };
+            return m[status] || [status, 'bg-gray-100 text-gray-700'];
+        }
+
+        function accountTypeLabel(type) {
+            return type === 'ordinary' ? '普通' : type === 'checking' ? '当座' : type;
+        }
+
+        function renderWithdrawals(withdrawals) {
+            var tbody = document.getElementById('withdrawals-tbody');
+            
+            if (withdrawals.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="px-6 py-8 text-center text-gray-500">出金申請が見つかりません</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = withdrawals.map(function(w) {
+                var sb = statusBadge(w.status);
+                return '<tr class="hover:bg-gray-50' + (w.status === 'pending' ? ' bg-yellow-50' : '') + '">' +
+                    '<td class="px-4 py-4 text-sm font-medium text-gray-900">#' + w.id + '</td>' +
+                    '<td class="px-4 py-4 text-sm"><div class="font-medium">' + escapeHtml(w.user_name) + '</div><div class="text-gray-500 text-xs">' + escapeHtml(w.user_email) + '</div></td>' +
+                    '<td class="px-4 py-4 text-sm font-bold text-gray-900">&yen;' + w.amount.toLocaleString() + '</td>' +
+                    '<td class="px-4 py-4 text-sm text-gray-600"><div>' + escapeHtml(w.bank_name) + '</div><div class="text-xs">' + escapeHtml(w.branch_name) + ' ' + accountTypeLabel(w.account_type) + '</div></td>' +
+                    '<td class="px-4 py-4 text-sm text-gray-600">' + escapeHtml(w.account_holder) + '<div class="text-xs text-gray-400">' + escapeHtml(w.account_number) + '</div></td>' +
+                    '<td class="px-4 py-4"><span class="px-2 py-1 text-xs rounded ' + sb[1] + '">' + sb[0] + '</span></td>' +
+                    '<td class="px-4 py-4 text-sm text-gray-600">' + new Date(w.requested_at).toLocaleDateString('ja-JP') + '</td>' +
+                    '<td class="px-4 py-4 text-sm">' +
+                        '<button onclick="showDetail(' + w.id + ')" class="text-blue-600 hover:text-blue-800 mr-2" title="詳細"><i class="fas fa-eye"></i></button>' +
+                        (w.status === 'pending' ? '<button onclick="approveWithdrawal(' + w.id + ')" class="text-green-600 hover:text-green-800 mr-2" title="承認"><i class="fas fa-check"></i></button><button onclick="rejectWithdrawal(' + w.id + ')" class="text-red-600 hover:text-red-800" title="却下"><i class="fas fa-times"></i></button>' : '') +
+                        (w.status === 'processing' ? '<button onclick="completeWithdrawal(' + w.id + ')" class="text-green-600 hover:text-green-800" title="振込完了"><i class="fas fa-check-double"></i></button>' : '') +
+                    '</td></tr>';
+            }).join('');
+        }
+
+        function renderPagination(current, total) {
+            var pagination = document.getElementById('pagination');
+            var html = '<div class="text-sm text-gray-600">ページ ' + current + ' / ' + total + '</div><div class="flex space-x-2">';
+            if (current > 1) html += '<button onclick="loadWithdrawals(' + (current - 1) + ')" class="px-3 py-1 border rounded hover:bg-gray-50">前へ</button>';
+            if (current < total) html += '<button onclick="loadWithdrawals(' + (current + 1) + ')" class="px-3 py-1 border rounded hover:bg-gray-50">次へ</button>';
+            html += '</div>';
+            pagination.innerHTML = html;
+        }
+
+        function searchWithdrawals() { loadWithdrawals(1); }
+
+        async function showDetail(id) {
+            try {
+                var res = await axios.get('/api/admin/withdrawals?page=1&limit=100');
+                var w = (res.data.withdrawals || []).find(function(item) { return item.id === id; });
+                if (!w) { alert('出金申請が見つかりません'); return; }
+                
+                var body = document.getElementById('modal-body');
+                body.innerHTML = 
+                    '<div class="grid grid-cols-2 gap-3">' +
+                    '<div><span class="text-gray-500">ID:</span> <strong>#' + w.id + '</strong></div>' +
+                    '<div><span class="text-gray-500">金額:</span> <strong class="text-red-600">&yen;' + w.amount.toLocaleString() + '</strong></div>' +
+                    '<div><span class="text-gray-500">申請者:</span> ' + escapeHtml(w.user_name) + '</div>' +
+                    '<div><span class="text-gray-500">メール:</span> ' + escapeHtml(w.user_email) + '</div>' +
+                    '<div><span class="text-gray-500">銀行:</span> ' + escapeHtml(w.bank_name) + '</div>' +
+                    '<div><span class="text-gray-500">支店:</span> ' + escapeHtml(w.branch_name) + '</div>' +
+                    '<div><span class="text-gray-500">口座種別:</span> ' + accountTypeLabel(w.account_type) + '</div>' +
+                    '<div><span class="text-gray-500">口座番号:</span> ' + escapeHtml(w.account_number) + '</div>' +
+                    '<div class="col-span-2"><span class="text-gray-500">口座名義:</span> <strong>' + escapeHtml(w.account_holder) + '</strong></div>' +
+                    '<div><span class="text-gray-500">申請日:</span> ' + new Date(w.requested_at).toLocaleString('ja-JP') + '</div>' +
+                    '<div><span class="text-gray-500">ステータス:</span> ' + statusBadge(w.status)[0] + '</div>' +
+                    (w.processed_at ? '<div><span class="text-gray-500">処理日:</span> ' + new Date(w.processed_at).toLocaleString('ja-JP') + '</div>' : '') +
+                    (w.transferred_at ? '<div><span class="text-gray-500">振込日:</span> ' + new Date(w.transferred_at).toLocaleString('ja-JP') + '</div>' : '') +
+                    (w.notes ? '<div class="col-span-2"><span class="text-gray-500">メモ:</span> ' + escapeHtml(w.notes) + '</div>' : '') +
+                    (w.rejection_reason ? '<div class="col-span-2"><span class="text-gray-500">却下理由:</span> <span class="text-red-600">' + escapeHtml(w.rejection_reason) + '</span></div>' : '') +
+                    '</div>';
+
+                var actions = document.getElementById('modal-actions');
+                actions.innerHTML = '<button onclick="closeModal()" class="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50">閉じる</button>';
+
+                document.getElementById('withdrawal-modal').classList.remove('hidden');
+            } catch(e) {
+                alert('詳細の取得に失敗しました');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('withdrawal-modal').classList.add('hidden');
+        }
+
+        async function approveWithdrawal(id) {
+            if (!confirm('出金申請 #' + id + ' を承認（処理中に変更）しますか？')) return;
+            try {
+                await axios.put('/api/admin/withdrawals/' + id + '/status', { status: 'processing', notes: '管理者が承認' });
+                alert('出金申請を承認しました（処理中）');
+                loadWithdrawals(currentPage);
+            } catch (err) {
+                alert('承認に失敗しました: ' + (err.response?.data?.error || err.message));
+            }
+        }
+
+        async function completeWithdrawal(id) {
+            if (!confirm('出金申請 #' + id + ' の振込が完了しましたか？')) return;
+            try {
+                await axios.put('/api/admin/withdrawals/' + id + '/status', { status: 'completed', notes: '振込完了' });
+                alert('振込完了に更新しました');
+                loadWithdrawals(currentPage);
+            } catch (err) {
+                alert('更新に失敗しました: ' + (err.response?.data?.error || err.message));
+            }
+        }
+
+        async function rejectWithdrawal(id) {
+            var reason = prompt('却下理由を入力してください:');
+            if (reason === null) return;
+            if (!reason.trim()) { alert('却下理由を入力してください'); return; }
+            try {
+                await axios.put('/api/admin/withdrawals/' + id + '/status', { status: 'rejected', rejection_reason: reason });
+                alert('出金申請を却下しました');
+                loadWithdrawals(currentPage);
+            } catch (err) {
+                alert('却下に失敗しました: ' + (err.response?.data?.error || err.message));
+            }
+        }
+
+        document.getElementById('status-filter').addEventListener('change', searchWithdrawals);
+        loadWithdrawals(1);
+    </script>
+  `;
+
+  return c.html(AdminLayout('withdrawals', '出金管理', content));
+});
+
 export default adminPagesRoutes
