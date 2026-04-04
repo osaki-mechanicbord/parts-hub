@@ -5729,6 +5729,15 @@ app.get('/profile/edit', (c) => {
                     </button>
                 </div>
             </form>
+
+            <!-- 退会セクション -->
+            <div class="mt-8 mb-12 bg-white rounded-xl shadow-sm p-6 border border-red-100">
+                <h2 class="text-base font-bold text-red-600 mb-2"><i class="fas fa-exclamation-triangle mr-1"></i>アカウント削除（退会）</h2>
+                <p class="text-xs text-gray-500 mb-3">退会すると個人情報・出品商品が削除され、元に戻すことはできません。</p>
+                <button onclick="showDeleteAccountModal()" class="bg-white border-2 border-red-300 text-red-500 hover:bg-red-50 hover:border-red-500 px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
+                    <i class="fas fa-user-slash mr-1"></i>退会する
+                </button>
+            </div>
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>

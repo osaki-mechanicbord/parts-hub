@@ -537,3 +537,70 @@ function setupBankUI() {
         }
     };
 }
+
+// ===== 退会（アカウント削除）機能 =====
+function showDeleteAccountModal() {
+    const modal = document.createElement('div');
+    modal.id = 'delete-account-modal';
+    modal.className = 'fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4';
+    modal.innerHTML = `
+      <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl">
+        <div class="p-6">
+          <h3 class="text-lg font-bold text-red-600 mb-2"><i class="fas fa-exclamation-triangle mr-2"></i>アカウント削除（退会）</h3>
+          <p class="text-sm text-gray-600 mb-4">退会すると以下のデータが削除されます：</p>
+          <ul class="text-sm text-gray-600 mb-4 space-y-1 pl-4">
+            <li>・プロフィール情報（氏名・住所・電話番号）</li>
+            <li>・出品中の商品（取り下げ）</li>
+            <li>・ログイン情報</li>
+          </ul>
+          <p class="text-xs text-gray-400 mb-4">※完了済みの取引履歴・レビューは匿名化されて残ります。進行中の取引がある場合は退会できません。</p>
+          <div class="mb-4">
+            <label class="block text-sm font-bold text-gray-700 mb-1">確認のためパスワードを入力</label>
+            <input type="password" id="delete-account-password" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-red-500 focus:outline-none" placeholder="現在のパスワード">
+          </div>
+          <div class="flex gap-3">
+            <button onclick="closeDeleteAccountModal()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold transition-colors">キャンセル</button>
+            <button onclick="confirmDeleteAccount()" id="delete-account-btn" class="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl font-bold transition-colors">退会する</button>
+          </div>
+        </div>
+      </div>
+    `;
+    modal.addEventListener('click', function(e) { if (e.target === modal) closeDeleteAccountModal(); });
+    document.body.appendChild(modal);
+}
+
+function closeDeleteAccountModal() {
+    const m = document.getElementById('delete-account-modal');
+    if (m) m.remove();
+}
+
+async function confirmDeleteAccount() {
+    const password = document.getElementById('delete-account-password').value;
+    if (!password) { alert('パスワードを入力してください'); return; }
+
+    const btn = document.getElementById('delete-account-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>処理中...';
+
+    const token = getToken();
+    if (!token) return;
+
+    try {
+        const res = await axios.delete('/api/profile/account', {
+            headers: { 'Authorization': 'Bearer ' + token },
+            data: { password: password }
+        });
+        if (res.data.success) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            alert('退会処理が完了しました。ご利用ありがとうございました。');
+            window.location.href = '/';
+        } else {
+            throw new Error(res.data.error);
+        }
+    } catch (error) {
+        alert(error?.response?.data?.error || error.message || '退会処理に失敗しました');
+        btn.disabled = false;
+        btn.innerHTML = '退会する';
+    }
+}

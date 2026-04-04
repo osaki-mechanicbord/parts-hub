@@ -404,7 +404,8 @@ mypage.get('/sales/:userId', async (c) => {
         t.shipping_carrier,
         p.title as product_title,
         COALESCE(u.company_name, u.nickname, u.name) as buyer_name,
-        (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as product_image
+        (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as product_image,
+        (SELECT COUNT(*) FROM reviews WHERE transaction_id = t.id AND reviewer_id = t.seller_id) as has_seller_review
       FROM transactions t
       JOIN products p ON t.product_id = p.id
       JOIN users u ON t.buyer_id = u.id

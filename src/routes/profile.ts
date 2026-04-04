@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { verifyToken } from '../auth'
+import { verifyToken, verifyPassword } from '../auth'
 
 type Bindings = {
   DB: D1Database
@@ -279,6 +279,72 @@ profile.post('/upload-image', async (c) => {
   } catch (error) {
     console.error('Upload image error:', error)
     return c.json({ success: false, error: '画像アップロードに失敗しました' }, 500)
+  }
+})
+
+// アカウント削除（退会）
+profile.delete('/account', async (c) => {
+  try {
+    const { DB } = c.env
+    const userId = await getUserIdFromToken(c)
+    if (!userId) {
+      return c.json({ success: false, error: '認証が必要です' }, 401)
+    }
+
+    const body = await c.req.json()
+    const { password } = body
+
+    if (!password) {
+      return c.json({ success: false, error: 'パスワードを入力してください' }, 400)
+    }
+
+    // パスワード確認
+    const user = await DB.prepare('SELECT password_hash FROM users WHERE id = ?').bind(userId).first() as any
+    if (!user) {
+      return c.json({ success: false, error: 'ユーザーが見つかりません' }, 404)
+    }
+
+    const valid = await verifyPassword(password, user.password_hash)
+    if (!valid) {
+      return c.json({ success: false, error: 'パスワードが正しくありません' }, 403)
+    }
+
+    // 進行中の取引がないか確認
+    const activeTx = await DB.prepare(
+      `SELECT COUNT(*) as cnt FROM transactions WHERE (buyer_id = ? OR seller_id = ?) AND status IN ('pending','paid','shipped')`
+    ).bind(userId, userId).first() as any
+    if (activeTx && activeTx.cnt > 0) {
+      return c.json({ success: false, error: '進行中の取引があるため退会できません。取引完了後に再度お試しください。' }, 400)
+    }
+
+    // ソフトデリート: ユーザーを無効化し個人情報を匿名化
+    await DB.prepare(`
+      UPDATE users SET
+        status = 'deleted',
+        email = 'deleted_' || id || '@deleted.local',
+        name = '退会済みユーザー',
+        nickname = NULL,
+        company_name = NULL,
+        phone = NULL,
+        address = NULL,
+        city = NULL,
+        prefecture = NULL,
+        postal_code = NULL,
+        password_hash = 'DELETED',
+        profile_image_url = NULL,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(userId).run()
+
+    // 出品中の商品を取り下げ
+    await DB.prepare(
+      `UPDATE products SET status = 'inactive' WHERE user_id = ? AND status = 'active'`
+    ).bind(userId).run()
+
+    return c.json({ success: true, message: '退会処理が完了しました' })
+  } catch (error) {
+    console.error('Delete account error:', error)
+    return c.json({ success: false, error: '退会処理に失敗しました' }, 500)
   }
 })
 

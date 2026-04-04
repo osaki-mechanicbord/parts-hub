@@ -654,7 +654,10 @@ function renderSalesData() {
                             ${sale.tracking_number ? ' ・ ' + sale.tracking_number : ''}
                         </div>` : ''}
                         ${sale.status === 'completed' ? `
-                        <div class="text-xs text-gray-400 mt-1">${formatDate(sale.sold_at)}</div>` : ''}
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="text-xs text-gray-400">${formatDate(sale.sold_at)}</span>
+                            ${sale.has_seller_review ? '<span class="text-xs text-green-600"><i class="fas fa-check-circle mr-0.5"></i>レビュー済み</span>' : `<a href="/reviews/new?transaction=${sale.transaction_id}" class="inline-flex items-center px-2.5 py-1 bg-yellow-500 hover:bg-yellow-600 text-white text-[11px] font-bold rounded-lg transition-colors"><i class="fas fa-star mr-1"></i>購入者をレビュー</a>`}
+                        </div>` : ''}
                     </div>
                 </div>
             </div>`;
