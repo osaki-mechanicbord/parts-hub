@@ -16,7 +16,7 @@
 
 ### 実装済み ✅
 1. **基本インフラ**: Hono + Cloudflare Pages + D1 + R2
-2. **ユーザー認証**: 会員登録・ログイン（JWT）・プロフィール管理
+2. **ユーザー認証**: 会員登録・ログイン（JWT）・プロフィール管理・退会（アカウント削除）
 3. **商品管理**: 出品・編集・削除・画像アップロード（最大10枚、R2ストレージ）
 4. **カテゴリシステム**: 10大カテゴリ、40+サブカテゴリ
 5. **適合確認システム**: マイガレージ・適合マッチング・フィードバック
@@ -29,6 +29,9 @@
 12. **記事・コンテンツ管理**: 情報記事の投稿・表示
 13. **メール通知**: Resend API連携
 14. **出品代行**: 代行リクエスト・管理
+15. **セキュリティ**: コメント・交渉の認証必須化、APIレートリミット（ログイン/コメント/レビュー/交渉）
+16. **エラーハンドリング**: 404ページ・グローバルエラーハンドラー
+17. **取引保護**: SOLD OUT時の値下げ交渉ボタン無効化、ヤマト追跡ボタン完了後無効化、受取完了ボタン二重クリック防止、レビュー不変性
 
 ### ARGOS JPC連携（本番実装準備完了 / 公開予定: 2026年6月以降）🔜
 15. **VIN自動入力**: 車台番号から車両情報・適合情報を自動取得
@@ -134,6 +137,7 @@ ARGOS_API_ENABLED=true
 | POST | `/api/payment/create-checkout-session` | Stripe決済セッション |
 | GET | `/api/transactions` | 取引一覧 |
 | POST | `/api/reviews` | レビュー投稿 |
+| DELETE | `/api/profile/account` | アカウント削除（退会） |
 
 ### 適合確認
 | メソッド | パス | 説明 |
@@ -275,7 +279,8 @@ webapp/
 ├── migrations/
 │   ├── 0001_initial_schema.sql
 │   ├── ...
-│   └── 0018_argos_jpc_integration.sql  # ARGOS連携テーブル
+│   ├── 0018_argos_jpc_integration.sql  # ARGOS連携テーブル
+│   └── 0023_rate_limits.sql           # レートリミットテーブル
 ├── public/static/             # フロントエンドJS・CSS
 ├── wrangler.jsonc             # Cloudflare設定
 ├── ecosystem.config.cjs       # PM2設定
@@ -310,6 +315,6 @@ npm run build && npx wrangler pages deploy dist --project-name parts-hub
 
 ---
 
-**最終更新**: 2026-03-28
+**最終更新**: 2026-04-04
 **ステータス**: 🟢 本番稼働中（ARGOS JPC連携: 2026年6月以降公開予定）
-**進捗**: 全主要機能実装済み、ARGOS JPC本番実装準備完了（API契約待ち）
+**進捗**: 全主要機能実装済み。セキュリティ強化（認証・レートリミット・CSRF対策）完了。退会機能追加。ARGOS JPC本番実装準備完了（API契約待ち）
