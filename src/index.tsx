@@ -12766,6 +12766,83 @@ app.get('/admin/login', (c) => {
 // 管理画面はadmin-pages.tsに統一（AdminLayout経由で認証チェック付き）
 // /admin, /admin/users 等は admin-pages.ts の AdminLayout で提供
 
+// ===== 404 ページ =====
+app.notFound((c) => {
+  const accept = c.req.header('Accept') || ''
+  // API リクエストにはJSONで返す
+  if (c.req.path.startsWith('/api/') || accept.includes('application/json')) {
+    return c.json({ success: false, error: 'エンドポイントが見つかりません' }, 404)
+  }
+  return c.html(`<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ページが見つかりません - PARTS HUB</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+  <header class="bg-white border-b border-gray-200">
+    <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+      <a href="/" class="text-red-500 font-bold text-xl">PARTS HUB</a>
+    </div>
+  </header>
+  <main class="flex-1 flex items-center justify-center px-4">
+    <div class="text-center max-w-md">
+      <div class="text-8xl font-black text-gray-200 mb-4">404</div>
+      <h1 class="text-2xl font-bold text-gray-800 mb-2">ページが見つかりません</h1>
+      <p class="text-gray-500 mb-8">お探しのページは移動または削除された可能性があります。</p>
+      <div class="flex flex-col sm:flex-row gap-3 justify-center">
+        <a href="/" class="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold transition-colors">
+          <i class="fas fa-home mr-2"></i>トップページへ
+        </a>
+        <a href="/search" class="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors">
+          <i class="fas fa-search mr-2"></i>商品を検索
+        </a>
+      </div>
+    </div>
+  </main>
+</body>
+</html>`, 404)
+})
+
+// ===== グローバルエラーハンドラー =====
+app.onError((err, c) => {
+  console.error('Unhandled error:', err)
+  const accept = c.req.header('Accept') || ''
+  if (c.req.path.startsWith('/api/') || accept.includes('application/json')) {
+    return c.json({ success: false, error: 'サーバーエラーが発生しました' }, 500)
+  }
+  return c.html(`<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>エラー - PARTS HUB</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+  <header class="bg-white border-b border-gray-200">
+    <div class="max-w-4xl mx-auto px-4 py-4">
+      <a href="/" class="text-red-500 font-bold text-xl">PARTS HUB</a>
+    </div>
+  </header>
+  <main class="flex-1 flex items-center justify-center px-4">
+    <div class="text-center max-w-md">
+      <i class="fas fa-exclamation-triangle text-6xl text-yellow-400 mb-4"></i>
+      <h1 class="text-2xl font-bold text-gray-800 mb-2">エラーが発生しました</h1>
+      <p class="text-gray-500 mb-8">ご不便をおかけして申し訳ありません。しばらく経ってから再度お試しください。</p>
+      <a href="/" class="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold transition-colors">
+        <i class="fas fa-home mr-2"></i>トップページへ
+      </a>
+    </div>
+  </main>
+</body>
+</html>`, 500)
+})
+
 export default app
 
 // ===== 以下は admin-pages.ts に移行済みのため未使用 =====
