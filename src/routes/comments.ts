@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { authMiddleware } from '../auth'
 import { sendEmail } from '../email-config'
 import * as tpl from '../email-templates'
 
@@ -64,17 +65,19 @@ comments.get('/:productId/:commentId/replies', async (c) => {
   }
 })
 
-// コメント投稿
-comments.post('/:productId', async (c) => {
+// コメント投稿（認証必須）
+comments.post('/:productId', authMiddleware, async (c) => {
   try {
     const { DB } = c.env
     const productId = c.req.param('productId')
+    const authUserId = c.get('userId')
     const body = await c.req.json()
 
-    const { user_id, comment_text, is_question, parent_comment_id } = body
+    const { comment_text, is_question, parent_comment_id } = body
+    const user_id = authUserId
 
-    if (!user_id || !comment_text) {
-      return c.json({ success: false, error: '必須項目が不足しています' }, 400)
+    if (!comment_text) {
+      return c.json({ success: false, error: 'コメント内容を入力してください' }, 400)
     }
 
     const result = await DB.prepare(`
@@ -141,24 +144,19 @@ comments.post('/:productId', async (c) => {
   }
 })
 
-// コメント削除（ソフトデリート）
-comments.delete('/:productId/:commentId', async (c) => {
+// コメント削除（ソフトデリート・認証必須）
+comments.delete('/:productId/:commentId', authMiddleware, async (c) => {
   try {
     const { DB } = c.env
     const commentId = c.req.param('commentId')
-    const body = await c.req.json()
-    const { user_id } = body
-
-    if (!user_id) {
-      return c.json({ success: false, error: 'ユーザーIDが必要です' }, 400)
-    }
+    const authUserId = c.get('userId')
 
     // コメントの所有者確認
     const comment = await DB.prepare(`
       SELECT user_id FROM product_comments WHERE id = ?
     `).bind(commentId).first()
 
-    if (!comment || comment.user_id !== user_id) {
+    if (!comment || comment.user_id !== authUserId) {
       return c.json({ success: false, error: '削除する権限がありません' }, 403)
     }
 

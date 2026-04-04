@@ -83,10 +83,12 @@ negotiations.get('/user/:userId', async (c) => {
 negotiations.post('/', async (c) => {
   try {
     const { DB } = c.env
+    const authUserId = c.get('userId')
     const body = await c.req.json()
-    const { product_id, buyer_id, requested_price, message } = body
+    const { product_id, requested_price, message } = body
+    const buyer_id = authUserId
 
-    if (!product_id || !buyer_id || !requested_price) {
+    if (!product_id || !requested_price) {
       return c.json({ success: false, error: '必須項目が不足しています' }, 400)
     }
 
