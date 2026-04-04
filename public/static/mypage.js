@@ -327,8 +327,11 @@ function getTodoForTransaction(tx) {
         items.push({ icon: 'fa-credit-card', color: 'text-green-500', text: 'お支払い完了', done: true, urgent: false });
         items.push({ icon: 'fa-truck', color: 'text-green-500', text: '発送完了', done: true, urgent: false });
         items.push({ icon: 'fa-check-circle', color: 'text-green-500', text: '受取完了・取引完了', done: true, urgent: false });
-        if (isBuyer) {
-            items.push({ icon: 'fa-star', color: 'text-yellow-500', text: 'レビューを書きましょう', done: false, urgent: false, action: 'review', txId: tx.transaction_id });
+        if (!tx.has_my_review) {
+            const reviewLabel = isBuyer ? '出品者をレビューしましょう' : '購入者をレビューしましょう';
+            items.push({ icon: 'fa-star', color: 'text-yellow-500', text: reviewLabel, done: false, urgent: false, action: 'review', txId: tx.transaction_id });
+        } else {
+            items.push({ icon: 'fa-star', color: 'text-green-500', text: 'レビュー投稿済み', done: true, urgent: false });
         }
     }
 
@@ -371,6 +374,12 @@ function renderTodoAction(action, txId) {
     }
     if (action === 'review') {
         return `<a href="/reviews/new?transaction=${txId}" class="inline-flex items-center mt-1 px-3 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold rounded-lg transition-colors"><i class="fas fa-star mr-1"></i>レビューを書く</a>`;
+    }
+    if (action === 'review_seller') {
+        return `<a href="/reviews/new?transaction=${txId}" class="inline-flex items-center mt-1 px-3 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold rounded-lg transition-colors"><i class="fas fa-star mr-1"></i>出品者をレビュー</a>`;
+    }
+    if (action === 'review_buyer') {
+        return `<a href="/reviews/new?transaction=${txId}" class="inline-flex items-center mt-1 px-3 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold rounded-lg transition-colors"><i class="fas fa-star mr-1"></i>購入者をレビュー</a>`;
     }
     return '';
 }
@@ -846,8 +855,14 @@ function getPurchaseActionHtml(purchase) {
     if (purchase.status === 'completed' && !purchase.reviewed) {
         return `
         <button onclick="writeReview(${purchase.transaction_id})" class="w-full mt-3 bg-yellow-500 hover:bg-yellow-600 text-white py-2 px-4 rounded-lg font-semibold transition-colors text-sm">
-            <i class="fas fa-star mr-2"></i>レビューを書く
+            <i class="fas fa-star mr-2"></i>出品者をレビュー
         </button>`;
+    }
+    if (purchase.status === 'completed' && purchase.reviewed) {
+        return `
+        <div class="mt-2 text-center">
+            <span class="text-xs text-green-600"><i class="fas fa-check-circle mr-0.5"></i>レビュー済み</span>
+        </div>`;
     }
     return '';
 }

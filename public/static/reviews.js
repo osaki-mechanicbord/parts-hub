@@ -122,6 +122,7 @@ async function loadTransactionInfo() {
 function renderTransactionInfo(transaction) {
     const isBuyer = transaction.buyer_id === currentUserId;
     const counterpartName = isBuyer ? transaction.seller_name : transaction.buyer_name;
+    const reviewTargetLabel = isBuyer ? '出品者' : '購入者';
     const productImage = transaction.product_image 
         ? (transaction.product_image.startsWith('http') || transaction.product_image.startsWith('/') 
             ? transaction.product_image 
@@ -136,8 +137,13 @@ function renderTransactionInfo(transaction) {
                  onerror="this.src='/icons/icon-192x192.png'">
             <div class="flex-1">
                 <h2 class="font-bold text-lg text-gray-900 mb-1">${escapeHtml(transaction.product_title)}</h2>
+                <p class="text-sm text-gray-600 mb-1">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
+                        <i class="fas fa-pen mr-1"></i>${reviewTargetLabel}のレビュー
+                    </span>
+                </p>
                 <p class="text-sm text-gray-600 mb-2">
-                    ${isBuyer ? '出品者' : '購入者'}: ${escapeHtml(counterpartName || '不明')}
+                    ${reviewTargetLabel}: ${escapeHtml(counterpartName || '不明')}
                 </p>
                 <div class="flex items-center gap-4 text-sm text-gray-500">
                     <span><i class="far fa-calendar mr-1"></i>${formatDate(transaction.completed_at || transaction.created_at)}</span>

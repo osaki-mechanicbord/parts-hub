@@ -239,7 +239,11 @@ mypage.get('/active-transactions/:userId', async (c) => {
         p.title as product_title,
         COALESCE(buyer.company_name, buyer.nickname, buyer.name) as buyer_name,
         COALESCE(seller.company_name, seller.nickname, seller.name) as seller_name,
-        (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as product_image
+        (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as product_image,
+        CASE 
+          WHEN EXISTS (SELECT 1 FROM reviews WHERE transaction_id = t.id AND reviewer_id = ?) THEN 1
+          ELSE 0
+        END as has_my_review
       FROM transactions t
       JOIN products p ON t.product_id = p.id
       JOIN users buyer ON t.buyer_id = buyer.id
@@ -255,7 +259,7 @@ mypage.get('/active-transactions/:userId', async (c) => {
         END,
         t.created_at DESC
       LIMIT 50
-    `).bind(userId, userId).all()
+    `).bind(userId, userId, userId).all()
 
     const data = results.map((t: any) => ({
       ...t,

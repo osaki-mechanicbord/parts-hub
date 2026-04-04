@@ -393,7 +393,7 @@ function renderActionButtons(isBuyer, isSeller) {
   if (isBuyer && status === 'completed' && !transactionData.has_my_review) {
     buttons.push(`
       <button onclick="window.location.href='/reviews/new?transaction=${transactionId}'" class="w-full bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-white py-4 px-6 rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98]">
-        <i class="fas fa-star mr-2"></i>レビューを書く
+        <i class="fas fa-star mr-2"></i>出品者をレビュー
       </button>
     `);
   }
@@ -402,7 +402,7 @@ function renderActionButtons(isBuyer, isSeller) {
   if (isSeller && status === 'completed' && !transactionData.has_my_review) {
     buttons.push(`
       <button onclick="window.location.href='/reviews/new?transaction=${transactionId}'" class="w-full bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-white py-4 px-6 rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98]">
-        <i class="fas fa-star mr-2"></i>レビューを書く
+        <i class="fas fa-star mr-2"></i>購入者をレビュー
       </button>
     `);
   }
