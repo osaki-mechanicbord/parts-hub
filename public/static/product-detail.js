@@ -98,6 +98,7 @@ function updateActionButtons() {
     const purchaseBtn = document.getElementById('purchase-btn');
     const favoriteBtn = document.getElementById('favorite-btn');
     const contactBtn = document.getElementById('contact-btn');
+    const negotiateBtn = document.getElementById('negotiate-btn');
     
     if (!product) return;
     
@@ -124,6 +125,16 @@ function updateActionButtons() {
         if (contactBtn) {
             contactBtn.style.display = 'none';
         }
+
+        // 値下げ交渉ボタンを無効化
+        if (negotiateBtn) {
+            negotiateBtn.disabled = true;
+            negotiateBtn.onclick = null;
+            negotiateBtn.style.pointerEvents = 'none';
+            negotiateBtn.innerHTML = '<i class="fas fa-tag mr-2"></i>値下げ交渉（売り切れ）';
+            negotiateBtn.classList.remove('border-blue-500', 'text-blue-600', 'hover:bg-blue-50');
+            negotiateBtn.classList.add('border-gray-300', 'text-gray-400', 'bg-gray-100', 'cursor-not-allowed');
+        }
         return;
     }
     
@@ -137,6 +148,10 @@ function updateActionButtons() {
         }
         if (contactBtn) {
             contactBtn.style.display = 'none';
+        }
+        // 自分の商品には値下げ交渉不要
+        if (negotiateBtn) {
+            negotiateBtn.style.display = 'none';
         }
     }
 }

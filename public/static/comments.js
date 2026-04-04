@@ -201,6 +201,11 @@ async function postComment() {
 
 // 値下げ交渉モーダルを開く
 function openPriceOfferModal() {
+  // 売り切れチェック（product変数はproduct-detail.jsで定義）
+  if (typeof product !== 'undefined' && product && product.status === 'sold') {
+    alert('この商品は売り切れのため、値下げ交渉はできません。')
+    return
+  }
   const price = document.getElementById('product-price').textContent.replace(/[¥,]/g, '')
   document.getElementById('modal-current-price').textContent = `¥${parseInt(price).toLocaleString()}`
   document.getElementById('price-offer-modal').classList.remove('hidden')

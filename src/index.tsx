@@ -3498,7 +3498,7 @@ app.get('/products/:id', async (c) => {
                                     class="w-full px-6 py-4 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:border-gray-400 hover:bg-gray-50 transition-all flex items-center justify-center">
                                 <i class="far fa-heart mr-2"></i>お気に入り
                             </button>
-                            <button onclick="openPriceOfferModal()" 
+                            <button id="negotiate-btn" onclick="openPriceOfferModal()" 
                                     class="w-full px-6 py-4 border-2 border-blue-500 text-blue-600 rounded-lg font-semibold hover:bg-blue-50 transition-all flex items-center justify-center">
                                 <i class="fas fa-tag mr-2"></i>値下げ交渉
                             </button>
