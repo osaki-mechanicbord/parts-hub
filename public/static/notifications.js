@@ -180,6 +180,14 @@ function getNotificationIcon(type) {
 // 通知クリック処理（認証ベースAPI使用）
 async function handleNotificationClick(notificationId, actionUrl) {
     try {
+        // トークンの有効性を再確認
+        const currentToken = localStorage.getItem('token');
+        if (!currentToken) {
+            if (actionUrl) window.location.href = actionUrl;
+            return;
+        }
+        token = currentToken;
+
         await axios.put(`/api/notifications/${notificationId}/read`, {}, getAuthHeaders());
 
         const notification = allNotifications.find(n => n.id === notificationId);
@@ -197,6 +205,11 @@ async function handleNotificationClick(notificationId, actionUrl) {
         }
     } catch (error) {
         console.error('Failed to mark as read:', error);
+        // 401の場合はトークンをリフレッシュ試行
+        if (error?.response?.status === 401) {
+            localStorage.removeItem('token');
+            token = null;
+        }
         // エラーでもナビゲーションは実行
         if (actionUrl) window.location.href = actionUrl;
     }
@@ -213,6 +226,15 @@ async function markAllAsRead() {
     if (!confirm(`${unreadCount}件の通知をすべて既読にしますか？`)) return;
 
     try {
+        // トークンの有効性を再確認
+        const currentToken = localStorage.getItem('token');
+        if (!currentToken) {
+            showToast('ログインセッションが切れました。再ログインしてください。', 'error');
+            setTimeout(() => { window.location.href = '/login?redirect=/notifications'; }, 1500);
+            return;
+        }
+        token = currentToken;
+
         const response = await axios.put('/api/notifications/read-all', {}, getAuthHeaders());
 
         if (response.data.success) {
@@ -220,10 +242,19 @@ async function markAllAsRead() {
             renderNotifications();
             showToast('すべての通知を既読にしました', 'success');
             if (window.__notifBadge) window.__notifBadge.refresh();
+        } else {
+            throw new Error(response.data.error || '既読処理に失敗しました');
         }
     } catch (error) {
         console.error('Failed to mark all as read:', error);
-        showToast('既読処理に失敗しました', 'error');
+        if (error?.response?.status === 401) {
+            showToast('ログインセッションが切れました。再ログインしてください。', 'error');
+            localStorage.removeItem('token');
+            token = null;
+            setTimeout(() => { window.location.href = '/login?redirect=/notifications'; }, 1500);
+        } else {
+            showToast('既読処理に失敗しました。再度お試しください。', 'error');
+        }
     }
 }
 
