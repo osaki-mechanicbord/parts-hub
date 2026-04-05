@@ -129,7 +129,13 @@ const Footer = () => `
 
 // ミドルウェア
 app.use(logger())
-app.use('/api/*', cors())
+app.use('/api/*', cors({
+  origin: '*',
+  allowMethods: ['GET', 'HEAD', 'PUT', 'POST', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowHeaders: ['Authorization', 'Content-Type', 'Accept'],
+  exposeHeaders: ['Content-Length'],
+  maxAge: 86400
+}))
 
 // セキュリティヘッダー（全レスポンス）
 app.use('*', async (c, next) => {
@@ -5206,7 +5212,20 @@ app.get('/chat/:roomId', (c) => {
             // メッセージを既読にする
             async function markAsRead() {
                 try {
-                    await axios.put('/api/chat/rooms/' + roomId + '/read', {}, getAuthHeaders());
+                    var currentToken = localStorage.getItem('token');
+                    if (!currentToken) return;
+                    token = currentToken;
+                    var res = await fetch('/api/chat/rooms/' + roomId + '/read', {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': 'Bearer ' + token,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    if (res.status === 401) {
+                        console.warn('Chat markAsRead: token expired');
+                    }
+                    if (window.__notifBadge) window.__notifBadge.refresh();
                 } catch (error) {
                     console.error('Failed to mark as read:', error);
                 }

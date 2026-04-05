@@ -177,84 +177,138 @@ function getNotificationIcon(type) {
     `;
 }
 
-// 通知クリック処理（認証ベースAPI使用）
+// 通知クリック処理（fetch API使用）
 async function handleNotificationClick(notificationId, actionUrl) {
+    // トークンの有効性を再確認
+    var currentToken = localStorage.getItem('token');
+    if (!currentToken) {
+        if (actionUrl) window.location.href = actionUrl;
+        return;
+    }
+    token = currentToken;
+
     try {
-        // トークンの有効性を再確認
-        const currentToken = localStorage.getItem('token');
-        if (!currentToken) {
-            if (actionUrl) window.location.href = actionUrl;
-            return;
-        }
-        token = currentToken;
+        var res = await fetch('/api/notifications/' + notificationId + '/read', {
+            method: 'PUT',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        });
 
-        await axios.put(`/api/notifications/${notificationId}/read`, {}, getAuthHeaders());
-
-        const notification = allNotifications.find(n => n.id === notificationId);
-        if (notification) {
-            notification.is_read = true;
-        }
-
-        // バッジ更新
-        if (window.__notifBadge) window.__notifBadge.refresh();
-
-        if (actionUrl) {
-            window.location.href = actionUrl;
-        } else {
-            renderNotifications();
+        if (res.ok) {
+            var data = await res.json().catch(function() { return {}; });
+            if (data.success !== false) {
+                var notification = allNotifications.find(function(n) { return n.id === notificationId; });
+                if (notification) notification.is_read = true;
+                if (window.__notifBadge) window.__notifBadge.refresh();
+            }
+        } else if (res.status === 401) {
+            // トークン期限切れ: 再取得を試みる
+            var retryToken = localStorage.getItem('token');
+            if (retryToken && retryToken !== currentToken) {
+                token = retryToken;
+                var retryRes = await fetch('/api/notifications/' + notificationId + '/read', {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': 'Bearer ' + retryToken,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                if (retryRes.ok) {
+                    var notification = allNotifications.find(function(n) { return n.id === notificationId; });
+                    if (notification) notification.is_read = true;
+                    if (window.__notifBadge) window.__notifBadge.refresh();
+                }
+            } else {
+                localStorage.removeItem('token');
+                token = null;
+            }
         }
     } catch (error) {
         console.error('Failed to mark as read:', error);
-        // 401の場合はトークンをリフレッシュ試行
-        if (error?.response?.status === 401) {
-            localStorage.removeItem('token');
-            token = null;
-        }
-        // エラーでもナビゲーションは実行
-        if (actionUrl) window.location.href = actionUrl;
     }
+    // エラーでもナビゲーションは実行
+    if (actionUrl) window.location.href = actionUrl;
+    else renderNotifications();
 }
 
-// すべて既読にする（認証ベースAPI使用）
+// すべて既読にする（fetch API使用）
 async function markAllAsRead() {
-    const unreadCount = allNotifications.filter(n => !n.is_read).length;
+    var unreadCount = allNotifications.filter(function(n) { return !n.is_read; }).length;
     if (unreadCount === 0) {
         showToast('未読の通知はありません', 'info');
         return;
     }
 
-    if (!confirm(`${unreadCount}件の通知をすべて既読にしますか？`)) return;
+    if (!confirm(unreadCount + '件の通知をすべて既読にしますか？')) return;
+
+    // トークンの有効性を再確認
+    var currentToken = localStorage.getItem('token');
+    if (!currentToken) {
+        showToast('ログインセッションが切れました。再ログインしてください。', 'error');
+        setTimeout(function() { window.location.href = '/login?redirect=/notifications'; }, 1500);
+        return;
+    }
+    token = currentToken;
 
     try {
-        // トークンの有効性を再確認
-        const currentToken = localStorage.getItem('token');
-        if (!currentToken) {
-            showToast('ログインセッションが切れました。再ログインしてください。', 'error');
-            setTimeout(() => { window.location.href = '/login?redirect=/notifications'; }, 1500);
-            return;
+        var res = await fetch('/api/notifications/read-all', {
+            method: 'PUT',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (res.status === 401) {
+            // トークンが変わっている可能性があるので再取得して再試行
+            var refreshedToken = localStorage.getItem('token');
+            if (refreshedToken && refreshedToken !== currentToken) {
+                token = refreshedToken;
+                res = await fetch('/api/notifications/read-all', {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': 'Bearer ' + refreshedToken,
+                        'Content-Type': 'application/json'
+                    }
+                });
+            }
+
+            if (res.status === 401) {
+                showToast('ログインセッションが切れました。再ログインしてください。', 'error');
+                localStorage.removeItem('token');
+                token = null;
+                setTimeout(function() { window.location.href = '/login?redirect=/notifications'; }, 1500);
+                return;
+            }
         }
-        token = currentToken;
 
-        const response = await axios.put('/api/notifications/read-all', {}, getAuthHeaders());
+        var data = null;
+        try {
+            data = await res.json();
+        } catch (parseError) {
+            console.error('Response parse error:', parseError, 'status:', res.status);
+            // JSONパース失敗でも200系ならOKとみなす
+            if (res.ok) {
+                data = { success: true };
+            } else {
+                showToast('サーバーエラーが発生しました（' + res.status + '）。再度お試しください。', 'error');
+                return;
+            }
+        }
 
-        if (response.data.success) {
-            allNotifications.forEach(n => n.is_read = true);
+        if (data && data.success) {
+            allNotifications.forEach(function(n) { n.is_read = true; });
             renderNotifications();
             showToast('すべての通知を既読にしました', 'success');
             if (window.__notifBadge) window.__notifBadge.refresh();
-        } else {
-            throw new Error(response.data.error || '既読処理に失敗しました');
+        } else if (data) {
+            showToast(data.error || '既読処理に失敗しました。再度お試しください。', 'error');
         }
     } catch (error) {
-        console.error('Failed to mark all as read:', error);
-        if (error?.response?.status === 401) {
-            showToast('ログインセッションが切れました。再ログインしてください。', 'error');
-            localStorage.removeItem('token');
-            token = null;
-            setTimeout(() => { window.location.href = '/login?redirect=/notifications'; }, 1500);
-        } else {
-            showToast('既読処理に失敗しました。再度お試しください。', 'error');
-        }
+        console.error('markAllAsRead error:', error);
+        showToast('ネットワークエラーが発生しました。再度お試しください。', 'error');
     }
 }
 
