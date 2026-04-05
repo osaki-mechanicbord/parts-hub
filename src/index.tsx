@@ -1314,16 +1314,41 @@ app.get('/', (c) => {
         <!-- 商品一覧セクション -->
         <section class="py-8">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <!-- タブ -->
-                <div class="flex items-center space-x-4 mb-6 border-b">
-                    <button class="tab-btn active px-4 py-3 font-semibold text-primary border-b-2 border-primary">
-                        <i class="fas fa-clock mr-2"></i>新着商品
+                <!-- ソートタブ -->
+                <div class="flex items-center space-x-1 sm:space-x-4 mb-4 border-b overflow-x-auto" id="sort-tabs">
+                    <button onclick="switchSortTab('new')" class="sort-tab active whitespace-nowrap px-3 sm:px-4 py-3 font-semibold text-sm sm:text-base text-primary border-b-2 border-primary" data-sort="new">
+                        <i class="fas fa-clock mr-1 sm:mr-2"></i>新着商品
                     </button>
-                    <button class="tab-btn px-4 py-3 font-semibold text-gray-600 hover:text-primary transition-colors">
-                        <i class="fas fa-fire mr-2"></i>人気商品
+                    <button onclick="switchSortTab('popular')" class="sort-tab whitespace-nowrap px-3 sm:px-4 py-3 font-semibold text-sm sm:text-base text-gray-600 hover:text-primary transition-colors border-b-2 border-transparent" data-sort="popular">
+                        <i class="fas fa-fire mr-1 sm:mr-2"></i>人気商品
                     </button>
-                    <button class="tab-btn px-4 py-3 font-semibold text-gray-600 hover:text-primary transition-colors">
-                        <i class="fas fa-tags mr-2"></i>お買い得
+                    <button onclick="switchSortTab('bargain')" class="sort-tab whitespace-nowrap px-3 sm:px-4 py-3 font-semibold text-sm sm:text-base text-gray-600 hover:text-primary transition-colors border-b-2 border-transparent" data-sort="bargain">
+                        <i class="fas fa-tags mr-1 sm:mr-2"></i>お買い得
+                    </button>
+                </div>
+
+                <!-- カテゴリタブ -->
+                <div class="flex items-center gap-2 mb-6 overflow-x-auto pb-2" id="category-tabs" style="scrollbar-width:thin;">
+                    <button onclick="switchCategoryTab('')" class="cat-tab active whitespace-nowrap px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-full bg-red-500 text-white transition-all" data-cat="">
+                        すべて
+                    </button>
+                    <button onclick="switchCategoryTab('car')" class="cat-tab whitespace-nowrap px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all" data-cat="car">
+                        <i class="fas fa-car mr-1"></i>乗用車
+                    </button>
+                    <button onclick="switchCategoryTab('truck')" class="cat-tab whitespace-nowrap px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all" data-cat="truck">
+                        <i class="fas fa-truck mr-1"></i>トラック
+                    </button>
+                    <button onclick="switchCategoryTab('bike')" class="cat-tab whitespace-nowrap px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all" data-cat="bike">
+                        <i class="fas fa-motorcycle mr-1"></i>バイク
+                    </button>
+                    <button onclick="switchCategoryTab('tools')" class="cat-tab whitespace-nowrap px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all" data-cat="tools">
+                        <i class="fas fa-wrench mr-1"></i>工具
+                    </button>
+                    <button onclick="switchCategoryTab('rebuilt')" class="cat-tab whitespace-nowrap px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all" data-cat="rebuilt">
+                        <i class="fas fa-recycle mr-1"></i>リビルト
+                    </button>
+                    <button onclick="switchCategoryTab('electric')" class="cat-tab whitespace-nowrap px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all" data-cat="electric">
+                        <i class="fas fa-bolt mr-1"></i>電装
                     </button>
                 </div>
                 
@@ -1564,6 +1589,76 @@ app.get('/', (c) => {
 
             let currentPage = 1;
             let currentFilters = {};
+            let currentSortTab = 'new';
+            let currentCategoryTab = '';
+
+            // カテゴリタブ→フィルター値のマッピング
+            const categoryTabMap = {
+                '': {},
+                'car': { query: '乗用車' },
+                'truck': { query: 'トラック' },
+                'bike': { query: 'バイク' },
+                'tools': { category_id: 13 },
+                'rebuilt': { category_id: 15 },
+                'electric': { category_id: 4 }
+            };
+
+            // ソートタブ切り替え
+            function switchSortTab(tab) {
+                currentSortTab = tab;
+                // UI更新
+                document.querySelectorAll('.sort-tab').forEach(function(btn) {
+                    if (btn.getAttribute('data-sort') === tab) {
+                        btn.classList.add('active', 'text-primary', 'border-primary');
+                        btn.classList.remove('text-gray-600', 'border-transparent');
+                    } else {
+                        btn.classList.remove('active', 'text-primary', 'border-primary');
+                        btn.classList.add('text-gray-600', 'border-transparent');
+                    }
+                });
+                // フィルター適用
+                if (tab === 'new') {
+                    currentFilters.sort = 'created_desc';
+                } else if (tab === 'popular') {
+                    currentFilters.sort = 'popular';
+                } else if (tab === 'bargain') {
+                    currentFilters.sort = 'price_asc';
+                }
+                // ソートプルダウンも同期
+                var sortSelect = document.getElementById('sort-filter');
+                if (sortSelect) sortSelect.value = currentFilters.sort;
+                currentPage = 1;
+                loadProducts();
+            }
+
+            // カテゴリタブ切り替え
+            function switchCategoryTab(cat) {
+                currentCategoryTab = cat;
+                // UI更新
+                document.querySelectorAll('.cat-tab').forEach(function(btn) {
+                    if (btn.getAttribute('data-cat') === cat) {
+                        btn.classList.add('active', 'bg-red-500', 'text-white');
+                        btn.classList.remove('bg-gray-100', 'text-gray-600');
+                    } else {
+                        btn.classList.remove('active', 'bg-red-500', 'text-white');
+                        btn.classList.add('bg-gray-100', 'text-gray-600');
+                    }
+                });
+                // カテゴリフィルター適用
+                var catConfig = categoryTabMap[cat] || {};
+                // 既存のカテゴリ/キーワードフィルターをクリア
+                delete currentFilters.category_id;
+                // カテゴリタブのキーワードはcatQueryとして管理
+                delete currentFilters.cat_query;
+                if (catConfig.category_id) {
+                    currentFilters.category_id = catConfig.category_id;
+                }
+                if (catConfig.query) {
+                    currentFilters.cat_query = catConfig.query;
+                }
+                currentPage = 1;
+                loadProducts();
+            }
             
             // 検索実行
             function performSearch() {
@@ -1591,10 +1686,21 @@ app.get('/', (c) => {
                 loading.classList.remove('hidden');
                 
                 try {
+                    // cat_queryとqueryをマージしてAPIに渡す
+                    const apiFilters = {};
+                    Object.keys(currentFilters).forEach(function(k) {
+                        if (k !== 'cat_query') apiFilters[k] = currentFilters[k];
+                    });
+                    // カテゴリタブのキーワードと検索キーワードを結合
+                    var combinedQuery = [];
+                    if (currentFilters.cat_query) combinedQuery.push(currentFilters.cat_query);
+                    if (currentFilters.query) combinedQuery.push(currentFilters.query);
+                    if (combinedQuery.length > 0) apiFilters.query = combinedQuery.join(' ');
+                    
                     const params = new URLSearchParams({
                         page: currentPage,
                         limit: 20,
-                        ...currentFilters
+                        ...apiFilters
                     });
                     
                     const response = await axios.get(\`/api/products?\${params}\`);

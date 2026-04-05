@@ -178,7 +178,7 @@ api.get('/products', async (c) => {
     let orderBy = 'p.created_at DESC'
     if (sort === 'price_asc') orderBy = 'p.price ASC'
     else if (sort === 'price_desc') orderBy = 'p.price DESC'
-    else if (sort === 'popular') orderBy = 'p.view_count DESC'
+    else if (sort === 'popular') orderBy = 'p.favorite_count DESC, p.view_count DESC'
 
     const whereClause = conditions.join(' AND ')
 
