@@ -118,19 +118,25 @@ function renderNotifications() {
     container.innerHTML = filtered.map(notification => {
         const actionUrl = notification.action_url || '';
         const safeUrl = actionUrl.replace(/'/g, "\\'");
+        var readStatusHtml = '';
+        if (notification.is_read) {
+            readStatusHtml = '<span class="flex-shrink-0 inline-flex items-center gap-0.5 text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full"><i class="fas fa-check text-[8px]"></i>既読</span>';
+        } else {
+            readStatusHtml = '<span class="flex-shrink-0 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">NEW</span>';
+        }
         return `
         <div onclick="handleNotificationClick(${notification.id}, '${safeUrl}')"
-             class="bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow cursor-pointer ${notification.is_read ? '' : 'border-l-4 border-red-500'}">
+             class="bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow cursor-pointer ${notification.is_read ? 'opacity-75' : 'border-l-4 border-red-500'}">
             <div class="flex items-start gap-3 sm:gap-4">
                 <div class="flex-shrink-0">
                     ${getNotificationIcon(notification.type)}
                 </div>
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center justify-between mb-1 gap-2">
-                        <h3 class="font-semibold text-gray-900 text-sm sm:text-base truncate ${notification.is_read ? '' : 'font-bold'}">${escapeHtml(notification.title || '')}</h3>
-                        ${notification.is_read ? '' : '<span class="flex-shrink-0 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">NEW</span>'}
+                        <h3 class="font-semibold text-gray-900 text-sm sm:text-base truncate ${notification.is_read ? 'text-gray-500' : 'font-bold'}">${escapeHtml(notification.title || '')}</h3>
+                        ${readStatusHtml}
                     </div>
-                    <p class="text-gray-700 text-sm mb-2 line-clamp-2">${escapeHtml(notification.message || '')}</p>
+                    <p class="${notification.is_read ? 'text-gray-500' : 'text-gray-700'} text-sm mb-2 line-clamp-2">${escapeHtml(notification.message || '')}</p>
                     <div class="flex items-center justify-between">
                         <span class="text-xs text-gray-400">
                             <i class="far fa-clock mr-1"></i>${formatDate(notification.created_at)}

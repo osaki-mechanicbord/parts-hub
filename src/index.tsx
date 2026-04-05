@@ -4867,6 +4867,16 @@ app.get('/chat', (c) => {
                           })
                         : '';
                     
+                    // 既読マーク: 自分が送ったメッセージが既読かどうか
+                    const iMyLastMsg = room.last_message_sender_id == currentUserId;
+                    const lastMsgRead = room.last_message_is_read == 1;
+                    let readIcon = '';
+                    if (iMyLastMsg && lastMsgRead) {
+                        readIcon = '<i class="fas fa-check-double text-blue-500 text-[10px] mr-1" title="既読"></i>';
+                    } else if (iMyLastMsg && !lastMsgRead) {
+                        readIcon = '<i class="fas fa-check text-gray-400 text-[10px] mr-1" title="送信済み"></i>';
+                    }
+
                     return \`
                         <a href="/chat/\${room.id}" class="block bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow p-4">
                             <div class="flex items-start gap-4">
@@ -4890,7 +4900,9 @@ app.get('/chat', (c) => {
                                     </div>
                                     <p class="text-sm text-gray-600 mb-1 truncate">\${room.product_title}</p>
                                     <div class="flex items-center justify-between">
-                                        <p class="text-sm text-gray-500 truncate flex-1 mr-2">\${lastMessage}</p>
+                                        <p class="text-sm \${room.unread_count > 0 ? 'text-gray-900 font-semibold' : 'text-gray-500'} truncate flex-1 mr-2">
+                                            \${readIcon}\${lastMessage}
+                                        </p>
                                         <span class="text-xs text-gray-400 flex-shrink-0">\${lastMessageTime}</span>
                                     </div>
                                 </div>
@@ -5164,14 +5176,23 @@ app.get('/chat/:roomId', (c) => {
                 const safeText = msg.message_text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
                 const safeName = (msg.sender_name || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
                 
+                // 既読マーク（自分が送信したメッセージのみ）
+                let readMark = '';
+                if (isSent) {
+                    if (msg.is_read) {
+                        readMark = '<span class="inline-flex items-center ml-1" title="既読"><i class="fas fa-check-double text-blue-300"></i></span>';
+                    } else {
+                        readMark = '<span class="inline-flex items-center ml-1" title="送信済み"><i class="fas fa-check text-red-200"></i></span>';
+                    }
+                }
+
                 return \`
-                    <div class="flex \${isSent ? 'justify-end' : 'justify-start'}">
+                    <div class="flex \${isSent ? 'justify-end' : 'justify-start'}" data-msg-id="\${msg.id}">
                         <div class="message-bubble \${bubbleClass} rounded-2xl px-4 py-2">
                             \${!isSent ? \`<p class="text-xs text-gray-500 mb-1">\${safeName}</p>\` : ''}
                             <p class="\${isSent ? 'text-white' : 'text-gray-900'} whitespace-pre-wrap">\${safeText}</p>
-                            <p class="text-xs \${isSent ? 'text-red-100' : 'text-gray-400'} mt-1 text-right">
-                                \${timeStr}
-                                \${isSent && msg.is_read ? '<i class="fas fa-check-double ml-1"></i>' : ''}
+                            <p class="text-xs \${isSent ? 'text-red-100' : 'text-gray-400'} mt-1 text-right flex items-center justify-end gap-0.5">
+                                \${timeStr}\${readMark}
                             </p>
                         </div>
                     </div>
