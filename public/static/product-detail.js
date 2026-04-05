@@ -1,5 +1,23 @@
 // 商品詳細ページのJavaScript
 
+// 消費税率 (10%)
+const TAX_RATE = 0.10;
+
+// 税込み価格を計算（税抜き価格から）
+function calcTaxIncluded(priceExcludingTax) {
+    return Math.floor(Number(priceExcludingTax || 0) * (1 + TAX_RATE));
+}
+
+// 消費税額を計算
+function calcTaxAmount(priceExcludingTax) {
+    return Math.floor(Number(priceExcludingTax || 0) * TAX_RATE);
+}
+
+// 価格を税込みでフォーマット表示
+function formatPriceTaxIncluded(priceExcludingTax) {
+    return '¥' + calcTaxIncluded(priceExcludingTax).toLocaleString();
+}
+
 let currentImageIndex = 0;
 let product = null;
 let currentUser = null;
@@ -199,8 +217,17 @@ function renderProduct() {
     // 商品タイトル
     document.getElementById('product-title').textContent = product.title;
     
-    // 価格
-    document.getElementById('product-price').textContent = `¥${Number(product.price).toLocaleString()}`;
+    // 価格（税込み表示）
+    const priceExTax = Number(product.price);
+    const taxAmount = calcTaxAmount(priceExTax);
+    const priceIncTax = calcTaxIncluded(priceExTax);
+    document.getElementById('product-price').textContent = `¥${priceIncTax.toLocaleString()}`;
+    
+    // 税抜き価格の内訳表示
+    const taxDetailEl = document.getElementById('tax-detail');
+    if (taxDetailEl) {
+        taxDetailEl.innerHTML = `<span class="text-xs text-gray-500">（税抜 ¥${priceExTax.toLocaleString()} + 消費税 ¥${taxAmount.toLocaleString()}）</span>`;
+    }
     
     // 状態バッジ
     const conditionBadge = document.getElementById('product-condition-badge');
@@ -267,15 +294,21 @@ function renderFeeInfo() {
     const feeContainer = document.getElementById('fee-info');
     if (!feeContainer || !product) return;
     
-    const price = Number(product.price);
-    const platformFee = Math.floor(price * 0.10);
-    const total = price + platformFee;
+    const priceExTax = Number(product.price);
+    const taxAmount = calcTaxAmount(priceExTax);
+    const priceIncTax = calcTaxIncluded(priceExTax);
+    const platformFee = Math.floor(priceExTax * 0.10);
+    const total = priceIncTax + platformFee;
     
     feeContainer.innerHTML = `
         <div class="text-sm text-gray-600 mt-2 space-y-1">
             <div class="flex justify-between">
-                <span>商品価格</span>
-                <span>¥${price.toLocaleString()}</span>
+                <span>商品価格（税抜）</span>
+                <span>¥${priceExTax.toLocaleString()}</span>
+            </div>
+            <div class="flex justify-between">
+                <span>消費税（10%）</span>
+                <span>¥${taxAmount.toLocaleString()}</span>
             </div>
             <div class="flex justify-between">
                 <span>サービス手数料（10%）</span>
@@ -610,13 +643,16 @@ async function purchaseProduct() {
     }
     
     // 確認ダイアログ
-    const price = Number(product.price);
-    const platformFee = Math.floor(price * 0.10);
-    const total = price + platformFee;
+    const priceExTax = Number(product.price);
+    const taxAmount = calcTaxAmount(priceExTax);
+    const priceIncTax = calcTaxIncluded(priceExTax);
+    const platformFee = Math.floor(priceExTax * 0.10);
+    const total = priceIncTax + platformFee;
     
     const confirmed = confirm(
         `「${product.title}」を購入しますか？\n\n` +
-        `商品価格: ¥${price.toLocaleString()}\n` +
+        `商品価格（税抜）: ¥${priceExTax.toLocaleString()}\n` +
+        `消費税（10%）: ¥${taxAmount.toLocaleString()}\n` +
         `サービス手数料（10%）: ¥${platformFee.toLocaleString()}\n` +
         `━━━━━━━━━━━━━━\n` +
         `お支払い合計: ¥${total.toLocaleString()}\n\n` +

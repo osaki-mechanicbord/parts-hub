@@ -629,7 +629,7 @@ app.get('/llms-full.txt', async (c) => {
     const prods = await DB.prepare("SELECT id, title, price, condition FROM products WHERE status='active' ORDER BY created_at DESC LIMIT 20").all()
     productsSection = prods.results.map((p: any) => {
       const condMap: Record<string,string> = { new:'新品', like_new:'未使用に近い', good:'良好', fair:'やや傷あり', poor:'状態不良' }
-      return `- ${p.title}（¥${Number(p.price).toLocaleString()}・${condMap[p.condition]||p.condition}）: https://parts-hub-tci.com/products/${p.id}`
+      return `- ${p.title}（¥${Math.floor(Number(p.price) * 1.1).toLocaleString()} 税込・${condMap[p.condition]||p.condition}）: https://parts-hub-tci.com/products/${p.id}`
     }).join('\n')
   } catch(e) {}
   
@@ -1707,7 +1707,7 @@ app.get('/', (c) => {
                             <!-- 価格 -->
                             <div class="flex items-center justify-between mb-2">
                                 <div class="flex items-baseline">
-                                    <span class="text-xl font-bold text-gray-900">¥\${Number(product.price).toLocaleString()}</span>
+                                    <span class="text-xl font-bold text-gray-900">¥\${Math.floor(Number(product.price) * 1.1).toLocaleString()}</span>
                                     <span class="text-xs text-gray-500 ml-1">税込</span>
                                 </div>
                             </div>
@@ -3377,6 +3377,7 @@ app.get('/products/:id', async (c) => {
       const pTitle = String(p.title || '').replace(/"/g, '&quot;').replace(/</g, '&lt;')
       const pDesc = String(p.description || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').substring(0, 160)
       const pPrice = Number(p.price || 0)
+      const pPriceTaxIncluded = Math.floor(pPrice * 1.1)
       const rawImg = String(p.main_image || '')
       const imgPath = rawImg.startsWith('/r2/') ? rawImg : rawImg.startsWith('r2/') ? `/${rawImg}` : `/r2/${rawImg}`
       const pImage = p.main_image ? `https://parts-hub-tci.com${imgPath}` : seoImage
@@ -3386,9 +3387,9 @@ app.get('/products/:id', async (c) => {
       const pCondLabel = pCondMap[String(p.condition)] || String(p.condition || '中古')
       const pAvail = p.status === 'active' ? 'https://schema.org/InStock' : 'https://schema.org/SoldOut'
       seoTitle = `${pTitle} - PARTS HUB（パーツハブ）`
-      seoDesc = pDesc || `${pTitle}｜${pCat}｜¥${pPrice.toLocaleString()}｜${pCondLabel}｜PARTS HUB`
+      seoDesc = pDesc || `${pTitle}｜${pCat}｜¥${pPriceTaxIncluded.toLocaleString()}（税込）｜${pCondLabel}｜PARTS HUB`
       seoImage = pImage
-      seoPrice = String(pPrice)
+      seoPrice = String(pPriceTaxIncluded)
 
       // 全商品画像を取得
       const allImages: string[] = [pImage]
@@ -3441,7 +3442,7 @@ app.get('/products/:id', async (c) => {
           "@type": "Offer",
           "url": seoUrl,
           "priceCurrency": "JPY",
-          "price": pPrice,
+          "price": pPriceTaxIncluded,
           "availability": pAvail,
           "priceValidUntil": new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0],
           "seller": { "@type": "AutoPartsStore", "name": pSeller, "url": `https://parts-hub-tci.com/seller/${p.seller_user_id || p.user_id}` },
@@ -3578,6 +3579,7 @@ app.get('/products/:id', async (c) => {
                                 <span id="product-price" class="text-4xl font-bold text-gray-900">¥0</span>
                                 <span class="text-gray-500 text-sm">（税込・送料別）</span>
                             </div>
+                            <div id="tax-detail" class="mt-1"></div>
                         </div>
                         
                         <!-- アクションボタン -->
@@ -4139,22 +4141,28 @@ app.get('/listing', (c) => {
                         </div>
                         <div>
                             <div class="font-bold text-sm text-gray-900">価格設定</div>
-                            <div class="text-xs text-gray-400">税込価格で入力</div>
+                            <div class="text-xs text-gray-400">税抜き価格を入力（税込み価格は自動計算されます）</div>
                         </div>
                     </div>
                     <div class="section-body space-y-5">
                         <!-- 販売価格 -->
                         <div>
-                            <label class="form-label">販売価格 <span class="required">必須</span></label>
+                            <label class="form-label">販売価格（税抜き） <span class="required">必須</span></label>
                             <div class="relative">
                                 <span class="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-bold text-gray-400">¥</span>
                                 <input type="number" id="product-price" required min="0"
                                        class="form-input text-right text-xl font-bold" style="padding-left: 36px;"
                                        placeholder="0">
                             </div>
-                            <div class="flex items-center justify-between mt-2">
-                                <span class="form-helper">税込価格を入力してください</span>
-                                <span class="text-xs text-green-600 font-medium bg-green-50 px-2 py-0.5 rounded" id="fee-display">販売手数料 10%：¥0</span>
+                            <div class="mt-2 space-y-1">
+                                <div class="flex items-center justify-between">
+                                    <span class="form-helper">税抜き価格を入力してください</span>
+                                    <span class="text-xs text-blue-600 font-medium bg-blue-50 px-2 py-0.5 rounded" id="tax-included-display">税込価格：¥0</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs text-gray-400">消費税10%が自動加算されます</span>
+                                    <span class="text-xs text-green-600 font-medium bg-green-50 px-2 py-0.5 rounded" id="fee-display">販売手数料 10%：¥0</span>
+                                </div>
                             </div>
                         </div>
 
@@ -4648,14 +4656,20 @@ app.get('/listing', (c) => {
                 if (e.target === this) closeProxyListingModal();
             });
 
-            // 販売手数料リアルタイム表示
+            // 販売手数料・税込み価格リアルタイム表示
             var priceInput = document.getElementById('product-price');
             if (priceInput) {
                 priceInput.addEventListener('input', function() {
                     var price = parseInt(this.value) || 0;
                     var fee = Math.floor(price * 0.1);
+                    var taxAmount = Math.floor(price * 0.1);
+                    var taxIncluded = Math.floor(price * 1.1);
                     document.getElementById('fee-display').textContent =
                         '販売手数料 10%：¥' + fee.toLocaleString();
+                    var taxDisplay = document.getElementById('tax-included-display');
+                    if (taxDisplay) {
+                        taxDisplay.textContent = '税込価格：¥' + taxIncluded.toLocaleString();
+                    }
                 });
             }
 
@@ -7097,7 +7111,7 @@ app.get('/favorites', (c) => {
                                 <div class="p-3">
                                     <a href="/products/\${item.id}" class="block">
                                         <h3 class="text-sm font-semibold text-gray-900 mb-2 line-clamp-2 hover:text-red-500">\${item.title}</h3>
-                                        <p class="text-lg font-bold text-red-500 mb-2">¥\${Number(item.price).toLocaleString()}</p>
+                                        <p class="text-lg font-bold text-red-500 mb-2">¥\${Math.floor(Number(item.price) * 1.1).toLocaleString()} <span class="text-xs font-normal text-gray-500">税込</span></p>
                                     </a>
                                     <div class="flex items-center justify-between text-xs text-gray-500 mb-3">
                                         <span><i class="fas fa-heart mr-1"></i>\${item.favorite_count}</span>
@@ -7356,7 +7370,7 @@ app.get('/search', (c) => {
                                 </div>
                                 <div class="p-3">
                                     <h3 class="text-sm font-semibold text-gray-900 mb-2 line-clamp-2">\${product.title}</h3>
-                                    <p class="text-lg font-bold text-red-500 mb-2">¥\${Number(product.price).toLocaleString()}</p>
+                                    <p class="text-lg font-bold text-red-500 mb-2">¥\${Math.floor(Number(product.price) * 1.1).toLocaleString()} <span class="text-xs font-normal text-gray-500">税込</span></p>
                                     <div class="flex items-center justify-between text-xs text-gray-500">
                                         <span><i class="fas fa-heart mr-1"></i>\${product.favorite_count || 0}</span>
                                         <span><i class="fas fa-comment mr-1"></i>\${product.comment_count || 0}</span>
@@ -7713,7 +7727,7 @@ app.get('/terms', (c) => {
                         本サービスの利用には、以下の手数料が発生します：
                     </p>
                     <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
-                        <li><strong>販売手数料：</strong>商品価格の10%（税込）</li>
+                        <li><strong>販売手数料：</strong>商品価格（税抜）の10%</li>
                         <li><strong>振込手数料：</strong>売上金の出金時に200円</li>
                         <li><strong>代理出品手数料：</strong>別途料金表に基づく</li>
                     </ul>
@@ -8263,7 +8277,7 @@ app.get('/area/:pref', async (c) => {
     productsCount = prods.results.length
     const condMap: Record<string,string> = { new:'新品', like_new:'未使用に近い', good:'良好', fair:'やや傷あり', poor:'状態不良' }
     productsHtml = prods.results.map((p: any) => {
-      const price = Number(p.price || 0).toLocaleString()
+      const priceTaxIncluded = Math.floor(Number(p.price || 0) * 1.1).toLocaleString()
       const cond = condMap[p.condition] || p.condition || '中古'
       const safeTitle = String(p.title || '').replace(/</g, '&lt;')
       const imgUrl = p.image_url ? '/r2/' + p.image_url : '/icons/icon.svg'
@@ -8271,7 +8285,7 @@ app.get('/area/:pref', async (c) => {
         '<div class="product-img-wrap"><img src="' + imgUrl + '" alt="' + safeTitle + '" class="product-img" loading="lazy"></div>' +
         '<div class="product-info">' +
         '<p class="product-title">' + safeTitle + '</p>' +
-        '<p class="product-price">&yen;' + price + '<span class="product-cond">' + cond + '</span></p>' +
+        '<p class="product-price">&yen;' + priceTaxIncluded + '<span class="product-tax-label" style="font-size:10px;font-weight:400;color:#6b7280;margin-left:2px;">税込</span><span class="product-cond">' + cond + '</span></p>' +
         '</div></a>'
     }).join('')
 
@@ -8637,11 +8651,11 @@ app.get('/vehicle/:slug', async (c) => {
     ).all()
     const condMap: Record<string,string> = { new:'新品', like_new:'未使用に近い', good:'良好', fair:'やや傷あり', poor:'状態不良' }
     productsHtml = prods.results.map((p: any) => {
-      const price = Number(p.price || 0).toLocaleString()
+      const priceTaxIncluded = Math.floor(Number(p.price || 0) * 1.1).toLocaleString()
       const cond = condMap[p.condition] || p.condition || '中古'
       const safeTitle = String(p.title || '').replace(/</g, '&lt;')
       const imgUrl = p.image_url ? '/r2/' + p.image_url : '/icons/icon.svg'
-      return '<a href="/products/' + p.id + '" class="product-card"><div class="product-img-wrap"><img src="' + imgUrl + '" alt="' + safeTitle + '" class="product-img" loading="lazy"></div><div class="product-info"><p class="product-title">' + safeTitle + '</p><p class="product-price">&yen;' + price + '<span class="product-cond">' + cond + '</span></p></div></a>'
+      return '<a href="/products/' + p.id + '" class="product-card"><div class="product-img-wrap"><img src="' + imgUrl + '" alt="' + safeTitle + '" class="product-img" loading="lazy"></div><div class="product-info"><p class="product-title">' + safeTitle + '</p><p class="product-price">&yen;' + priceTaxIncluded + '<span style="font-size:10px;font-weight:400;color:#6b7280;margin-left:2px;">税込</span><span class="product-cond">' + cond + '</span></p></div></a>'
     }).join('')
 
     const cats = await DB.prepare('SELECT id, name FROM categories ORDER BY id').all()
@@ -9522,7 +9536,7 @@ app.get('/sitemap', async (c) => {
     ).all()
     const condMap: Record<string,string> = { new:'新品', like_new:'未使用に近い', good:'良好', fair:'やや傷あり', poor:'状態不良' }
     productsHtml = prods.results.map((p: any) => {
-      const price = Number(p.price || 0).toLocaleString()
+      const priceTaxIncluded = Math.floor(Number(p.price || 0) * 1.1).toLocaleString()
       const cond = condMap[p.condition] || p.condition || '中古'
       const safeTitle = String(p.title || '').replace(/</g,'&lt;')
       return '<li><a href="/products/' + p.id + '" class="sitemap-link group">' +
@@ -9530,7 +9544,7 @@ app.get('/sitemap', async (c) => {
         '<i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-1 mt-1.5 flex-shrink-0"></i>' +
         '<div class="min-w-0">' +
         '<span class="block text-sm leading-snug">' + safeTitle + '</span>' +
-        '<span class="text-xs text-gray-400 mt-0.5 block">&yen;' + price + '・' + cond + '</span>' +
+        '<span class="text-xs text-gray-400 mt-0.5 block">&yen;' + priceTaxIncluded + '（税込）・' + cond + '</span>' +
         '</div></div></a></li>'
     }).join('')
   } catch(e) { console.error('Sitemap page error:', e) }
@@ -9854,14 +9868,14 @@ app.get('/legal', (c) => {
 
                 <section class="border-b border-gray-200 pb-4">
                     <h2 class="text-lg font-bold text-gray-900 mb-3">販売価格</h2>
-                    <p class="text-gray-700 mb-2">各商品ページに表示される価格（税込）</p>
-                    <p class="text-sm text-gray-600">※商品価格は出品者が設定します</p>
+                    <p class="text-gray-700 mb-2">各商品ページに表示される価格（税抜き価格 + 消費税10% = 税込価格）</p>
+                    <p class="text-sm text-gray-600">※商品価格は出品者が税抜き価格で設定し、消費税10%が自動計算されます</p>
                 </section>
 
                 <section class="border-b border-gray-200 pb-4">
                     <h2 class="text-lg font-bold text-gray-900 mb-3">手数料</h2>
                     <div class="space-y-2 text-gray-700">
-                        <p><strong>販売手数料：</strong>商品価格の10%（税込）</p>
+                        <p><strong>販売手数料：</strong>商品価格（税抜）の10%</p>
                         <p><strong>振込手数料：</strong>売上金の出金時に200円</p>
                         <p><strong>代理出品手数料：</strong>サービス内容により異なります（別途お見積り）</p>
                     </div>
@@ -10546,7 +10560,7 @@ app.get('/argos-demo', (c) => {
               (p.compatible && p.compatible.length > 0 ? '<div class="text-xs text-blue-400 mt-0.5"><i class="fas fa-link mr-0.5"></i>互換: ' + p.compatible.join(', ') + '</div>' : '') +
             '</div>' +
             '<div class="text-right ml-3 flex-shrink-0">' +
-              '<div class="text-sm font-bold text-gray-800">&yen;' + Number(p.price).toLocaleString() + '</div>' +
+              '<div class="text-sm font-bold text-gray-800">&yen;' + Math.floor(Number(p.price) * 1.1).toLocaleString() + '</div>' +
               '<div class="text-xs text-gray-400">参考価格</div>' +
             '</div>' +
           '</div></div>';
@@ -10601,7 +10615,7 @@ app.get('/argos-demo', (c) => {
         countEl.textContent = count + '件選択中';
 
         area.innerHTML = selectedParts.map(function(p) {
-          return '<div class="flex items-center justify-between bg-white rounded-lg px-4 py-2.5 shadow-sm border"><div class="flex items-center gap-2"><span class="font-mono text-sm font-bold text-red-600">' + p.part_number + '</span><span class="text-sm text-gray-600">' + p.name + '</span></div><span class="font-bold text-sm">&yen;' + Number(p.price).toLocaleString() + '</span></div>';
+          return '<div class="flex items-center justify-between bg-white rounded-lg px-4 py-2.5 shadow-sm border"><div class="flex items-center gap-2"><span class="font-mono text-sm font-bold text-red-600">' + p.part_number + '</span><span class="text-sm text-gray-600">' + p.name + '</span></div><span class="font-bold text-sm">&yen;' + Math.floor(Number(p.price) * 1.1).toLocaleString() + ' <span style="font-size:10px;color:#6b7280;">税込</span></span></div>';
         }).join('');
 
         // プレビュー
@@ -10615,7 +10629,7 @@ app.get('/argos-demo', (c) => {
             { label: '型式', value: v.katashiki, icon: 'fa-hashtag' },
             { label: '年式', value: v.year + '年' + v.month + '月', icon: 'fa-calendar' },
             { label: 'OEM品番', value: selectedParts.map(function(p) { return p.part_number; }).join(', '), icon: 'fa-barcode' },
-            { label: '参考新品価格', value: '&yen;' + selectedParts.reduce(function(s,p) { return s + p.price; }, 0).toLocaleString(), icon: 'fa-yen-sign' }
+            { label: '参考新品価格', value: '&yen;' + Math.floor(selectedParts.reduce(function(s,p) { return s + p.price; }, 0) * 1.1).toLocaleString() + '（税込）', icon: 'fa-yen-sign' }
           ];
           document.getElementById('listing-preview-content').innerHTML = previewFields.map(function(f) {
             return '<div class="bg-gray-50 rounded-lg p-2.5"><p class="text-gray-400 mb-0.5 flex items-center gap-1"><i class="fas ' + f.icon + ' w-3 text-center"></i>' + f.label + '</p><p class="font-semibold text-gray-800">' + f.value + '</p></div>';
@@ -10667,10 +10681,10 @@ app.get('/argos-demo', (c) => {
       lines.push('');
       lines.push('[選択部品]');
       selectedParts.forEach(function(p) {
-        lines.push('  ' + p.part_number + ' ' + p.name + ' \\xA5' + Number(p.price).toLocaleString());
+        lines.push('  ' + p.part_number + ' ' + p.name + ' \\xA5' + Math.floor(Number(p.price) * 1.1).toLocaleString() + '(税込)');
       });
       lines.push('');
-      lines.push('合計参考価格: \\xA5' + selectedParts.reduce(function(s,p) { return s + p.price; }, 0).toLocaleString());
+      lines.push('合計参考価格: \\xA5' + Math.floor(selectedParts.reduce(function(s,p) { return s + p.price; }, 0) * 1.1).toLocaleString() + '(税込)');
       alert(lines.join('\\n'));
     }
 
@@ -10701,7 +10715,7 @@ app.get('/argos-demo', (c) => {
           return '<div class="listing-card bg-white rounded-lg p-4 shadow-sm border cursor-pointer">' +
             '<div class="flex items-center justify-between mb-2">' +
               '<div class="flex items-center gap-2"><span class="font-mono text-sm font-bold text-blue-600">' + l.part_number + '</span><span class="tag bg-' + (l.condition === '美品' ? 'green' : l.condition === '良品' ? 'yellow' : 'gray') + '-100 text-' + (l.condition === '美品' ? 'green' : l.condition === '良品' ? 'yellow' : 'gray') + '-600">' + l.condition + '</span></div>' +
-              '<span class="font-bold text-lg text-red-600">&yen;' + Number(l.price).toLocaleString() + '</span>' +
+              '<span class="font-bold text-lg text-red-600">&yen;' + Math.floor(Number(l.price) * 1.1).toLocaleString() + ' <span style="font-size:10px;font-weight:400;color:#6b7280;">税込</span></span>' +
             '</div>' +
             '<p class="text-sm text-gray-700 mb-1">' + l.title + '</p>' +
             '<div class="flex items-center justify-between text-xs text-gray-400">' +
