@@ -1567,11 +1567,14 @@ app.get('/', (c) => {
             
             // 検索実行
             function performSearch() {
-                const query = document.getElementById('search-input').value;
-                if (query.trim()) {
+                const query = document.getElementById('search-input').value.trim();
+                if (query) {
                     currentFilters.query = query;
-                    loadProducts();
+                } else {
+                    delete currentFilters.query;
                 }
+                currentPage = 1;
+                loadProducts();
             }
             
             // キーワード検索
@@ -1822,6 +1825,15 @@ app.get('/', (c) => {
             document.getElementById('search-input')?.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
                     performSearch();
+                }
+            });
+            
+            // 検索入力クリア時に全商品一覧に戻す
+            document.getElementById('search-input')?.addEventListener('input', (e) => {
+                if (!e.target.value.trim()) {
+                    delete currentFilters.query;
+                    currentPage = 1;
+                    loadProducts();
                 }
             });
             
