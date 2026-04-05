@@ -1289,14 +1289,7 @@ app.get('/', (c) => {
                             </button>
                         </div>
                         
-                        <!-- 人気キーワード -->
-                        <div class="mt-4 sm:mt-6 flex flex-wrap gap-2 sm:gap-3 justify-center">
-                            <span class="text-xs sm:text-sm text-white/90 font-medium">人気:</span>
-                            <button onclick="searchKeyword('トヨタ')" class="text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2 bg-white/20 hover:bg-white/30 rounded-full transition-all backdrop-blur-sm border border-white/30 font-medium">トヨタ</button>
-                            <button onclick="searchKeyword('エンジン')" class="text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2 bg-white/20 hover:bg-white/30 rounded-full transition-all backdrop-blur-sm border border-white/30 font-medium">エンジン</button>
-                            <button onclick="searchKeyword('ドア')" class="text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2 bg-white/20 hover:bg-white/30 rounded-full transition-all backdrop-blur-sm border border-white/30 font-medium">ドア</button>
-                            <button onclick="searchKeyword('ライト')" class="text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2 bg-white/20 hover:bg-white/30 rounded-full transition-all backdrop-blur-sm border border-white/30 font-medium">ライト</button>
-                        </div>
+
                     </div>
                 </div>
             </div>
