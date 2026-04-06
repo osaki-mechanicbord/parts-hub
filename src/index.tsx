@@ -4094,9 +4094,12 @@ app.get('/listing', (c) => {
         <!-- ヘッダー -->
         <header class="bg-white border-b border-gray-100 sticky top-0 z-50">
             <div class="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
-                <button onclick="window.history.back()" class="text-gray-500 hover:text-gray-900 flex items-center gap-1.5 text-sm font-medium">
-                    <i class="fas fa-chevron-left"></i><span>戻る</span>
-                </button>
+                <div class="flex items-center gap-3">
+                    <a href="/" class="text-red-500 hover:text-red-600 transition-colors" title="TOPへ"><i class="fas fa-home text-lg"></i></a>
+                    <button onclick="window.history.back()" class="text-gray-500 hover:text-gray-900 flex items-center gap-1.5 text-sm font-medium">
+                        <i class="fas fa-chevron-left"></i><span>戻る</span>
+                    </button>
+                </div>
                 <div class="font-bold text-base text-gray-900">商品を出品</div>
                 <a href="/faq" class="text-gray-400 hover:text-gray-600 text-sm">
                     <i class="fas fa-question-circle text-lg"></i>
@@ -4915,9 +4918,12 @@ app.get('/chat', (c) => {
         <!-- ヘッダー -->
         <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
             <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <a href="/" class="text-red-500 hover:text-red-600 transition-colors flex-shrink-0" title="TOPへ"><i class="fas fa-home text-lg"></i></a>
                 <button onclick="window.location.href='/mypage'" class="text-gray-600 hover:text-gray-900 flex items-center">
                     <i class="fas fa-arrow-left mr-2"></i>マイページ
                 </button>
+                </div>
                 <h1 class="text-red-500 font-bold text-lg">メッセージ</h1>
                 <div class="w-16"></div>
             </div>
@@ -5137,9 +5143,12 @@ app.get('/chat/:roomId', (c) => {
         <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
             <div class="max-w-4xl mx-auto px-4 py-4">
                 <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-3">
+                        <a href="/" class="text-red-500 hover:text-red-600 transition-colors flex-shrink-0" title="TOPへ"><i class="fas fa-home text-lg"></i></a>
                     <button onclick="window.location.href='/chat'" class="text-gray-600 hover:text-gray-900">
                         <i class="fas fa-arrow-left text-xl"></i>
                     </button>
+                    </div>
                     <div id="header-product-image" class="flex-shrink-0">
                         <div class="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center">
                             <i class="fas fa-box text-gray-400"></i>
@@ -5474,9 +5483,12 @@ app.get('/mypage', (c) => {
         <!-- ヘッダー -->
         <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
             <div class="max-w-6xl mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between">
-                <button onclick="window.location.href='/'" class="text-gray-600 hover:text-gray-900 flex items-center text-sm">
-                    <i class="fas fa-arrow-left mr-1 sm:mr-2"></i>戻る
-                </button>
+                <div class="flex items-center gap-2">
+                    <a href="/" class="text-red-500 hover:text-red-600 transition-colors flex-shrink-0" title="TOPへ"><i class="fas fa-home text-lg"></i></a>
+                    <button onclick="window.history.back()" class="text-gray-600 hover:text-gray-900 flex items-center text-sm">
+                        <i class="fas fa-arrow-left mr-1 sm:mr-2"></i>戻る
+                    </button>
+                </div>
                 <h1 class="text-red-500 font-bold text-base sm:text-lg">マイページ</h1>
                 <button onclick="window.location.href='/notifications'" class="relative">
                     <i class="far fa-bell text-xl sm:text-2xl text-gray-600"></i>
@@ -5716,9 +5728,12 @@ app.get('/notifications', (c) => {
         <!-- ヘッダー -->
         <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
             <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <a href="/" class="text-red-500 hover:text-red-600 transition-colors flex-shrink-0" title="TOPへ"><i class="fas fa-home text-lg"></i></a>
                 <button onclick="window.location.href='/mypage'" class="text-gray-600 hover:text-gray-900 flex items-center">
                     <i class="fas fa-arrow-left mr-2"></i>戻る
                 </button>
+                </div>
                 <h1 class="text-red-500 font-bold text-lg">通知</h1>
                 <button onclick="markAllAsRead()" class="text-sm text-blue-600 hover:underline">
                     すべて既読
@@ -5808,9 +5823,12 @@ app.get('/profile/edit', (c) => {
         <!-- ヘッダー -->
         <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
             <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <a href="/" class="text-red-500 hover:text-red-600 transition-colors flex-shrink-0" title="TOPへ"><i class="fas fa-home text-lg"></i></a>
                 <button onclick="window.location.href='/mypage'" class="text-gray-600 hover:text-gray-900 flex items-center">
                     <i class="fas fa-arrow-left mr-2"></i>戻る
                 </button>
+                </div>
                 <h1 class="text-red-500 font-bold text-lg">プロフィール編集</h1>
                 <div class="w-16"></div>
             </div>
@@ -6242,7 +6260,10 @@ app.get('/seller/:id', async (c) => {
         <!-- ヘッダー -->
         <header class="sticky top-0 z-50 bg-white shadow-sm">
             <div class="max-w-4xl mx-auto px-4 py-3 flex items-center">
+                <div class="flex items-center gap-3">
+                    <a href="/" class="text-red-500 hover:text-red-600 transition-colors flex-shrink-0" title="TOPへ"><i class="fas fa-home text-lg"></i></a>
                 <button onclick="history.back()" class="mr-3 text-gray-600 hover:text-gray-900"><i class="fas fa-arrow-left"></i></button>
+                </div>
                 <h1 class="font-bold text-gray-900">出品者プロフィール</h1>
             </div>
         </header>
@@ -6534,9 +6555,12 @@ app.get('/reviews/new', (c) => {
         <!-- ヘッダー -->
         <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
             <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <a href="/" class="text-red-500 hover:text-red-600 transition-colors flex-shrink-0" title="TOPへ"><i class="fas fa-home text-lg"></i></a>
                 <button onclick="window.history.back()" class="text-gray-600 hover:text-gray-900 flex items-center">
                     <i class="fas fa-arrow-left mr-2"></i>戻る
                 </button>
+                </div>
                 <h1 class="text-red-500 font-bold text-lg">レビューを書く</h1>
                 <div class="w-16"></div>
             </div>
@@ -6652,9 +6676,12 @@ app.get('/transactions/:id', (c) => {
         <!-- ヘッダー -->
         <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
             <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <a href="/" class="text-red-500 hover:text-red-600 transition-colors flex-shrink-0" title="TOPへ"><i class="fas fa-home text-lg"></i></a>
                 <button onclick="window.history.back()" class="text-gray-600 hover:text-gray-900 flex items-center">
                     <i class="fas fa-arrow-left mr-2"></i>戻る
                 </button>
+                </div>
                 <h1 class="text-red-500 font-bold text-lg">取引詳細</h1>
                 <div class="w-16"></div>
             </div>
@@ -7038,9 +7065,12 @@ app.get('/contact', (c) => {
         <!-- ヘッダー -->
         <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
             <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <a href="/" class="text-red-500 hover:text-red-600 transition-colors flex-shrink-0" title="TOPへ"><i class="fas fa-home text-lg"></i></a>
                 <button onclick="window.history.back()" class="text-gray-600 hover:text-gray-900 flex items-center">
                     <i class="fas fa-arrow-left mr-2"></i>戻る
                 </button>
+                </div>
                 <h1 class="text-red-500 font-bold text-lg">お問い合わせ</h1>
                 <div class="w-16"></div>
             </div>
@@ -7209,9 +7239,12 @@ app.get('/favorites', (c) => {
         <!-- ヘッダー -->
         <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
             <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-                <button onclick="window.location.href='/'" class="text-gray-600 hover:text-gray-900 flex items-center">
-                    <i class="fas fa-arrow-left mr-2"></i>戻る
-                </button>
+                <div class="flex items-center gap-2">
+                    <a href="/" class="text-red-500 hover:text-red-600 transition-colors flex-shrink-0" title="TOPへ"><i class="fas fa-home text-lg"></i></a>
+                    <button onclick="window.history.back()" class="text-gray-600 hover:text-gray-900 flex items-center">
+                        <i class="fas fa-arrow-left mr-2"></i>戻る
+                    </button>
+                </div>
                 <h1 class="text-red-500 font-bold text-lg">お気に入り</h1>
                 <div class="w-16"></div>
             </div>
@@ -7372,7 +7405,8 @@ app.get('/search', (c) => {
         <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
             <div class="max-w-6xl mx-auto px-4 py-3 sm:py-4">
                 <div class="flex items-center gap-2 sm:gap-3">
-                    <button onclick="window.location.href='/'" class="text-gray-600 hover:text-gray-900 flex-shrink-0">
+                    <a href="/" class="text-red-500 hover:text-red-600 transition-colors flex-shrink-0" title="TOPへ"><i class="fas fa-home text-lg sm:text-xl"></i></a>
+                    <button onclick="window.history.back()" class="text-gray-600 hover:text-gray-900 flex-shrink-0">
                         <i class="fas fa-arrow-left text-lg sm:text-xl"></i>
                     </button>
                     <div class="flex-1 relative">
@@ -7610,9 +7644,12 @@ app.get('/privacy', (c) => {
     <body class="bg-gray-50 min-h-screen">
         <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
             <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <a href="/" class="text-red-500 hover:text-red-600 transition-colors flex-shrink-0" title="TOPへ"><i class="fas fa-home text-lg"></i></a>
                 <button onclick="window.history.back()" class="text-gray-600 hover:text-gray-900 flex items-center">
                     <i class="fas fa-arrow-left mr-2"></i>戻る
                 </button>
+                </div>
                 <h1 class="text-red-500 font-bold text-lg">プライバシーポリシー</h1>
                 <div class="w-16"></div>
             </div>
@@ -7759,9 +7796,12 @@ app.get('/terms', (c) => {
     <body class="bg-gray-50 min-h-screen">
         <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
             <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <a href="/" class="text-red-500 hover:text-red-600 transition-colors flex-shrink-0" title="TOPへ"><i class="fas fa-home text-lg"></i></a>
                 <button onclick="window.history.back()" class="text-gray-600 hover:text-gray-900 flex items-center">
                     <i class="fas fa-arrow-left mr-2"></i>戻る
                 </button>
+                </div>
                 <h1 class="text-red-500 font-bold text-lg">利用規約</h1>
                 <div class="w-16"></div>
             </div>
@@ -8117,9 +8157,12 @@ app.get('/security', (c) => {
     <body class="bg-gray-50 min-h-screen">
         <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
             <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <a href="/" class="text-red-500 hover:text-red-600 transition-colors flex-shrink-0" title="TOPへ"><i class="fas fa-home text-lg"></i></a>
                 <button onclick="window.history.back()" class="text-gray-600 hover:text-gray-900 flex items-center">
                     <i class="fas fa-arrow-left mr-2"></i>戻る
                 </button>
+                </div>
                 <h1 class="text-red-500 font-bold text-lg">セキュリティポリシー</h1>
                 <div class="w-16"></div>
             </div>
@@ -9969,9 +10012,12 @@ app.get('/legal', (c) => {
     <body class="bg-gray-50 min-h-screen">
         <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
             <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <a href="/" class="text-red-500 hover:text-red-600 transition-colors flex-shrink-0" title="TOPへ"><i class="fas fa-home text-lg"></i></a>
                 <button onclick="window.history.back()" class="text-gray-600 hover:text-gray-900 flex items-center">
                     <i class="fas fa-arrow-left mr-2"></i>戻る
                 </button>
+                </div>
                 <h1 class="text-red-500 font-bold text-lg">特定商取引法に基づく表記</h1>
                 <div class="w-16"></div>
             </div>
@@ -12160,9 +12206,12 @@ app.get('/faq', (c) => {
     <body class="bg-gray-50 min-h-screen">
         <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
             <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <a href="/" class="text-red-500 hover:text-red-600 transition-colors flex-shrink-0" title="TOPへ"><i class="fas fa-home text-lg"></i></a>
                 <button onclick="window.history.back()" class="text-gray-600 hover:text-gray-900 flex items-center">
                     <i class="fas fa-arrow-left mr-2"></i>戻る
                 </button>
+                </div>
                 <h1 class="text-red-500 font-bold text-lg">よくある質問</h1>
                 <div class="w-16"></div>
             </div>
