@@ -440,12 +440,12 @@ app.get('/sitemap.xml', async (c) => {
       LIMIT 1000
     `).all();
 
-    // アクティブな商品を取得
+    // アクティブ＋売却済み商品を取得（SOLD商品もSEO価値を維持）
     const products = await env.DB.prepare(`
-      SELECT p.id, p.title, p.updated_at, p.created_at,
+      SELECT p.id, p.title, p.status, p.updated_at, p.created_at,
         (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as main_image
       FROM products p
-      WHERE p.status = 'active' 
+      WHERE p.status IN ('active', 'sold') 
       ORDER BY p.created_at DESC 
       LIMIT 5000
     `).all();
@@ -538,8 +538,10 @@ app.get('/sitemap.xml', async (c) => {
     });
 
     // 商品ページ
+    // 商品ページ（active: 高優先度、sold: やや低い優先度で残す）
     products.results.forEach((product: any) => {
       const lastmod = product.updated_at ? new Date(product.updated_at).toISOString().split('T')[0] : (product.created_at ? new Date(product.created_at).toISOString().split('T')[0] : now);
+      const isSold = product.status === 'sold'
       const imgRaw = String(product.main_image || '')
       const imgUrl = imgRaw.startsWith('/r2/') ? imgRaw : imgRaw.startsWith('r2/') ? `/${imgRaw}` : `/r2/${imgRaw}`
       const imageTag = product.main_image ? `
@@ -551,8 +553,8 @@ app.get('/sitemap.xml', async (c) => {
   <url>
     <loc>${baseUrl}/products/${product.id}</loc>
     <lastmod>${lastmod}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>${imageTag}
+    <changefreq>${isSold ? 'weekly' : 'daily'}</changefreq>
+    <priority>${isSold ? '0.6' : '0.8'}</priority>${imageTag}
   </url>`;
     });
     
