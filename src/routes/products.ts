@@ -184,8 +184,9 @@ app.post('/', async (c) => {
       INSERT INTO products (
         user_id, seller_id, title, description, price, category_id, subcategory_id,
         maker_id, model_id, part_number, compatible_models, condition,
-        stock_quantity, status, is_proxy
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        stock_quantity, status, is_proxy,
+        vm_maker, vm_model, vm_grade, vm_tire_size
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       userId,
       userId,
@@ -201,7 +202,11 @@ app.post('/', async (c) => {
       body.condition,
       body.stock_quantity || 1,
       body.status || 'active',
-      body.is_proxy ? 1 : 0
+      body.is_proxy ? 1 : 0,
+      body.vm_maker || null,
+      body.vm_model || null,
+      body.vm_grade || null,
+      body.vm_tire_size || null
     ).run()
 
     const productId = result.meta.last_row_id
@@ -220,8 +225,9 @@ app.post('/', async (c) => {
           grade, engine_type, drive_type, transmission_type, body_type,
           oem_part_number, aftermarket_part_number, alternative_numbers,
           verification_method, fitment_notes, special_requirements,
-          confidence_level, verified_by_admin
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          confidence_level, verified_by_admin, tire_size,
+          vm_maker, vm_model, vm_grade
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
         productId,
         body.compatibility.maker_id || null,
@@ -241,7 +247,11 @@ app.post('/', async (c) => {
         body.compatibility.fitment_notes || null,
         body.compatibility.special_requirements || null,
         body.compatibility.confidence_level || 3,
-        false
+        false,
+        body.compatibility.tire_size || body.vm_tire_size || null,
+        body.vm_maker || null,
+        body.vm_model || null,
+        body.vm_grade || null
       ).run()
     }
 
@@ -282,6 +292,10 @@ app.put('/:id', async (c) => {
         condition = COALESCE(?, condition),
         stock_quantity = COALESCE(?, stock_quantity),
         status = COALESCE(?, status),
+        vm_maker = ?,
+        vm_model = ?,
+        vm_grade = ?,
+        vm_tire_size = ?,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).bind(
@@ -297,6 +311,10 @@ app.put('/:id', async (c) => {
       body.condition || null,
       body.stock_quantity || null,
       body.status || null,
+      body.vm_maker || null,
+      body.vm_model || null,
+      body.vm_grade || null,
+      body.vm_tire_size || null,
       productId
     ).run()
 
@@ -328,6 +346,10 @@ app.put('/:id', async (c) => {
             fitment_notes = ?,
             special_requirements = ?,
             confidence_level = ?,
+            tire_size = ?,
+            vm_maker = ?,
+            vm_model = ?,
+            vm_grade = ?,
             updated_at = CURRENT_TIMESTAMP
           WHERE product_id = ?
         `).bind(
@@ -348,6 +370,10 @@ app.put('/:id', async (c) => {
           body.compatibility.fitment_notes || null,
           body.compatibility.special_requirements || null,
           body.compatibility.confidence_level || 3,
+          body.compatibility.tire_size || body.vm_tire_size || null,
+          body.vm_maker || null,
+          body.vm_model || null,
+          body.vm_grade || null,
           productId
         ).run()
       } else {
@@ -358,8 +384,9 @@ app.put('/:id', async (c) => {
             grade, engine_type, drive_type, transmission_type, body_type,
             oem_part_number, aftermarket_part_number, alternative_numbers,
             verification_method, fitment_notes, special_requirements,
-            confidence_level, verified_by_admin
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            confidence_level, verified_by_admin, tire_size,
+            vm_maker, vm_model, vm_grade
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).bind(
           productId,
           body.compatibility.maker_id || null,
@@ -379,7 +406,11 @@ app.put('/:id', async (c) => {
           body.compatibility.fitment_notes || null,
           body.compatibility.special_requirements || null,
           body.compatibility.confidence_level || 3,
-          false
+          false,
+          body.compatibility.tire_size || body.vm_tire_size || null,
+          body.vm_maker || null,
+          body.vm_model || null,
+          body.vm_grade || null
         ).run()
       }
     }

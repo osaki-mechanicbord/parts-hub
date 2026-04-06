@@ -4363,21 +4363,67 @@ app.get('/listing', (c) => {
                     </div>
                     <div class="accordion-content" id="vehicle-accordion">
                         <div class="section-body space-y-5">
-                            <!-- メーカー・車種 -->
-                            <div class="field-row stack-mobile">
-                                <div>
-                                    <label class="form-label">メーカー <span class="optional">任意</span></label>
-                                    <select id="maker-select" class="form-input">
-                                        <option value="">選択してください</option>
-                                    </select>
+
+                            <!-- マスターデータ連動: メーカー・車種・グレード・タイヤ -->
+                            <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-2">
+                                <div class="flex items-center gap-2 mb-3">
+                                    <i class="fas fa-database text-blue-500"></i>
+                                    <span class="text-sm font-bold text-blue-800">車両データベースから選択</span>
+                                    <span class="text-xs text-blue-500 bg-blue-100 px-2 py-0.5 rounded-full">3,898車種収録</span>
                                 </div>
-                                <div>
-                                    <label class="form-label">車種 <span class="optional">任意</span></label>
-                                    <select id="model-select" class="form-input">
+
+                                <!-- メーカー -->
+                                <div class="mb-3">
+                                    <label class="form-label">メーカー <span class="optional">任意</span></label>
+                                    <select id="vm-maker-select" class="form-input">
                                         <option value="">メーカーを選択</option>
                                     </select>
                                 </div>
+
+                                <!-- 車種 -->
+                                <div class="mb-3">
+                                    <label class="form-label">車種 <span class="optional">任意</span></label>
+                                    <select id="vm-model-select" class="form-input" disabled>
+                                        <option value="">メーカーを先に選択してください</option>
+                                    </select>
+                                </div>
+
+                                <!-- グレード -->
+                                <div class="mb-3">
+                                    <label class="form-label">グレード <span class="optional">任意</span></label>
+                                    <select id="vm-grade-select" class="form-input" disabled>
+                                        <option value="">車種を先に選択してください</option>
+                                    </select>
+                                    <div class="form-helper" id="vm-grade-hint"></div>
+                                </div>
+
+                                <!-- タイヤサイズ（自動表示） -->
+                                <div id="vm-tire-display" class="hidden">
+                                    <label class="form-label">タイヤサイズ <span class="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded ml-1">自動取得</span></label>
+                                    <div id="vm-tire-value" class="bg-white border-2 border-green-300 rounded-xl p-3 text-sm font-mono font-bold text-green-700 flex items-center gap-2">
+                                        <i class="fas fa-check-circle text-green-500"></i>
+                                        <span id="vm-tire-text"></span>
+                                    </div>
+                                </div>
+
+                                <!-- 駆動方式（自動表示） -->
+                                <div id="vm-drive-display" class="hidden mt-3">
+                                    <label class="form-label">駆動方式 <span class="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded ml-1">自動取得</span></label>
+                                    <div class="bg-white border-2 border-green-300 rounded-xl p-3 text-sm font-bold text-green-700 flex items-center gap-2">
+                                        <i class="fas fa-check-circle text-green-500"></i>
+                                        <span id="vm-drive-text"></span>
+                                    </div>
+                                </div>
                             </div>
+
+                            <!-- 隠しフィールド（既存form互換用） -->
+                            <input type="hidden" id="maker-select" value="">
+                            <input type="hidden" id="model-select" value="">
+                            <input type="hidden" id="grade" value="">
+                            <input type="hidden" id="vm-maker-name" value="">
+                            <input type="hidden" id="vm-model-name" value="">
+                            <input type="hidden" id="vm-grade-name" value="">
+                            <input type="hidden" id="vm-tire-size" value="">
 
                             <!-- 年式 -->
                             <div class="field-row">
@@ -4391,39 +4437,32 @@ app.get('/listing', (c) => {
                                 </div>
                             </div>
 
-                            <!-- 型式・グレード -->
+                            <!-- 型式・エンジン型式 -->
                             <div class="field-row stack-mobile">
                                 <div>
                                     <label class="form-label">型式 <span class="optional">任意</span></label>
                                     <input type="text" id="model-code" class="form-input" placeholder="例: DAA-ZVW30">
                                 </div>
                                 <div>
-                                    <label class="form-label">グレード <span class="optional">任意</span></label>
-                                    <input type="text" id="grade" class="form-input" placeholder="例: S, G">
-                                </div>
-                            </div>
-
-                            <!-- エンジン型式・駆動方式 -->
-                            <div class="field-row stack-mobile">
-                                <div>
                                     <label class="form-label">エンジン型式 <span class="optional">任意</span></label>
                                     <input type="text" id="engine-type" class="form-input" placeholder="例: 2ZR-FXE">
                                 </div>
-                                <div>
+                            </div>
+
+                            <!-- 駆動方式（手動・マスター未選択時用） -->
+                            <div class="field-row stack-mobile">
+                                <div id="drive-type-manual-wrap">
                                     <label class="form-label">駆動方式 <span class="optional">任意</span></label>
                                     <select id="drive-type" class="form-input">
                                         <option value="">選択してください</option>
-                                        <option value="2WD">2WD（FF）</option>
-                                        <option value="4WD">4WD</option>
+                                        <option value="FF">FF</option>
                                         <option value="FR">FR</option>
+                                        <option value="4WD">4WD</option>
                                         <option value="MR">MR</option>
                                         <option value="RR">RR</option>
+                                        <option value="AWD">AWD</option>
                                     </select>
                                 </div>
-                            </div>
-
-                            <!-- トランスミッション・純正部品番号 -->
-                            <div class="field-row stack-mobile">
                                 <div>
                                     <label class="form-label">トランスミッション <span class="optional">任意</span></label>
                                     <select id="transmission-type" class="form-input">
@@ -4434,10 +4473,12 @@ app.get('/listing', (c) => {
                                         <option value="DCT">DCT</option>
                                     </select>
                                 </div>
-                                <div>
-                                    <label class="form-label">純正部品番号 <span class="optional">任意</span></label>
-                                    <input type="text" id="oem-part-number" class="form-input" placeholder="例: 04465-XXXXX">
-                                </div>
+                            </div>
+
+                            <!-- 純正部品番号 -->
+                            <div>
+                                <label class="form-label">純正部品番号 <span class="optional">任意</span></label>
+                                <input type="text" id="oem-part-number" class="form-input" placeholder="例: 04465-XXXXX">
                             </div>
 
                             <!-- 確認方法 -->
@@ -4638,7 +4679,7 @@ app.get('/listing', (c) => {
         <script src="${v('/static/i18n.js')}"></script>
         <script src="${v('/static/auth-header.js')}"></script>
         <script src="${v('/static/notification-badge.js')}"></script>
-        <script src="${v('/static/listing.js?v=20260325')}"></script>
+        <script src="${v('/static/listing.js?v=20260406')}"></script>
         <script>
             // ========== ARGOS JPC VIN連携（フィーチャーフラグ制御） ==========
             var _argosVehicle = null;
@@ -4696,13 +4737,15 @@ app.get('/listing', (c) => {
               // グレード
               var gr = document.getElementById('grade');
               if (gr) gr.value = v.grade || '';
+              var vmGradeName = document.getElementById('vm-grade-name');
+              if (vmGradeName) vmGradeName.value = v.grade || '';
               // エンジン型式
               var et = document.getElementById('engine-type');
               if (et) et.value = v.engine || '';
               // 駆動方式マッピング
               var dt = document.getElementById('drive-type');
               if (dt) {
-                var driveMap = { 'FF': '2WD', '4WD': '4WD', 'FR': 'FR', 'MR': 'MR', 'RR': 'RR', 'E-Four': '4WD' };
+                var driveMap = { 'FF': 'FF', '4WD': '4WD', 'FR': 'FR', 'MR': 'MR', 'RR': 'RR', 'E-Four': '4WD', 'AWD': 'AWD' };
                 dt.value = driveMap[v.drive] || '';
               }
               // ミッション

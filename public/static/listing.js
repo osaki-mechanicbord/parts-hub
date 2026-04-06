@@ -201,13 +201,18 @@ class ProductListingForm {
         price: getIntVal('product-price'),
         category_id: getIntVal('category-select'),
         subcategory_id: getIntVal('subcategory-select'),
-        maker_id: getIntVal('maker-select'),
-        model_id: getIntVal('model-select'),
+        maker_id: getIntVal('maker-select') || null,
+        model_id: getIntVal('model-select') || null,
         part_number: getVal('part-number') || null,
         compatible_models: getVal('compatible-models') || null,
         condition: getVal('condition-select'),
         stock_quantity: getIntVal('stock-quantity') || 1,
         status: 'active',
+        // vehicle_master 連動データ
+        vm_maker: getVal('vm-maker-name') || null,
+        vm_model: getVal('vm-model-name') || null,
+        vm_grade: getVal('vm-grade-name') || null,
+        vm_tire_size: getVal('vm-tire-size') || null,
         compatibility: {
           year_from: getIntVal('year-from'),
           year_to: getIntVal('year-to'),
@@ -219,6 +224,7 @@ class ProductListingForm {
           oem_part_number: getVal('oem-part-number') || null,
           verification_method: getVal('verification-method') || null,
           fitment_notes: getVal('fitment-notes') || null,
+          tire_size: getVal('vm-tire-size') || null,
           confidence_level: 4
         }
       }
@@ -336,7 +342,7 @@ class ProductListingForm {
     }
   }
 
-  // メーカー変更 → 車種読込
+  // メーカー変更 → 車種読込（旧car_modelsテーブル互換）
   async loadModels(makerId) {
     var el = document.getElementById('model-select')
     if (!el) return
@@ -344,7 +350,6 @@ class ProductListingForm {
       el.innerHTML = '<option value="">車種を選択</option>'
       return
     }
-
     try {
       var response = await axios.get('/api/makers/' + makerId + '/models')
       var models = response.data.data || []
@@ -356,34 +361,168 @@ class ProductListingForm {
   }
 }
 
+// =============================================
+// vehicle_master カスケード選択管理
+// =============================================
+var vehicleMaster = {
+  // メーカー一覧ロード
+  async loadMakers() {
+    var el = document.getElementById('vm-maker-select')
+    if (!el) return
+    try {
+      var res = await axios.get('/api/vehicle-master/makers')
+      var makers = res.data.data || []
+      el.innerHTML = '<option value="">メーカーを選択（' + makers.length + '社）</option>' +
+        makers.map(function(m) { return '<option value="' + m + '">' + m + '</option>' }).join('')
+    } catch (e) {
+      console.error('VM makers load error:', e)
+    }
+  },
+
+  // 車種一覧ロード
+  async loadModels(maker) {
+    var el = document.getElementById('vm-model-select')
+    if (!el) return
+    // グレード・タイヤリセット
+    this.resetGrade()
+    if (!maker) {
+      el.innerHTML = '<option value="">メーカーを先に選択してください</option>'
+      el.disabled = true
+      return
+    }
+    el.innerHTML = '<option value="">読み込み中...</option>'
+    el.disabled = true
+    try {
+      var res = await axios.get('/api/vehicle-master/models?maker=' + encodeURIComponent(maker))
+      var models = res.data.data || []
+      el.innerHTML = '<option value="">車種を選択（' + models.length + '車種）</option>' +
+        models.map(function(m) { return '<option value="' + m + '">' + m + '</option>' }).join('')
+      el.disabled = false
+    } catch (e) {
+      el.innerHTML = '<option value="">読み込みに失敗しました</option>'
+      console.error('VM models load error:', e)
+    }
+  },
+
+  // グレード一覧ロード
+  async loadGrades(maker, model) {
+    var el = document.getElementById('vm-grade-select')
+    if (!el) return
+    this.resetTire()
+    if (!maker || !model) {
+      el.innerHTML = '<option value="">車種を先に選択してください</option>'
+      el.disabled = true
+      return
+    }
+    el.innerHTML = '<option value="">読み込み中...</option>'
+    el.disabled = true
+    try {
+      var res = await axios.get('/api/vehicle-master/grades?maker=' + encodeURIComponent(maker) + '&model=' + encodeURIComponent(model))
+      var grades = res.data.data || []
+      if (grades.length === 0) {
+        el.innerHTML = '<option value="">グレード情報がありません</option>'
+        document.getElementById('vm-grade-hint').textContent = 'この車種のグレードデータは未登録です。下の手入力欄をご利用ください。'
+        return
+      }
+      el.innerHTML = '<option value="">グレードを選択（' + grades.length + '件）</option>' +
+        grades.map(function(g) {
+          var label = g.grade_name
+          if (g.drive_type) label += ' [' + g.drive_type + ']'
+          if (g.tire_size) label += ' 🛞' + g.tire_size.substring(0, 20)
+          return '<option value="' + g.grade_name + '" data-drive="' + (g.drive_type || '') + '" data-tire="' + (g.tire_size || '') + '">' + label + '</option>'
+        }).join('')
+      el.disabled = false
+      document.getElementById('vm-grade-hint').textContent = ''
+    } catch (e) {
+      el.innerHTML = '<option value="">読み込みに失敗しました</option>'
+      console.error('VM grades load error:', e)
+    }
+  },
+
+  // グレード選択時 → タイヤサイズ・駆動方式を自動セット
+  onGradeSelected(gradeEl) {
+    var selected = gradeEl.options[gradeEl.selectedIndex]
+    if (!selected || !selected.value) {
+      this.resetTire()
+      return
+    }
+    var tire = selected.getAttribute('data-tire') || ''
+    var drive = selected.getAttribute('data-drive') || ''
+    var grade = selected.value
+
+    // 隠しフィールドにセット
+    document.getElementById('vm-grade-name').value = grade
+    document.getElementById('grade').value = grade
+
+    // タイヤサイズ表示
+    if (tire) {
+      document.getElementById('vm-tire-text').textContent = tire
+      document.getElementById('vm-tire-display').classList.remove('hidden')
+      document.getElementById('vm-tire-size').value = tire
+    } else {
+      document.getElementById('vm-tire-display').classList.add('hidden')
+      document.getElementById('vm-tire-size').value = ''
+    }
+
+    // 駆動方式表示・セット
+    if (drive) {
+      document.getElementById('vm-drive-text').textContent = drive
+      document.getElementById('vm-drive-display').classList.remove('hidden')
+      document.getElementById('drive-type').value = drive
+      // 手動選択欄を薄くする
+      var manualWrap = document.getElementById('drive-type-manual-wrap')
+      if (manualWrap) manualWrap.style.opacity = '0.4'
+    } else {
+      document.getElementById('vm-drive-display').classList.add('hidden')
+      var manualWrap = document.getElementById('drive-type-manual-wrap')
+      if (manualWrap) manualWrap.style.opacity = '1'
+    }
+  },
+
+  resetGrade() {
+    var el = document.getElementById('vm-grade-select')
+    if (el) {
+      el.innerHTML = '<option value="">車種を先に選択してください</option>'
+      el.disabled = true
+    }
+    document.getElementById('vm-grade-name').value = ''
+    document.getElementById('grade').value = ''
+    var hint = document.getElementById('vm-grade-hint')
+    if (hint) hint.textContent = ''
+    this.resetTire()
+  },
+
+  resetTire() {
+    var tireDisp = document.getElementById('vm-tire-display')
+    if (tireDisp) tireDisp.classList.add('hidden')
+    var tireVal = document.getElementById('vm-tire-size')
+    if (tireVal) tireVal.value = ''
+    var driveDisp = document.getElementById('vm-drive-display')
+    if (driveDisp) driveDisp.classList.add('hidden')
+    var manualWrap = document.getElementById('drive-type-manual-wrap')
+    if (manualWrap) manualWrap.style.opacity = '1'
+  }
+}
+
 // グローバルインスタンス
 var productForm = new ProductListingForm()
 
 // ページ読み込み時の初期化
 document.addEventListener('DOMContentLoaded', async function() {
-  // カテゴリとメーカーのロード
+  // カテゴリとvehicle_masterメーカーのロード
   try {
-    var results = await Promise.all([
-      axios.get('/api/categories'),
-      axios.get('/api/makers')
-    ])
-    var categoriesRes = results[0]
-    var makersRes = results[1]
-
+    var categoriesRes = await axios.get('/api/categories')
     var categorySelect = document.getElementById('category-select')
     if (categorySelect && categoriesRes.data.categories) {
       categorySelect.innerHTML = '<option value="">カテゴリを選択 *</option>' +
         categoriesRes.data.categories.map(function(cat) { return '<option value="' + cat.id + '">' + cat.name + '</option>' }).join('')
     }
-
-    var makerSelect = document.getElementById('maker-select')
-    if (makerSelect && makersRes.data.makers) {
-      makerSelect.innerHTML = '<option value="">メーカーを選択</option>' +
-        makersRes.data.makers.map(function(maker) { return '<option value="' + maker.id + '">' + maker.name + '</option>' }).join('')
-    }
   } catch (error) {
-    console.error('初期データの読み込みに失敗:', error)
+    console.error('カテゴリの読み込みに失敗:', error)
   }
+
+  // vehicle_master メーカー読み込み
+  await vehicleMaster.loadMakers()
 
   // 画像アップロードエリアのイベント設定
   var imageInput = document.getElementById('image-input')
@@ -418,11 +557,32 @@ document.addEventListener('DOMContentLoaded', async function() {
     })
   }
 
-  // メーカー変更イベント
-  var makerSelect = document.getElementById('maker-select')
-  if (makerSelect) {
-    makerSelect.addEventListener('change', function(e) {
-      productForm.loadModels(e.target.value)
+  // vehicle_master メーカー変更イベント
+  var vmMakerSelect = document.getElementById('vm-maker-select')
+  if (vmMakerSelect) {
+    vmMakerSelect.addEventListener('change', function(e) {
+      var maker = e.target.value
+      document.getElementById('vm-maker-name').value = maker
+      vehicleMaster.loadModels(maker)
+    })
+  }
+
+  // vehicle_master 車種変更イベント
+  var vmModelSelect = document.getElementById('vm-model-select')
+  if (vmModelSelect) {
+    vmModelSelect.addEventListener('change', function(e) {
+      var maker = document.getElementById('vm-maker-select').value
+      var model = e.target.value
+      document.getElementById('vm-model-name').value = model
+      vehicleMaster.loadGrades(maker, model)
+    })
+  }
+
+  // vehicle_master グレード変更イベント
+  var vmGradeSelect = document.getElementById('vm-grade-select')
+  if (vmGradeSelect) {
+    vmGradeSelect.addEventListener('change', function(e) {
+      vehicleMaster.onGradeSelected(e.target)
     })
   }
 
@@ -479,6 +639,24 @@ async function loadProductForEdit(productId) {
         if (product.model_id) {
           await productForm.loadModels(product.maker_id)
           el = document.getElementById('model-select'); if (el) el.value = product.model_id
+        }
+      }
+
+      // vehicle_master データの復元
+      if (product.vm_maker) {
+        el = document.getElementById('vm-maker-select'); if (el) el.value = product.vm_maker
+        document.getElementById('vm-maker-name').value = product.vm_maker
+        if (product.vm_model) {
+          await vehicleMaster.loadModels(product.vm_maker)
+          el = document.getElementById('vm-model-select'); if (el) el.value = product.vm_model
+          document.getElementById('vm-model-name').value = product.vm_model
+          await vehicleMaster.loadGrades(product.vm_maker, product.vm_model)
+          if (product.vm_grade) {
+            el = document.getElementById('vm-grade-select'); if (el) {
+              el.value = product.vm_grade
+              vehicleMaster.onGradeSelected(el)
+            }
+          }
         }
       }
       

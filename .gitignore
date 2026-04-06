@@ -43,3 +43,6 @@ pids/
 
 # misc
 .DS_Store
+
+# Seed files (data already in production DB)
+seed_*.sql

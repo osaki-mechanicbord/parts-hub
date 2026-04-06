@@ -315,4 +315,77 @@ api.get('/products/:slugOrId', async (c) => {
   }
 })
 
+// =============================================
+// vehicle_master カスケード検索API
+// メーカー → 車種 → グレード → タイヤサイズ
+// =============================================
+
+// メーカー一覧（vehicle_masterから）
+api.get('/vehicle-master/makers', async (c) => {
+  try {
+    const { results } = await c.env.DB.prepare(`
+      SELECT DISTINCT maker FROM vehicle_master ORDER BY maker ASC
+    `).all()
+    return c.json({ success: true, data: results.map((r: any) => r.maker) })
+  } catch (error) {
+    console.error('Vehicle master makers error:', error)
+    return c.json({ success: false, error: 'メーカー取得に失敗' }, 500)
+  }
+})
+
+// 車種一覧（メーカー指定）
+api.get('/vehicle-master/models', async (c) => {
+  try {
+    const maker = c.req.query('maker')
+    if (!maker) return c.json({ success: false, error: 'maker is required' }, 400)
+    const { results } = await c.env.DB.prepare(`
+      SELECT DISTINCT model FROM vehicle_master WHERE maker = ? ORDER BY model ASC
+    `).bind(maker).all()
+    return c.json({ success: true, data: results.map((r: any) => r.model) })
+  } catch (error) {
+    console.error('Vehicle master models error:', error)
+    return c.json({ success: false, error: '車種取得に失敗' }, 500)
+  }
+})
+
+// グレード一覧（メーカー＋車種指定）
+api.get('/vehicle-master/grades', async (c) => {
+  try {
+    const maker = c.req.query('maker')
+    const model = c.req.query('model')
+    if (!maker || !model) return c.json({ success: false, error: 'maker and model are required' }, 400)
+    const { results } = await c.env.DB.prepare(`
+      SELECT DISTINCT grade_name, drive_type, tire_size
+      FROM vehicle_master
+      WHERE maker = ? AND model = ? AND grade_name != ''
+      ORDER BY grade_name ASC
+    `).bind(maker, model).all()
+    return c.json({ success: true, data: results })
+  } catch (error) {
+    console.error('Vehicle master grades error:', error)
+    return c.json({ success: false, error: 'グレード取得に失敗' }, 500)
+  }
+})
+
+// タイヤサイズ取得（メーカー＋車種＋グレード指定）
+api.get('/vehicle-master/tire-size', async (c) => {
+  try {
+    const maker = c.req.query('maker')
+    const model = c.req.query('model')
+    const grade = c.req.query('grade')
+    if (!maker || !model || !grade) return c.json({ success: false, error: 'maker, model and grade are required' }, 400)
+    const { results } = await c.env.DB.prepare(`
+      SELECT drive_type, tire_size
+      FROM vehicle_master
+      WHERE maker = ? AND model = ? AND grade_name = ?
+      LIMIT 1
+    `).bind(maker, model, grade).all()
+    if (results.length === 0) return c.json({ success: true, data: null })
+    return c.json({ success: true, data: results[0] })
+  } catch (error) {
+    console.error('Vehicle master tire-size error:', error)
+    return c.json({ success: false, error: 'タイヤサイズ取得に失敗' }, 500)
+  }
+})
+
 export default api
