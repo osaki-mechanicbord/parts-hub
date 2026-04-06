@@ -10010,16 +10010,15 @@ app.get('/legal', (c) => {
                     <h2 class="text-lg font-bold text-gray-900 mb-3">支払方法</h2>
                     <ul class="list-disc list-inside space-y-1 text-gray-700 ml-4">
                         <li>クレジットカード決済（Visa、Mastercard、JCB、American Express）</li>
-                        <li>コンビニ決済</li>
-                        <li>銀行振込</li>
-                        <li>キャリア決済（docomo、au、SoftBank）</li>
+                        <li>請求書払い（銀行振込）— 法人・個人事業主向け</li>
                     </ul>
                 </section>
 
                 <section class="border-b border-gray-200 pb-4">
                     <h2 class="text-lg font-bold text-gray-900 mb-3">支払時期</h2>
-                    <p class="text-gray-700">商品購入時に即時決済</p>
-                    <p class="text-sm text-gray-600">※商品が発送されるまで、代金は当社が一時預かりします</p>
+                    <p class="text-gray-700">クレジットカード：商品購入時に即時決済</p>
+                    <p class="text-gray-700">請求書払い：注文後7日以内に指定口座へ振込</p>
+                    <p class="text-sm text-gray-600">※振込確認後、出品者に発送依頼が送信されます</p>
                 </section>
 
                 <section class="border-b border-gray-200 pb-4">
@@ -12011,7 +12010,7 @@ app.get('/faq', (c) => {
             "name": "支払い方法は何がありますか？",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "クレジットカード決済（Visa、Mastercard、JCB、American Express）、コンビニ決済、銀行振込に対応しています。クレジットカード決済が最も迅速です。"
+              "text": "クレジットカード決済（Visa、Mastercard、JCB、American Express）と請求書払い（銀行振込）に対応しています。クレジットカード決済は即時決済、請求書払いは振込確認後に発送となります。法人・個人事業主のお客様には請求書払いが便利です。"
             }
           },{
             "@type": "Question",
@@ -12386,22 +12385,18 @@ app.get('/faq', (c) => {
                     </button>
                     <div id="faq7" class="hidden px-6 pb-6">
                         <div class="bg-gray-50 p-4 rounded-lg">
-                            <div class="grid md:grid-cols-3 gap-4">
+                            <div class="grid md:grid-cols-2 gap-4">
                                 <div class="bg-white p-4 rounded text-center border-2 border-blue-200">
                                     <i class="fas fa-credit-card text-blue-500 text-3xl mb-2"></i>
                                     <h4 class="font-bold text-gray-900 mb-1">クレジットカード</h4>
                                     <p class="text-xs text-gray-600">Visa / Mastercard / JCB / Amex</p>
-                                    <span class="inline-block mt-2 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">おすすめ</span>
+                                    <span class="inline-block mt-2 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">即時決済</span>
                                 </div>
                                 <div class="bg-white p-4 rounded text-center border-2 border-green-200">
-                                    <i class="fas fa-store text-green-500 text-3xl mb-2"></i>
-                                    <h4 class="font-bold text-gray-900 mb-1">コンビニ決済</h4>
-                                    <p class="text-xs text-gray-600">セブン / ローソン / ファミマ</p>
-                                </div>
-                                <div class="bg-white p-4 rounded text-center border-2 border-yellow-200">
-                                    <i class="fas fa-university text-yellow-500 text-3xl mb-2"></i>
-                                    <h4 class="font-bold text-gray-900 mb-1">銀行振込</h4>
-                                    <p class="text-xs text-gray-600">各種銀行対応</p>
+                                    <i class="fas fa-file-invoice-dollar text-green-500 text-3xl mb-2"></i>
+                                    <h4 class="font-bold text-gray-900 mb-1">請求書払い（銀行振込）</h4>
+                                    <p class="text-xs text-gray-600">法人・個人事業主向け</p>
+                                    <span class="inline-block mt-2 px-2 py-1 bg-green-100 text-green-700 text-xs rounded">BtoB対応</span>
                                 </div>
                             </div>
                         </div>

@@ -2163,6 +2163,157 @@ adminRoutes.put('/withdrawals/:id/status', async (c) => {
   }
 });
 
+// ===== 振込確認管理API =====
+
+// 請求書払い注文一覧
+adminRoutes.get('/invoice-orders', async (c) => {
+  const { env } = c;
+  const status = c.req.query('status') || 'awaiting_transfer'; // awaiting_transfer, paid, cancelled
+  
+  try {
+    const orders = await env.DB.prepare(`
+      SELECT t.id, t.product_id, t.buyer_id, t.seller_id, t.amount, t.fee,
+        t.status, t.payment_method, t.invoice_number, t.invoice_due_date,
+        t.transfer_confirmed_at, t.transfer_note, t.billing_info,
+        t.created_at, t.updated_at,
+        p.title as product_title,
+        buyer.name as buyer_name, buyer.email as buyer_email,
+        COALESCE(buyer.company_name, buyer.nickname, buyer.name) as buyer_display_name,
+        seller.name as seller_name, seller.email as seller_email,
+        COALESCE(seller.company_name, seller.nickname, seller.name) as seller_display_name
+      FROM transactions t
+      LEFT JOIN products p ON t.product_id = p.id
+      LEFT JOIN users buyer ON t.buyer_id = buyer.id
+      LEFT JOIN users seller ON t.seller_id = seller.id
+      WHERE t.payment_method = 'invoice'
+      ${status !== 'all' ? 'AND t.status = ?' : ''}
+      ORDER BY t.created_at DESC
+      LIMIT 100
+    `).bind(...(status !== 'all' ? [status] : [])).all();
+    
+    return c.json({ success: true, orders: orders.results || [] });
+  } catch (error: any) {
+    console.error('Invoice orders fetch error:', error);
+    return c.json({ success: false, error: '請求書払い注文の取得に失敗しました' }, 500);
+  }
+});
+
+// 振込確認処理（管理者が手動確認）
+adminRoutes.post('/invoice-orders/:id/confirm-transfer', async (c) => {
+  const { env } = c;
+  const orderId = c.req.param('id');
+  const { note } = await c.req.json().catch(() => ({ note: '' }));
+  
+  try {
+    // 取引情報取得
+    const order = await env.DB.prepare(`
+      SELECT t.*, p.title as product_title,
+        buyer.name as buyer_name,
+        seller.name as seller_name, seller.id as seller_user_id
+      FROM transactions t
+      LEFT JOIN products p ON t.product_id = p.id
+      LEFT JOIN users buyer ON t.buyer_id = buyer.id
+      LEFT JOIN users seller ON t.seller_id = seller.id
+      WHERE t.id = ? AND t.payment_method = 'invoice'
+    `).bind(orderId).first();
+    
+    if (!order) {
+      return c.json({ success: false, error: '注文が見つかりません' }, 404);
+    }
+    
+    if (order.status !== 'awaiting_transfer') {
+      return c.json({ success: false, error: `この注文は現在「${order.status}」状態です。振込待ちの注文のみ確認できます。` }, 400);
+    }
+    
+    // ステータスを paid に更新
+    await env.DB.prepare(`
+      UPDATE transactions 
+      SET status = 'paid', 
+          transfer_confirmed_at = datetime('now'),
+          transfer_note = ?,
+          paid_at = datetime('now'),
+          updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(note || '', orderId).run();
+    
+    return c.json({ 
+      success: true, 
+      message: `注文 ${order.invoice_number} の振込を確認しました。` 
+    });
+  } catch (error: any) {
+    console.error('Confirm transfer error:', error);
+    return c.json({ success: false, error: '振込確認処理に失敗しました' }, 500);
+  }
+});
+
+// 出品者へ発送依頼通知を送信
+adminRoutes.post('/invoice-orders/:id/notify-seller', async (c) => {
+  const { env } = c;
+  const orderId = c.req.param('id');
+  
+  try {
+    const order = await env.DB.prepare(`
+      SELECT t.*, p.title as product_title,
+        buyer.name as buyer_name,
+        COALESCE(buyer.company_name, buyer.nickname, buyer.name) as buyer_display_name,
+        seller.name as seller_name, seller.id as seller_user_id
+      FROM transactions t
+      LEFT JOIN products p ON t.product_id = p.id
+      LEFT JOIN users buyer ON t.buyer_id = buyer.id
+      LEFT JOIN users seller ON t.seller_id = seller.id
+      WHERE t.id = ? AND t.payment_method = 'invoice'
+    `).bind(orderId).first();
+    
+    if (!order) {
+      return c.json({ success: false, error: '注文が見つかりません' }, 404);
+    }
+    
+    if (order.status !== 'paid') {
+      return c.json({ success: false, error: '振込確認済みの注文のみ通知を送信できます' }, 400);
+    }
+    
+    // 出品者にアプリ内通知
+    try {
+      await env.DB.prepare(`
+        INSERT INTO notifications (user_id, type, title, message, related_id, related_type, action_url)
+        VALUES (?, 'shipping_request', ?, ?, ?, 'transaction', ?)
+      `).bind(
+        order.seller_user_id,
+        '【発送依頼】振込が確認されました',
+        `「${order.product_title}」の振込が確認されました（請求書番号: ${order.invoice_number}）。購入者: ${order.buyer_display_name}。商品の発送をお願いいたします。`,
+        orderId,
+        `/transactions/${orderId}`
+      ).run();
+    } catch (e) {
+      console.error('Notification insert error:', e);
+    }
+
+    // 購入者にも通知
+    try {
+      await env.DB.prepare(`
+        INSERT INTO notifications (user_id, type, title, message, related_id, related_type, action_url)
+        VALUES (?, 'payment_confirmed', ?, ?, ?, 'transaction', ?)
+      `).bind(
+        order.buyer_id,
+        '振込確認完了 — 出品者に発送依頼済み',
+        `「${order.product_title}」のお振込を確認いたしました（請求書番号: ${order.invoice_number}）。出品者に発送依頼を送信しました。発送をお待ちください。`,
+        orderId,
+        `/transactions/${orderId}`
+      ).run();
+    } catch (e) {
+      console.error('Notification insert error:', e);
+    }
+    
+    return c.json({ 
+      success: true, 
+      message: `出品者「${order.seller_name}」と購入者に通知を送信しました。` 
+    });
+  } catch (error: any) {
+    console.error('Notify seller error:', error);
+    return c.json({ success: false, error: '通知の送信に失敗しました' }, 500);
+  }
+});
+
 // ===== 管理操作ログ =====
 
 // ログ記録ヘルパー関数

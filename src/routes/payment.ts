@@ -959,4 +959,114 @@ payment.post('/transaction/:id/complete', authMiddleware, async (c) => {
   }
 })
 
+// ============================================================
+// ★ 請求書払い（銀行振込）注文作成
+// ============================================================
+payment.post('/create-invoice-order', authMiddleware, async (c) => {
+  try {
+    const userId = c.get('userId')
+    const { product_id, billing_info } = await c.req.json()
+
+    if (!product_id) {
+      return c.json({ success: false, error: '商品IDが必要です' }, 400)
+    }
+
+    if (!billing_info || !billing_info.company_name) {
+      return c.json({ success: false, error: '請求先情報（会社名）が必要です' }, 400)
+    }
+
+    // 商品情報取得
+    const product = await c.env.DB.prepare(`
+      SELECT p.id, p.title, p.price, p.status, p.user_id as seller_id,
+        COALESCE(u.company_name, u.nickname, u.name) as seller_name
+      FROM products p
+      LEFT JOIN users u ON p.user_id = u.id
+      WHERE p.id = ?
+    `).bind(product_id).first()
+
+    if (!product) {
+      return c.json({ success: false, error: '商品が見つかりません' }, 404)
+    }
+    if (product.status !== 'active') {
+      return c.json({ success: false, error: 'この商品は現在購入できません' }, 400)
+    }
+    if (product.seller_id === userId) {
+      return c.json({ success: false, error: '自分の商品は購入できません' }, 400)
+    }
+
+    // 手数料計算
+    const fees = calculateFees(product.price as number)
+
+    // 請求書番号生成 (INV-YYYYMMDD-NNNN)
+    const now = new Date()
+    const dateStr = now.toISOString().split('T')[0].replace(/-/g, '')
+    const countResult = await c.env.DB.prepare(`
+      SELECT COUNT(*) as cnt FROM transactions 
+      WHERE payment_method = 'invoice' AND invoice_number LIKE ?
+    `).bind(`INV-${dateStr}-%`).first()
+    const seq = String(((countResult?.cnt as number) || 0) + 1).padStart(4, '0')
+    const invoiceNumber = `INV-${dateStr}-${seq}`
+
+    // 振込期限（7日後）
+    const dueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    const dueDateStr = dueDate.toISOString()
+
+    // 商品を「売約済み」に
+    await c.env.DB.prepare(`
+      UPDATE products SET status = 'sold', updated_at = datetime('now')
+      WHERE id = ? AND status = 'active'
+    `).bind(product_id).run()
+
+    // 取引レコード作成（status = 'awaiting_transfer'）
+    const transactionResult = await c.env.DB.prepare(`
+      INSERT INTO transactions (
+        product_id, buyer_id, seller_id, amount, fee,
+        status, payment_method, invoice_number, invoice_due_date,
+        billing_info, created_at, updated_at
+      )
+      VALUES (?, ?, ?, ?, ?, 'awaiting_transfer', 'invoice', ?, ?, ?, datetime('now'), datetime('now'))
+    `).bind(
+      product_id,
+      userId,
+      product.seller_id,
+      product.price,
+      fees.platformFee,
+      invoiceNumber,
+      dueDateStr,
+      JSON.stringify(billing_info)
+    ).run()
+
+    const transactionId = transactionResult.meta.last_row_id
+
+    // 購入者に通知
+    await createNotification(
+      c.env.DB, userId, 'purchase',
+      '請求書払い注文を受け付けました',
+      `「${product.title}」の注文を受け付けました。請求書番号: ${invoiceNumber}。振込期限: ${dueDate.toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'})}`,
+      transactionId, 'transaction', `/transactions/${transactionId}`
+    )
+
+    // 出品者に通知（振込待ちである旨）
+    await createNotification(
+      c.env.DB, product.seller_id as number, 'sale',
+      '請求書払いの注文がありました',
+      `「${product.title}」に請求書払いの注文が入りました。振込確認後に発送依頼をお送りします。`,
+      transactionId, 'transaction', `/transactions/${transactionId}`
+    )
+
+    return c.json({
+      success: true,
+      transaction_id: transactionId,
+      invoice_number: invoiceNumber,
+      invoice_due_date: dueDateStr,
+      fees,
+      billing_info
+    })
+
+  } catch (error: any) {
+    console.error('Create invoice order error:', error)
+    return c.json({ success: false, error: '請求書払い注文の作成に失敗しました', details: error.message }, 500)
+  }
+})
+
 export default payment

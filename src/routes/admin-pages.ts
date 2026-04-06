@@ -1963,6 +1963,200 @@ adminPagesRoutes.get('/articles', (c) => {
   return c.html(AdminLayout('articles', 'コラム管理', content));
 })
 
+// ===== 振込確認ページ =====
+adminPagesRoutes.get('/invoice-orders', (c) => {
+  const content = `
+    <h2 class="text-2xl font-bold text-gray-800 mb-6"><i class="fas fa-file-invoice-dollar text-green-600 mr-2"></i>振込確認管理</h2>
+    
+    <!-- フィルタータブ -->
+    <div class="flex gap-2 mb-6">
+        <button onclick="loadInvoiceOrders('awaiting_transfer')" id="tab-awaiting" class="px-4 py-2 rounded-lg text-sm font-medium bg-yellow-100 text-yellow-800 border-2 border-yellow-400">
+            <i class="fas fa-clock mr-1"></i>振込待ち
+        </button>
+        <button onclick="loadInvoiceOrders('paid')" id="tab-paid" class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200">
+            <i class="fas fa-check-circle mr-1"></i>確認済み
+        </button>
+        <button onclick="loadInvoiceOrders('all')" id="tab-all" class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200">
+            <i class="fas fa-list mr-1"></i>すべて
+        </button>
+    </div>
+    
+    <!-- 注文一覧 -->
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50 border-b">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">請求書番号</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">商品</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">購入者</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">出品者</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">金額</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">振込期限</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">ステータス</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="invoice-orders-tbody" class="divide-y divide-gray-200">
+                    <tr><td colspan="8" class="px-4 py-8 text-center text-gray-400">読み込み中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- 詳細モーダル -->
+    <div id="invoice-detail-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+        <div class="bg-white rounded-xl p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-bold text-gray-900 mb-4" id="invoice-modal-title">注文詳細</h3>
+            <div id="invoice-modal-body"></div>
+            <div class="mt-4 flex gap-3">
+                <button onclick="document.getElementById('invoice-detail-modal').classList.add('hidden')" class="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">閉じる</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+    var currentInvoiceTab = 'awaiting_transfer';
+    
+    function loadInvoiceOrders(status) {
+        currentInvoiceTab = status || 'awaiting_transfer';
+        // タブスタイル切替
+        ['awaiting', 'paid', 'all'].forEach(function(t) {
+            var el = document.getElementById('tab-' + t);
+            if (!el) return;
+            if ((t === 'awaiting' && status === 'awaiting_transfer') || t === status) {
+                el.className = 'px-4 py-2 rounded-lg text-sm font-medium border-2 ' + 
+                    (t === 'awaiting' ? 'bg-yellow-100 text-yellow-800 border-yellow-400' : 
+                     t === 'paid' ? 'bg-green-100 text-green-800 border-green-400' : 'bg-blue-100 text-blue-800 border-blue-400');
+            } else {
+                el.className = 'px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200';
+            }
+        });
+        
+        var token = localStorage.getItem('admin_token');
+        axios.get('/api/admin/invoice-orders?status=' + status, {
+            headers: { Authorization: 'Bearer ' + token }
+        }).then(function(res) {
+            var orders = res.data.orders || [];
+            var tbody = document.getElementById('invoice-orders-tbody');
+            if (orders.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="px-4 py-8 text-center text-gray-400">該当する注文はありません</td></tr>';
+                return;
+            }
+            tbody.innerHTML = orders.map(function(o) {
+                var statusBadge = o.status === 'awaiting_transfer' 
+                    ? '<span class="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800">振込待ち</span>'
+                    : o.status === 'paid'
+                    ? '<span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">振込確認済</span>'
+                    : '<span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">' + o.status + '</span>';
+                var dueDate = o.invoice_due_date ? new Date(o.invoice_due_date).toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'}) : '-';
+                var isOverdue = o.status === 'awaiting_transfer' && o.invoice_due_date && new Date(o.invoice_due_date) < new Date();
+                var dueDateHtml = isOverdue ? '<span class="text-red-600 font-bold">' + dueDate + ' <i class="fas fa-exclamation-triangle"></i></span>' : dueDate;
+                
+                var actions = '';
+                if (o.status === 'awaiting_transfer') {
+                    actions = '<button onclick="confirmTransfer(' + o.id + ')" class="px-3 py-1 bg-green-500 text-white text-xs rounded-lg hover:bg-green-600 mr-1"><i class="fas fa-check mr-1"></i>振込確認</button>';
+                } else if (o.status === 'paid') {
+                    actions = '<button onclick="notifySeller(' + o.id + ')" class="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600 mr-1"><i class="fas fa-paper-plane mr-1"></i>発送依頼</button>';
+                }
+                actions += '<button onclick="showInvoiceDetail(' + o.id + ')" class="px-3 py-1 bg-gray-200 text-gray-700 text-xs rounded-lg hover:bg-gray-300"><i class="fas fa-eye"></i></button>';
+                
+                return '<tr class="hover:bg-gray-50">' +
+                    '<td class="px-4 py-3 text-sm font-mono font-bold text-gray-900">' + (o.invoice_number || '-') + '</td>' +
+                    '<td class="px-4 py-3 text-sm text-gray-900 max-w-[150px] truncate">' + (o.product_title || '-') + '</td>' +
+                    '<td class="px-4 py-3 text-sm text-gray-600">' + (o.buyer_display_name || o.buyer_name || '-') + '</td>' +
+                    '<td class="px-4 py-3 text-sm text-gray-600">' + (o.seller_display_name || o.seller_name || '-') + '</td>' +
+                    '<td class="px-4 py-3 text-sm font-bold text-gray-900">&yen;' + (o.amount || 0).toLocaleString() + '</td>' +
+                    '<td class="px-4 py-3 text-sm">' + dueDateHtml + '</td>' +
+                    '<td class="px-4 py-3 text-sm">' + statusBadge + '</td>' +
+                    '<td class="px-4 py-3 text-sm whitespace-nowrap">' + actions + '</td>' +
+                    '</tr>';
+            }).join('');
+        }).catch(function(err) {
+            console.error('Invoice orders load error:', err);
+            document.getElementById('invoice-orders-tbody').innerHTML = '<tr><td colspan="8" class="px-4 py-8 text-center text-red-500">読み込みエラー</td></tr>';
+        });
+    }
+    
+    function confirmTransfer(orderId) {
+        var note = prompt('振込確認メモ（任意）：\\n例: ○○銀行より ¥xx,xxx 入金確認', '');
+        if (note === null) return; // キャンセル
+        
+        var token = localStorage.getItem('admin_token');
+        axios.post('/api/admin/invoice-orders/' + orderId + '/confirm-transfer', { note: note }, {
+            headers: { Authorization: 'Bearer ' + token }
+        }).then(function(res) {
+            alert(res.data.message || '振込を確認しました');
+            loadInvoiceOrders(currentInvoiceTab);
+        }).catch(function(err) {
+            alert(err.response?.data?.error || '処理に失敗しました');
+        });
+    }
+    
+    function notifySeller(orderId) {
+        if (!confirm('出品者と購入者に通知を送信しますか？\\n\\n出品者: 発送依頼\\n購入者: 振込確認完了通知')) return;
+        
+        var token = localStorage.getItem('admin_token');
+        axios.post('/api/admin/invoice-orders/' + orderId + '/notify-seller', {}, {
+            headers: { Authorization: 'Bearer ' + token }
+        }).then(function(res) {
+            alert(res.data.message || '通知を送信しました');
+            loadInvoiceOrders(currentInvoiceTab);
+        }).catch(function(err) {
+            alert(err.response?.data?.error || '通知の送信に失敗しました');
+        });
+    }
+    
+    function showInvoiceDetail(orderId) {
+        var token = localStorage.getItem('admin_token');
+        axios.get('/api/admin/invoice-orders?status=all', {
+            headers: { Authorization: 'Bearer ' + token }
+        }).then(function(res) {
+            var order = (res.data.orders || []).find(function(o) { return o.id === orderId; });
+            if (!order) { alert('注文が見つかりません'); return; }
+            
+            var billing = {};
+            try { billing = JSON.parse(order.billing_info || '{}'); } catch(e) {}
+            
+            document.getElementById('invoice-modal-title').textContent = '注文詳細 - ' + (order.invoice_number || '');
+            document.getElementById('invoice-modal-body').innerHTML = 
+                '<div class="space-y-3">' +
+                '<div class="bg-gray-50 p-3 rounded-lg"><span class="text-gray-500 text-sm">商品:</span> <strong>' + (order.product_title || '-') + '</strong></div>' +
+                '<div class="grid grid-cols-2 gap-3">' +
+                    '<div class="bg-gray-50 p-3 rounded-lg"><span class="text-gray-500 text-sm block">購入者</span><strong>' + (order.buyer_display_name || order.buyer_name || '-') + '</strong><br><span class="text-xs text-gray-400">' + (order.buyer_email || '') + '</span></div>' +
+                    '<div class="bg-gray-50 p-3 rounded-lg"><span class="text-gray-500 text-sm block">出品者</span><strong>' + (order.seller_display_name || order.seller_name || '-') + '</strong><br><span class="text-xs text-gray-400">' + (order.seller_email || '') + '</span></div>' +
+                '</div>' +
+                '<div class="grid grid-cols-2 gap-3">' +
+                    '<div class="bg-gray-50 p-3 rounded-lg"><span class="text-gray-500 text-sm block">金額</span><strong class="text-red-600">&yen;' + (order.amount || 0).toLocaleString() + '</strong></div>' +
+                    '<div class="bg-gray-50 p-3 rounded-lg"><span class="text-gray-500 text-sm block">手数料</span>&yen;' + (order.fee || 0).toLocaleString() + '</div>' +
+                '</div>' +
+                '<div class="bg-yellow-50 p-3 rounded-lg border border-yellow-200"><span class="text-gray-500 text-sm block">振込期限</span><strong>' + (order.invoice_due_date ? new Date(order.invoice_due_date).toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'}) : '-') + '</strong></div>' +
+                (billing.company_name ? '<div class="bg-blue-50 p-3 rounded-lg border border-blue-200"><span class="text-gray-500 text-sm block mb-1">請求先情報</span>' +
+                    '<div><strong>' + (billing.company_name || '') + '</strong></div>' +
+                    (billing.contact_name ? '<div class="text-sm">' + billing.contact_name + '</div>' : '') +
+                    (billing.address ? '<div class="text-sm text-gray-600">' + billing.address + '</div>' : '') +
+                    (billing.email ? '<div class="text-sm text-gray-600">' + billing.email + '</div>' : '') +
+                    (billing.phone ? '<div class="text-sm text-gray-600">' + billing.phone + '</div>' : '') +
+                '</div>' : '') +
+                (order.transfer_note ? '<div class="bg-green-50 p-3 rounded-lg border border-green-200"><span class="text-gray-500 text-sm block">振込確認メモ</span>' + order.transfer_note + '</div>' : '') +
+                (order.transfer_confirmed_at ? '<div class="bg-green-50 p-3 rounded-lg border border-green-200"><span class="text-gray-500 text-sm block">振込確認日時</span>' + new Date(order.transfer_confirmed_at).toLocaleString('ja-JP', {timeZone: 'Asia/Tokyo'}) + '</div>' : '') +
+                '</div>';
+            
+            document.getElementById('invoice-detail-modal').classList.remove('hidden');
+        }).catch(function(err) {
+            alert('詳細の取得に失敗しました');
+        });
+    }
+    
+    // 初期読み込み
+    document.addEventListener('DOMContentLoaded', function() {
+        loadInvoiceOrders('awaiting_transfer');
+    });
+    </script>
+  `;
+  return c.html(AdminLayout('invoice-orders', '振込確認管理', content));
+})
+
 // 出金管理ページ
 adminPagesRoutes.get('/withdrawals', (c) => {
   const content = `

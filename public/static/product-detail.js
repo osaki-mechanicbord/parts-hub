@@ -612,14 +612,14 @@ function getShopTypeLabel(type) {
     return labels[type] || type || '-';
 }
 
-// ===== 購入機能（Stripe Checkout） =====
+// ===== 購入機能（支払い方法選択） =====
 async function purchaseProduct() {
     if (!product) {
         alert('商品情報を読み込んでいます...');
         return;
     }
     
-    // ログインチェック（トークンがあるが currentUser が null の場合は再取得を試みる）
+    // ログインチェック
     const loggedIn = await ensureLoggedIn();
     const token = localStorage.getItem('token');
     
@@ -642,73 +642,279 @@ async function purchaseProduct() {
         return;
     }
     
-    // 確認ダイアログ
+    // 金額計算
     const priceExTax = Number(product.price);
     const taxAmount = calcTaxAmount(priceExTax);
     const priceIncTax = calcTaxIncluded(priceExTax);
     const platformFee = Math.floor(priceExTax * 0.10);
     const total = priceIncTax + platformFee;
     
-    const confirmed = confirm(
-        `「${product.title}」を購入しますか？\n\n` +
-        `商品価格（税抜）: ¥${priceExTax.toLocaleString()}\n` +
-        `消費税（10%）: ¥${taxAmount.toLocaleString()}\n` +
-        `サービス手数料（10%）: ¥${platformFee.toLocaleString()}\n` +
-        `━━━━━━━━━━━━━━\n` +
-        `お支払い合計: ¥${total.toLocaleString()}\n\n` +
-        `決済ページに移動します。`
-    );
+    // 支払い方法選択モーダルを表示
+    showPaymentMethodModal(priceExTax, taxAmount, priceIncTax, platformFee, total);
+}
+
+function showPaymentMethodModal(priceExTax, taxAmount, priceIncTax, platformFee, total) {
+    // 既存モーダルがあれば削除
+    const existing = document.getElementById('payment-method-modal');
+    if (existing) existing.remove();
     
-    if (!confirmed) return;
+    const modal = document.createElement('div');
+    modal.id = 'payment-method-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);';
+    modal.innerHTML = `
+        <div style="background:#fff;border-radius:16px;max-width:520px;width:90%;max-height:90vh;overflow-y:auto;box-shadow:0 25px 50px rgba(0,0,0,0.25);">
+            <div style="padding:24px 24px 0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                    <h2 style="font-size:20px;font-weight:bold;color:#111;">お支払い方法の選択</h2>
+                    <button onclick="closePaymentModal()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#666;">&times;</button>
+                </div>
+                
+                <!-- 金額内訳 -->
+                <div style="background:#f8f9fa;border-radius:12px;padding:16px;margin-bottom:20px;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#666;">商品価格（税抜）</span><span>¥${priceExTax.toLocaleString()}</span></div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#666;">消費税（10%）</span><span>¥${taxAmount.toLocaleString()}</span></div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#666;">サービス手数料（10%）</span><span>¥${platformFee.toLocaleString()}</span></div>
+                    <div style="border-top:2px solid #e5e7eb;padding-top:8px;display:flex;justify-content:space-between;">
+                        <span style="font-weight:bold;font-size:16px;">お支払い合計</span>
+                        <span style="font-weight:bold;font-size:18px;color:#ef4444;">¥${total.toLocaleString()}</span>
+                    </div>
+                </div>
+                
+                <!-- 支払い方法選択 -->
+                <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px;">
+                    <!-- カード決済 -->
+                    <label id="method-card-label" style="display:flex;align-items:center;padding:16px;border:2px solid #3b82f6;border-radius:12px;cursor:pointer;background:#eff6ff;transition:all 0.2s;">
+                        <input type="radio" name="payment_method" value="card" checked onchange="togglePaymentMethod()" style="margin-right:12px;width:18px;height:18px;">
+                        <i class="fas fa-credit-card" style="font-size:24px;color:#3b82f6;margin-right:12px;"></i>
+                        <div>
+                            <div style="font-weight:bold;color:#111;">クレジットカード決済</div>
+                            <div style="font-size:12px;color:#666;">Visa / Mastercard / JCB / Amex — 即時決済</div>
+                        </div>
+                    </label>
+                    
+                    <!-- 請求書払い -->
+                    <label id="method-invoice-label" style="display:flex;align-items:center;padding:16px;border:2px solid #e5e7eb;border-radius:12px;cursor:pointer;background:#fff;transition:all 0.2s;">
+                        <input type="radio" name="payment_method" value="invoice" onchange="togglePaymentMethod()" style="margin-right:12px;width:18px;height:18px;">
+                        <i class="fas fa-file-invoice-dollar" style="font-size:24px;color:#10b981;margin-right:12px;"></i>
+                        <div>
+                            <div style="font-weight:bold;color:#111;">請求書払い（銀行振込）</div>
+                            <div style="font-size:12px;color:#666;">法人・個人事業主向け — 振込確認後に発送</div>
+                        </div>
+                    </label>
+                </div>
+                
+                <!-- 請求書払いフォーム（非表示） -->
+                <div id="invoice-form-section" style="display:none;margin-bottom:20px;">
+                    <h3 style="font-weight:bold;margin-bottom:12px;color:#111;"><i class="fas fa-building" style="color:#10b981;margin-right:8px;"></i>請求先情報</h3>
+                    <div style="display:flex;flex-direction:column;gap:10px;">
+                        <div>
+                            <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:4px;">会社名 <span style="color:#ef4444;">*</span></label>
+                            <input type="text" id="inv-company" placeholder="例：株式会社○○自動車" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;box-sizing:border-box;">
+                        </div>
+                        <div>
+                            <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:4px;">担当者名</label>
+                            <input type="text" id="inv-contact" placeholder="例：山田 太郎" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;box-sizing:border-box;">
+                        </div>
+                        <div>
+                            <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:4px;">住所</label>
+                            <input type="text" id="inv-address" placeholder="例：東京都○○区..." style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;box-sizing:border-box;">
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                            <div>
+                                <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:4px;">メール</label>
+                                <input type="email" id="inv-email" placeholder="example@co.jp" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;box-sizing:border-box;">
+                            </div>
+                            <div>
+                                <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:4px;">電話番号</label>
+                                <input type="tel" id="inv-phone" placeholder="03-xxxx-xxxx" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;box-sizing:border-box;">
+                            </div>
+                        </div>
+                    </div>
+                    <div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:12px;margin-top:12px;">
+                        <p style="font-size:12px;color:#92400e;"><i class="fas fa-info-circle" style="margin-right:6px;"></i>請求書はPARTS HUB運営より発行されます。振込期限は注文後7日間です。振込確認後に出品者へ発送依頼が送信されます。</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ボタン -->
+            <div style="padding:0 24px 24px;display:flex;gap:12px;">
+                <button onclick="closePaymentModal()" style="flex:1;padding:14px;border:1px solid #d1d5db;border-radius:10px;background:#fff;font-size:15px;cursor:pointer;color:#374151;">キャンセル</button>
+                <button id="confirm-purchase-btn" onclick="confirmPurchase()" style="flex:2;padding:14px;border:none;border-radius:10px;background:#ef4444;color:#fff;font-size:15px;font-weight:bold;cursor:pointer;">
+                    <i class="fas fa-shopping-cart" style="margin-right:8px;"></i>購入を確定する
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
     
-    // 購入ボタンを無効化
-    const purchaseBtn = document.getElementById('purchase-btn');
-    if (purchaseBtn) {
-        purchaseBtn.disabled = true;
-        purchaseBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>処理中...';
-    }
+    // 背景クリックで閉じる
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closePaymentModal();
+    });
+}
+
+function togglePaymentMethod() {
+    const cardLabel = document.getElementById('method-card-label');
+    const invoiceLabel = document.getElementById('method-invoice-label');
+    const invoiceForm = document.getElementById('invoice-form-section');
+    const confirmBtn = document.getElementById('confirm-purchase-btn');
+    const selected = document.querySelector('input[name="payment_method"]:checked')?.value;
     
-    try {
-        const response = await axios.post('/api/payment/create-checkout-session', {
-            product_id: product.id
-        }, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        
-        if (response.data.success && response.data.session_url) {
-            // Stripeの決済ページにリダイレクト
-            window.location.href = response.data.session_url;
-        } else {
-            alert(response.data.error || '決済の準備に失敗しました');
-            resetPurchaseButton();
-        }
-    } catch (error) {
-        console.error('Purchase error:', error);
-        
-        // 認証エラーの場合はログインページにリダイレクト
-        if (error?.response?.status === 401) {
-            localStorage.removeItem('token');
-            currentUser = null;
-            if (confirm('ログインセッションが切れました。再度ログインしますか？')) {
-                redirectToLogin();
-            } else {
-                resetPurchaseButton();
-            }
-            return;
-        }
-        
-        const errorMsg = error.response?.data?.error || '決済の準備に失敗しました。しばらく経ってから再度お試しください。';
-        alert(errorMsg);
-        resetPurchaseButton();
+    if (selected === 'invoice') {
+        cardLabel.style.border = '2px solid #e5e7eb';
+        cardLabel.style.background = '#fff';
+        invoiceLabel.style.border = '2px solid #10b981';
+        invoiceLabel.style.background = '#ecfdf5';
+        invoiceForm.style.display = 'block';
+        confirmBtn.innerHTML = '<i class="fas fa-file-invoice-dollar" style="margin-right:8px;"></i>請求書払いで注文する';
+        confirmBtn.style.background = '#10b981';
+    } else {
+        cardLabel.style.border = '2px solid #3b82f6';
+        cardLabel.style.background = '#eff6ff';
+        invoiceLabel.style.border = '2px solid #e5e7eb';
+        invoiceLabel.style.background = '#fff';
+        invoiceForm.style.display = 'none';
+        confirmBtn.innerHTML = '<i class="fas fa-shopping-cart" style="margin-right:8px;"></i>購入を確定する';
+        confirmBtn.style.background = '#ef4444';
     }
 }
 
-function resetPurchaseButton() {
-    const purchaseBtn = document.getElementById('purchase-btn');
-    if (purchaseBtn) {
-        purchaseBtn.disabled = false;
-        purchaseBtn.innerHTML = '<i class="fas fa-shopping-cart mr-2"></i>購入する';
+function closePaymentModal() {
+    const modal = document.getElementById('payment-method-modal');
+    if (modal) modal.remove();
+}
+
+async function confirmPurchase() {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    
+    const method = document.querySelector('input[name="payment_method"]:checked')?.value || 'card';
+    const confirmBtn = document.getElementById('confirm-purchase-btn');
+    
+    if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:8px;"></i>処理中...';
     }
+    
+    try {
+        if (method === 'card') {
+            // Stripe Checkout
+            const response = await axios.post('/api/payment/create-checkout-session', {
+                product_id: product.id
+            }, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (response.data.success && response.data.session_url) {
+                window.location.href = response.data.session_url;
+            } else {
+                alert(response.data.error || '決済の準備に失敗しました');
+                resetConfirmButton(method);
+            }
+        } else {
+            // 請求書払い
+            const companyName = document.getElementById('inv-company')?.value?.trim();
+            if (!companyName) {
+                alert('会社名は必須です');
+                resetConfirmButton(method);
+                return;
+            }
+            
+            const billingInfo = {
+                company_name: companyName,
+                contact_name: document.getElementById('inv-contact')?.value?.trim() || '',
+                address: document.getElementById('inv-address')?.value?.trim() || '',
+                email: document.getElementById('inv-email')?.value?.trim() || '',
+                phone: document.getElementById('inv-phone')?.value?.trim() || ''
+            };
+            
+            const response = await axios.post('/api/payment/create-invoice-order', {
+                product_id: product.id,
+                billing_info: billingInfo
+            }, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (response.data.success) {
+                closePaymentModal();
+                // 注文完了メッセージ
+                showInvoiceOrderComplete(response.data);
+            } else {
+                alert(response.data.error || '注文の作成に失敗しました');
+                resetConfirmButton(method);
+            }
+        }
+    } catch (error) {
+        console.error('Purchase error:', error);
+        if (error?.response?.status === 401) {
+            localStorage.removeItem('token');
+            currentUser = null;
+            closePaymentModal();
+            if (confirm('ログインセッションが切れました。再度ログインしますか？')) {
+                redirectToLogin();
+            }
+            return;
+        }
+        const errorMsg = error.response?.data?.error || '処理に失敗しました。しばらく経ってから再度お試しください。';
+        alert(errorMsg);
+        resetConfirmButton(method);
+    }
+}
+
+function resetConfirmButton(method) {
+    const btn = document.getElementById('confirm-purchase-btn');
+    if (!btn) return;
+    btn.disabled = false;
+    if (method === 'invoice') {
+        btn.innerHTML = '<i class="fas fa-file-invoice-dollar" style="margin-right:8px;"></i>請求書払いで注文する';
+    } else {
+        btn.innerHTML = '<i class="fas fa-shopping-cart" style="margin-right:8px;"></i>購入を確定する';
+    }
+}
+
+function showInvoiceOrderComplete(data) {
+    const dueDate = data.invoice_due_date ? new Date(data.invoice_due_date).toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'}) : '7日以内';
+    
+    const overlay = document.createElement('div');
+    overlay.id = 'invoice-complete-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);';
+    overlay.innerHTML = `
+        <div style="background:#fff;border-radius:16px;max-width:480px;width:90%;padding:32px;text-align:center;box-shadow:0 25px 50px rgba(0,0,0,0.25);">
+            <div style="width:64px;height:64px;background:#ecfdf5;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                <i class="fas fa-check" style="font-size:28px;color:#10b981;"></i>
+            </div>
+            <h2 style="font-size:20px;font-weight:bold;color:#111;margin-bottom:8px;">注文を受け付けました</h2>
+            <p style="color:#666;margin-bottom:20px;">請求書払い（銀行振込）でのご注文ありがとうございます。</p>
+            
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px;text-align:left;margin-bottom:20px;">
+                <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                    <span style="color:#666;font-size:14px;">請求書番号</span>
+                    <span style="font-weight:bold;color:#111;">${data.invoice_number}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                    <span style="color:#666;font-size:14px;">お支払い合計</span>
+                    <span style="font-weight:bold;color:#ef4444;">¥${data.fees?.total?.toLocaleString() || '-'}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;">
+                    <span style="color:#666;font-size:14px;">振込期限</span>
+                    <span style="font-weight:bold;color:#f59e0b;">${dueDate}</span>
+                </div>
+            </div>
+            
+            <div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:12px;margin-bottom:20px;text-align:left;">
+                <p style="font-size:13px;color:#92400e;line-height:1.6;">
+                    <i class="fas fa-info-circle" style="margin-right:4px;"></i>
+                    PARTS HUB運営より請求書をお送りいたします。<br>
+                    振込確認後、出品者に発送依頼が送信されます。
+                </p>
+            </div>
+            
+            <button onclick="document.getElementById('invoice-complete-overlay').remove(); location.href='/transactions/${data.transaction_id}'" style="width:100%;padding:14px;border:none;border-radius:10px;background:#10b981;color:#fff;font-size:15px;font-weight:bold;cursor:pointer;">
+                <i class="fas fa-clipboard-list" style="margin-right:8px;"></i>取引詳細を確認する
+            </button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
 }
 
 // ===== お気に入り（いいね）機能 =====
