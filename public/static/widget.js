@@ -129,7 +129,7 @@
           for (var j = 0; j < res.data.length && j < MAX_RESULTS; j++) {
             var p = res.data[j];
             var imgUrl = p.thumbnail || p.image_url || (BASE_URL + '/icons/icon-192x192.png');
-            var price = p.price ? '¥' + Number(p.price).toLocaleString('ja-JP') : '';
+            var price = p.price ? '¥' + Number(p.price).toLocaleString('ja-JP', {timeZone: 'Asia/Tokyo'}) : '';
             var condition = p.condition_label || p.condition || '';
             html += '<a href="' + BASE_URL + '/products/' + p.id + '" target="_blank" rel="noopener" class="phw-item">' +
               '<img class="phw-item-img" src="' + imgUrl + '" alt="" loading="lazy" onerror="this.src=\'' + BASE_URL + '/icons/icon-192x192.png\'">' +

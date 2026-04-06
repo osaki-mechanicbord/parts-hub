@@ -3,6 +3,31 @@ import { sign, verify } from 'hono/jwt'
 import * as bcrypt from 'bcryptjs'
 import type { Context, Next } from 'hono'
 
+// JST (UTC+9) ヘルパー関数
+const JST_OFFSET = 9 * 60 * 60 * 1000;
+
+function nowJST(): Date {
+  return new Date(Date.now() + JST_OFFSET);
+}
+
+function toJSTISOString(date?: Date): string {
+  const d = date || nowJST();
+  return d.toISOString();
+}
+
+// JST基準で月初日をUTC ISOStringとして返す（DB比較用）
+function jstMonthStartUTC(year: number, month: number): string {
+  // JST月初日 00:00 = UTC前日 15:00
+  const jstDate = new Date(Date.UTC(year, month, 1, 0, 0, 0) - JST_OFFSET);
+  return jstDate.toISOString();
+}
+
+// JST基準の現在年月を取得
+function jstNow() {
+  const d = nowJST();
+  return { year: d.getUTCFullYear(), month: d.getUTCMonth() };
+}
+
 type Bindings = {
   DB: D1Database;
   ADMIN_API_KEY?: string;
@@ -225,10 +250,10 @@ adminRoutes.get('/stats', async (c) => {
   const { env } = c;
   
   try {
-    // 今月の日付範囲
-    const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const firstDayOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    // 今月の日付範囲（JST基準）
+    const { year, month } = jstNow();
+    const firstDayOfMonth = jstMonthStartUTC(year, month);
+    const firstDayOfLastMonth = jstMonthStartUTC(year, month - 1);
     
     // 今月の総売上
     const currentMonthSales = await env.DB.prepare(`
@@ -236,7 +261,7 @@ adminRoutes.get('/stats', async (c) => {
       FROM transactions
       WHERE status = 'completed'
       AND created_at >= ?
-    `).bind(firstDayOfMonth.toISOString()).first();
+    `).bind(firstDayOfMonth).first();
 
     // 先月の総売上
     const lastMonthSales = await env.DB.prepare(`
@@ -244,21 +269,21 @@ adminRoutes.get('/stats', async (c) => {
       FROM transactions
       WHERE status = 'completed'
       AND created_at >= ? AND created_at < ?
-    `).bind(firstDayOfLastMonth.toISOString(), firstDayOfMonth.toISOString()).first();
+    `).bind(firstDayOfLastMonth, firstDayOfMonth).first();
 
     // 新規ユーザー数（今月）
     const newUsers = await env.DB.prepare(`
       SELECT COUNT(*) as count
       FROM users
       WHERE created_at >= ?
-    `).bind(firstDayOfMonth.toISOString()).first();
+    `).bind(firstDayOfMonth).first();
 
     // 新規ユーザー数（先月）
     const lastMonthNewUsers = await env.DB.prepare(`
       SELECT COUNT(*) as count
       FROM users
       WHERE created_at >= ? AND created_at < ?
-    `).bind(firstDayOfLastMonth.toISOString(), firstDayOfMonth.toISOString()).first();
+    `).bind(firstDayOfLastMonth, firstDayOfMonth).first();
 
     // 出品中の商品数
     const totalProducts = await env.DB.prepare(`
@@ -272,39 +297,39 @@ adminRoutes.get('/stats', async (c) => {
       SELECT COUNT(*) as count
       FROM transactions
       WHERE created_at >= ?
-    `).bind(firstDayOfMonth.toISOString()).first();
+    `).bind(firstDayOfMonth).first();
 
     // 取引数（先月）
     const lastMonthTransactions = await env.DB.prepare(`
       SELECT COUNT(*) as count
       FROM transactions
       WHERE created_at >= ? AND created_at < ?
-    `).bind(firstDayOfLastMonth.toISOString(), firstDayOfMonth.toISOString()).first();
+    `).bind(firstDayOfLastMonth, firstDayOfMonth).first();
 
     // 総ユーザー数
     const totalUsers = await env.DB.prepare(`
       SELECT COUNT(*) as count FROM users
     `).first();
 
-    // 月次売上データ（過去12ヶ月）
+    // 月次売上データ（過去12ヶ月・JST基準）
     const monthlySalesData = [];
     const monthlyUsersData = [];
     for (let i = 11; i >= 0; i--) {
-      const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+      const ms = jstMonthStartUTC(year, month - i);
+      const me = jstMonthStartUTC(year, month - i + 1);
       
       const monthSales = await env.DB.prepare(`
         SELECT COALESCE(SUM(amount), 0) as total
         FROM transactions
         WHERE status = 'completed'
         AND created_at >= ? AND created_at < ?
-      `).bind(monthStart.toISOString(), monthEnd.toISOString()).first();
+      `).bind(ms, me).first();
       
       const monthUsers = await env.DB.prepare(`
         SELECT COUNT(*) as count
         FROM users
         WHERE created_at >= ? AND created_at < ?
-      `).bind(monthStart.toISOString(), monthEnd.toISOString()).first();
+      `).bind(ms, me).first();
       
       monthlySalesData.push(monthSales?.total || 0);
       monthlyUsersData.push(monthUsers?.count || 0);
@@ -1209,9 +1234,9 @@ adminRoutes.get('/sales', async (c) => {
   const { env } = c;
   
   try {
-    // 今月の売上統計
-    const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    // 今月の売上統計（JST基準）
+    const { year, month } = jstNow();
+    const firstOfMonth = jstMonthStartUTC(year, month);
     
     const currentMonth = await env.DB.prepare(`
       SELECT 
@@ -1220,25 +1245,27 @@ adminRoutes.get('/sales', async (c) => {
       FROM transactions
       WHERE status = 'completed'
       AND created_at >= ?
-    `).bind(firstDayOfMonth.toISOString()).first();
+    `).bind(firstOfMonth).first();
 
     const totalFees = Math.floor((currentMonth?.totalSales || 0) * 0.10);
 
-    // 過去12ヶ月の月別売上
+    // 過去12ヶ月の月別売上（JST基準）
     const monthlyData = [];
     for (let i = 11; i >= 0; i--) {
-      const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+      const ms = jstMonthStartUTC(year, month - i);
+      const me = jstMonthStartUTC(year, month - i + 1);
       
       const monthSales = await env.DB.prepare(`
         SELECT COALESCE(SUM(amount), 0) as sales
         FROM transactions
         WHERE status = 'completed'
         AND created_at >= ? AND created_at < ?
-      `).bind(monthStart.toISOString(), monthEnd.toISOString()).first();
+      `).bind(ms, me).first();
       
+      // JSTの月を返す
+      const jstMonth = new Date(Date.UTC(year, month - i, 1));
       monthlyData.push({
-        month: monthStart.getMonth() + 1,
+        month: jstMonth.getUTCMonth() + 1,
         sales: monthSales?.sales || 0
       });
     }
@@ -1507,8 +1534,8 @@ adminRoutes.post('/articles/auto-generate-with-image', async (c) => {
     // ===================================================
     
     // 月別の季節トピック（1月=0, 12月=11）
-    const now = new Date();
-    const currentMonth = now.getMonth();
+    const now = nowJST();
+    const currentMonth = now.getUTCMonth();
     
     const seasonalTopics: Record<number, string[]> = {
       0: [ // 1月
@@ -1850,12 +1877,12 @@ adminRoutes.post('/articles/auto-generate-with-image', async (c) => {
     }
 
     // ステップ3: SEO最適化されたスラッグを生成
-    const dateStr = now.toISOString();
+    const dateStr = toJSTISOString(now);
     
-    // 日付部分を取得（YYYY-MM-DD形式）
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
+    // 日付部分を取得（YYYY-MM-DD形式・JST基準）
+    const year = now.getUTCFullYear();
+    const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(now.getUTCDate()).padStart(2, '0');
     
     // SEO最適化されたスラッグ: カテゴリ/日付/キーワード
     // 例: parts-guide/2026/03/brake-pad-selection-guide

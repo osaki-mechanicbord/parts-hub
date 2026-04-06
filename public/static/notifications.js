@@ -347,5 +347,5 @@ function formatDate(dateString) {
     if (diff < 86400) return `${Math.floor(diff / 3600)}時間前`;
     if (diff < 604800) return `${Math.floor(diff / 86400)}日前`;
 
-    return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+    return new Date(date).toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'});
 }

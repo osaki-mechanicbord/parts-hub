@@ -70,7 +70,7 @@ function renderComments(comments) {
             ${comment.is_question ? '<span class="bg-orange-100 text-orange-700 text-xs px-2 py-0.5 rounded">質問</span>' : ''}
             ${comment.is_answered ? '<span class="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded">回答済み</span>' : ''}
           </div>
-          <p class="text-sm text-gray-500 mb-2">${new Date(comment.created_at).toLocaleString('ja-JP')}</p>
+          <p class="text-sm text-gray-500 mb-2">${new Date(comment.created_at).toLocaleString('ja-JP', {timeZone: 'Asia/Tokyo'})}</p>
           <p class="text-gray-800 whitespace-pre-wrap">${escapeCommentHtml(comment.comment_text)}</p>
 
           ${comment.reply_count > 0 ? `
@@ -126,7 +126,7 @@ async function loadReplies(commentId) {
                 <span class="font-semibold text-gray-900 text-sm">${escapeCommentHtml(reply.user_name)}</span>
                 ${reply.is_verified ? '<i class="fas fa-check-circle text-blue-500 text-xs"></i>' : ''}
               </div>
-              <p class="text-xs text-gray-500 mb-2">${new Date(reply.created_at).toLocaleString('ja-JP')}</p>
+              <p class="text-xs text-gray-500 mb-2">${new Date(reply.created_at).toLocaleString('ja-JP', {timeZone: 'Asia/Tokyo'})}</p>
               <p class="text-sm text-gray-800 whitespace-pre-wrap">${escapeCommentHtml(reply.comment_text)}</p>
             </div>
           </div>

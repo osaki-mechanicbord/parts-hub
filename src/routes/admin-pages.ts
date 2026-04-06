@@ -224,7 +224,7 @@ adminPagesRoutes.get('/', (c) => {
                                 <p class="font-medium text-gray-900">\${user.name}</p>
                                 <p class="text-sm text-gray-500">\${user.email}</p>
                             </div>
-                            <p class="text-xs text-gray-400">\${new Date(user.created_at).toLocaleDateString('ja-JP')}</p>
+                            <p class="text-xs text-gray-400">\${new Date(user.created_at).toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'})}</p>
                         </div>
                     \`).join('');
                 document.getElementById('recent-users').innerHTML = usersHtml;
@@ -361,7 +361,7 @@ adminPagesRoutes.get('/users', (c) => {
                         </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        \${new Date(user.created_at).toLocaleDateString('ja-JP')}
+                        \${new Date(user.created_at).toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'})}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm">
                         <button onclick="viewUser(\${user.id})" class="text-blue-500 hover:underline mr-2" title="詳細">
@@ -574,8 +574,8 @@ adminPagesRoutes.get('/users/:id', (c) => {
             document.getElementById('u-pref').textContent = u.prefecture || '-';
             document.getElementById('u-rating').textContent = u.rating ? u.rating.toFixed(1) + ' / 5.0' : '未評価';
             document.getElementById('u-verified').textContent = u.is_verified ? '認証済み' : '未認証';
-            document.getElementById('u-created').textContent = new Date(u.created_at).toLocaleString('ja-JP');
-            document.getElementById('u-updated').textContent = new Date(u.updated_at).toLocaleString('ja-JP');
+            document.getElementById('u-created').textContent = new Date(u.created_at).toLocaleString('ja-JP', {timeZone: 'Asia/Tokyo'});
+            document.getElementById('u-updated').textContent = new Date(u.updated_at).toLocaleString('ja-JP', {timeZone: 'Asia/Tokyo'});
 
             if (u.bio) {
                 document.getElementById('u-bio').textContent = u.bio;
@@ -613,7 +613,7 @@ adminPagesRoutes.get('/users/:id', (c) => {
                 : '<table class="w-full text-sm"><thead><tr class="text-left text-gray-500 border-b"><th class="pb-2">ID</th><th class="pb-2">商品名</th><th class="pb-2">価格</th><th class="pb-2">ステータス</th><th class="pb-2">出品日</th></tr></thead><tbody>' +
                   products.map(p => '<tr class="border-b hover:bg-gray-50"><td class="py-2">' + p.id + '</td><td class="py-2"><a href="/admin/products/' + p.id + '" class="text-blue-500 hover:underline">' + p.title + '</a></td><td class="py-2">&yen;' + Math.floor(p.price * 1.1).toLocaleString() + ' <span style="font-size:10px;color:#6b7280;">税込</span></td><td class="py-2"><span class="px-2 py-0.5 text-xs rounded ' +
                     (p.status === 'active' ? 'bg-green-100 text-green-700' : p.status === 'sold' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600') + '">' +
-                    (p.status === 'active' ? '出品中' : p.status === 'sold' ? '売却済' : p.status) + '</span></td><td class="py-2">' + new Date(p.created_at).toLocaleDateString('ja-JP') + '</td></tr>').join('') +
+                    (p.status === 'active' ? '出品中' : p.status === 'sold' ? '売却済' : p.status) + '</span></td><td class="py-2">' + new Date(p.created_at).toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'}) + '</td></tr>').join('') +
                   '</tbody></table>';
 
             // 取引履歴
@@ -622,7 +622,7 @@ adminPagesRoutes.get('/users/:id', (c) => {
                 ? '<p class="text-gray-500 text-center py-4">取引履歴はありません</p>'
                 : '<table class="w-full text-sm"><thead><tr class="text-left text-gray-500 border-b"><th class="pb-2">ID</th><th class="pb-2">種別</th><th class="pb-2">商品</th><th class="pb-2">金額</th><th class="pb-2">ステータス</th><th class="pb-2">日付</th></tr></thead><tbody>' +
                   txs.map(t => '<tr class="border-b hover:bg-gray-50"><td class="py-2">' + t.id + '</td><td class="py-2"><span class="px-2 py-0.5 text-xs rounded ' +
-                    (t.role === '購入' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700') + '">' + t.role + '</span></td><td class="py-2">' + (t.product_title || '-') + '</td><td class="py-2">&yen;' + t.amount.toLocaleString() + '</td><td class="py-2">' + t.status + '</td><td class="py-2">' + new Date(t.created_at).toLocaleDateString('ja-JP') + '</td></tr>').join('') +
+                    (t.role === '購入' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700') + '">' + t.role + '</span></td><td class="py-2">' + (t.product_title || '-') + '</td><td class="py-2">&yen;' + t.amount.toLocaleString() + '</td><td class="py-2">' + t.status + '</td><td class="py-2">' + new Date(t.created_at).toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'}) + '</td></tr>').join('') +
                   '</tbody></table>';
         }
 
@@ -762,7 +762,7 @@ adminPagesRoutes.get('/products', (c) => {
                     </td>
                     <td class="px-6 py-4 text-sm text-gray-900">\${p.favorites_count || 0}</td>
                     <td class="px-6 py-4 text-sm text-gray-900">\${p.comments_count || 0}</td>
-                    <td class="px-6 py-4 text-sm text-gray-600">\${new Date(p.created_at).toLocaleDateString('ja-JP')}</td>
+                    <td class="px-6 py-4 text-sm text-gray-600">\${new Date(p.created_at).toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'})}</td>
                     <td class="px-6 py-4 text-sm">
                         <a href="/admin/products/\${p.id}" class="text-blue-600 hover:text-blue-800 mr-3" title="詳細">
                             <i class="fas fa-eye"></i>
@@ -956,8 +956,8 @@ adminPagesRoutes.get('/products/:id', (c) => {
             document.getElementById('p-stock').textContent = (p.stock_quantity != null ? p.stock_quantity : 1) + '個';
             document.getElementById('p-views').textContent = (p.view_count || p.views || 0) + '回';
             document.getElementById('p-favs').textContent = (data.favorite_count || 0) + '件';
-            document.getElementById('p-created').textContent = new Date(p.created_at).toLocaleString('ja-JP');
-            document.getElementById('p-updated').textContent = new Date(p.updated_at).toLocaleString('ja-JP');
+            document.getElementById('p-created').textContent = new Date(p.created_at).toLocaleString('ja-JP', {timeZone: 'Asia/Tokyo'});
+            document.getElementById('p-updated').textContent = new Date(p.updated_at).toLocaleString('ja-JP', {timeZone: 'Asia/Tokyo'});
             document.getElementById('p-desc').textContent = p.description || '（説明なし）';
 
             const sb = statusBadge(p.status);
@@ -996,7 +996,7 @@ adminPagesRoutes.get('/products/:id', (c) => {
             document.getElementById('p-transactions').innerHTML = txs.length === 0
                 ? '<p class="text-gray-500 text-center py-4">取引履歴はありません</p>'
                 : '<table class="w-full text-sm"><thead><tr class="text-left text-gray-500 border-b"><th class="pb-2">ID</th><th class="pb-2">購入者</th><th class="pb-2">金額</th><th class="pb-2">ステータス</th><th class="pb-2">日付</th></tr></thead><tbody>' +
-                  txs.map(function(t) { return '<tr class="border-b hover:bg-gray-50"><td class="py-2">' + t.id + '</td><td class="py-2">' + (t.buyer_name || '-') + '</td><td class="py-2">¥' + t.amount.toLocaleString() + '</td><td class="py-2">' + t.status + '</td><td class="py-2">' + new Date(t.created_at).toLocaleDateString('ja-JP') + '</td></tr>'; }).join('') +
+                  txs.map(function(t) { return '<tr class="border-b hover:bg-gray-50"><td class="py-2">' + t.id + '</td><td class="py-2">' + (t.buyer_name || '-') + '</td><td class="py-2">¥' + t.amount.toLocaleString() + '</td><td class="py-2">' + t.status + '</td><td class="py-2">' + new Date(t.created_at).toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'}) + '</td></tr>'; }).join('') +
                   '</tbody></table>';
         }
 
@@ -1117,7 +1117,7 @@ adminPagesRoutes.get('/transactions', (c) => {
                             \${t.status}
                         </span>
                     </td>
-                    <td class="px-6 py-4 text-sm text-gray-600">\${new Date(t.created_at).toLocaleDateString('ja-JP')}</td>
+                    <td class="px-6 py-4 text-sm text-gray-600">\${new Date(t.created_at).toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'})}</td>
                     <td class="px-6 py-4 text-sm">
                         <a href="/transactions/\${t.id}" target="_blank" class="text-blue-600 hover:text-blue-800 mr-3" title="詳細">
                             <i class="fas fa-eye"></i>
@@ -1233,7 +1233,7 @@ adminPagesRoutes.get('/reviews', (c) => {
                         <div class="flex-1">
                             <div class="flex items-center mb-2">
                                 <span class="text-yellow-500 mr-2">\${'⭐'.repeat(r.rating)}</span>
-                                <span class="text-sm text-gray-600">\${new Date(r.created_at).toLocaleDateString('ja-JP')}</span>
+                                <span class="text-sm text-gray-600">\${new Date(r.created_at).toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'})}</span>
                             </div>
                             <p class="text-sm text-gray-700 mb-2"><strong>評価者:</strong> \${r.reviewer_name}</p>
                             <p class="text-sm text-gray-700 mb-2"><strong>対象:</strong> \${r.reviewee_name}</p>
@@ -1344,7 +1344,7 @@ adminPagesRoutes.get('/reports', (c) => {
                                 }">
                                     \${r.status === 'pending' ? '未対応' : r.status === 'resolved' ? '対応済み' : '却下'}
                                 </span>
-                                <span class="ml-3 text-sm text-gray-600">\${new Date(r.created_at).toLocaleDateString('ja-JP')}</span>
+                                <span class="ml-3 text-sm text-gray-600">\${new Date(r.created_at).toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'})}</span>
                             </div>
                             <p class="text-sm text-gray-700 mb-2"><strong>通報者:</strong> \${r.reporter_name}</p>
                             <p class="text-sm text-gray-700 mb-2"><strong>対象商品:</strong> <a href="/products/\${r.product_id}" target="_blank" class="text-blue-600 hover:underline">\${r.product_title}</a></p>
@@ -1507,7 +1507,7 @@ adminPagesRoutes.get('/sales', (c) => {
                 const net = t.amount - fee;
                 return \`
                     <tr class="hover:bg-gray-50">
-                        <td class="px-6 py-4 text-sm text-gray-600">\${new Date(t.created_at).toLocaleDateString('ja-JP')}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600">\${new Date(t.created_at).toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'})}</td>
                         <td class="px-6 py-4 text-sm text-gray-900">\${t.product_title}</td>
                         <td class="px-6 py-4 text-sm font-bold text-gray-900">¥\${t.amount.toLocaleString()}</td>
                         <td class="px-6 py-4 text-sm text-green-600">¥\${fee.toLocaleString()}</td>
@@ -1745,7 +1745,7 @@ adminPagesRoutes.get('/articles', (c) => {
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">\${article.view_count || 0}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        \${article.published_at ? new Date(article.published_at).toLocaleDateString('ja-JP') : '-'}
+                        \${article.published_at ? new Date(article.published_at).toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'}) : '-'}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm">
                         <button onclick="editArticle(\${article.id})" class="text-blue-500 hover:underline mr-2">
@@ -2116,7 +2116,7 @@ adminPagesRoutes.get('/withdrawals', (c) => {
                     '<td class="px-4 py-4 text-sm text-gray-600"><div>' + escapeHtml(w.bank_name) + '</div><div class="text-xs">' + escapeHtml(w.branch_name) + ' ' + accountTypeLabel(w.account_type) + '</div></td>' +
                     '<td class="px-4 py-4 text-sm text-gray-600">' + escapeHtml(w.account_holder) + '<div class="text-xs text-gray-400">' + escapeHtml(w.account_number) + '</div></td>' +
                     '<td class="px-4 py-4"><span class="px-2 py-1 text-xs rounded ' + sb[1] + '">' + sb[0] + '</span></td>' +
-                    '<td class="px-4 py-4 text-sm text-gray-600">' + new Date(w.requested_at).toLocaleDateString('ja-JP') + '</td>' +
+                    '<td class="px-4 py-4 text-sm text-gray-600">' + new Date(w.requested_at).toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'}) + '</td>' +
                     '<td class="px-4 py-4 text-sm">' +
                         '<button onclick="showDetail(' + w.id + ')" class="text-blue-600 hover:text-blue-800 mr-2" title="詳細"><i class="fas fa-eye"></i></button>' +
                         (w.status === 'pending' ? '<button onclick="approveWithdrawal(' + w.id + ')" class="text-green-600 hover:text-green-800 mr-2" title="承認"><i class="fas fa-check"></i></button><button onclick="rejectWithdrawal(' + w.id + ')" class="text-red-600 hover:text-red-800" title="却下"><i class="fas fa-times"></i></button>' : '') +
@@ -2154,10 +2154,10 @@ adminPagesRoutes.get('/withdrawals', (c) => {
                     '<div><span class="text-gray-500">口座種別:</span> ' + accountTypeLabel(w.account_type) + '</div>' +
                     '<div><span class="text-gray-500">口座番号:</span> ' + escapeHtml(w.account_number) + '</div>' +
                     '<div class="col-span-2"><span class="text-gray-500">口座名義:</span> <strong>' + escapeHtml(w.account_holder) + '</strong></div>' +
-                    '<div><span class="text-gray-500">申請日:</span> ' + new Date(w.requested_at).toLocaleString('ja-JP') + '</div>' +
+                    '<div><span class="text-gray-500">申請日:</span> ' + new Date(w.requested_at).toLocaleString('ja-JP', {timeZone: 'Asia/Tokyo'}) + '</div>' +
                     '<div><span class="text-gray-500">ステータス:</span> ' + statusBadge(w.status)[0] + '</div>' +
-                    (w.processed_at ? '<div><span class="text-gray-500">処理日:</span> ' + new Date(w.processed_at).toLocaleString('ja-JP') + '</div>' : '') +
-                    (w.transferred_at ? '<div><span class="text-gray-500">振込日:</span> ' + new Date(w.transferred_at).toLocaleString('ja-JP') + '</div>' : '') +
+                    (w.processed_at ? '<div><span class="text-gray-500">処理日:</span> ' + new Date(w.processed_at).toLocaleString('ja-JP', {timeZone: 'Asia/Tokyo'}) + '</div>' : '') +
+                    (w.transferred_at ? '<div><span class="text-gray-500">振込日:</span> ' + new Date(w.transferred_at).toLocaleString('ja-JP', {timeZone: 'Asia/Tokyo'}) + '</div>' : '') +
                     (w.notes ? '<div class="col-span-2"><span class="text-gray-500">メモ:</span> ' + escapeHtml(w.notes) + '</div>' : '') +
                     (w.rejection_reason ? '<div class="col-span-2"><span class="text-gray-500">却下理由:</span> <span class="text-red-600">' + escapeHtml(w.rejection_reason) + '</span></div>' : '') +
                     '</div>';
@@ -2364,8 +2364,8 @@ adminPagesRoutes.get('/announcements', (c) => {
 
             list.innerHTML = data.data.map(function(a) {
                 var t = typeLabels[a.type] || typeLabels['info'];
-                var date = a.published_at ? new Date(a.published_at).toLocaleString('ja-JP') : '';
-                var expDate = a.expires_at ? new Date(a.expires_at).toLocaleString('ja-JP') : '';
+                var date = a.published_at ? new Date(a.published_at).toLocaleString('ja-JP', {timeZone: 'Asia/Tokyo'}) : '';
+                var expDate = a.expires_at ? new Date(a.expires_at).toLocaleString('ja-JP', {timeZone: 'Asia/Tokyo'}) : '';
                 var isExpired = a.expires_at && new Date(a.expires_at) < new Date();
                 var statusBadge = !a.is_active
                     ? '<span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-200 text-gray-600">非公開</span>'

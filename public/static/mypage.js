@@ -3,6 +3,18 @@
  * 機能: 出品管理、売上管理、購入履歴、お気に入り、値下げ交渉
  */
 
+// JST変換ヘルパー
+function toJSTDate(dateStr) {
+    const d = new Date(dateStr);
+    return new Date(d.toLocaleString('en-US', {timeZone: 'Asia/Tokyo'}));
+}
+function formatDateJST(dateStr) {
+    return new Date(dateStr).toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'});
+}
+function formatDateTimeJST(dateStr) {
+    return new Date(dateStr).toLocaleString('ja-JP', {timeZone: 'Asia/Tokyo'});
+}
+
 // ユーザーID（ログインから動的取得）
 let currentUserId = null;
 let token = null;
@@ -739,7 +751,7 @@ function getSaleStatusInfo(status) {
 function aggregateMonthlySales(sales) {
     const monthlyMap = {};
     sales.forEach(sale => {
-        const date = new Date(sale.sold_at);
+        const date = toJSTDate(sale.sold_at);
         const key = `${date.getFullYear()}-${date.getMonth() + 1}`;
         if (!monthlyMap[key]) {
             monthlyMap[key] = { year: date.getFullYear(), month: date.getMonth() + 1, total: 0, fee: 0, count: 0 };
@@ -1080,5 +1092,5 @@ function formatDate(dateString) {
     if (diff < 86400) return `${Math.floor(diff / 3600)}時間前`;
     if (diff < 604800) return `${Math.floor(diff / 86400)}日前`;
     
-    return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+    return formatDateJST(date);
 }

@@ -260,6 +260,5 @@ function formatPrice(price) {
 
 function formatDate(dateString) {
     if (!dateString) return '';
-    const date = new Date(dateString);
-    return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+    return new Date(dateString).toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'});
 }

@@ -578,7 +578,7 @@ async function loadSellerReviewSummary(sellerId) {
                 return i < r.rating ? '<i class="fas fa-star text-yellow-400"></i>' : '<i class="far fa-star text-gray-300"></i>';
             }).join('');
             const date = new Date(r.created_at);
-            const dateStr = date.getFullYear() + '/' + (date.getMonth() + 1) + '/' + date.getDate();
+            const dateStr = date.toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'});
             latestEl.classList.remove('hidden');
             latestEl.innerHTML = '<div class="bg-gray-50 rounded-lg p-3"><div class="flex items-center justify-between mb-1"><div class="flex items-center gap-1 text-xs">' + stars + '</div><span class="text-[10px] text-gray-400">' + dateStr + '</span></div><p class="text-xs text-gray-600 line-clamp-2">' + (r.comment || '').substring(0, 80) + (r.comment && r.comment.length > 80 ? '...' : '') + '</p><p class="text-[10px] text-gray-400 mt-1">' + (r.reviewer_name || '匿名') + ' - ' + (r.product_title || '') + '</p></div>';
         }

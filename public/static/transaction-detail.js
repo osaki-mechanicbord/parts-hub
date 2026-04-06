@@ -678,20 +678,17 @@ function formatPrice(price) {
 
 function formatDate(dateString) {
   if (!dateString) return '-';
-  const d = new Date(dateString);
-  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+  return new Date(dateString).toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'});
 }
 
 function formatDateTime(dateString) {
   if (!dateString) return '-';
-  const d = new Date(dateString);
-  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+  return new Date(dateString).toLocaleString('ja-JP', {timeZone: 'Asia/Tokyo', year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'});
 }
 
 function formatShortDate(dateString) {
   if (!dateString) return '';
-  const d = new Date(dateString);
-  return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+  return new Date(dateString).toLocaleString('ja-JP', {timeZone: 'Asia/Tokyo', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'});
 }
 
 function escapeHtml(str) {

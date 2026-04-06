@@ -427,7 +427,9 @@ app.get('/sitemap.xml', async (c) => {
   
   try {
     const baseUrl = 'https://parts-hub-tci.com';
-    const now = new Date().toISOString().split('T')[0];
+    // JST基準の日付 (YYYY-MM-DD)
+    const jstDate = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    const now = jstDate.toISOString().split('T')[0];
     
     // 公開済みの記事を取得
     const articles = await env.DB.prepare(`
@@ -1952,7 +1954,7 @@ app.get('/', (c) => {
                         <div class="flex items-center text-xs text-gray-500 mb-3">
                             <span class="px-2 py-1 bg-red-100 text-red-600 rounded font-medium">\${article.category}</span>
                             <span class="mx-2">•</span>
-                            <span>\${new Date(article.published_at).toLocaleDateString('ja-JP')}</span>
+                            <span>\${new Date(article.published_at).toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'})}</span>
                         </div>
                         <h3 class="text-xl font-bold text-gray-900 mb-2 line-clamp-2">\${article.title}</h3>
                         <p class="text-gray-600 text-sm line-clamp-3">\${article.summary || ''}</p>
@@ -1972,7 +1974,7 @@ app.get('/', (c) => {
                         <div class="flex items-center text-xs text-gray-500 mb-2">
                             <span class="px-1.5 py-0.5 bg-red-100 text-red-600 rounded text-xs font-medium">\${article.category}</span>
                             <span class="mx-1.5">•</span>
-                            <span>\${new Date(article.published_at).toLocaleDateString('ja-JP')}</span>
+                            <span>\${new Date(article.published_at).toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'})}</span>
                         </div>
                         <h3 class="font-bold text-gray-900 text-sm leading-snug line-clamp-2">\${article.title}</h3>
                         <p class="text-gray-500 text-xs mt-1.5 line-clamp-2">\${article.summary || ''}</p>
@@ -2062,8 +2064,7 @@ app.get('/', (c) => {
                         var cfg = typeConfig[a.type] || typeConfig['info'];
                         var dateStr = '';
                         if (a.published_at) {
-                            var d = new Date(a.published_at);
-                            dateStr = d.getFullYear() + '/' + (d.getMonth()+1) + '/' + d.getDate();
+                            dateStr = new Date(a.published_at).toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'});
                         }
                         var pinIcon = a.is_pinned ? '<i class="fas fa-thumbtack text-red-400 mr-1" title="ピン留め"></i>' : '';
                         return '<div class="' + cfg.bg + ' border ' + cfg.border + ' rounded-xl p-4 transition-all hover:shadow-sm">' +
@@ -2207,7 +2208,7 @@ app.get('/news', (c) => {
                                 <div class="flex items-center text-xs text-gray-500 mb-2">
                                     <span class="px-2 py-1 bg-red-100 text-red-600 rounded">\${article.category}</span>
                                     <span class="mx-2">•</span>
-                                    <span>\${new Date(article.published_at).toLocaleDateString('ja-JP')}</span>
+                                    <span>\${new Date(article.published_at).toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'})}</span>
                                 </div>
                                 <h3 class="text-lg font-bold text-gray-900 mb-2 line-clamp-2">\${article.title}</h3>
                                 <p class="text-gray-600 text-sm line-clamp-3">\${article.summary || ''}</p>
@@ -2519,7 +2520,7 @@ function getArticleDetailScript() {
                 });
                 
                 var pubDate = new Date(article.published_at);
-                var dateStr = pubDate.getFullYear() + '年' + (pubDate.getMonth()+1) + '月' + pubDate.getDate() + '日';
+                var dateStr = pubDate.toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo', year: 'numeric', month: 'long', day: 'numeric'});
                 
                 var tagsHtml = '';
                 if (article.tags) {
@@ -2579,7 +2580,7 @@ function getArticleDetailScript() {
                         filtered.map(function(a) {
                             var cn = categoryNames[a.category] || a.category;
                             var cc = categoryClasses[a.category] || 'cat-general';
-                            var d = new Date(a.published_at).toLocaleDateString('ja-JP');
+                            var d = new Date(a.published_at).toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'});
                             return '<a href="/news/' + a.slug + '" class="related-card bg-white rounded-xl overflow-hidden">' +
                                 '<div class="overflow-hidden"><img src="' + a.thumbnail_url + '" alt="' + a.title + '" class="w-full h-44 object-cover" onerror="this.src=\\'https://placehold.co/600x400/1f2937/ef4444?text=PARTS+HUB\\'"></div>' +
                                 '<div class="p-4"><span class="' + cc + ' px-2 py-0.5 rounded text-xs font-bold inline-block mb-2">' + cn + '</span>' +
@@ -4985,6 +4986,7 @@ app.get('/chat', (c) => {
                     const lastMessage = room.last_message || 'まだメッセージがありません';
                     const lastMessageTime = room.last_message_at 
                         ? new Date(room.last_message_at).toLocaleString('ja-JP', { 
+                            timeZone: 'Asia/Tokyo',
                             month: 'short', 
                             day: 'numeric', 
                             hour: '2-digit', 
@@ -5293,6 +5295,7 @@ app.get('/chat/:roomId', (c) => {
                 const isSent = msg.sender_id == currentUserId;
                 const bubbleClass = isSent ? 'message-sent' : 'message-received';
                 const timeStr = new Date(msg.created_at).toLocaleString('ja-JP', { 
+                    timeZone: 'Asia/Tokyo',
                     hour: '2-digit', 
                     minute: '2-digit' 
                 });
@@ -6387,7 +6390,7 @@ app.get('/seller/:id', async (c) => {
                     let stars = '';
                     for (let i = 1; i <= 5; i++) stars += i <= r.rating ? '<i class="fas fa-star text-yellow-400"></i>' : '<i class="far fa-star text-gray-300"></i>';
                     const date = new Date(r.created_at);
-                    const dateStr = date.getFullYear() + '/' + (date.getMonth()+1) + '/' + date.getDate();
+                    const dateStr = date.toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'});
                     return '<div class="bg-white rounded-xl shadow-sm p-4 sm:p-5">' +
                         '<div class="flex items-start justify-between mb-2">' +
                         '<div class="flex items-center gap-2">' +
@@ -9629,7 +9632,7 @@ app.get('/sitemap', async (c) => {
     const catLabels: Record<string,string> = { 'parts-guide':'パーツガイド','maintenance':'メンテナンス','tips':'お役立ち情報','deadstock':'デッドストック活用','news':'ニュース' }
     articlesHtml = arts.results.map((a: any) => {
       const d = a.published_at ? new Date(a.published_at) : new Date()
-      const dateStr = d.getFullYear() + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + String(d.getDate()).padStart(2,'0')
+      const dateStr = d.toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'})
       const catLabel = catLabels[a.category] || a.category || '総合'
       const safeTitle = String(a.title || '').replace(/</g,'&lt;')
       return '<li><a href="/news/' + a.slug + '" class="sitemap-link group">' +
@@ -11046,7 +11049,7 @@ app.get('/vehicle-demo', (c) => {
           panel.classList.remove('hidden');
           var log = document.getElementById('perf-log');
           var color = ms < 100 ? 'text-green-400' : ms < 300 ? 'text-yellow-400' : 'text-red-400';
-          log.innerHTML += '<div class="flex justify-between"><span class="text-gray-400">' + new Date().toLocaleTimeString() + '</span><span>' + label + '</span><span class="' + color + '">' + ms + 'ms</span><span class="text-gray-500">' + count + '件</span></div>';
+          log.innerHTML += '<div class="flex justify-between"><span class="text-gray-400">' + new Date().toLocaleTimeString('ja-JP', {timeZone: 'Asia/Tokyo'}) + '</span><span>' + label + '</span><span class="' + color + '">' + ms + 'ms</span><span class="text-gray-500">' + count + '件</span></div>';
           // 平均を更新
           var avg = Math.round(apiTimes.reduce(function(a,b){return a+b},0) / apiTimes.length);
           document.getElementById('stat-avg-time').textContent = avg;
@@ -13506,7 +13509,7 @@ app.get('/admin-old-unused', (c) => {
                             </div>
                         </div>
                         <div class="text-right">
-                            <p class="text-xs text-gray-500">\${new Date(user.created_at).toLocaleDateString('ja-JP')}</p>
+                            <p class="text-xs text-gray-500">\${new Date(user.created_at).toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'})}</p>
                         </div>
                     </div>
                 \`).join('');
@@ -13649,7 +13652,7 @@ app.get('/admin/users', (c) => {
                     </td>
                     <td class="px-6 py-4 text-sm text-gray-900">\${user.products_count || 0}</td>
                     <td class="px-6 py-4 text-sm text-gray-900">\${user.transactions_count || 0}</td>
-                    <td class="px-6 py-4 text-sm text-gray-600">\${new Date(user.created_at).toLocaleDateString('ja-JP')}</td>
+                    <td class="px-6 py-4 text-sm text-gray-600">\${new Date(user.created_at).toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'})}</td>
                     <td class="px-6 py-4 text-sm">
                         <button onclick="viewUser(\${user.id})" class="text-blue-600 hover:text-blue-800 mr-3">
                             <i class="fas fa-eye"></i>
