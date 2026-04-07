@@ -8848,11 +8848,11 @@ app.get('/vehicle', async (c) => {
         <div class="vehicle-list" id="${listId}" style="display:none;">
           <div class="text-center py-4 text-gray-400 text-sm"><i class="fas fa-spinner fa-spin mr-1"></i>読み込み中...</div>
         </div>
-        <div style="display:flex;gap:6px;margin-top:8px;">
-          <button class="model-toggle" style="flex:1;" onclick="toggleMaker(this, '${makerName.replace(/'/g, "\\'")}', '${listId}')" data-loaded="false">
-            <span>車種を表示</span><i class="fas fa-chevron-down ml-1" style="font-size:10px;"></i>
+        <div class="maker-actions">
+          <button class="model-toggle-btn" onclick="toggleMaker(this, '${makerName.replace(/'/g, "\\'")}', '${listId}')" data-loaded="false">
+            <span>車種を表示</span><i class="fas fa-chevron-down" style="font-size:10px;margin-left:4px;"></i>
           </button>
-          <a href="${makerUrl}" class="model-toggle" style="flex:0 0 auto;padding:8px 12px;text-decoration:none;display:inline-flex;align-items:center;gap:4px;" title="${makerName}の全車種を見る"><i class="fas fa-external-link-alt" style="font-size:10px;"></i></a>
+          <a href="${makerUrl}" class="maker-detail-link" title="${makerName}の全車種を見る"><i class="fas fa-external-link-alt" style="font-size:10px;"></i></a>
         </div>
       </div>`
       makerIndex++
@@ -8891,12 +8891,15 @@ app.get('/vehicle', async (c) => {
       .vehicle-chip:hover { background: #fef2f2; border-color: #fca5a5; color: #dc2626; }
       .vehicle-name { font-size: 13px; font-weight: 600; }
       .vehicle-meta { font-size: 10px; color: #9ca3af; }
-      .model-toggle { display:block; width:100%; padding:8px; text-align:center; font-size:13px; font-weight:600; color:#ef4444; background:none; border:1px solid #fee2e2; border-radius:8px; cursor:pointer; transition:all 0.15s; margin-top:8px; }
-      .model-toggle:hover { background:#fef2f2; }
-      .search-box { max-width:500px; margin:0 auto; position:relative; }
-      .search-box input { width:100%; padding:12px 16px 12px 42px; border:2px solid #e5e7eb; border-radius:12px; font-size:14px; outline:none; transition:border-color 0.2s; }
+      .maker-actions { display:flex; flex-direction:row; gap:6px; margin-top:8px; }
+      .model-toggle-btn { flex:1; padding:8px; text-align:center; font-size:13px; font-weight:600; color:#ef4444; background:none; border:1px solid #fee2e2; border-radius:8px; cursor:pointer; transition:all 0.15s; display:inline-flex; align-items:center; justify-content:center; }
+      .model-toggle-btn:hover { background:#fef2f2; }
+      .maker-detail-link { display:flex; align-items:center; justify-content:center; width:36px; flex-shrink:0; padding:8px; color:#ef4444; background:none; border:1px solid #fee2e2; border-radius:8px; cursor:pointer; transition:all 0.15s; text-decoration:none; }
+      .maker-detail-link:hover { background:#fef2f2; }
+      .search-box { max-width:500px; margin:0 auto; position:relative; z-index:10; }
+      .search-box input { width:100%; padding:12px 16px 12px 42px; border:2px solid #e5e7eb; border-radius:12px; font-size:14px; outline:none; transition:border-color 0.2s; background:white; color:#1f2937; }
       .search-box input:focus { border-color:#ef4444; }
-      .search-box i { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:#9ca3af; }
+      .search-box i { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:#9ca3af; pointer-events:none; }
       .stat-card { background:rgba(255,255,255,0.08); border-radius:12px; padding:16px 20px; text-align:center; border:1px solid rgba(255,255,255,0.1); }
       .stat-value { font-size:24px; font-weight:900; color:#f87171; }
       .stat-label { font-size:11px; color:#94a3b8; margin-top:2px; }
@@ -8953,14 +8956,16 @@ app.get('/vehicle', async (c) => {
       if (isOpen) {
         list.style.display = 'none'
         btn.querySelector('span').textContent = '車種を表示'
-        btn.querySelector('i').className = 'fas fa-chevron-down ml-1'
+        btn.querySelector('i').className = 'fas fa-chevron-down'
         btn.querySelector('i').style.fontSize = '10px'
+        btn.querySelector('i').style.marginLeft = '4px'
         return
       }
       list.style.display = ''
       btn.querySelector('span').textContent = '閉じる'
-      btn.querySelector('i').className = 'fas fa-chevron-up ml-1'
+      btn.querySelector('i').className = 'fas fa-chevron-up'
       btn.querySelector('i').style.fontSize = '10px'
+      btn.querySelector('i').style.marginLeft = '4px'
 
       if (btn.getAttribute('data-loaded') === 'true') return
       try {
