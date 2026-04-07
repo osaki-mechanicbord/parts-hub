@@ -8809,6 +8809,7 @@ app.get('/vehicle', async (c) => {
       ...makers.filter((mk: any) => !domesticSet.has(mk.maker)).map((mk: any) => mk.maker)
     ]
 
+    let makerIndex = 0
     for (const makerName of sortedMakers) {
       const makerData = makers.find((mk: any) => mk.maker === makerName) as any
       if (!makerData) continue
@@ -8816,15 +8817,17 @@ app.get('/vehicle', async (c) => {
       const badgeHtml = isDomestic
         ? '<span style="font-size:10px;background:#fef2f2;color:#dc2626;padding:1px 6px;border-radius:4px;margin-left:8px;">国内</span>'
         : '<span style="font-size:10px;background:#f0fdf4;color:#16a34a;padding:1px 6px;border-radius:4px;margin-left:8px;">海外</span>'
+      const listId = 'models-' + makerIndex
       makerCards += `<div class="maker-card" data-maker="${makerName.replace(/"/g, '&quot;')}">
         <h3 class="maker-title"><span>${makerName}</span>${badgeHtml}<span style="font-size:11px;color:#9ca3af;margin-left:auto;float:right;">${makerData.model_count}車種</span></h3>
-        <div class="vehicle-list" id="models-${totalMakers}" style="display:none;">
+        <div class="vehicle-list" id="${listId}" style="display:none;">
           <div class="text-center py-4 text-gray-400 text-sm"><i class="fas fa-spinner fa-spin mr-1"></i>読み込み中...</div>
         </div>
-        <button class="model-toggle" onclick="toggleMaker(this, '${makerName.replace(/'/g, "\\'")}', 'models-${totalMakers}')" data-loaded="false">
+        <button class="model-toggle" onclick="toggleMaker(this, '${makerName.replace(/'/g, "\\'")}', '${listId}')" data-loaded="false">
           <span>車種を表示</span><i class="fas fa-chevron-down ml-1" style="font-size:10px;"></i>
         </button>
       </div>`
+      makerIndex++
     }
   } catch (e) {
     console.error('Vehicle guide error:', e)
