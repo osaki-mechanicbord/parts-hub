@@ -155,17 +155,8 @@ franchise.get('/', async (c) => {
   }
   if (recruitingCount === 0) recruitingCount = 47
 
-  // 地図用HTML
-  const mapPrefHtml = Object.entries(PREF_NAMES).map(([slug, name]) => {
-    const a = areas[slug] || { status: 'recruiting', partner_count: 0 }
-    const statusClass = a.status === 'recruiting' ? 'map-recruiting' : a.status === 'closed' ? 'map-closed' : 'map-planned'
-    const statusLabel = a.status === 'recruiting' ? '募集中' : a.status === 'closed' ? '決定済' : '募集予定'
-    return `<div class="pref-item ${statusClass}" data-slug="${slug}" data-status="${a.status}">
-      <span class="pref-name">${name}</span>
-      <span class="pref-status">${statusLabel}</span>
-      ${a.partner_count > 0 ? `<span class="pref-count">${a.partner_count}名</span>` : ''}
-    </div>`
-  }).join('')
+  // 地域別HTMLを生成
+  const regionTableHtml = buildRegionTable(areas)
 
   return c.html(`<!DOCTYPE html>
 <html lang="ja">
@@ -236,19 +227,23 @@ franchise.get('/', async (c) => {
         .section-heading { font-size: 1.25rem; font-weight: 700; color: #1e293b; position: relative; padding-left: 16px; }
         .section-heading::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 4px; height: 24px; background: linear-gradient(to bottom, #ff4757, #ff6b81); border-radius: 2px; }
 
-        /* 日本地図グリッド */
-        .japan-map-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 6px; }
-        .pref-item { padding: 8px 10px; border-radius: 10px; cursor: pointer; transition: all 0.2s; text-align: center; border: 2px solid transparent; }
-        .pref-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .pref-name { display: block; font-size: 0.8rem; font-weight: 700; }
-        .pref-status { display: block; font-size: 0.65rem; margin-top: 2px; }
-        .pref-count { display: block; font-size: 0.65rem; font-weight: 700; color: #059669; margin-top: 1px; }
-        .map-recruiting { background: #fef2f2; border-color: #fca5a5; }
-        .map-recruiting .pref-status { color: #ef4444; }
-        .map-planned { background: #fefce8; border-color: #fde047; }
-        .map-planned .pref-status { color: #ca8a04; }
-        .map-closed { background: #f0fdf4; border-color: #86efac; }
-        .map-closed .pref-status { color: #16a34a; }
+        /* 地域テーブル */
+        .region-section { margin-bottom: 20px; }
+        .region-label { font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 8px; padding-left: 4px; display: flex; align-items: center; gap: 6px; }
+        .region-label i { color: #94a3b8; }
+        .pref-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+        .pref-chip { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 12px; background: white; border: 1px solid #e2e8f0; text-decoration: none; color: inherit; transition: all 0.2s; }
+        .pref-chip:hover { border-color: #ff4757; box-shadow: 0 2px 8px rgba(255,71,87,0.1); transform: translateY(-1px); }
+        .pref-chip .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .pref-chip .dot.recruiting { background: #ef4444; }
+        .pref-chip .dot.planned { background: #eab308; }
+        .pref-chip .dot.closed { background: #22c55e; }
+        .pref-chip .chip-name { font-size: 0.8rem; font-weight: 600; flex: 1; }
+        .pref-chip .chip-count { font-size: 0.65rem; color: #059669; font-weight: 700; }
+        .pref-chip .chip-badge { font-size: 0.6rem; padding: 1px 6px; border-radius: 4px; font-weight: 600; }
+        .pref-chip .chip-badge.recruiting { background: #fef2f2; color: #ef4444; }
+        .pref-chip .chip-badge.planned { background: #fefce8; color: #ca8a04; }
+        .pref-chip .chip-badge.closed { background: #f0fdf4; color: #16a34a; }
 
         /* 収益カード */
         .income-card { background: white; border: 2px solid #e2e8f0; border-radius: 16px; padding: 24px; text-align: center; transition: all 0.3s; }
@@ -269,22 +264,7 @@ franchise.get('/', async (c) => {
         /* CTA */
         .cta-gradient { background: linear-gradient(135deg, #ff4757 0%, #ff6b81 100%); }
 
-        /* 地域グループ */
-        .region-group { margin-bottom: 16px; }
-        .region-title { font-size: 0.85rem; font-weight: 700; color: #64748b; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid #e2e8f0; }
 
-        /* SVG 日本地図 */
-        .japan-svg-wrap { position: relative; max-width: 480px; margin: 0 auto; }
-        .japan-svg-wrap svg { width: 100%; height: auto; }
-        .japan-svg-wrap svg path { transition: all 0.2s; cursor: pointer; stroke: #94a3b8; stroke-width: 0.5; }
-        .japan-svg-wrap svg path:hover { opacity: 0.85; stroke: #1e293b; stroke-width: 1.2; }
-        .japan-svg-wrap svg path.svg-recruiting { fill: #fca5a5; }
-        .japan-svg-wrap svg path.svg-planned { fill: #fde68a; }
-        .japan-svg-wrap svg path.svg-closed { fill: #86efac; }
-
-        /* ツールチップ */
-        .map-tooltip { position: absolute; background: #1e293b; color: white; padding: 6px 12px; border-radius: 8px; font-size: 0.75rem; pointer-events: none; white-space: nowrap; z-index: 50; opacity: 0; transition: opacity 0.15s; }
-        .map-tooltip.show { opacity: 1; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-900">
@@ -457,32 +437,39 @@ franchise.get('/', async (c) => {
             </div>
         </section>
 
-        <!-- 日本地図（全国募集エリア） -->
+        <!-- 全国募集エリア -->
         <section class="mb-14 sm:mb-20" id="area-map">
-            <h2 class="section-heading mb-4">全国パートナー募集マップ</h2>
-            <p class="text-sm text-gray-500 mb-6">各都道府県の募集状況をご確認ください。クリックで詳細を表示します。</p>
+            <h2 class="section-heading mb-6">全国パートナー募集状況</h2>
 
-            <!-- 凡例 -->
-            <div class="flex flex-wrap gap-4 mb-6 text-xs">
-                <div class="flex items-center gap-2"><span class="w-4 h-4 rounded bg-red-300 border border-red-400 inline-block"></span>募集中</div>
-                <div class="flex items-center gap-2"><span class="w-4 h-4 rounded bg-yellow-300 border border-yellow-400 inline-block"></span>募集予定</div>
-                <div class="flex items-center gap-2"><span class="w-4 h-4 rounded bg-green-300 border border-green-400 inline-block"></span>決定済</div>
-                <div class="flex items-center gap-2 ml-4 font-semibold text-gray-600"><i class="fas fa-users text-gray-400 mr-1"></i>合計パートナー数: ${totalPartners}名</div>
-            </div>
-
-            <!-- SVG日本地図 -->
-            <div class="bg-white rounded-2xl border border-gray-200 p-4 sm:p-8 mb-6">
-                <div class="japan-svg-wrap" id="japan-map-svg">
-                    <div class="map-tooltip" id="map-tooltip"></div>
-                    <!-- SVG地図はJSで描画 -->
+            <!-- サマリーカード -->
+            <div class="grid grid-cols-3 gap-3 mb-6">
+                <div class="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+                    <div class="text-2xl font-black text-red-500">${recruitingCount}</div>
+                    <div class="text-[11px] text-red-600 font-semibold mt-1">募集中</div>
+                </div>
+                <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
+                    <div class="text-2xl font-black text-emerald-500">${closedCount}</div>
+                    <div class="text-[11px] text-emerald-600 font-semibold mt-1">決定済</div>
+                </div>
+                <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
+                    <div class="text-2xl font-black text-blue-500">${totalPartners}</div>
+                    <div class="text-[11px] text-blue-600 font-semibold mt-1">パートナー数</div>
                 </div>
             </div>
 
-            <!-- 地域別リスト -->
-            <div class="bg-white rounded-2xl border border-gray-200 p-4 sm:p-6">
-                <h3 class="font-bold text-sm mb-4"><i class="fas fa-list text-gray-400 mr-2"></i>地域別一覧</h3>
-                ${buildRegionList(areas)}
+            <!-- 凡例 -->
+            <div class="flex flex-wrap gap-4 mb-5 text-xs text-gray-500">
+                <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-red-500 inline-block"></span>募集中</div>
+                <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-yellow-500 inline-block"></span>募集予定</div>
+                <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-green-500 inline-block"></span>決定済</div>
             </div>
+
+            <!-- 地域別一覧 -->
+            <div class="bg-white rounded-2xl border border-gray-200 p-4 sm:p-6">
+                ${regionTableHtml}
+            </div>
+
+            <p class="text-[11px] text-gray-400 text-center mt-4">各都道府県名をクリックするとエリアの詳細ページへ移動します</p>
         </section>
 
         <!-- 金銭フロー -->
@@ -661,117 +648,40 @@ franchise.get('/', async (c) => {
         }
     }
 
-    // 日本地図SVG描画
-    (function(){
-        var areaData = ${JSON.stringify(Object.fromEntries(
-          Object.entries(PREF_NAMES).map(([slug, name]) => {
-            const a = areas[slug] || { status: 'recruiting', partner_count: 0 }
-            return [slug, { name, status: a.status, count: a.partner_count }]
-          })
-        ))};
 
-        // 簡易SVG日本地図 - 都道府県を地理的配置のグリッドで表現
-        var container = document.getElementById('japan-map-svg');
-        if (!container) return;
-        var tooltip = document.getElementById('map-tooltip');
-
-        // 地図レイアウト: [row, col] (0-indexed)
-        var layout = {
-            hokkaido:[0,10], aomori:[1,9], iwate:[1,10], miyagi:[2,10],
-            akita:[2,9], yamagata:[3,9], fukushima:[3,10],
-            niigata:[3,8], toyama:[4,7], ishikawa:[5,7], fukui:[6,7],
-            ibaraki:[3,11], tochigi:[2,11], gunma:[3,10.5], saitama:[4,10],
-            chiba:[4,11], tokyo:[5,10], kanagawa:[5,11],
-            yamanashi:[5,9], nagano:[4,8], gifu:[5,8], shizuoka:[6,9],
-            aichi:[6,8], mie:[7,8], shiga:[6,7.5], kyoto:[6,6.5],
-            osaka:[7,7], hyogo:[7,6], nara:[7,7.5], wakayama:[8,7],
-            tottori:[5,5], shimane:[5,4], okayama:[6,5], hiroshima:[6,4],
-            yamaguchi:[6,3], tokushima:[7,5], kagawa:[7,5.5],
-            ehime:[7,4], kochi:[8,5],
-            fukuoka:[7,2], saga:[7,1], nagasaki:[8,1], kumamoto:[8,2],
-            oita:[7,3], miyazaki:[9,2.5], kagoshima:[9,1.5], okinawa:[11,0]
-        };
-
-        var maxRow = 12, maxCol = 12;
-        var cellW = 38, cellH = 34, padX = 4, padY = 4;
-        var svgW = (maxCol + 1) * cellW + padX * 2;
-        var svgH = (maxRow + 1) * cellH + padY * 2;
-
-        var svg = '<svg viewBox="0 0 ' + svgW + ' ' + svgH + '" xmlns="http://www.w3.org/2000/svg">';
-        for (var slug in layout) {
-            var pos = layout[slug];
-            var d = areaData[slug] || { name: slug, status: 'recruiting', count: 0 };
-            var x = padX + pos[1] * cellW;
-            var y = padY + pos[0] * cellH;
-            var fill = d.status === 'recruiting' ? '#fca5a5' : d.status === 'closed' ? '#86efac' : '#fde68a';
-            var stroke = d.status === 'recruiting' ? '#ef4444' : d.status === 'closed' ? '#16a34a' : '#ca8a04';
-            svg += '<g class="map-cell" data-slug="' + slug + '" data-name="' + d.name + '" data-status="' + d.status + '" data-count="' + d.count + '">';
-            svg += '<rect x="' + x + '" y="' + y + '" width="' + (cellW - 2) + '" height="' + (cellH - 2) + '" rx="5" fill="' + fill + '" stroke="' + stroke + '" stroke-width="1" style="cursor:pointer;transition:all 0.2s"/>';
-            // 都道府県名（短縮）
-            var short = d.name.replace(/[県府都]$/, '').substring(0, 3);
-            svg += '<text x="' + (x + (cellW - 2) / 2) + '" y="' + (y + (cellH - 2) / 2 - (d.count > 0 ? 3 : 0)) + '" text-anchor="middle" dominant-baseline="central" font-size="9" font-weight="700" fill="#1e293b">' + short + '</text>';
-            if (d.count > 0) {
-                svg += '<text x="' + (x + (cellW - 2) / 2) + '" y="' + (y + (cellH - 2) / 2 + 9) + '" text-anchor="middle" dominant-baseline="central" font-size="7" font-weight="700" fill="#059669">' + d.count + '名</text>';
-            }
-            svg += '</g>';
-        }
-        svg += '</svg>';
-        container.innerHTML = svg + container.innerHTML;
-
-        // ツールチップ
-        container.querySelectorAll('.map-cell').forEach(function(cell) {
-            cell.addEventListener('mouseenter', function(e) {
-                var name = this.getAttribute('data-name');
-                var status = this.getAttribute('data-status');
-                var count = this.getAttribute('data-count');
-                var label = status === 'recruiting' ? '募集中' : status === 'closed' ? '決定済' : '募集予定';
-                tooltip.textContent = name + ' - ' + label + (count > 0 ? '（' + count + '名）' : '');
-                tooltip.classList.add('show');
-            });
-            cell.addEventListener('mousemove', function(e) {
-                var rect = container.getBoundingClientRect();
-                tooltip.style.left = (e.clientX - rect.left + 12) + 'px';
-                tooltip.style.top = (e.clientY - rect.top - 30) + 'px';
-            });
-            cell.addEventListener('mouseleave', function() {
-                tooltip.classList.remove('show');
-            });
-            cell.addEventListener('click', function() {
-                var slug = this.getAttribute('data-slug');
-                window.location.href = '/area/' + slug;
-            });
-        });
-    })();
     </script>
 </body>
 </html>`)
 })
 
-// 地域別リストHTML生成
-function buildRegionList(areas: Record<string, { status: string; partner_count: number }>): string {
-  const regions: Record<string, string[]> = {
-    '北海道': ['hokkaido'],
-    '東北': ['aomori','iwate','miyagi','akita','yamagata','fukushima'],
-    '関東': ['ibaraki','tochigi','gunma','saitama','chiba','tokyo','kanagawa'],
-    '中部': ['niigata','toyama','ishikawa','fukui','yamanashi','nagano','gifu','shizuoka','aichi'],
-    '近畿': ['mie','shiga','kyoto','osaka','hyogo','nara','wakayama'],
-    '中国': ['tottori','shimane','okayama','hiroshima','yamaguchi'],
-    '四国': ['tokushima','kagawa','ehime','kochi'],
-    '九州・沖縄': ['fukuoka','saga','nagasaki','kumamoto','oita','miyazaki','kagoshima','okinawa']
-  }
+// 地域別テーブルHTML生成
+function buildRegionTable(areas: Record<string, { status: string; partner_count: number }>): string {
+  const regions: [string, string, string[]][] = [
+    ['北海道', 'fa-snowflake', ['hokkaido']],
+    ['東北', 'fa-mountain', ['aomori','iwate','miyagi','akita','yamagata','fukushima']],
+    ['関東', 'fa-city', ['ibaraki','tochigi','gunma','saitama','chiba','tokyo','kanagawa']],
+    ['中部', 'fa-mountain-sun', ['niigata','toyama','ishikawa','fukui','yamanashi','nagano','gifu','shizuoka','aichi']],
+    ['近畿', 'fa-torii-gate', ['mie','shiga','kyoto','osaka','hyogo','nara','wakayama']],
+    ['中国', 'fa-bridge', ['tottori','shimane','okayama','hiroshima','yamaguchi']],
+    ['四国', 'fa-water', ['tokushima','kagawa','ehime','kochi']],
+    ['九州・沖縄', 'fa-sun', ['fukuoka','saga','nagasaki','kumamoto','oita','miyazaki','kagoshima','okinawa']]
+  ]
   let html = ''
-  for (const [region, slugs] of Object.entries(regions)) {
-    html += `<div class="region-group"><div class="region-title">${region}</div><div class="japan-map-grid">`
+  for (const [region, icon, slugs] of regions) {
+    html += `<div class="region-section"><div class="region-label"><i class="fas ${icon}"></i>${region}</div><div class="pref-grid">`
     for (const slug of slugs) {
       const name = PREF_NAMES[slug] || slug
       const a = areas[slug] || { status: 'recruiting', partner_count: 0 }
-      const statusClass = a.status === 'recruiting' ? 'map-recruiting' : a.status === 'closed' ? 'map-closed' : 'map-planned'
-      const statusLabel = a.status === 'recruiting' ? '募集中' : a.status === 'closed' ? '決定済' : '募集予定'
-      html += `<a href="/area/${slug}" class="pref-item ${statusClass} no-underline">
-        <span class="pref-name">${name}</span>
-        <span class="pref-status">${statusLabel}</span>
-        ${a.partner_count > 0 ? `<span class="pref-count">${a.partner_count}名</span>` : ''}
-      </a>`
+      const dotClass = a.status === 'recruiting' ? 'recruiting' : a.status === 'closed' ? 'closed' : 'planned'
+      const badgeLabel = a.status === 'recruiting' ? '募集中' : a.status === 'closed' ? '決定済' : '予定'
+      html += `<a href="/area/${slug}" class="pref-chip">`
+      html += `<span class="dot ${dotClass}"></span>`
+      html += `<span class="chip-name">${name}</span>`
+      if (a.partner_count > 0) {
+        html += `<span class="chip-count">${a.partner_count}名</span>`
+      }
+      html += `<span class="chip-badge ${dotClass}">${badgeLabel}</span>`
+      html += `</a>`
     }
     html += '</div></div>'
   }
