@@ -1864,6 +1864,9 @@ app.get('/', (c) => {
                                     <span class="text-xl font-bold text-gray-900">¥\${Math.floor(Number(product.price) * 1.1).toLocaleString()}</span>
                                     <span class="text-xs text-gray-500 ml-1">税込</span>
                                 </div>
+                                \${product.shipping_type === 'seller_paid'
+                                    ? '<span class="px-1.5 py-0.5 bg-green-50 text-green-700 text-[9px] font-semibold rounded">送料込</span>'
+                                    : '<span class="px-1.5 py-0.5 bg-blue-50 text-blue-700 text-[9px] font-semibold rounded">着払い</span>'}
                             </div>
                             
                             <!-- 統計情報 -->
@@ -3740,7 +3743,7 @@ app.get('/products/:id', async (c) => {
                         <div class="mb-6">
                             <div class="flex items-baseline space-x-2">
                                 <span id="product-price" class="text-4xl font-bold text-gray-900">¥0</span>
-                                <span class="text-gray-500 text-sm">（税込・送料別）</span>
+                                <span id="product-price-label" class="text-gray-500 text-sm">（税込）</span>
                             </div>
                             <div id="tax-detail" class="mt-1"></div>
                         </div>
@@ -3794,8 +3797,8 @@ app.get('/products/:id', async (c) => {
                                     <td id="product-stock" class="py-3 text-gray-900 text-right">-</td>
                                 </tr>
                                 <tr>
-                                    <td class="py-3 text-gray-600 font-medium">配送方法</td>
-                                    <td class="py-3 text-gray-900 text-right">未定（出品者と相談）</td>
+                                    <td class="py-3 text-gray-600 font-medium">送料負担</td>
+                                    <td id="product-shipping-type" class="py-3 text-gray-900 text-right">-</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -4104,6 +4107,16 @@ app.get('/listing', (c) => {
                 border-color: #ef4444; background: #fef2f2; color: #dc2626; font-weight: 600;
             }
 
+            /* 送料選択チップ */
+            .shipping-chip {
+                padding: 14px 16px; border: 2px solid #e5e7eb; border-radius: 14px;
+                cursor: pointer; transition: all 0.2s; background: #fff;
+            }
+            .shipping-chip:hover { border-color: #93c5fd; background: #eff6ff; }
+            .shipping-chip.active {
+                border-color: #3b82f6; background: #eff6ff; box-shadow: 0 0 0 1px #3b82f6;
+            }
+
             /* アコーディオン */
             .accordion-toggle { cursor: pointer; user-select: none; }
             .accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.35s ease; }
@@ -4345,6 +4358,52 @@ app.get('/listing', (c) => {
                                        class="form-input"
                                        placeholder="例: 04465-12345">
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== 送料設定 ===== -->
+                <div class="section-card">
+                    <div class="section-header">
+                        <div class="section-header-icon bg-orange-50 text-orange-500">
+                            <i class="fas fa-truck"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-sm text-gray-900">送料設定</div>
+                            <div class="text-xs text-gray-400">配送料の負担者を選択してください</div>
+                        </div>
+                    </div>
+                    <div class="section-body">
+                        <input type="hidden" id="shipping-type" value="buyer_paid">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="shipping-chips">
+                            <div class="shipping-chip active" data-value="buyer_paid" onclick="selectShippingType(this)">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+                                        <i class="fas fa-box text-blue-500"></i>
+                                    </div>
+                                    <div>
+                                        <div class="font-bold text-sm text-gray-900">着払い（購入者負担）</div>
+                                        <div class="text-xs text-gray-500 mt-0.5">送料は購入者が配送時にお支払い</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="shipping-chip" data-value="seller_paid" onclick="selectShippingType(this)">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center flex-shrink-0">
+                                        <i class="fas fa-hand-holding-usd text-green-500"></i>
+                                    </div>
+                                    <div>
+                                        <div class="font-bold text-sm text-gray-900">送料込み（出品者負担）</div>
+                                        <div class="text-xs text-gray-500 mt-0.5">販売価格に送料を含めて設定</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                            <p class="text-xs text-amber-700 leading-relaxed">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                <strong>ご注意：</strong>送料は商品の大きさ・重量・配送先エリアによって異なります。着払いの場合、購入者が配送業者へ直接お支払いください。送料込みの場合は、送料を考慮した価格設定をお願いします。
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -4669,7 +4728,7 @@ app.get('/listing', (c) => {
                                     </li>
                                     <li class="flex items-start gap-2">
                                         <i class="fas fa-info-circle text-blue-500 mt-0.5 flex-shrink-0"></i>
-                                        <span><strong>送料:</strong> お客様負担</span>
+                                        <span><strong>送料:</strong> 出品者負担 or 着払い（出品時に選択）</span>
                                     </li>
                                 </ul>
                             </div>
@@ -4699,7 +4758,7 @@ app.get('/listing', (c) => {
                                     <tr><td class="py-2.5 px-2 text-gray-700">作業費(20点まで)</td><td class="py-2.5 px-2 text-center text-green-600">無料</td><td class="py-2.5 px-2 text-center text-green-600 font-semibold">無料</td></tr>
                                     <tr><td class="py-2.5 px-2 text-gray-700">作業費(21点〜)</td><td class="py-2.5 px-2 text-center text-orange-600">330円/点</td><td class="py-2.5 px-2 text-center text-green-600 font-semibold">無料</td></tr>
                                     <tr><td class="py-2.5 px-2 text-gray-700">売買手数料</td><td class="py-2.5 px-2 text-center">10%</td><td class="py-2.5 px-2 text-center">10%</td></tr>
-                                    <tr><td class="py-2.5 px-2 text-gray-700">送料</td><td class="py-2.5 px-2 text-center text-gray-400">-</td><td class="py-2.5 px-2 text-center">お客様負担</td></tr>
+                                    <tr><td class="py-2.5 px-2 text-gray-700">送料</td><td class="py-2.5 px-2 text-center text-gray-400">-</td><td class="py-2.5 px-2 text-center">出品者が選択</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -4842,6 +4901,15 @@ app.get('/listing', (c) => {
                     el.insertBefore(check, el.firstChild);
                 }
                 document.getElementById('condition-select').value = el.getAttribute('data-value');
+            }
+
+            // 送料タイプ選択
+            function selectShippingType(el) {
+                document.querySelectorAll('.shipping-chip').forEach(function(c) {
+                    c.classList.remove('active');
+                });
+                el.classList.add('active');
+                document.getElementById('shipping-type').value = el.getAttribute('data-value');
             }
 
             // アコーディオン
@@ -8556,11 +8624,15 @@ app.get('/area/:pref', async (c) => {
       const cond = condMap[p.condition] || p.condition || '中古'
       const safeTitle = String(p.title || '').replace(/</g, '&lt;')
       const imgUrl = p.image_url ? '/r2/' + p.image_url : '/icons/icon.svg'
+      const shippingBadge = p.shipping_type === 'seller_paid'
+        ? '<span style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 5px;border-radius:4px;font-weight:600;">送料込</span>'
+        : '<span style="font-size:9px;background:#dbeafe;color:#1d4ed8;padding:1px 5px;border-radius:4px;font-weight:600;">着払い</span>'
       return '<a href="/products/' + p.id + '" class="product-card">' +
         '<div class="product-img-wrap"><img src="' + imgUrl + '" alt="' + safeTitle + '" class="product-img" loading="lazy"></div>' +
         '<div class="product-info">' +
         '<p class="product-title">' + safeTitle + '</p>' +
         '<p class="product-price">&yen;' + priceTaxIncluded + '<span class="product-tax-label" style="font-size:10px;font-weight:400;color:#6b7280;margin-left:2px;">税込</span><span class="product-cond">' + cond + '</span></p>' +
+        '<div style="margin-top:4px;">' + shippingBadge + '</div>' +
         '</div></a>'
     }).join('')
 
@@ -9666,7 +9738,10 @@ app.get('/vehicle/:maker/:model', async (c) => {
       const safeTitle = String(p.title || '').replace(/</g, '&lt;')
       const imgUrl = p.image_url ? '/r2/' + p.image_url : '/icons/icon.svg'
       const soldBadge = p.status === 'sold' ? '<div style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,0.7);color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;">SOLD</div>' : ''
-      return '<a href="/products/' + p.id + '" class="product-card" style="position:relative;">' + soldBadge + '<div class="product-img-wrap"><img src="' + imgUrl + '" alt="' + safeTitle + '" class="product-img" loading="lazy"></div><div class="product-info"><p class="product-title">' + safeTitle + '</p><p class="product-price">&yen;' + priceTaxIncluded + '<span style="font-size:10px;font-weight:400;color:#6b7280;margin-left:2px;">税込</span><span class="product-cond">' + cond + '</span></p></div></a>'
+      const shippingBadge = p.shipping_type === 'seller_paid'
+        ? '<span style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 5px;border-radius:4px;font-weight:600;">送料込</span>'
+        : '<span style="font-size:9px;background:#dbeafe;color:#1d4ed8;padding:1px 5px;border-radius:4px;font-weight:600;">着払い</span>'
+      return '<a href="/products/' + p.id + '" class="product-card" style="position:relative;">' + soldBadge + '<div class="product-img-wrap"><img src="' + imgUrl + '" alt="' + safeTitle + '" class="product-img" loading="lazy"></div><div class="product-info"><p class="product-title">' + safeTitle + '</p><p class="product-price">&yen;' + priceTaxIncluded + '<span style="font-size:10px;font-weight:400;color:#6b7280;margin-left:2px;">税込</span><span class="product-cond">' + cond + '</span></p><div style="margin-top:4px;">' + shippingBadge + '</div></div></a>'
     }).join('')
   } catch(e) { console.error('Vehicle products error:', e) }
 
@@ -9957,7 +10032,7 @@ const PARTNERS: Record<string, {
       { label: '車体整備工場数', value: '15,000+' },
       { label: '外装パーツ比率', value: '出品の約40%' },
       { label: '平均調達削減率', value: '40〜70%' },
-      { label: '送料', value: '出品者設定' }
+      { label: '送料', value: '出品者負担 or 着払い（出品時選択）' }
     ],
     useCases: [
       { title: '事故車修理のコスト削減', text: '保険会社の見積もりでは新品パーツ代が計上されますが、中古パーツを活用すれば差額が利益に。お客様の自己負担軽減にもつながります。' },

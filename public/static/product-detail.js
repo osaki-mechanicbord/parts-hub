@@ -268,6 +268,19 @@ function renderProduct() {
     if (partNumEl) partNumEl.textContent = product.part_number || '-';
     if (stockEl) stockEl.textContent = product.stock_quantity || '1';
     
+    // 送料負担表示
+    const shippingEl = document.getElementById('product-shipping-type');
+    const priceLabelEl = document.getElementById('product-price-label');
+    if (shippingEl) {
+        if (product.shipping_type === 'seller_paid') {
+            shippingEl.innerHTML = '<span class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-700 rounded-full text-xs font-semibold"><i class="fas fa-check-circle"></i>送料込み（出品者負担）</span>';
+            if (priceLabelEl) priceLabelEl.textContent = '（税込・送料込）';
+        } else {
+            shippingEl.innerHTML = '<span class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs font-semibold"><i class="fas fa-box"></i>着払い（購入者負担）</span>';
+            if (priceLabelEl) priceLabelEl.textContent = '（税込・送料別）';
+        }
+    }
+    
     // 適合車両情報
     if (product.compatibility) {
         renderCompatibility();

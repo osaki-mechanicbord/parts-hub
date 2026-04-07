@@ -247,8 +247,8 @@ app.post('/', async (c) => {
         user_id, seller_id, title, description, price, category_id, subcategory_id,
         maker_id, model_id, part_number, compatible_models, condition,
         stock_quantity, status, is_proxy,
-        vm_maker, vm_model, vm_grade, vm_tire_size
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        vm_maker, vm_model, vm_grade, vm_tire_size, shipping_type
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       userId,
       userId,
@@ -268,7 +268,8 @@ app.post('/', async (c) => {
       body.vm_maker || null,
       body.vm_model || null,
       body.vm_grade || null,
-      body.vm_tire_size || null
+      body.vm_tire_size || null,
+      body.shipping_type || 'buyer_paid'
     ).run()
 
     const productId = result.meta.last_row_id
@@ -358,6 +359,7 @@ app.put('/:id', async (c) => {
         vm_model = ?,
         vm_grade = ?,
         vm_tire_size = ?,
+        shipping_type = COALESCE(?, shipping_type),
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).bind(
@@ -377,6 +379,7 @@ app.put('/:id', async (c) => {
       body.vm_model || null,
       body.vm_grade || null,
       body.vm_tire_size || null,
+      body.shipping_type || null,
       productId
     ).run()
 

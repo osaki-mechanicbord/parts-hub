@@ -207,6 +207,7 @@ class ProductListingForm {
         compatible_models: getVal('compatible-models') || null,
         condition: getVal('condition-select'),
         stock_quantity: getIntVal('stock-quantity') || 1,
+        shipping_type: getVal('shipping-type') || 'buyer_paid',
         status: 'active',
         // vehicle_master 連動データ
         vm_maker: getVal('vm-maker-name') || null,
@@ -686,6 +687,19 @@ async function loadProductForEdit(productId) {
       var submitBtn = document.getElementById('submit-btn')
       if (submitBtn) {
         submitBtn.innerHTML = '<i class="fas fa-save" style="margin-right:8px;"></i>変更を保存'
+      }
+
+      // 編集モードでshipping_typeをチップ選択に反映
+      if (product.shipping_type) {
+        var shippingChips = document.querySelectorAll('.shipping-chip')
+        shippingChips.forEach(function(chip) {
+          chip.classList.remove('active')
+          if (chip.getAttribute('data-value') === product.shipping_type) {
+            chip.classList.add('active')
+          }
+        })
+        var shippingInput = document.getElementById('shipping-type')
+        if (shippingInput) shippingInput.value = product.shipping_type
       }
 
       // 編集モードでconditionをチップ選択に反映
