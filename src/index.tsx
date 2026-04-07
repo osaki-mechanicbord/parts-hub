@@ -30,6 +30,7 @@ import argosDemoRoutes from './routes/argos-demo'
 import argosRoutes from './routes/argos'
 import guideApiRoutes from './routes/guide'
 import { breadcrumbHtml, BREADCRUMB_CSS } from './breadcrumb'
+import franchiseRoutes from './routes/franchise'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -96,8 +97,10 @@ const Footer = () => `
                 </ul>
             </div>
             <div>
-                <h4 class="font-semibold text-gray-300 mb-2 text-xs uppercase tracking-wider">マイメニュー</h4>
+                <h4 class="font-semibold text-gray-300 mb-2 text-xs uppercase tracking-wider">パートナー</h4>
                 <ul class="space-y-1.5 text-gray-400">
+                    <li><a href="/franchise" class="hover:text-white transition-colors">パートナー募集</a></li>
+                    <li><a href="/franchise#inquiry-form" class="hover:text-white transition-colors">資料請求</a></li>
                     <li><a href="/notifications" class="hover:text-white transition-colors">通知</a></li>
                     <li><a href="/favorites" class="hover:text-white transition-colors">お気に入り</a></li>
                 </ul>
@@ -348,6 +351,7 @@ Allow: /area
 Allow: /area/*
 Allow: /guide
 Allow: /guide/*
+Allow: /franchise
 
 # APIエンドポイントはクロール不要
 Disallow: /api/*
@@ -536,6 +540,9 @@ app.get('/sitemap.xml', async (c) => {
     partnerSlugs.forEach(slug => {
       staticPages.push({ url: '/partner/' + slug, changefreq: 'monthly', priority: '0.6' })
     })
+
+    // パートナー募集ページをsitemapに追加
+    staticPages.push({ url: '/franchise', changefreq: 'weekly', priority: '0.7' })
 
     // ウィジェットページをsitemapに追加
     staticPages.push({ url: '/widget', changefreq: 'monthly', priority: '0.5' })
@@ -840,6 +847,8 @@ app.route('/api/argos-demo', argosDemoRoutes)
 app.route('/api/argos', argosRoutes)  // 本番用ARGOS JPC API（ARGOS_API_ENABLED=true時のみ有効、公開予定: 2026年6月〜）
 app.route('/api/admin', adminRoutes)
 app.route('/api/guides', guideApiRoutes) // ガイド記事自動生成API
+app.route('/franchise', franchiseRoutes) // パートナー募集LP
+app.route('/api/franchise', franchiseRoutes) // パートナー募集API
 app.route('/admin', adminPagesRoutes)
 
 // 公開お知らせAPI（認証不要）
@@ -2486,6 +2495,7 @@ function getArticleDetailBody() {
                     <a href="/vehicle" class="hover:text-white transition-colors">車種別</a>
                     <a href="/guide" class="hover:text-white transition-colors">整備ガイド</a>
                     <a href="/partner" class="hover:text-white transition-colors">パートナー</a>
+                    <a href="/franchise" class="hover:text-white transition-colors">パートナー募集</a>
                     <a href="/faq" class="hover:text-white transition-colors">FAQ</a>
                     <a href="/contact" class="hover:text-white transition-colors">お問い合わせ</a>
                 </div>
@@ -8779,6 +8789,20 @@ app.get('/area/:pref', async (c) => {
 
         <!-- 近隣エリア -->
         ${sameRegion ? '<section class="mb-10 sm:mb-14"><h2 class="section-heading mb-4 sm:mb-6">' + pref.region + 'の他のエリア</h2><div class="flex flex-wrap">' + sameRegion + '</div></section>' : ''}
+
+        <!-- パートナー募集バナー -->
+        <section class="mb-10 sm:mb-14">
+            <div class="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-2xl p-5 sm:p-8">
+                <div class="flex flex-col sm:flex-row items-center gap-4">
+                    <div class="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center text-red-500 text-2xl flex-shrink-0"><i class="fas fa-handshake"></i></div>
+                    <div class="text-center sm:text-left flex-1">
+                        <h3 class="font-bold text-gray-900 mb-1">${pref.name}で出品代行パートナー募集中</h3>
+                        <p class="text-xs text-gray-500 leading-relaxed">地域の整備工場の余剰パーツをPARTS HUBで代行出品。副業からスタートOK、在庫リスクなし。</p>
+                    </div>
+                    <a href="/franchise" class="inline-flex items-center gap-2 px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-colors text-sm whitespace-nowrap shadow-sm"><i class="fas fa-arrow-right"></i>詳しく見る</a>
+                </div>
+            </div>
+        </section>
     </main>
 
     <!-- CTA -->
@@ -10760,6 +10784,7 @@ app.get('/sitemap', async (c) => {
                     </div>
                     <div class="section-body"><ul>
                         <li><a href="/partner" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>パートナー一覧</a></li>
+                        <li><a href="/franchise" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i><strong class="text-red-500">パートナー募集（副業・独立開業）</strong></a></li>
                         <li><a href="/partner/jaspa" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>自動車整備振興会（JASPA）</a></li>
                         <li><a href="/partner/jasca" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>自動車整備商工組合（JASCA）</a></li>
                         <li><a href="/partner/body-shop" class="sitemap-link group"><i class="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-red-400 transition-colors mr-2"></i>車体整備事業者（鈑金塗装）</a></li>
