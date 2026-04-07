@@ -2481,4 +2481,141 @@ adminRoutes.delete('/announcements/:id', async (c) => {
   }
 })
 
+// ═══════════════════════════════════════
+// パートナー管理 API
+// ═══════════════════════════════════════
+
+// パートナー一覧
+adminRoutes.get('/partners', async (c) => {
+  try {
+    const { DB } = c.env
+    const { results } = await DB.prepare(
+      'SELECT * FROM partners ORDER BY created_at DESC'
+    ).all()
+    return c.json({ success: true, data: results })
+  } catch (error) {
+    return c.json({ success: true, data: [] })
+  }
+})
+
+// パートナー登録
+adminRoutes.post('/partners', async (c) => {
+  try {
+    const { DB } = c.env
+    const body = await c.req.json()
+    const { name, email, phone, area_pref, status, contract_date, notes } = body
+
+    if (!name || !email) {
+      return c.json({ success: false, error: '氏名とメールは必須です' }, 400)
+    }
+
+    await DB.prepare(
+      'INSERT INTO partners (name, email, phone, area_pref, status, contract_date, notes) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    ).bind(name, email, phone || '', area_pref || '', status || 'training', contract_date || null, notes || '').run()
+
+    // franchise_areas のパートナー数を更新
+    if (area_pref) {
+      await DB.prepare(
+        'UPDATE franchise_areas SET partner_count = (SELECT COUNT(*) FROM partners WHERE area_pref = ? AND status IN (\'active\',\'training\')), updated_at = CURRENT_TIMESTAMP WHERE pref_slug = ?'
+      ).bind(area_pref, area_pref).run()
+    }
+
+    return c.json({ success: true, message: 'パートナーを登録しました' })
+  } catch (error: any) {
+    if (error.message?.includes('UNIQUE constraint')) {
+      return c.json({ success: false, error: 'このメールアドレスは既に登録されています' }, 400)
+    }
+    console.error('Register partner error:', error)
+    return c.json({ success: false, error: 'パートナーの登録に失敗しました' }, 500)
+  }
+})
+
+// パートナー更新
+adminRoutes.put('/partners/:id', async (c) => {
+  try {
+    const { DB } = c.env
+    const id = c.req.param('id')
+    const body = await c.req.json()
+
+    // 現在のデータを取得
+    const current = await DB.prepare('SELECT * FROM partners WHERE id = ?').bind(id).first() as any
+    if (!current) return c.json({ success: false, error: 'パートナーが見つかりません' }, 404)
+
+    const name = body.name || current.name
+    const email = body.email || current.email
+    const phone = body.phone !== undefined ? body.phone : current.phone
+    const area_pref = body.area_pref !== undefined ? body.area_pref : current.area_pref
+    const status = body.status || current.status
+    const contract_date = body.contract_date !== undefined ? body.contract_date : current.contract_date
+    const notes = body.notes !== undefined ? body.notes : current.notes
+
+    await DB.prepare(
+      'UPDATE partners SET name = ?, email = ?, phone = ?, area_pref = ?, status = ?, contract_date = ?, notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+    ).bind(name, email, phone, area_pref, status, contract_date, notes, id).run()
+
+    // franchise_areas のパートナー数を更新（旧エリアと新エリア）
+    const prefSlugs = new Set([current.area_pref, area_pref].filter(Boolean))
+    for (const slug of prefSlugs) {
+      await DB.prepare(
+        'UPDATE franchise_areas SET partner_count = (SELECT COUNT(*) FROM partners WHERE area_pref = ? AND status IN (\'active\',\'training\')), updated_at = CURRENT_TIMESTAMP WHERE pref_slug = ?'
+      ).bind(slug, slug).run()
+    }
+
+    return c.json({ success: true, message: 'パートナー情報を更新しました' })
+  } catch (error: any) {
+    console.error('Update partner error:', error)
+    return c.json({ success: false, error: 'パートナーの更新に失敗しました' }, 500)
+  }
+})
+
+// パートナー削除
+adminRoutes.delete('/partners/:id', async (c) => {
+  try {
+    const { DB } = c.env
+    const id = c.req.param('id')
+
+    const partner = await DB.prepare('SELECT area_pref FROM partners WHERE id = ?').bind(id).first() as any
+    await DB.prepare('DELETE FROM partners WHERE id = ?').bind(id).run()
+
+    // franchise_areas のパートナー数を更新
+    if (partner?.area_pref) {
+      await DB.prepare(
+        'UPDATE franchise_areas SET partner_count = (SELECT COUNT(*) FROM partners WHERE area_pref = ? AND status IN (\'active\',\'training\')), updated_at = CURRENT_TIMESTAMP WHERE pref_slug = ?'
+      ).bind(partner.area_pref, partner.area_pref).run()
+    }
+
+    return c.json({ success: true, message: 'パートナーを削除しました' })
+  } catch (error) {
+    console.error('Delete partner error:', error)
+    return c.json({ success: false, error: 'パートナーの削除に失敗しました' }, 500)
+  }
+})
+
+// パートナー統計
+adminRoutes.get('/partners/stats', async (c) => {
+  try {
+    const { DB } = c.env
+    const total = await DB.prepare('SELECT COUNT(*) as count FROM partners').first() as any
+    const active = await DB.prepare("SELECT COUNT(*) as count FROM partners WHERE status = 'active'").first() as any
+    const totalListings = await DB.prepare('SELECT COALESCE(SUM(total_listings),0) as sum FROM partners').first() as any
+    const totalRevenue = await DB.prepare('SELECT COALESCE(SUM(total_revenue),0) as sum FROM partners').first() as any
+    const monthlyListings = await DB.prepare('SELECT COALESCE(SUM(monthly_listings),0) as sum FROM partners').first() as any
+    const monthlyRevenue = await DB.prepare('SELECT COALESCE(SUM(monthly_revenue),0) as sum FROM partners').first() as any
+
+    return c.json({
+      success: true,
+      data: {
+        total: total?.count || 0,
+        active: active?.count || 0,
+        total_listings: totalListings?.sum || 0,
+        total_revenue: totalRevenue?.sum || 0,
+        monthly_listings: monthlyListings?.sum || 0,
+        monthly_revenue: monthlyRevenue?.sum || 0
+      }
+    })
+  } catch (error) {
+    return c.json({ success: true, data: { total: 0, active: 0, total_listings: 0, total_revenue: 0, monthly_listings: 0, monthly_revenue: 0 } })
+  }
+})
+
 export default adminRoutes

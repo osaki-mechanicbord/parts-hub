@@ -2743,4 +2743,1181 @@ adminPagesRoutes.get('/announcements', (c) => {
   return c.html(AdminLayout('announcements', 'お知らせ管理', content));
 });
 
+// ══════════════════════════════════════════════════════════════
+// フランチャイズ管理画面 — CMS編集・エリア管理・問い合わせ管理
+// ══════════════════════════════════════════════════════════════
+adminPagesRoutes.get('/franchise', (c) => {
+  const content = `
+    <div class="mb-6">
+        <h2 class="text-2xl font-bold text-gray-800 mb-1"><i class="fas fa-handshake text-red-500 mr-2"></i>フランチャイズ管理</h2>
+        <p class="text-sm text-gray-500">CMS編集・エリア管理・問い合わせ管理を一元管理</p>
+    </div>
+
+    <!-- タブ切り替え -->
+    <div class="flex border-b border-gray-200 mb-6">
+        <button onclick="switchTab('cms')" id="tab-cms" class="px-5 py-3 text-sm font-semibold border-b-2 border-red-500 text-red-600 -mb-px"><i class="fas fa-edit mr-1"></i>CMS編集</button>
+        <button onclick="switchTab('areas')" id="tab-areas" class="px-5 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 -mb-px"><i class="fas fa-map-marker-alt mr-1"></i>エリア管理</button>
+        <button onclick="switchTab('inquiries')" id="tab-inquiries" class="px-5 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 -mb-px"><i class="fas fa-envelope mr-1"></i>問い合わせ<span id="inquiry-badge" class="ml-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 hidden">0</span></button>
+    </div>
+
+    <!-- ── CMS編集タブ ── -->
+    <div id="panel-cms">
+      <div class="bg-white rounded-xl shadow-sm border p-6 mb-6">
+        <h3 class="text-lg font-bold text-gray-800 mb-4"><i class="fas fa-heading mr-2 text-blue-500"></i>ヒーロー・基本設定</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-gray-600 mb-1">ヒーロータイトル</label>
+            <input type="text" id="cms-hero_title" class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="全国の整備工場と繋がる出品代行パートナー募集">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-600 mb-1">ヒーローサブタイトル</label>
+            <input type="text" id="cms-hero_subtitle" class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="PARTS HUBの出品代行パートナーとして...">
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border p-6 mb-6">
+        <h3 class="text-lg font-bold text-gray-800 mb-4"><i class="fas fa-yen-sign mr-2 text-emerald-500"></i>料金設定</h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-gray-600 mb-1">初期費用（円）</label>
+            <input type="number" id="cms-initial_fee" class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="150000">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-600 mb-1">月額費用（円）</label>
+            <input type="number" id="cms-monthly_fee" class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="0">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-600 mb-1">報酬率（%）</label>
+            <input type="number" id="cms-commission_rate" class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="5" step="0.1">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-600 mb-1">プラットフォーム手数料率（%）</label>
+            <input type="number" id="cms-platform_fee_rate" class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="10" step="0.1">
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border p-6 mb-6">
+        <h3 class="text-lg font-bold text-gray-800 mb-4"><i class="fas fa-calculator mr-2 text-purple-500"></i>収益シミュレーション設定</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="border rounded-lg p-4">
+            <p class="text-xs font-bold text-blue-500 mb-3">副業プラン</p>
+            <div class="space-y-2">
+              <div><label class="text-[11px] text-gray-500">月間出品数</label><input type="number" id="cms-light_listings" class="w-full px-2 py-1.5 border rounded text-sm" placeholder="50"></div>
+              <div><label class="text-[11px] text-gray-500">平均単価（円）</label><input type="number" id="cms-light_avg_price" class="w-full px-2 py-1.5 border rounded text-sm" placeholder="5000"></div>
+              <div><label class="text-[11px] text-gray-500">目標収入（円）※自動算出可</label><input type="number" id="cms-target_income_light" class="w-full px-2 py-1.5 border rounded text-sm" placeholder="自動算出"></div>
+            </div>
+          </div>
+          <div class="border-2 border-red-200 rounded-lg p-4 bg-red-50/30">
+            <p class="text-xs font-bold text-red-500 mb-3">標準プラン（推奨）</p>
+            <div class="space-y-2">
+              <div><label class="text-[11px] text-gray-500">月間出品数</label><input type="number" id="cms-standard_listings" class="w-full px-2 py-1.5 border rounded text-sm" placeholder="100"></div>
+              <div><label class="text-[11px] text-gray-500">平均単価（円）</label><input type="number" id="cms-standard_avg_price" class="w-full px-2 py-1.5 border rounded text-sm" placeholder="5000"></div>
+              <div><label class="text-[11px] text-gray-500">目標収入（円）</label><input type="number" id="cms-target_income_standard" class="w-full px-2 py-1.5 border rounded text-sm" placeholder="自動算出"></div>
+            </div>
+          </div>
+          <div class="border rounded-lg p-4">
+            <p class="text-xs font-bold text-emerald-500 mb-3">本格プラン</p>
+            <div class="space-y-2">
+              <div><label class="text-[11px] text-gray-500">月間出品数</label><input type="number" id="cms-heavy_listings" class="w-full px-2 py-1.5 border rounded text-sm" placeholder="200"></div>
+              <div><label class="text-[11px] text-gray-500">平均単価（円）</label><input type="number" id="cms-heavy_avg_price" class="w-full px-2 py-1.5 border rounded text-sm" placeholder="7000"></div>
+              <div><label class="text-[11px] text-gray-500">目標収入（円）</label><input type="number" id="cms-target_income_heavy" class="w-full px-2 py-1.5 border rounded text-sm" placeholder="自動算出"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border p-6 mb-6">
+        <h3 class="text-lg font-bold text-gray-800 mb-4"><i class="fas fa-tasks mr-2 text-amber-500"></i>仕事内容（改行区切り）</h3>
+        <textarea id="cms-job_description" rows="4" class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="工場訪問・情報ヒアリング&#10;パーツの撮影・出品登録&#10;問い合わせ・価格交渉対応&#10;売上管理・報酬受取"></textarea>
+        <p class="text-[11px] text-gray-400 mt-1">1行＝1ステップ。「タイトル - 説明」形式で記述できます。</p>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border p-6 mb-6">
+        <h3 class="text-lg font-bold text-gray-800 mb-4"><i class="fas fa-star mr-2 text-yellow-500"></i>メリット（改行区切り）</h3>
+        <textarea id="cms-benefits" rows="4" class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="在庫リスクなし - 整備工場に保管されたまま&#10;初期費用のみ - 月額固定費0円&#10;自分のペースで - 副業からスタート可能&#10;全国ネットワーク - 整備工場との繋がり"></textarea>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border p-6 mb-6">
+        <h3 class="text-lg font-bold text-gray-800 mb-4"><i class="fas fa-question-circle mr-2 text-indigo-500"></i>FAQ（JSON形式）</h3>
+        <textarea id="cms-faq" rows="8" class="w-full px-3 py-2 border rounded-lg text-sm font-mono" placeholder='[{"q":"質問","a":"回答"}]'></textarea>
+        <div class="flex gap-2 mt-2">
+          <button onclick="addFaqItem()" class="text-xs bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-100"><i class="fas fa-plus mr-1"></i>FAQ追加</button>
+          <button onclick="formatFaq()" class="text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-200"><i class="fas fa-align-left mr-1"></i>整形</button>
+        </div>
+      </div>
+
+      <div class="flex gap-3">
+        <button onclick="saveCmsAll()" id="cms-save-btn" class="px-6 py-3 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 shadow-lg shadow-red-500/20 transition-colors">
+          <i class="fas fa-save mr-2"></i>CMS設定を一括保存
+        </button>
+        <a href="/franchise" target="_blank" class="px-6 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 text-sm font-semibold text-gray-600 flex items-center">
+          <i class="fas fa-external-link-alt mr-2"></i>公開ページ確認
+        </a>
+      </div>
+      <div id="cms-status" class="mt-3 text-sm hidden"></div>
+    </div>
+
+    <!-- ── エリア管理タブ ── -->
+    <div id="panel-areas" class="hidden">
+      <div class="bg-white rounded-xl shadow-sm border p-6 mb-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-bold text-gray-800"><i class="fas fa-map mr-2 text-blue-500"></i>全国エリアステータス</h3>
+          <div class="flex gap-3 text-xs">
+            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span>募集中 <span id="area-recruiting-count" class="font-bold">0</span></span>
+            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-yellow-500 inline-block"></span>予定 <span id="area-planned-count" class="font-bold">0</span></span>
+            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-green-500 inline-block"></span>決定済 <span id="area-closed-count" class="font-bold">0</span></span>
+            <span class="flex items-center gap-1"><i class="fas fa-user-tie text-blue-500"></i>パートナー計 <span id="area-total-partners" class="font-bold">0</span></span>
+          </div>
+        </div>
+        <div class="flex gap-2 mb-4">
+          <select id="area-filter-region" onchange="filterAreas()" class="text-sm border rounded-lg px-3 py-1.5">
+            <option value="">全地域</option>
+            <option value="北海道">北海道</option><option value="東北">東北</option><option value="関東">関東</option>
+            <option value="中部">中部</option><option value="近畿">近畿</option><option value="中国">中国</option>
+            <option value="四国">四国</option><option value="九州・沖縄">九州・沖縄</option>
+          </select>
+          <select id="area-filter-status" onchange="filterAreas()" class="text-sm border rounded-lg px-3 py-1.5">
+            <option value="">全ステータス</option>
+            <option value="recruiting">募集中</option><option value="planned">予定</option><option value="closed">決定済</option>
+          </select>
+          <button onclick="bulkAreaUpdate()" class="ml-auto text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-100"><i class="fas fa-sync mr-1"></i>一括反映</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50">
+              <tr><th class="px-3 py-2 text-left text-xs font-bold text-gray-500">都道府県</th><th class="px-3 py-2 text-left text-xs font-bold text-gray-500">地域</th><th class="px-3 py-2 text-center text-xs font-bold text-gray-500">ステータス</th><th class="px-3 py-2 text-center text-xs font-bold text-gray-500">パートナー数</th><th class="px-3 py-2 text-center text-xs font-bold text-gray-500">操作</th></tr>
+            </thead>
+            <tbody id="areas-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="area-status" class="text-sm hidden"></div>
+    </div>
+
+    <!-- ── 問い合わせ管理タブ ── -->
+    <div id="panel-inquiries" class="hidden">
+      <div class="bg-white rounded-xl shadow-sm border p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-bold text-gray-800"><i class="fas fa-envelope-open-text mr-2 text-purple-500"></i>資料請求・問い合わせ一覧</h3>
+          <button onclick="loadInquiries()" class="text-xs bg-gray-100 px-3 py-1.5 rounded-lg hover:bg-gray-200"><i class="fas fa-sync mr-1"></i>更新</button>
+        </div>
+        <div id="inquiries-list" class="space-y-3">
+          <p class="text-gray-400 text-center py-6">読み込み中...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 問い合わせ詳細モーダル -->
+    <div id="inquiry-modal" class="fixed inset-0 bg-black/50 z-[100] hidden flex items-center justify-center">
+      <div class="bg-white rounded-2xl p-6 w-full max-w-lg mx-4 max-h-[80vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-bold"><i class="fas fa-user mr-2 text-purple-500"></i>問い合わせ詳細</h3>
+          <button onclick="document.getElementById('inquiry-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-lg"></i></button>
+        </div>
+        <div id="inquiry-detail" class="space-y-3"></div>
+      </div>
+    </div>
+
+    <script>
+    var HEADERS = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('admin_token') };
+    var allAreas = [];
+    var PREF_REGIONS = {
+      hokkaido:'北海道',aomori:'東北',iwate:'東北',miyagi:'東北',akita:'東北',yamagata:'東北',fukushima:'東北',
+      ibaraki:'関東',tochigi:'関東',gunma:'関東',saitama:'関東',chiba:'関東',tokyo:'関東',kanagawa:'関東',
+      niigata:'中部',toyama:'中部',ishikawa:'中部',fukui:'中部',yamanashi:'中部',nagano:'中部',gifu:'中部',shizuoka:'中部',aichi:'中部',
+      mie:'近畿',shiga:'近畿',kyoto:'近畿',osaka:'近畿',hyogo:'近畿',nara:'近畿',wakayama:'近畿',
+      tottori:'中国',shimane:'中国',okayama:'中国',hiroshima:'中国',yamaguchi:'中国',
+      tokushima:'四国',kagawa:'四国',ehime:'四国',kochi:'四国',
+      fukuoka:'九州・沖縄',saga:'九州・沖縄',nagasaki:'九州・沖縄',kumamoto:'九州・沖縄',oita:'九州・沖縄',miyazaki:'九州・沖縄',kagoshima:'九州・沖縄',okinawa:'九州・沖縄'
+    };
+    var PREF_NAMES = {
+      hokkaido:'北海道',aomori:'青森県',iwate:'岩手県',miyagi:'宮城県',akita:'秋田県',yamagata:'山形県',fukushima:'福島県',
+      ibaraki:'茨城県',tochigi:'栃木県',gunma:'群馬県',saitama:'埼玉県',chiba:'千葉県',tokyo:'東京都',kanagawa:'神奈川県',
+      niigata:'新潟県',toyama:'富山県',ishikawa:'石川県',fukui:'福井県',yamanashi:'山梨県',nagano:'長野県',gifu:'岐阜県',shizuoka:'静岡県',aichi:'愛知県',
+      mie:'三重県',shiga:'滋賀県',kyoto:'京都府',osaka:'大阪府',hyogo:'兵庫県',nara:'奈良県',wakayama:'和歌山県',
+      tottori:'鳥取県',shimane:'島根県',okayama:'岡山県',hiroshima:'広島県',yamaguchi:'山口県',
+      tokushima:'徳島県',kagawa:'香川県',ehime:'愛媛県',kochi:'高知県',
+      fukuoka:'福岡県',saga:'佐賀県',nagasaki:'長崎県',kumamoto:'熊本県',oita:'大分県',miyazaki:'宮崎県',kagoshima:'鹿児島県',okinawa:'沖縄県'
+    };
+
+    // ── タブ切り替え ──
+    function switchTab(name) {
+        ['cms','areas','inquiries'].forEach(function(t) {
+            document.getElementById('panel-' + t).classList.toggle('hidden', t !== name);
+            var btn = document.getElementById('tab-' + t);
+            if (t === name) {
+                btn.classList.add('border-red-500','text-red-600');
+                btn.classList.remove('border-transparent','text-gray-500');
+            } else {
+                btn.classList.remove('border-red-500','text-red-600');
+                btn.classList.add('border-transparent','text-gray-500');
+            }
+        });
+        if (name === 'areas' && allAreas.length === 0) loadAreas();
+        if (name === 'inquiries') loadInquiries();
+    }
+
+    // ── CMS読み込み ──
+    async function loadCms() {
+        try {
+            var res = await fetch('/api/franchise/cms', { headers: HEADERS });
+            var data = await res.json();
+            if (!data.success) return;
+            var d = data.data;
+
+            // テキスト・数値フィールド
+            var fields = ['hero_title','hero_subtitle','initial_fee','monthly_fee','commission_rate','platform_fee_rate',
+                          'light_listings','light_avg_price','target_income_light',
+                          'standard_listings','standard_avg_price','target_income_standard',
+                          'heavy_listings','heavy_avg_price','target_income_heavy'];
+            fields.forEach(function(f) {
+                var el = document.getElementById('cms-' + f);
+                if (el && d[f] !== undefined && d[f] !== null) el.value = d[f];
+            });
+
+            // 配列フィールド
+            if (d.job_description && Array.isArray(d.job_description)) {
+                document.getElementById('cms-job_description').value = d.job_description.join('\\n');
+            }
+            if (d.benefits && Array.isArray(d.benefits)) {
+                document.getElementById('cms-benefits').value = d.benefits.join('\\n');
+            }
+            if (d.faq) {
+                document.getElementById('cms-faq').value = JSON.stringify(d.faq, null, 2);
+            }
+        } catch (e) { console.error('CMS load error:', e); }
+    }
+
+    // ── CMS一括保存 ──
+    async function saveCmsAll() {
+        var btn = document.getElementById('cms-save-btn');
+        var status = document.getElementById('cms-status');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>保存中...';
+
+        try {
+            var items = [];
+            // テキスト・数値
+            var simple = ['hero_title','hero_subtitle','initial_fee','monthly_fee','commission_rate','platform_fee_rate',
+                          'light_listings','light_avg_price','target_income_light',
+                          'standard_listings','standard_avg_price','target_income_standard',
+                          'heavy_listings','heavy_avg_price','target_income_heavy'];
+            simple.forEach(function(f) {
+                var el = document.getElementById('cms-' + f);
+                if (!el) return;
+                var val = el.value;
+                if (val === '') return;
+                // 数値フィールド
+                if (['initial_fee','monthly_fee','commission_rate','platform_fee_rate',
+                     'light_listings','light_avg_price','target_income_light',
+                     'standard_listings','standard_avg_price','target_income_standard',
+                     'heavy_listings','heavy_avg_price','target_income_heavy'].indexOf(f) >= 0) {
+                    val = Number(val);
+                }
+                items.push({ key: f, value: val });
+            });
+
+            // 配列
+            var jd = document.getElementById('cms-job_description').value.trim();
+            if (jd) items.push({ key: 'job_description', value: jd.split('\\n').filter(function(s){return s.trim();}) });
+
+            var bn = document.getElementById('cms-benefits').value.trim();
+            if (bn) items.push({ key: 'benefits', value: bn.split('\\n').filter(function(s){return s.trim();}) });
+
+            // FAQ
+            var faqStr = document.getElementById('cms-faq').value.trim();
+            if (faqStr) {
+                try {
+                    var faqVal = JSON.parse(faqStr);
+                    items.push({ key: 'faq', value: faqVal });
+                } catch(e) { alert('FAQのJSON形式が不正です'); btn.disabled = false; btn.innerHTML = '<i class="fas fa-save mr-2"></i>CMS設定を一括保存'; return; }
+            }
+
+            var res = await fetch('/api/franchise/cms/bulk', {
+                method: 'PUT', headers: HEADERS, body: JSON.stringify({ items: items })
+            });
+            var result = await res.json();
+            if (result.success) {
+                status.className = 'mt-3 text-sm text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-2';
+                status.innerHTML = '<i class="fas fa-check-circle mr-1"></i>CMS設定を保存しました（' + items.length + '項目）';
+                status.classList.remove('hidden');
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (e) {
+            status.className = 'mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2';
+            status.innerHTML = '<i class="fas fa-exclamation-circle mr-1"></i>保存に失敗しました: ' + e.message;
+            status.classList.remove('hidden');
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save mr-2"></i>CMS設定を一括保存';
+        setTimeout(function(){ status.classList.add('hidden'); }, 5000);
+    }
+
+    // ── FAQ操作 ──
+    function addFaqItem() {
+        var el = document.getElementById('cms-faq');
+        try {
+            var arr = el.value.trim() ? JSON.parse(el.value) : [];
+            arr.push({ q: '新しい質問', a: '回答を入力してください' });
+            el.value = JSON.stringify(arr, null, 2);
+        } catch(e) { alert('JSONの形式を修正してからFAQを追加してください'); }
+    }
+    function formatFaq() {
+        var el = document.getElementById('cms-faq');
+        try { el.value = JSON.stringify(JSON.parse(el.value), null, 2); } catch(e) { alert('JSONの形式が不正です'); }
+    }
+
+    // ── エリア読み込み ──
+    async function loadAreas() {
+        try {
+            var res = await fetch('/api/franchise/areas', { headers: HEADERS });
+            var data = await res.json();
+            if (!data.success) return;
+            allAreas = Object.entries(data.data).map(function(e) {
+                return { slug: e[0], status: e[1].status, partner_count: e[1].partner_count, name: PREF_NAMES[e[0]] || e[0], region: PREF_REGIONS[e[0]] || '' };
+            });
+            renderAreas(allAreas);
+        } catch(e) { console.error('Areas load error:', e); }
+    }
+
+    function filterAreas() {
+        var region = document.getElementById('area-filter-region').value;
+        var status = document.getElementById('area-filter-status').value;
+        var filtered = allAreas.filter(function(a) {
+            if (region && a.region !== region) return false;
+            if (status && a.status !== status) return false;
+            return true;
+        });
+        renderAreas(filtered);
+    }
+
+    function renderAreas(areas) {
+        var tbody = document.getElementById('areas-tbody');
+        var rCount = 0, pCount = 0, cCount = 0, totalP = 0;
+        allAreas.forEach(function(a) {
+            if (a.status === 'recruiting') rCount++;
+            else if (a.status === 'planned') pCount++;
+            else if (a.status === 'closed') cCount++;
+            totalP += a.partner_count || 0;
+        });
+        document.getElementById('area-recruiting-count').textContent = rCount;
+        document.getElementById('area-planned-count').textContent = pCount;
+        document.getElementById('area-closed-count').textContent = cCount;
+        document.getElementById('area-total-partners').textContent = totalP;
+
+        var html = '';
+        areas.forEach(function(a) {
+            var statusBadge = a.status === 'recruiting'
+                ? '<span class="px-2 py-0.5 bg-red-100 text-red-600 rounded-full text-xs font-semibold">募集中</span>'
+                : a.status === 'closed'
+                ? '<span class="px-2 py-0.5 bg-green-100 text-green-600 rounded-full text-xs font-semibold">決定済</span>'
+                : '<span class="px-2 py-0.5 bg-yellow-100 text-yellow-600 rounded-full text-xs font-semibold">予定</span>';
+            html += '<tr class="border-b hover:bg-gray-50">';
+            html += '<td class="px-3 py-2.5 font-semibold">' + escapeHtml(a.name) + '</td>';
+            html += '<td class="px-3 py-2.5 text-gray-500 text-xs">' + escapeHtml(a.region) + '</td>';
+            html += '<td class="px-3 py-2.5 text-center"><select data-slug="' + a.slug + '" data-field="status" class="area-field text-xs border rounded px-2 py-1">';
+            html += '<option value="recruiting"' + (a.status==='recruiting'?' selected':'') + '>募集中</option>';
+            html += '<option value="planned"' + (a.status==='planned'?' selected':'') + '>予定</option>';
+            html += '<option value="closed"' + (a.status==='closed'?' selected':'') + '>決定済</option></select></td>';
+            html += '<td class="px-3 py-2.5 text-center"><input type="number" data-slug="' + a.slug + '" data-field="partner_count" class="area-field w-16 text-center text-sm border rounded px-2 py-1" value="' + (a.partner_count||0) + '" min="0"></td>';
+            html += '<td class="px-3 py-2.5 text-center"><button onclick="saveArea(\\'' + a.slug + '\\')" class="text-xs text-blue-500 hover:text-blue-700 font-semibold"><i class="fas fa-save mr-1"></i>保存</button></td>';
+            html += '</tr>';
+        });
+        tbody.innerHTML = html || '<tr><td colspan="5" class="text-center py-6 text-gray-400">該当なし</td></tr>';
+    }
+
+    async function saveArea(slug) {
+        var statusEl = document.querySelector('select[data-slug="' + slug + '"][data-field="status"]');
+        var countEl = document.querySelector('input[data-slug="' + slug + '"][data-field="partner_count"]');
+        try {
+            var res = await fetch('/api/franchise/areas/' + slug, {
+                method: 'PUT', headers: HEADERS,
+                body: JSON.stringify({ status: statusEl.value, partner_count: parseInt(countEl.value) || 0 })
+            });
+            var data = await res.json();
+            if (data.success) {
+                // allAreasも更新
+                allAreas.forEach(function(a) { if (a.slug === slug) { a.status = statusEl.value; a.partner_count = parseInt(countEl.value) || 0; } });
+                renderAreas(allAreas);
+            } else { alert('保存エラー: ' + data.error); }
+        } catch(e) { alert('保存に失敗しました'); }
+    }
+
+    async function bulkAreaUpdate() {
+        if (!confirm('全てのエリアの変更を一括保存しますか？')) return;
+        var fields = document.querySelectorAll('.area-field');
+        var updates = {};
+        fields.forEach(function(el) {
+            var slug = el.dataset.slug;
+            var field = el.dataset.field;
+            if (!updates[slug]) updates[slug] = {};
+            updates[slug][field] = field === 'partner_count' ? parseInt(el.value) || 0 : el.value;
+        });
+        var ok = 0, err = 0;
+        for (var slug in updates) {
+            try {
+                var res = await fetch('/api/franchise/areas/' + slug, {
+                    method: 'PUT', headers: HEADERS, body: JSON.stringify(updates[slug])
+                });
+                var d = await res.json();
+                if (d.success) ok++; else err++;
+            } catch(e) { err++; }
+        }
+        alert('一括更新完了: 成功 ' + ok + '件' + (err > 0 ? ', 失敗 ' + err + '件' : ''));
+        loadAreas();
+    }
+
+    // ── 問い合わせ読み込み ──
+    async function loadInquiries() {
+        try {
+            var res = await fetch('/api/franchise/inquiries', { headers: HEADERS });
+            var data = await res.json();
+            if (!data.success) return;
+            var list = data.data || [];
+            var badge = document.getElementById('inquiry-badge');
+            if (list.length > 0) { badge.textContent = list.length; badge.classList.remove('hidden'); }
+            else { badge.classList.add('hidden'); }
+
+            var container = document.getElementById('inquiries-list');
+            if (list.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-center py-6"><i class="fas fa-inbox mr-2"></i>問い合わせはまだありません</p>';
+                return;
+            }
+            var html = '<div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="px-3 py-2 text-left text-xs font-bold text-gray-500">日時</th><th class="px-3 py-2 text-left text-xs font-bold text-gray-500">氏名</th><th class="px-3 py-2 text-left text-xs font-bold text-gray-500">メール</th><th class="px-3 py-2 text-left text-xs font-bold text-gray-500">電話</th><th class="px-3 py-2 text-left text-xs font-bold text-gray-500">希望エリア</th><th class="px-3 py-2 text-left text-xs font-bold text-gray-500">職業</th><th class="px-3 py-2 text-center text-xs font-bold text-gray-500">操作</th></tr></thead><tbody>';
+            var occupations = { auto_mechanic:'整備士', auto_dealer:'ディーラー', parts_dealer:'部品卸商', used_car:'中古車販売', office_worker:'会社員', self_employed:'自営業', other:'その他' };
+            list.forEach(function(item, idx) {
+                var date = item.created_at ? new Date(item.created_at).toLocaleString('ja-JP') : '-';
+                var prefName = PREF_NAMES[item.area_pref] || item.area_pref || '-';
+                var occName = occupations[item.occupation] || item.occupation || '-';
+                html += '<tr class="border-b hover:bg-gray-50">';
+                html += '<td class="px-3 py-2.5 text-xs text-gray-500 whitespace-nowrap">' + date + '</td>';
+                html += '<td class="px-3 py-2.5 font-semibold">' + escapeHtml(item.name) + '</td>';
+                html += '<td class="px-3 py-2.5"><a href="mailto:' + escapeHtml(item.email) + '" class="text-blue-500 hover:underline">' + escapeHtml(item.email) + '</a></td>';
+                html += '<td class="px-3 py-2.5 text-gray-500">' + escapeHtml(item.phone || '-') + '</td>';
+                html += '<td class="px-3 py-2.5">' + escapeHtml(prefName) + '</td>';
+                html += '<td class="px-3 py-2.5 text-xs">' + escapeHtml(occName) + '</td>';
+                html += '<td class="px-3 py-2.5 text-center"><button onclick="showInquiry(' + idx + ')" class="text-xs text-purple-500 hover:text-purple-700 font-semibold"><i class="fas fa-eye mr-1"></i>詳細</button></td>';
+                html += '</tr>';
+            });
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+
+            // グローバルに保持
+            window._inquiries = list;
+        } catch(e) { console.error('Inquiries load error:', e); }
+    }
+
+    function showInquiry(idx) {
+        var item = window._inquiries[idx];
+        if (!item) return;
+        var occupations = { auto_mechanic:'整備士', auto_dealer:'ディーラー', parts_dealer:'部品卸商', used_car:'中古車販売', office_worker:'会社員', self_employed:'自営業', other:'その他' };
+        var detail = document.getElementById('inquiry-detail');
+        detail.innerHTML = '<div class="space-y-3">'
+            + '<div class="flex justify-between"><span class="text-xs text-gray-400">受付日時</span><span class="text-sm font-medium">' + (item.created_at ? new Date(item.created_at).toLocaleString('ja-JP') : '-') + '</span></div>'
+            + '<div class="flex justify-between"><span class="text-xs text-gray-400">氏名</span><span class="text-sm font-bold">' + escapeHtml(item.name) + '</span></div>'
+            + '<div class="flex justify-between"><span class="text-xs text-gray-400">メール</span><a href="mailto:' + escapeHtml(item.email) + '" class="text-sm text-blue-500">' + escapeHtml(item.email) + '</a></div>'
+            + '<div class="flex justify-between"><span class="text-xs text-gray-400">電話番号</span><span class="text-sm">' + escapeHtml(item.phone || '-') + '</span></div>'
+            + '<div class="flex justify-between"><span class="text-xs text-gray-400">希望エリア</span><span class="text-sm">' + escapeHtml(PREF_NAMES[item.area_pref] || item.area_pref || '-') + '</span></div>'
+            + '<div class="flex justify-between"><span class="text-xs text-gray-400">ご職業</span><span class="text-sm">' + escapeHtml(occupations[item.occupation] || item.occupation || '-') + '</span></div>'
+            + '<div class="flex justify-between"><span class="text-xs text-gray-400">業界経験</span><span class="text-sm">' + (item.experience === 'yes' ? 'あり' : item.experience === 'no' ? 'なし' : '-') + '</span></div>'
+            + (item.message ? '<div class="pt-2 border-t"><p class="text-xs text-gray-400 mb-1">ご質問・ご要望</p><p class="text-sm text-gray-700 bg-gray-50 rounded-lg p-3 leading-relaxed">' + escapeHtml(item.message) + '</p></div>' : '')
+            + '</div>';
+        document.getElementById('inquiry-modal').classList.remove('hidden');
+    }
+
+    // 初期読み込み
+    loadCms();
+    loadInquiries(); // バッジ用
+    </script>
+  `;
+
+  return c.html(AdminLayout('franchise', 'フランチャイズ管理', content));
+});
+
+// ══════════════════════════════════════════════════════════════
+// 整備ガイド管理画面
+// ══════════════════════════════════════════════════════════════
+adminPagesRoutes.get('/guides', (c) => {
+  const content = `
+    <div class="mb-6">
+        <h2 class="text-2xl font-bold text-gray-800 mb-1"><i class="fas fa-book-open text-blue-500 mr-2"></i>整備ガイド管理</h2>
+        <p class="text-sm text-gray-500">ガイド記事の作成・編集・自動生成管理</p>
+    </div>
+
+    <!-- タブ切り替え -->
+    <div class="flex border-b border-gray-200 mb-6">
+        <button onclick="switchGuideTab('list')" id="gtab-list" class="px-5 py-3 text-sm font-semibold border-b-2 border-red-500 text-red-600 -mb-px"><i class="fas fa-list mr-1"></i>記事一覧</button>
+        <button onclick="switchGuideTab('create')" id="gtab-create" class="px-5 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 -mb-px"><i class="fas fa-plus mr-1"></i>新規作成</button>
+        <button onclick="switchGuideTab('auto')" id="gtab-auto" class="px-5 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 -mb-px"><i class="fas fa-robot mr-1"></i>自動生成</button>
+        <button onclick="switchGuideTab('pool')" id="gtab-pool" class="px-5 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 -mb-px"><i class="fas fa-database mr-1"></i>キーワードプール</button>
+    </div>
+
+    <!-- ── 記事一覧 ── -->
+    <div id="gpanel-list">
+      <div class="bg-white rounded-xl shadow-sm border p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex gap-2">
+            <select id="guide-filter-status" onchange="loadGuideList()" class="text-sm border rounded-lg px-3 py-1.5">
+              <option value="">全ステータス</option>
+              <option value="published">公開中</option>
+              <option value="draft">下書き</option>
+            </select>
+          </div>
+          <div class="flex gap-2 text-xs">
+            <span class="bg-green-100 text-green-700 px-2 py-1 rounded-full font-semibold">公開 <span id="guide-pub-count">0</span></span>
+            <span class="bg-gray-100 text-gray-600 px-2 py-1 rounded-full font-semibold">下書き <span id="guide-draft-count">0</span></span>
+          </div>
+        </div>
+        <div id="guide-list-content" class="space-y-2">
+          <p class="text-gray-400 text-center py-6">読み込み中...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 新規作成 ── -->
+    <div id="gpanel-create" class="hidden">
+      <div class="bg-white rounded-xl shadow-sm border p-6">
+        <h3 class="text-lg font-bold text-gray-800 mb-4"><i class="fas fa-pen-fancy mr-2 text-blue-500"></i>ガイド記事作成</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label class="block text-xs font-bold text-gray-600 mb-1">テンプレート</label>
+            <select id="guide-template" class="w-full px-3 py-2 border rounded-lg text-sm" onchange="onTemplateChange()">
+              <option value="">テンプレートを選択</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-600 mb-1">ステータス</label>
+            <select id="guide-status" class="w-full px-3 py-2 border rounded-lg text-sm">
+              <option value="draft">下書き</option>
+              <option value="published">公開</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label class="block text-xs font-bold text-gray-600 mb-1">スラッグ（URL）</label>
+            <input type="text" id="guide-slug" class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="example-guide-slug">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-600 mb-1">カテゴリ</label>
+            <input type="text" id="guide-category" class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="費用比較">
+          </div>
+        </div>
+        <div class="mb-4">
+          <label class="block text-xs font-bold text-gray-600 mb-1">タイトル</label>
+          <input type="text" id="guide-title" class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="ガイド記事のタイトル">
+        </div>
+        <div class="mb-4">
+          <label class="block text-xs font-bold text-gray-600 mb-1">説明（meta description）</label>
+          <textarea id="guide-description" rows="2" class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="記事の概要"></textarea>
+        </div>
+        <div class="mb-4">
+          <label class="block text-xs font-bold text-gray-600 mb-1">セクション（JSON）</label>
+          <textarea id="guide-sections" rows="8" class="w-full px-3 py-2 border rounded-lg text-sm font-mono" placeholder='[{"heading":"見出し","body":"本文"}]'></textarea>
+        </div>
+        <div class="mb-4">
+          <label class="block text-xs font-bold text-gray-600 mb-1">比較テーブル（JSON、任意）</label>
+          <textarea id="guide-comparison" rows="4" class="w-full px-3 py-2 border rounded-lg text-sm font-mono" placeholder='[{"item":"品目","dealer":"5万円","parts_hub":"2万円","savings":"60%"}]'></textarea>
+        </div>
+        <div class="flex gap-3">
+          <button onclick="saveGuide()" id="guide-save-btn" class="px-6 py-3 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 shadow-lg shadow-red-500/20"><i class="fas fa-save mr-2"></i>保存</button>
+          <button onclick="previewGuide()" class="px-6 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 text-sm font-semibold text-gray-600"><i class="fas fa-eye mr-2"></i>プレビュー</button>
+        </div>
+        <div id="guide-save-status" class="mt-3 text-sm hidden"></div>
+      </div>
+    </div>
+
+    <!-- ── 自動生成 ── -->
+    <div id="gpanel-auto" class="hidden">
+      <div class="bg-white rounded-xl shadow-sm border p-6 mb-6">
+        <h3 class="text-lg font-bold text-gray-800 mb-4"><i class="fas fa-robot mr-2 text-purple-500"></i>自動生成ステータス</h3>
+        <div id="auto-status-content" class="text-sm text-gray-500">読み込み中...</div>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm border p-6">
+        <h3 class="text-lg font-bold text-gray-800 mb-4"><i class="fas fa-play-circle mr-2 text-emerald-500"></i>手動実行</h3>
+        <div class="flex gap-3 mb-4">
+          <button onclick="triggerAutoGenerate('guide')" class="px-4 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600"><i class="fas fa-book mr-1"></i>ガイド1件生成</button>
+          <button onclick="triggerAutoGenerate('news')" class="px-4 py-2 bg-purple-500 text-white text-sm rounded-lg hover:bg-purple-600"><i class="fas fa-newspaper mr-1"></i>地域ニュース1件生成</button>
+          <button onclick="triggerAutoGenerate('both')" class="px-4 py-2 bg-emerald-500 text-white text-sm rounded-lg hover:bg-emerald-600"><i class="fas fa-magic mr-1"></i>両方生成</button>
+        </div>
+        <div id="auto-gen-result" class="text-sm hidden"></div>
+      </div>
+    </div>
+
+    <!-- ── キーワードプール ── -->
+    <div id="gpanel-pool" class="hidden">
+      <div class="bg-white rounded-xl shadow-sm border p-6">
+        <h3 class="text-lg font-bold text-gray-800 mb-4"><i class="fas fa-database mr-2 text-amber-500"></i>キーワードプール</h3>
+        <div id="pool-content" class="text-sm text-gray-500">読み込み中...</div>
+      </div>
+    </div>
+
+    <!-- 編集モーダル -->
+    <div id="guide-edit-modal" class="fixed inset-0 bg-black/50 z-[100] hidden flex items-center justify-center">
+      <div class="bg-white rounded-2xl p-6 w-full max-w-3xl mx-4 max-h-[85vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-bold"><i class="fas fa-edit mr-2 text-blue-500"></i>記事編集</h3>
+          <button onclick="document.getElementById('guide-edit-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-lg"></i></button>
+        </div>
+        <div class="space-y-4">
+          <input type="hidden" id="edit-guide-slug">
+          <div>
+            <label class="block text-xs font-bold text-gray-600 mb-1">タイトル</label>
+            <input type="text" id="edit-guide-title" class="w-full px-3 py-2 border rounded-lg text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-600 mb-1">説明</label>
+            <textarea id="edit-guide-description" rows="2" class="w-full px-3 py-2 border rounded-lg text-sm"></textarea>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-600 mb-1">カテゴリ</label>
+            <input type="text" id="edit-guide-category" class="w-full px-3 py-2 border rounded-lg text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-600 mb-1">ステータス</label>
+            <select id="edit-guide-status" class="w-full px-3 py-2 border rounded-lg text-sm">
+              <option value="draft">下書き</option>
+              <option value="published">公開</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-600 mb-1">セクション（JSON）</label>
+            <textarea id="edit-guide-sections" rows="10" class="w-full px-3 py-2 border rounded-lg text-sm font-mono"></textarea>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-600 mb-1">比較テーブル（JSON）</label>
+            <textarea id="edit-guide-comparison" rows="4" class="w-full px-3 py-2 border rounded-lg text-sm font-mono"></textarea>
+          </div>
+          <div class="flex gap-3">
+            <button onclick="updateGuide()" class="px-6 py-2.5 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600"><i class="fas fa-save mr-2"></i>更新</button>
+            <button onclick="document.getElementById('guide-edit-modal').classList.add('hidden')" class="px-6 py-2.5 border rounded-xl hover:bg-gray-50 text-gray-600">キャンセル</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+    var HEADERS = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('admin_token') };
+
+    function switchGuideTab(name) {
+        ['list','create','auto','pool'].forEach(function(t) {
+            document.getElementById('gpanel-' + t).classList.toggle('hidden', t !== name);
+            var btn = document.getElementById('gtab-' + t);
+            if (t === name) { btn.classList.add('border-red-500','text-red-600'); btn.classList.remove('border-transparent','text-gray-500'); }
+            else { btn.classList.remove('border-red-500','text-red-600'); btn.classList.add('border-transparent','text-gray-500'); }
+        });
+        if (name === 'list') loadGuideList();
+        if (name === 'auto') loadAutoStatus();
+        if (name === 'pool') loadKeywordPool();
+        if (name === 'create') loadTemplates();
+    }
+
+    // ── 記事一覧 ──
+    async function loadGuideList() {
+        try {
+            var status = document.getElementById('guide-filter-status').value;
+            var url = '/api/guides/list' + (status ? '?status=' + status : '');
+            var res = await fetch(url, { headers: HEADERS });
+            var data = await res.json();
+            var list = data.data || [];
+
+            var pubCount = 0, draftCount = 0;
+            list.forEach(function(a) { if (a.status === 'published') pubCount++; else draftCount++; });
+            document.getElementById('guide-pub-count').textContent = pubCount;
+            document.getElementById('guide-draft-count').textContent = draftCount;
+
+            var container = document.getElementById('guide-list-content');
+            if (list.length === 0) { container.innerHTML = '<p class="text-gray-400 text-center py-6">記事がありません</p>'; return; }
+
+            var html = '<div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="px-3 py-2 text-left text-xs font-bold text-gray-500">タイトル</th><th class="px-3 py-2 text-left text-xs font-bold text-gray-500">カテゴリ</th><th class="px-3 py-2 text-center text-xs font-bold text-gray-500">ステータス</th><th class="px-3 py-2 text-center text-xs font-bold text-gray-500">PV</th><th class="px-3 py-2 text-left text-xs font-bold text-gray-500">更新日</th><th class="px-3 py-2 text-center text-xs font-bold text-gray-500">操作</th></tr></thead><tbody>';
+            list.forEach(function(a) {
+                var statusBadge = a.status === 'published'
+                    ? '<span class="px-2 py-0.5 bg-green-100 text-green-600 rounded-full text-xs font-semibold">公開</span>'
+                    : '<span class="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs font-semibold">下書き</span>';
+                var date = a.updated_at ? new Date(a.updated_at).toLocaleDateString('ja-JP') : '-';
+                html += '<tr class="border-b hover:bg-gray-50">';
+                html += '<td class="px-3 py-2.5"><div class="font-semibold text-sm">' + escapeHtml(a.title) + '</div><div class="text-[11px] text-gray-400">/guide/' + escapeHtml(a.slug) + '</div></td>';
+                html += '<td class="px-3 py-2.5 text-xs text-gray-500">' + escapeHtml(a.category || '-') + '</td>';
+                html += '<td class="px-3 py-2.5 text-center">' + statusBadge + '</td>';
+                html += '<td class="px-3 py-2.5 text-center text-gray-500">' + (a.view_count || 0) + '</td>';
+                html += '<td class="px-3 py-2.5 text-xs text-gray-500">' + date + '</td>';
+                html += '<td class="px-3 py-2.5 text-center"><div class="flex gap-2 justify-center">';
+                html += '<a href="/guide/' + a.slug + '" target="_blank" class="text-xs text-blue-500 hover:text-blue-700"><i class="fas fa-eye"></i></a>';
+                html += '<button onclick="editGuide(\\'' + a.slug + '\\')" class="text-xs text-amber-500 hover:text-amber-700"><i class="fas fa-edit"></i></button>';
+                html += '<button onclick="deleteGuide(\\'' + a.slug + '\\')" class="text-xs text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>';
+                html += '</div></td></tr>';
+            });
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+        } catch(e) { console.error('Guide list error:', e); }
+    }
+
+    // ── 記事編集 ──
+    async function editGuide(slug) {
+        try {
+            var res = await fetch('/api/guides/detail/' + slug, { headers: HEADERS });
+            var data = await res.json();
+            if (!data.success) { alert('記事の読み込みに失敗'); return; }
+            var a = data.data;
+            document.getElementById('edit-guide-slug').value = a.slug;
+            document.getElementById('edit-guide-title').value = a.title;
+            document.getElementById('edit-guide-description').value = a.description || '';
+            document.getElementById('edit-guide-category').value = a.category || '';
+            document.getElementById('edit-guide-status').value = a.status || 'draft';
+            document.getElementById('edit-guide-sections').value = JSON.stringify(a.sections || [], null, 2);
+            document.getElementById('edit-guide-comparison').value = a.comparison ? JSON.stringify(a.comparison, null, 2) : '';
+            document.getElementById('guide-edit-modal').classList.remove('hidden');
+        } catch(e) { alert('読み込みに失敗しました'); }
+    }
+
+    async function updateGuide() {
+        var slug = document.getElementById('edit-guide-slug').value;
+        try {
+            var sections = JSON.parse(document.getElementById('edit-guide-sections').value);
+            var compStr = document.getElementById('edit-guide-comparison').value.trim();
+            var comparison = compStr ? JSON.parse(compStr) : null;
+            var body = {
+                slug: slug,
+                title: document.getElementById('edit-guide-title').value,
+                description: document.getElementById('edit-guide-description').value,
+                category: document.getElementById('edit-guide-category').value,
+                status: document.getElementById('edit-guide-status').value,
+                sections: sections,
+                comparison: comparison
+            };
+            var res = await fetch('/api/guides/save', { method: 'POST', headers: HEADERS, body: JSON.stringify(body) });
+            var data = await res.json();
+            if (data.success) {
+                document.getElementById('guide-edit-modal').classList.add('hidden');
+                loadGuideList();
+                alert('更新しました');
+            } else { alert('更新失敗: ' + data.error); }
+        } catch(e) { alert('JSONの形式を確認してください: ' + e.message); }
+    }
+
+    async function deleteGuide(slug) {
+        if (!confirm('「' + slug + '」を削除しますか？')) return;
+        try {
+            var res = await fetch('/api/guides/' + slug, { method: 'DELETE', headers: HEADERS });
+            var data = await res.json();
+            if (data.success) loadGuideList();
+            else alert('削除失敗: ' + data.error);
+        } catch(e) { alert('削除に失敗しました'); }
+    }
+
+    // ── テンプレート読み込み ──
+    async function loadTemplates() {
+        try {
+            var res = await fetch('/api/guides/templates', { headers: HEADERS });
+            var data = await res.json();
+            var sel = document.getElementById('guide-template');
+            if (sel.options.length <= 1) {
+                (data.data || []).forEach(function(t) {
+                    var opt = document.createElement('option');
+                    opt.value = t.name;
+                    opt.textContent = t.label + ' - ' + t.description;
+                    sel.appendChild(opt);
+                });
+            }
+        } catch(e) { console.error(e); }
+    }
+
+    function onTemplateChange() {
+        var tmpl = document.getElementById('guide-template').value;
+        if (tmpl) document.getElementById('guide-category').value = tmpl === 'cost-comparison' ? '費用比較' : tmpl === 'how-to' ? '実践ガイド' : tmpl === 'business-improvement' ? '経営改善' : 'Web集客';
+    }
+
+    // ── 新規保存 ──
+    async function saveGuide() {
+        var btn = document.getElementById('guide-save-btn');
+        var status = document.getElementById('guide-save-status');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>保存中...';
+        try {
+            var sectionsStr = document.getElementById('guide-sections').value.trim();
+            var compStr = document.getElementById('guide-comparison').value.trim();
+            var sections = sectionsStr ? JSON.parse(sectionsStr) : [];
+            var comparison = compStr ? JSON.parse(compStr) : null;
+            var body = {
+                slug: document.getElementById('guide-slug').value,
+                title: document.getElementById('guide-title').value,
+                description: document.getElementById('guide-description').value,
+                category: document.getElementById('guide-category').value,
+                status: document.getElementById('guide-status').value,
+                template_type: document.getElementById('guide-template').value || null,
+                sections: sections,
+                comparison: comparison
+            };
+            var res = await fetch('/api/guides/save', { method: 'POST', headers: HEADERS, body: JSON.stringify(body) });
+            var data = await res.json();
+            if (data.success) {
+                status.className = 'mt-3 text-sm text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-2';
+                status.innerHTML = '<i class="fas fa-check-circle mr-1"></i>' + data.message;
+                status.classList.remove('hidden');
+            } else { throw new Error(data.error); }
+        } catch(e) {
+            status.className = 'mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2';
+            status.innerHTML = '<i class="fas fa-exclamation-circle mr-1"></i>保存失敗: ' + e.message;
+            status.classList.remove('hidden');
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save mr-2"></i>保存';
+    }
+
+    function previewGuide() {
+        var slug = document.getElementById('guide-slug').value;
+        if (slug) window.open('/guide/' + slug, '_blank');
+        else alert('スラッグを入力してください');
+    }
+
+    // ── 自動生成ステータス ──
+    async function loadAutoStatus() {
+        try {
+            var res = await fetch('/api/guides/auto-generate/status', { headers: HEADERS });
+            var data = await res.json();
+            if (!data.success) return;
+            var d = data.data;
+            var html = '<div class="grid grid-cols-1 md:grid-cols-2 gap-6">';
+            html += '<div class="border rounded-xl p-4"><h4 class="font-bold text-sm mb-3"><i class="fas fa-book text-blue-500 mr-1"></i>ガイド記事</h4>';
+            html += '<div class="grid grid-cols-3 gap-3 text-center">';
+            html += '<div><div class="text-2xl font-black text-blue-500">' + d.guide.total_keywords + '</div><div class="text-[11px] text-gray-500">キーワード総数</div></div>';
+            html += '<div><div class="text-2xl font-black text-emerald-500">' + d.guide.generated + '</div><div class="text-[11px] text-gray-500">生成済み</div></div>';
+            html += '<div><div class="text-2xl font-black text-amber-500">' + d.guide.remaining + '</div><div class="text-[11px] text-gray-500">残り</div></div>';
+            html += '</div>';
+            html += '<div class="mt-3 bg-blue-50 rounded-lg p-2 text-xs text-blue-700 text-center">1日1記事ペースであと <strong>' + d.guide.days_of_content + '</strong> 日分のコンテンツ</div></div>';
+            html += '<div class="border rounded-xl p-4"><h4 class="font-bold text-sm mb-3"><i class="fas fa-newspaper text-purple-500 mr-1"></i>地域ニュース</h4>';
+            html += '<div class="grid grid-cols-2 gap-3 text-center">';
+            html += '<div><div class="text-2xl font-black text-purple-500">' + d.regional_news.total_prefectures + '</div><div class="text-[11px] text-gray-500">都道府県数</div></div>';
+            html += '<div><div class="text-2xl font-black text-emerald-500">' + d.regional_news.generated_count + '</div><div class="text-[11px] text-gray-500">生成済み記事</div></div>';
+            html += '</div>';
+            html += '<div class="mt-3 text-xs text-gray-500">季節テーマ: ' + (d.regional_news.current_season || []).join(', ') + '</div></div>';
+            html += '</div>';
+            document.getElementById('auto-status-content').innerHTML = html;
+        } catch(e) { document.getElementById('auto-status-content').innerHTML = '<p class="text-red-500">読み込みエラー</p>'; }
+    }
+
+    async function triggerAutoGenerate(type) {
+        var el = document.getElementById('auto-gen-result');
+        el.className = 'text-sm bg-blue-50 text-blue-700 rounded-lg px-4 py-2';
+        el.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>生成中...';
+        el.classList.remove('hidden');
+        try {
+            var res = await fetch('/api/guides/auto-generate?key=ph-cron-2026-secure&type=' + type, { headers: HEADERS });
+            var data = await res.json();
+            if (data.success) {
+                var msgs = (data.generated || []).map(function(g) { return g.type + ': ' + g.title + ' (' + g.status + ')'; });
+                el.className = 'text-sm bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg px-4 py-2';
+                el.innerHTML = '<i class="fas fa-check-circle mr-1"></i>' + data.message + '<br>' + msgs.join('<br>');
+                loadAutoStatus();
+            } else { throw new Error(data.error); }
+        } catch(e) {
+            el.className = 'text-sm bg-red-50 text-red-700 rounded-lg px-4 py-2';
+            el.innerHTML = '<i class="fas fa-exclamation-circle mr-1"></i>生成エラー: ' + e.message;
+        }
+    }
+
+    // ── キーワードプール ──
+    async function loadKeywordPool() {
+        try {
+            var res = await fetch('/api/guides/keyword-pool', { headers: HEADERS });
+            var data = await res.json();
+            var pool = data.data || [];
+            var html = '<p class="text-xs text-gray-500 mb-3">全 ' + pool.length + ' キーワード</p>';
+            html += '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">';
+            pool.forEach(function(kw) {
+                var typeColor = kw.template === 'cost-comparison' ? 'bg-blue-100 text-blue-700' : kw.template === 'how-to' ? 'bg-emerald-100 text-emerald-700' : kw.template === 'business-improvement' ? 'bg-amber-100 text-amber-700' : 'bg-purple-100 text-purple-700';
+                html += '<div class="border rounded-lg p-2.5 hover:bg-gray-50 flex items-start gap-2">';
+                html += '<span class="text-[10px] px-1.5 py-0.5 rounded ' + typeColor + ' whitespace-nowrap flex-shrink-0">' + escapeHtml(kw.template) + '</span>';
+                html += '<div class="min-w-0"><div class="text-xs font-semibold truncate">' + escapeHtml(kw.title) + '</div><div class="text-[10px] text-gray-400 truncate">/guide/' + escapeHtml(kw.slug) + '</div></div></div>';
+            });
+            html += '</div>';
+            document.getElementById('pool-content').innerHTML = html;
+        } catch(e) { document.getElementById('pool-content').innerHTML = '<p class="text-red-500">読み込みエラー</p>'; }
+    }
+
+    // 初期読み込み
+    loadGuideList();
+    </script>
+  `;
+
+  return c.html(AdminLayout('guides', '整備ガイド管理', content));
+});
+
+// ══════════════════════════════════════════════════════════════
+// パートナー管理画面（次フェーズ: DB設計→API→管理画面）
+// ══════════════════════════════════════════════════════════════
+adminPagesRoutes.get('/partners', (c) => {
+  const content = `
+    <div class="mb-6">
+        <h2 class="text-2xl font-bold text-gray-800 mb-1"><i class="fas fa-user-tie text-amber-500 mr-2"></i>パートナー管理</h2>
+        <p class="text-sm text-gray-500">登録パートナーの管理・実績追跡</p>
+    </div>
+
+    <!-- タブ切り替え -->
+    <div class="flex border-b border-gray-200 mb-6">
+        <button onclick="switchPartnerTab('list')" id="ptab-list" class="px-5 py-3 text-sm font-semibold border-b-2 border-red-500 text-red-600 -mb-px"><i class="fas fa-list mr-1"></i>パートナー一覧</button>
+        <button onclick="switchPartnerTab('register')" id="ptab-register" class="px-5 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 -mb-px"><i class="fas fa-user-plus mr-1"></i>新規登録</button>
+        <button onclick="switchPartnerTab('stats')" id="ptab-stats" class="px-5 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 -mb-px"><i class="fas fa-chart-bar mr-1"></i>実績レポート</button>
+    </div>
+
+    <!-- パートナー一覧 -->
+    <div id="ppanel-list">
+      <div class="bg-white rounded-xl shadow-sm border p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex gap-3 text-xs">
+            <span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full font-semibold">アクティブ <span id="partner-active-count">0</span></span>
+            <span class="bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full font-semibold">研修中 <span id="partner-training-count">0</span></span>
+            <span class="bg-gray-100 text-gray-600 px-2 py-1 rounded-full font-semibold">休止中 <span id="partner-inactive-count">0</span></span>
+          </div>
+          <button onclick="loadPartners()" class="text-xs bg-gray-100 px-3 py-1.5 rounded-lg hover:bg-gray-200"><i class="fas fa-sync mr-1"></i>更新</button>
+        </div>
+        <div id="partner-list-content">
+          <p class="text-gray-400 text-center py-6">読み込み中...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 新規登録 -->
+    <div id="ppanel-register" class="hidden">
+      <div class="bg-white rounded-xl shadow-sm border p-6">
+        <h3 class="text-lg font-bold text-gray-800 mb-4"><i class="fas fa-user-plus mr-2 text-blue-500"></i>パートナー新規登録</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label class="block text-xs font-bold text-gray-600 mb-1">氏名 <span class="text-red-500">*</span></label>
+            <input type="text" id="p-name" class="w-full px-3 py-2 border rounded-lg text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-600 mb-1">メールアドレス <span class="text-red-500">*</span></label>
+            <input type="email" id="p-email" class="w-full px-3 py-2 border rounded-lg text-sm">
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label class="block text-xs font-bold text-gray-600 mb-1">電話番号</label>
+            <input type="tel" id="p-phone" class="w-full px-3 py-2 border rounded-lg text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-600 mb-1">担当エリア</label>
+            <select id="p-area" class="w-full px-3 py-2 border rounded-lg text-sm">
+              <option value="">選択してください</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label class="block text-xs font-bold text-gray-600 mb-1">ステータス</label>
+            <select id="p-status" class="w-full px-3 py-2 border rounded-lg text-sm">
+              <option value="training">研修中</option>
+              <option value="active">アクティブ</option>
+              <option value="inactive">休止中</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-600 mb-1">契約日</label>
+            <input type="date" id="p-contract-date" class="w-full px-3 py-2 border rounded-lg text-sm">
+          </div>
+        </div>
+        <div class="mb-4">
+          <label class="block text-xs font-bold text-gray-600 mb-1">備考</label>
+          <textarea id="p-notes" rows="3" class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="特記事項"></textarea>
+        </div>
+        <button onclick="registerPartner()" id="p-register-btn" class="px-6 py-3 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 shadow-lg shadow-red-500/20">
+          <i class="fas fa-user-plus mr-2"></i>登録する
+        </button>
+        <div id="p-register-status" class="mt-3 text-sm hidden"></div>
+      </div>
+    </div>
+
+    <!-- 実績レポート -->
+    <div id="ppanel-stats" class="hidden">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-6 text-white">
+          <div class="text-sm opacity-90">総パートナー数</div>
+          <div class="text-3xl font-black mt-1" id="stat-total">0</div>
+        </div>
+        <div class="bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-xl p-6 text-white">
+          <div class="text-sm opacity-90">今月の出品数</div>
+          <div class="text-3xl font-black mt-1" id="stat-listings">0</div>
+        </div>
+        <div class="bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl p-6 text-white">
+          <div class="text-sm opacity-90">今月の売上（パートナー報酬）</div>
+          <div class="text-3xl font-black mt-1" id="stat-revenue">&yen;0</div>
+        </div>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm border p-6">
+        <h3 class="text-lg font-bold text-gray-800 mb-4"><i class="fas fa-trophy mr-2 text-amber-500"></i>パートナー実績ランキング</h3>
+        <div id="partner-ranking">
+          <p class="text-gray-400 text-center py-6">パートナーが登録されるとランキングが表示されます</p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+    var HEADERS = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('admin_token') };
+    var PREF_NAMES = {
+      hokkaido:'北海道',aomori:'青森県',iwate:'岩手県',miyagi:'宮城県',akita:'秋田県',yamagata:'山形県',fukushima:'福島県',
+      ibaraki:'茨城県',tochigi:'栃木県',gunma:'群馬県',saitama:'埼玉県',chiba:'千葉県',tokyo:'東京都',kanagawa:'神奈川県',
+      niigata:'新潟県',toyama:'富山県',ishikawa:'石川県',fukui:'福井県',yamanashi:'山梨県',nagano:'長野県',gifu:'岐阜県',shizuoka:'静岡県',aichi:'愛知県',
+      mie:'三重県',shiga:'滋賀県',kyoto:'京都府',osaka:'大阪府',hyogo:'兵庫県',nara:'奈良県',wakayama:'和歌山県',
+      tottori:'鳥取県',shimane:'島根県',okayama:'岡山県',hiroshima:'広島県',yamaguchi:'山口県',
+      tokushima:'徳島県',kagawa:'香川県',ehime:'愛媛県',kochi:'高知県',
+      fukuoka:'福岡県',saga:'佐賀県',nagasaki:'長崎県',kumamoto:'熊本県',oita:'大分県',miyazaki:'宮崎県',kagoshima:'鹿児島県',okinawa:'沖縄県'
+    };
+
+    function switchPartnerTab(name) {
+        ['list','register','stats'].forEach(function(t) {
+            document.getElementById('ppanel-' + t).classList.toggle('hidden', t !== name);
+            var btn = document.getElementById('ptab-' + t);
+            if (t === name) { btn.classList.add('border-red-500','text-red-600'); btn.classList.remove('border-transparent','text-gray-500'); }
+            else { btn.classList.remove('border-red-500','text-red-600'); btn.classList.add('border-transparent','text-gray-500'); }
+        });
+        if (name === 'list') loadPartners();
+        if (name === 'register') populateAreaSelect();
+        if (name === 'stats') loadPartnerStats();
+    }
+
+    function populateAreaSelect() {
+        var sel = document.getElementById('p-area');
+        if (sel.options.length <= 1) {
+            Object.entries(PREF_NAMES).forEach(function(e) {
+                var opt = document.createElement('option');
+                opt.value = e[0];
+                opt.textContent = e[1];
+                sel.appendChild(opt);
+            });
+        }
+    }
+
+    // ── パートナー一覧 ──
+    async function loadPartners() {
+        try {
+            var res = await fetch('/api/admin/partners', { headers: HEADERS });
+            var data = await res.json();
+            var list = data.data || [];
+            var active = 0, training = 0, inactive = 0;
+            list.forEach(function(p) {
+                if (p.status === 'active') active++;
+                else if (p.status === 'training') training++;
+                else inactive++;
+            });
+            document.getElementById('partner-active-count').textContent = active;
+            document.getElementById('partner-training-count').textContent = training;
+            document.getElementById('partner-inactive-count').textContent = inactive;
+
+            var container = document.getElementById('partner-list-content');
+            if (list.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-center py-6"><i class="fas fa-user-slash mr-2"></i>登録パートナーはまだいません。<br><span class="text-xs">「新規登録」タブからパートナーを追加できます。</span></p>';
+                return;
+            }
+            var html = '<div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr>';
+            html += '<th class="px-3 py-2 text-left text-xs font-bold text-gray-500">氏名</th>';
+            html += '<th class="px-3 py-2 text-left text-xs font-bold text-gray-500">メール</th>';
+            html += '<th class="px-3 py-2 text-left text-xs font-bold text-gray-500">エリア</th>';
+            html += '<th class="px-3 py-2 text-center text-xs font-bold text-gray-500">ステータス</th>';
+            html += '<th class="px-3 py-2 text-center text-xs font-bold text-gray-500">出品数</th>';
+            html += '<th class="px-3 py-2 text-center text-xs font-bold text-gray-500">売上</th>';
+            html += '<th class="px-3 py-2 text-left text-xs font-bold text-gray-500">契約日</th>';
+            html += '<th class="px-3 py-2 text-center text-xs font-bold text-gray-500">操作</th>';
+            html += '</tr></thead><tbody>';
+            list.forEach(function(p) {
+                var statusBadge = p.status === 'active'
+                    ? '<span class="px-2 py-0.5 bg-green-100 text-green-600 rounded-full text-xs font-semibold">アクティブ</span>'
+                    : p.status === 'training'
+                    ? '<span class="px-2 py-0.5 bg-yellow-100 text-yellow-600 rounded-full text-xs font-semibold">研修中</span>'
+                    : '<span class="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs font-semibold">休止中</span>';
+                html += '<tr class="border-b hover:bg-gray-50">';
+                html += '<td class="px-3 py-2.5 font-semibold">' + escapeHtml(p.name) + '</td>';
+                html += '<td class="px-3 py-2.5"><a href="mailto:' + escapeHtml(p.email) + '" class="text-blue-500 text-xs hover:underline">' + escapeHtml(p.email) + '</a></td>';
+                html += '<td class="px-3 py-2.5 text-xs">' + escapeHtml(PREF_NAMES[p.area_pref] || p.area_pref || '-') + '</td>';
+                html += '<td class="px-3 py-2.5 text-center">' + statusBadge + '</td>';
+                html += '<td class="px-3 py-2.5 text-center text-gray-500">' + (p.total_listings || 0) + '</td>';
+                html += '<td class="px-3 py-2.5 text-center text-gray-500">&yen;' + ((p.total_revenue || 0)).toLocaleString() + '</td>';
+                html += '<td class="px-3 py-2.5 text-xs text-gray-500">' + (p.contract_date || '-') + '</td>';
+                html += '<td class="px-3 py-2.5 text-center">';
+                html += '<button onclick="updatePartnerStatus(' + p.id + ',\\'' + (p.status === 'active' ? 'inactive' : 'active') + '\\')" class="text-xs text-blue-500 hover:text-blue-700 mr-2"><i class="fas fa-toggle-' + (p.status === 'active' ? 'on' : 'off') + '"></i></button>';
+                html += '<button onclick="deletePartner(' + p.id + ')" class="text-xs text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>';
+                html += '</td></tr>';
+            });
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+        } catch(e) {
+            // APIがまだない場合
+            document.getElementById('partner-list-content').innerHTML = '<p class="text-gray-400 text-center py-6"><i class="fas fa-user-slash mr-2"></i>登録パートナーはまだいません。<br><span class="text-xs">「新規登録」タブからパートナーを追加できます。</span></p>';
+        }
+    }
+
+    async function registerPartner() {
+        var btn = document.getElementById('p-register-btn');
+        var status = document.getElementById('p-register-status');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>登録中...';
+        try {
+            var body = {
+                name: document.getElementById('p-name').value,
+                email: document.getElementById('p-email').value,
+                phone: document.getElementById('p-phone').value,
+                area_pref: document.getElementById('p-area').value,
+                status: document.getElementById('p-status').value,
+                contract_date: document.getElementById('p-contract-date').value,
+                notes: document.getElementById('p-notes').value
+            };
+            if (!body.name || !body.email) { alert('氏名とメールは必須です'); btn.disabled = false; btn.innerHTML = '<i class="fas fa-user-plus mr-2"></i>登録する'; return; }
+            var res = await fetch('/api/admin/partners', { method: 'POST', headers: HEADERS, body: JSON.stringify(body) });
+            var data = await res.json();
+            if (data.success) {
+                status.className = 'mt-3 text-sm text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-2';
+                status.innerHTML = '<i class="fas fa-check-circle mr-1"></i>パートナーを登録しました';
+                status.classList.remove('hidden');
+                // フォームリセット
+                ['p-name','p-email','p-phone','p-notes','p-contract-date'].forEach(function(id) { document.getElementById(id).value = ''; });
+            } else { throw new Error(data.error); }
+        } catch(e) {
+            status.className = 'mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2';
+            status.innerHTML = '<i class="fas fa-exclamation-circle mr-1"></i>登録失敗: ' + e.message;
+            status.classList.remove('hidden');
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-user-plus mr-2"></i>登録する';
+    }
+
+    async function updatePartnerStatus(id, status) {
+        try {
+            await fetch('/api/admin/partners/' + id, { method: 'PUT', headers: HEADERS, body: JSON.stringify({ status: status }) });
+            loadPartners();
+        } catch(e) { alert('更新に失敗しました'); }
+    }
+
+    async function deletePartner(id) {
+        if (!confirm('このパートナーを削除しますか？')) return;
+        try {
+            await fetch('/api/admin/partners/' + id, { method: 'DELETE', headers: HEADERS });
+            loadPartners();
+        } catch(e) { alert('削除に失敗しました'); }
+    }
+
+    async function loadPartnerStats() {
+        try {
+            var res = await fetch('/api/admin/partners/stats', { headers: HEADERS });
+            var data = await res.json();
+            if (data.success && data.data) {
+                document.getElementById('stat-total').textContent = data.data.total || 0;
+                document.getElementById('stat-listings').textContent = data.data.monthly_listings || 0;
+                document.getElementById('stat-revenue').textContent = '\\u00A5' + (data.data.monthly_revenue || 0).toLocaleString();
+            }
+        } catch(e) {
+            document.getElementById('stat-total').textContent = '0';
+        }
+    }
+
+    // 初期読み込み
+    loadPartners();
+    </script>
+  `;
+
+  return c.html(AdminLayout('partners', 'パートナー管理', content));
+});
+
 export default adminPagesRoutes
