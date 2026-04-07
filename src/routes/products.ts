@@ -40,6 +40,68 @@ function generateSlug(title: string, id: number): string {
   return `${slug}-${id}`
 }
 
+// 商品検索（車種別パーツガイドからのvm_maker/vm_modelフィルタ対応）
+app.get('/search', async (c) => {
+  try {
+    const keyword = c.req.query('keyword') || ''
+    const sort = c.req.query('sort') || 'newest'
+    const priceMin = c.req.query('price_min')
+    const priceMax = c.req.query('price_max')
+    const condition = c.req.query('condition')
+    const vmMaker = c.req.query('vm_maker')
+    const vmModel = c.req.query('vm_model')
+
+    let conditions = ["p.status IN ('active', 'sold')"]
+    let params: any[] = []
+
+    if (keyword) {
+      conditions.push('(p.title LIKE ? OR p.description LIKE ? OR p.part_number LIKE ? OR p.compatible_models LIKE ?)')
+      params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`, `%${keyword}%`)
+    }
+
+    if (vmMaker) {
+      conditions.push('(p.vm_maker = ? OR EXISTS (SELECT 1 FROM product_compatibility pc2 WHERE pc2.product_id = p.id AND pc2.vm_maker = ?))')
+      params.push(vmMaker, vmMaker)
+    }
+    if (vmModel) {
+      conditions.push('(p.vm_model = ? OR EXISTS (SELECT 1 FROM product_compatibility pc3 WHERE pc3.product_id = p.id AND pc3.vm_model = ?))')
+      params.push(vmModel, vmModel)
+    }
+
+    if (priceMin) { conditions.push('p.price >= ?'); params.push(priceMin) }
+    if (priceMax) { conditions.push('p.price <= ?'); params.push(priceMax) }
+    if (condition) { conditions.push('p.condition = ?'); params.push(condition) }
+
+    let orderBy = 'p.created_at DESC'
+    if (sort === 'price_asc') orderBy = 'p.price ASC'
+    else if (sort === 'price_desc') orderBy = 'p.price DESC'
+    else if (sort === 'popular') orderBy = 'p.favorite_count DESC, p.view_count DESC'
+
+    const whereClause = conditions.join(' AND ')
+
+    const { results } = await c.env.DB.prepare(`
+      SELECT DISTINCT p.id, p.title, p.price, p.condition, p.status,
+        p.favorite_count, p.view_count,
+        (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as image_url,
+        (SELECT COUNT(*) FROM product_comments WHERE product_id = p.id) as comment_count
+      FROM products p
+      WHERE ${whereClause}
+      ORDER BY ${orderBy}
+      LIMIT 60
+    `).bind(...params).all()
+
+    const products = results.map((p: any) => ({
+      ...p,
+      image_url: p.image_url ? (p.image_url.startsWith('http') ? p.image_url : '/r2/' + p.image_url) : '/icons/icon.svg'
+    }))
+
+    return c.json({ success: true, products })
+  } catch (error) {
+    console.error('Product search error:', error)
+    return c.json({ success: false, error: '検索に失敗しました', products: [] }, 500)
+  }
+})
+
 // 画像アップロード
 app.post('/images/upload', async (c) => {
   try {

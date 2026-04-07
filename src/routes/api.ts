@@ -134,6 +134,8 @@ api.get('/products', async (c) => {
     const minPrice = c.req.query('min_price')
     const maxPrice = c.req.query('max_price')
     const condition = c.req.query('condition')
+    const vmMaker = c.req.query('vm_maker')
+    const vmModel = c.req.query('vm_model')
     const page = parseInt(c.req.query('page') || '1')
     const limit = parseInt(c.req.query('limit') || '20')
     const sort = c.req.query('sort') || 'created_desc'
@@ -157,6 +159,16 @@ api.get('/products', async (c) => {
     if (makerId) {
       conditions.push('p.maker_id = ?')
       params.push(makerId)
+    }
+
+    // vehicle_master連動フィルタ（車種別パーツガイドからのリンク）
+    if (vmMaker) {
+      conditions.push('(p.vm_maker = ? OR EXISTS (SELECT 1 FROM product_compatibility pc WHERE pc.product_id = p.id AND pc.vm_maker = ?))')
+      params.push(vmMaker, vmMaker)
+    }
+    if (vmModel) {
+      conditions.push('(p.vm_model = ? OR EXISTS (SELECT 1 FROM product_compatibility pc WHERE pc.product_id = p.id AND pc.vm_model = ?))')
+      params.push(vmModel, vmModel)
     }
 
     if (minPrice) {
@@ -239,6 +251,65 @@ api.get('/products', async (c) => {
   } catch (error) {
     console.error('Products fetch error:', error)
     return c.json({ success: false, error: '商品の取得に失敗しました' }, 500)
+  }
+})
+
+// 商品検索（車種別パーツガイドからのvm_maker/vm_modelフィルタ対応）
+api.get('/products/search', async (c) => {
+  try {
+    const keyword = c.req.query('keyword') || ''
+    const sort = c.req.query('sort') || 'newest'
+    const priceMin = c.req.query('price_min')
+    const priceMax = c.req.query('price_max')
+    const condition = c.req.query('condition')
+    const vmMaker = c.req.query('vm_maker')
+    const vmModel = c.req.query('vm_model')
+
+    let conditions = ["p.status IN ('active', 'sold')"]
+    let params: any[] = []
+
+    if (keyword) {
+      conditions.push('(p.title LIKE ? OR p.description LIKE ? OR p.part_number LIKE ? OR p.compatible_models LIKE ?)')
+      params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`, `%${keyword}%`)
+    }
+    if (vmMaker) {
+      conditions.push('(p.vm_maker = ? OR EXISTS (SELECT 1 FROM product_compatibility pc2 WHERE pc2.product_id = p.id AND pc2.vm_maker = ?))')
+      params.push(vmMaker, vmMaker)
+    }
+    if (vmModel) {
+      conditions.push('(p.vm_model = ? OR EXISTS (SELECT 1 FROM product_compatibility pc3 WHERE pc3.product_id = p.id AND pc3.vm_model = ?))')
+      params.push(vmModel, vmModel)
+    }
+    if (priceMin) { conditions.push('p.price >= ?'); params.push(priceMin) }
+    if (priceMax) { conditions.push('p.price <= ?'); params.push(priceMax) }
+    if (condition) { conditions.push('p.condition = ?'); params.push(condition) }
+
+    let orderBy = 'p.created_at DESC'
+    if (sort === 'price_asc') orderBy = 'p.price ASC'
+    else if (sort === 'price_desc') orderBy = 'p.price DESC'
+    else if (sort === 'popular') orderBy = 'p.favorite_count DESC, p.view_count DESC'
+
+    const whereClause = conditions.join(' AND ')
+    const { results } = await c.env.DB.prepare(`
+      SELECT DISTINCT p.id, p.title, p.price, p.condition, p.status,
+        p.favorite_count, p.view_count,
+        (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as image_url,
+        (SELECT COUNT(*) FROM product_comments WHERE product_id = p.id) as comment_count
+      FROM products p
+      WHERE ${whereClause}
+      ORDER BY ${orderBy}
+      LIMIT 60
+    `).bind(...params).all()
+
+    const products = results.map((p: any) => ({
+      ...p,
+      image_url: p.image_url ? (p.image_url.startsWith('http') ? p.image_url : '/r2/' + p.image_url) : '/icons/icon.svg'
+    }))
+
+    return c.json({ success: true, products })
+  } catch (error) {
+    console.error('Product search error:', error)
+    return c.json({ success: false, error: '検索に失敗しました', products: [] }, 500)
   }
 })
 
@@ -364,6 +435,73 @@ api.get('/vehicle-master/grades', async (c) => {
   } catch (error) {
     console.error('Vehicle master grades error:', error)
     return c.json({ success: false, error: 'グレード取得に失敗' }, 500)
+  }
+})
+
+// 車種別パーツガイド用: メーカー別の車種一覧（車種数付き）
+api.get('/vehicle-master/guide/makers', async (c) => {
+  try {
+    const { results } = await c.env.DB.prepare(`
+      SELECT maker, COUNT(DISTINCT model) as model_count
+      FROM vehicle_master
+      GROUP BY maker
+      ORDER BY model_count DESC
+    `).all()
+    return c.json({ success: true, data: results })
+  } catch (error) {
+    console.error('Vehicle guide makers error:', error)
+    return c.json({ success: false, error: 'メーカー取得に失敗' }, 500)
+  }
+})
+
+// 車種別パーツガイド用: 指定メーカーの車種一覧（グレード数付き）
+api.get('/vehicle-master/guide/models', async (c) => {
+  try {
+    const maker = c.req.query('maker')
+    if (!maker) return c.json({ success: false, error: 'maker is required' }, 400)
+    const { results } = await c.env.DB.prepare(`
+      SELECT model,
+             COUNT(DISTINCT grade_name) as grade_count,
+             COUNT(DISTINCT CASE WHEN drive_type != '' THEN drive_type END) as drive_type_count,
+             COUNT(DISTINCT CASE WHEN tire_size != '' THEN tire_size END) as tire_size_count
+      FROM vehicle_master
+      WHERE maker = ?
+      GROUP BY model
+      ORDER BY model ASC
+    `).bind(maker).all()
+    return c.json({ success: true, data: results })
+  } catch (error) {
+    console.error('Vehicle guide models error:', error)
+    return c.json({ success: false, error: '車種取得に失敗' }, 500)
+  }
+})
+
+// 車種別パーツガイド用: 車種詳細（グレード・タイヤサイズ一覧）
+api.get('/vehicle-master/guide/detail', async (c) => {
+  try {
+    const maker = c.req.query('maker')
+    const model = c.req.query('model')
+    if (!maker || !model) return c.json({ success: false, error: 'maker and model are required' }, 400)
+    const { results } = await c.env.DB.prepare(`
+      SELECT grade_name, drive_type, tire_size
+      FROM vehicle_master
+      WHERE maker = ? AND model = ?
+      ORDER BY grade_name ASC
+    `).bind(maker, model).all()
+
+    // 商品数カウント（vm_maker/vm_modelが一致する出品商品）
+    const productCount = await c.env.DB.prepare(`
+      SELECT COUNT(DISTINCT p.id) as cnt
+      FROM products p
+      WHERE p.status IN ('active', 'sold')
+        AND (p.vm_maker = ? OR EXISTS (SELECT 1 FROM product_compatibility pc WHERE pc.product_id = p.id AND pc.vm_maker = ?))
+        AND (p.vm_model = ? OR EXISTS (SELECT 1 FROM product_compatibility pc WHERE pc.product_id = p.id AND pc.vm_model = ?))
+    `).bind(maker, maker, model, model).first() as any
+
+    return c.json({ success: true, data: results, product_count: productCount?.cnt || 0, maker, model })
+  } catch (error) {
+    console.error('Vehicle guide detail error:', error)
+    return c.json({ success: false, error: '車種詳細取得に失敗' }, 500)
   }
 })
 

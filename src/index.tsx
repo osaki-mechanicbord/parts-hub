@@ -7511,7 +7511,29 @@ app.get('/search', (c) => {
         <script src="${v('/static/notification-badge.js')}"></script>
         <script>
             let searchTimeout;
-            
+            // URLパラメータからvm_maker/vm_modelを取得
+            const urlParams = new URLSearchParams(window.location.search);
+            const vmMakerParam = urlParams.get('vm_maker') || '';
+            const vmModelParam = urlParams.get('vm_model') || '';
+
+            // 車種フィルタバナー表示
+            if (vmMakerParam || vmModelParam) {
+              document.addEventListener('DOMContentLoaded', function() {
+                const header = document.querySelector('header');
+                if (header) {
+                  const banner = document.createElement('div');
+                  banner.id = 'vm-filter-banner';
+                  banner.style.cssText = 'background:linear-gradient(135deg,#fef2f2,#fff1f2);border-bottom:1px solid #fecaca;padding:8px 16px;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;';
+                  banner.innerHTML = '<i class="fas fa-car text-red-400" style="font-size:12px;"></i>'
+                    + '<span style="font-size:13px;font-weight:600;color:#991b1b;">' + (vmMakerParam || '') + ' ' + (vmModelParam || '') + ' の適合パーツを表示中</span>'
+                    + '<a href="/search" style="font-size:11px;color:#6b7280;text-decoration:underline;margin-left:8px;">解除</a>';
+                  header.after(banner);
+                }
+                // vm_makerがある場合は自動検索
+                performSearch();
+              });
+            }
+
             // フィルターパネル切り替え
             function toggleFilter() {
                 document.getElementById('filter-panel').classList.toggle('hidden');
@@ -7525,7 +7547,7 @@ app.get('/search', (c) => {
                 const priceMax = document.getElementById('price-max').value;
                 const condition = document.getElementById('condition-select').value;
                 
-                if (!keyword && !priceMin && !priceMax && !condition) {
+                if (!keyword && !priceMin && !priceMax && !condition && !vmMakerParam && !vmModelParam) {
                     document.getElementById('initial-state').classList.remove('hidden');
                     document.getElementById('result-header').classList.add('hidden');
                     document.getElementById('products-grid').innerHTML = '';
@@ -7544,6 +7566,8 @@ app.get('/search', (c) => {
                     if (sort) params.append('sort', sort);
                     if (priceMin) params.append('price_min', priceMin);
                     if (priceMax) params.append('price_max', priceMax);
+                    if (vmMakerParam) params.append('vm_maker', vmMakerParam);
+                    if (vmModelParam) params.append('vm_model', vmModelParam);
                     if (condition) params.append('condition', condition);
                     
                     const response = await axios.get(\`/api/products/search?\${params.toString()}\`);
@@ -8758,24 +8782,53 @@ const VEHICLES: Record<string, { maker: string; name: string; nameEn: string; ye
 
 const MAKER_ORDER = ['トヨタ','日産','ホンダ','スズキ','ダイハツ','スバル','マツダ','三菱','いすゞ','日野']
 
-// 車種一覧ページ
-app.get('/vehicle', (c) => {
-  const makerGroups: Record<string, { slug: string; name: string; type: string }[]> = {}
-  for (const m of MAKER_ORDER) { makerGroups[m] = [] }
-  for (const [slug, data] of Object.entries(VEHICLES)) {
-    if (!makerGroups[data.maker]) makerGroups[data.maker] = []
-    makerGroups[data.maker].push({ slug, name: data.name, type: data.type })
-  }
-
+// 車種一覧ページ（DB動的取得：125メーカー・3,898車種）
+app.get('/vehicle', async (c) => {
+  const { DB } = c.env as any
   let makerCards = ''
-  for (const maker of MAKER_ORDER) {
-    const vehicles = makerGroups[maker]
-    if (!vehicles || vehicles.length === 0) continue
-    let vLinks = ''
-    for (const v2 of vehicles) {
-      vLinks += '<a href="/vehicle/' + v2.slug + '" class="vehicle-chip"><span class="vehicle-name">' + v2.name + '</span><span class="vehicle-type">' + v2.type + '</span></a>'
+  let totalMakers = 0
+  let totalModels = 0
+
+  try {
+    // メーカー別車種数を取得
+    const { results: makers } = await DB.prepare(`
+      SELECT maker, COUNT(DISTINCT model) as model_count
+      FROM vehicle_master
+      GROUP BY maker
+      ORDER BY model_count DESC
+    `).all()
+
+    totalMakers = makers.length
+    totalModels = makers.reduce((sum: number, m: any) => sum + m.model_count, 0)
+
+    // 国内主要メーカーを優先表示
+    const domesticOrder = ['トヨタ','日産','ホンダ','スズキ','ダイハツ','スバル','マツダ','三菱','いすゞ','日野','レクサス','光岡自動車']
+    const domesticSet = new Set(domesticOrder)
+    const sortedMakers = [
+      ...domesticOrder.filter(m => makers.some((mk: any) => mk.maker === m)),
+      ...makers.filter((mk: any) => !domesticSet.has(mk.maker)).map((mk: any) => mk.maker)
+    ]
+
+    for (const makerName of sortedMakers) {
+      const makerData = makers.find((mk: any) => mk.maker === makerName) as any
+      if (!makerData) continue
+      const isDomestic = domesticSet.has(makerName)
+      const badgeHtml = isDomestic
+        ? '<span style="font-size:10px;background:#fef2f2;color:#dc2626;padding:1px 6px;border-radius:4px;margin-left:8px;">国内</span>'
+        : '<span style="font-size:10px;background:#f0fdf4;color:#16a34a;padding:1px 6px;border-radius:4px;margin-left:8px;">海外</span>'
+      makerCards += `<div class="maker-card" data-maker="${makerName.replace(/"/g, '&quot;')}">
+        <h3 class="maker-title"><span>${makerName}</span>${badgeHtml}<span style="font-size:11px;color:#9ca3af;margin-left:auto;float:right;">${makerData.model_count}車種</span></h3>
+        <div class="vehicle-list" id="models-${totalMakers}" style="display:none;">
+          <div class="text-center py-4 text-gray-400 text-sm"><i class="fas fa-spinner fa-spin mr-1"></i>読み込み中...</div>
+        </div>
+        <button class="model-toggle" onclick="toggleMaker(this, '${makerName.replace(/'/g, "\\'")}', 'models-${totalMakers}')" data-loaded="false">
+          <span>車種を表示</span><i class="fas fa-chevron-down ml-1" style="font-size:10px;"></i>
+        </button>
+      </div>`
     }
-    makerCards += '<div class="maker-card"><h3 class="maker-title">' + maker + '</h3><div class="vehicle-list">' + vLinks + '</div></div>'
+  } catch (e) {
+    console.error('Vehicle guide error:', e)
+    makerCards = '<div class="col-span-full text-center py-8 text-gray-500">データの読み込みに失敗しました</div>'
   }
 
   return c.html(`<!DOCTYPE html>
@@ -8784,12 +8837,12 @@ app.get('/vehicle', (c) => {
     <meta charset="UTF-8">
     <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>車種別パーツガイド - PARTS HUB（パーツハブ）</title>
-    <meta name="description" content="車種別の整備・交換パーツガイド。トヨタ、日産、ホンダ、スズキなど主要メーカーの人気車種ごとに、よく交換されるパーツと整備のポイントを解説します。">
+    <title>車種別パーツガイド｜${totalMakers}メーカー・${totalModels.toLocaleString()}車種収録 - PARTS HUB（パーツハブ）</title>
+    <meta name="description" content="車種別の整備・交換パーツガイド。${totalMakers}メーカー・${totalModels.toLocaleString()}車種のグレード・タイヤサイズ情報を収録。車種に適合するパーツを検索できます。">
     <link rel="canonical" href="https://parts-hub-tci.com/vehicle">
         ${hreflang("/vehicle")}
     <meta property="og:title" content="車種別パーツガイド - PARTS HUB">
-    <meta property="og:description" content="主要メーカーの人気車種ごとに、よく交換されるパーツと整備のポイントを解説">
+    <meta property="og:description" content="${totalMakers}メーカー・${totalModels.toLocaleString()}車種収録。車種別にパーツを検索">
     <meta property="og:url" content="https://parts-hub-tci.com/vehicle">
     <meta property="og:site_name" content="PARTS HUB">
     <meta property="og:image" content="https://parts-hub-tci.com/icons/og-default.png">
@@ -8800,13 +8853,23 @@ app.get('/vehicle', (c) => {
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <style>
       body { font-family: 'Noto Sans JP', sans-serif; }
-      .maker-card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #f3f4f6; }
-      .maker-title { font-size: 15px; font-weight: 700; color: #1f2937; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid #fee2e2; }
-      .vehicle-list { display: flex; flex-direction: column; gap: 6px; }
-      .vehicle-chip { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; color: #374151; text-decoration: none; transition: all 0.15s; }
+      .maker-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #f3f4f6; }
+      .maker-title { font-size: 15px; font-weight: 700; color: #1f2937; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 2px solid #fee2e2; display:flex; align-items:center; }
+      .vehicle-list { display: flex; flex-direction: column; gap: 4px; max-height: 400px; overflow-y: auto; }
+      .vehicle-chip { display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; color: #374151; text-decoration: none; transition: all 0.15s; }
       .vehicle-chip:hover { background: #fef2f2; border-color: #fca5a5; color: #dc2626; }
-      .vehicle-name { font-size: 14px; font-weight: 600; }
-      .vehicle-type { font-size: 11px; color: #9ca3af; background: #f3f4f6; padding: 2px 8px; border-radius: 4px; }
+      .vehicle-name { font-size: 13px; font-weight: 600; }
+      .vehicle-meta { font-size: 10px; color: #9ca3af; }
+      .model-toggle { display:block; width:100%; padding:8px; text-align:center; font-size:13px; font-weight:600; color:#ef4444; background:none; border:1px solid #fee2e2; border-radius:8px; cursor:pointer; transition:all 0.15s; margin-top:8px; }
+      .model-toggle:hover { background:#fef2f2; }
+      .search-box { max-width:500px; margin:0 auto; position:relative; }
+      .search-box input { width:100%; padding:12px 16px 12px 42px; border:2px solid #e5e7eb; border-radius:12px; font-size:14px; outline:none; transition:border-color 0.2s; }
+      .search-box input:focus { border-color:#ef4444; }
+      .search-box i { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:#9ca3af; }
+      .stat-card { background:rgba(255,255,255,0.08); border-radius:12px; padding:16px 20px; text-align:center; border:1px solid rgba(255,255,255,0.1); }
+      .stat-value { font-size:24px; font-weight:900; color:#f87171; }
+      .stat-label { font-size:11px; color:#94a3b8; margin-top:2px; }
+      ${BREADCRUMB_CSS}
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -8818,60 +8881,195 @@ app.get('/vehicle', (c) => {
         </div>
     </header>
     ${breadcrumbHtml([{name:'PARTS HUB',url:'/'},{name:'車種別パーツガイド'}])}
-    <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white py-12 sm:py-16">
+    <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white py-10 sm:py-14">
         <div class="max-w-6xl mx-auto px-4 text-center">
             <p class="text-red-400 text-sm font-semibold tracking-wider mb-3">VEHICLE PARTS GUIDE</p>
             <h1 class="text-2xl sm:text-3xl font-bold mb-3">車種別パーツガイド</h1>
-            <p class="text-slate-400 text-sm sm:text-base max-w-xl mx-auto">主要メーカーの人気車種ごとに、よく交換されるパーツと整備のポイントを解説します。</p>
+            <p class="text-slate-400 text-sm sm:text-base max-w-xl mx-auto mb-6">${totalMakers}メーカー・${totalModels.toLocaleString()}車種のグレード・タイヤサイズ情報を収録。<br class="hidden sm:block">車種に合ったパーツを探せます。</p>
+            <div class="flex justify-center gap-3 sm:gap-4 mb-8">
+                <div class="stat-card"><div class="stat-value">${totalMakers}</div><div class="stat-label">メーカー</div></div>
+                <div class="stat-card"><div class="stat-value">${totalModels.toLocaleString()}</div><div class="stat-label">車種</div></div>
+                <div class="stat-card"><div class="stat-value">17,673</div><div class="stat-label">グレード</div></div>
+            </div>
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="maker-search" placeholder="メーカー名で絞り込み（例：トヨタ、BMW）" oninput="filterMakers(this.value)">
+            </div>
         </div>
     </div>
-    <main class="max-w-6xl mx-auto px-4 py-8 sm:py-12">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <main class="max-w-6xl mx-auto px-4 py-8 sm:py-10">
+        <div id="maker-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             ${makerCards}
         </div>
     </main>
     ${Footer()}
     <script src="${v('/static/auth-header.js')}"></script>
     <script src="${v('/static/notification-badge.js')}"></script>
+    <script>
+    function filterMakers(q) {
+      const cards = document.querySelectorAll('.maker-card')
+      const lower = q.toLowerCase()
+      cards.forEach(card => {
+        const maker = card.getAttribute('data-maker') || ''
+        card.style.display = maker.toLowerCase().includes(lower) ? '' : 'none'
+      })
+    }
+
+    async function toggleMaker(btn, maker, listId) {
+      const list = document.getElementById(listId)
+      if (!list) return
+      const isOpen = list.style.display !== 'none'
+      if (isOpen) {
+        list.style.display = 'none'
+        btn.querySelector('span').textContent = '車種を表示'
+        btn.querySelector('i').className = 'fas fa-chevron-down ml-1'
+        btn.querySelector('i').style.fontSize = '10px'
+        return
+      }
+      list.style.display = ''
+      btn.querySelector('span').textContent = '閉じる'
+      btn.querySelector('i').className = 'fas fa-chevron-up ml-1'
+      btn.querySelector('i').style.fontSize = '10px'
+
+      if (btn.getAttribute('data-loaded') === 'true') return
+      try {
+        const res = await fetch('/api/vehicle-master/guide/models?maker=' + encodeURIComponent(maker))
+        const json = await res.json()
+        if (json.success && json.data.length > 0) {
+          list.innerHTML = json.data.map(m => {
+            const slug = encodeURIComponent(maker) + '/' + encodeURIComponent(m.model)
+            const meta = []
+            if (m.grade_count > 0) meta.push(m.grade_count + 'グレード')
+            if (m.tire_size_count > 0) meta.push('タイヤサイズ有')
+            return '<a href="/vehicle/' + slug + '" class="vehicle-chip"><span class="vehicle-name">' + m.model + '</span><span class="vehicle-meta">' + meta.join(' / ') + '</span></a>'
+          }).join('')
+          btn.setAttribute('data-loaded', 'true')
+        } else {
+          list.innerHTML = '<div class="text-center py-3 text-gray-400 text-sm">車種データがありません</div>'
+        }
+      } catch(e) {
+        list.innerHTML = '<div class="text-center py-3 text-red-400 text-sm">読み込みエラー</div>'
+      }
+    }
+    </script>
 </body>
 </html>`)
 })
 
-// 車種別詳細ページ
-app.get('/vehicle/:slug', async (c) => {
-  const slug = c.req.param('slug')
-  const vehicle = VEHICLES[slug]
-  if (!vehicle) return c.redirect('/vehicle', 302)
+// 旧slug形式のリダイレクト（toyota-prius → トヨタ/プリウス 等）
+app.get('/vehicle/:oldSlug', (c) => {
+  const oldSlug = c.req.param('oldSlug')
+  const vehicle = VEHICLES[oldSlug]
+  if (vehicle) {
+    return c.redirect('/vehicle/' + encodeURIComponent(vehicle.maker) + '/' + encodeURIComponent(vehicle.name), 301)
+  }
+  // oldSlugがメーカー名（URLデコード済み）の場合は一覧ページへ
+  return c.redirect('/vehicle', 302)
+})
 
+// 車種別詳細ページ（DB動的取得：メーカー/車種名）
+app.get('/vehicle/:maker/:model', async (c) => {
+  const maker = decodeURIComponent(c.req.param('maker'))
+  const model = decodeURIComponent(c.req.param('model'))
   const { DB } = c.env as any
-  let productsHtml = ''
-  let categoriesHtml = ''
+
+  // vehicle_masterからグレード・タイヤサイズ一覧取得
+  let grades: any[] = []
+  let productCount = 0
+  let driveTypes: string[] = []
 
   try {
-    const prods = await DB.prepare(
-      "SELECT p.id, p.title, p.price, p.condition, pi.image_url FROM products p LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.display_order = 0 WHERE p.status = 'active' ORDER BY p.created_at DESC LIMIT 8"
-    ).all()
+    const { results } = await DB.prepare(`
+      SELECT grade_name, drive_type, tire_size
+      FROM vehicle_master
+      WHERE maker = ? AND model = ?
+      ORDER BY grade_name ASC
+    `).bind(maker, model).all()
+
+    if (results.length === 0) return c.redirect('/vehicle', 302)
+    grades = results
+
+    // ユニークな駆動方式
+    driveTypes = [...new Set(results.filter((r: any) => r.drive_type).map((r: any) => r.drive_type))]
+
+    // この車種の出品商品数
+    const cnt = await DB.prepare(`
+      SELECT COUNT(DISTINCT p.id) as cnt FROM products p
+      WHERE p.status IN ('active', 'sold')
+        AND (p.vm_maker = ? OR EXISTS (SELECT 1 FROM product_compatibility pc WHERE pc.product_id = p.id AND pc.vm_maker = ?))
+        AND (p.vm_model = ? OR EXISTS (SELECT 1 FROM product_compatibility pc WHERE pc.product_id = p.id AND pc.vm_model = ?))
+    `).bind(maker, maker, model, model).first() as any
+    productCount = cnt?.cnt || 0
+  } catch (e) {
+    console.error('Vehicle detail error:', e)
+    return c.redirect('/vehicle', 302)
+  }
+
+  // 既存リッチデータ（VEHICLES）の照合
+  const richData = Object.values(VEHICLES).find(v => v.maker === maker && v.name === model)
+
+  // この車種の出品商品一覧（最大8件）
+  let productsHtml = ''
+  try {
+    const prods = await DB.prepare(`
+      SELECT DISTINCT p.id, p.title, p.price, p.condition, p.status,
+        (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as image_url
+      FROM products p
+      LEFT JOIN product_compatibility pc ON pc.product_id = p.id
+      WHERE p.status IN ('active', 'sold')
+        AND (p.vm_maker = ? OR pc.vm_maker = ?)
+        AND (p.vm_model = ? OR pc.vm_model = ?)
+      ORDER BY p.created_at DESC LIMIT 8
+    `).bind(maker, maker, model, model).all()
+
     const condMap: Record<string,string> = { new:'新品', like_new:'未使用に近い', good:'良好', fair:'やや傷あり', poor:'状態不良' }
     productsHtml = prods.results.map((p: any) => {
       const priceTaxIncluded = Math.floor(Number(p.price || 0) * 1.1).toLocaleString()
       const cond = condMap[p.condition] || p.condition || '中古'
       const safeTitle = String(p.title || '').replace(/</g, '&lt;')
       const imgUrl = p.image_url ? '/r2/' + p.image_url : '/icons/icon.svg'
-      return '<a href="/products/' + p.id + '" class="product-card"><div class="product-img-wrap"><img src="' + imgUrl + '" alt="' + safeTitle + '" class="product-img" loading="lazy"></div><div class="product-info"><p class="product-title">' + safeTitle + '</p><p class="product-price">&yen;' + priceTaxIncluded + '<span style="font-size:10px;font-weight:400;color:#6b7280;margin-left:2px;">税込</span><span class="product-cond">' + cond + '</span></p></div></a>'
+      const soldBadge = p.status === 'sold' ? '<div style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,0.7);color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;">SOLD</div>' : ''
+      return '<a href="/products/' + p.id + '" class="product-card" style="position:relative;">' + soldBadge + '<div class="product-img-wrap"><img src="' + imgUrl + '" alt="' + safeTitle + '" class="product-img" loading="lazy"></div><div class="product-info"><p class="product-title">' + safeTitle + '</p><p class="product-price">&yen;' + priceTaxIncluded + '<span style="font-size:10px;font-weight:400;color:#6b7280;margin-left:2px;">税込</span><span class="product-cond">' + cond + '</span></p></div></a>'
     }).join('')
+  } catch(e) { console.error('Vehicle products error:', e) }
 
-    const cats = await DB.prepare('SELECT id, name FROM categories ORDER BY id').all()
-    categoriesHtml = cats.results.map((cat: any) =>
-      '<a href="/search?category=' + encodeURIComponent(cat.name) + '" class="cat-tag">' + cat.name + '</a>'
+  // 同メーカー他車種
+  let sameMakerHtml = ''
+  try {
+    const { results: sameModels } = await DB.prepare(`
+      SELECT DISTINCT model FROM vehicle_master WHERE maker = ? AND model != ? ORDER BY model ASC LIMIT 20
+    `).bind(maker, model).all()
+    sameMakerHtml = sameModels.map((m: any) =>
+      '<a href="/vehicle/' + encodeURIComponent(maker) + '/' + encodeURIComponent(m.model) + '" class="nearby-link">' + m.model + '</a>'
     ).join('')
-  } catch(e) { console.error('Vehicle LP error:', e) }
+  } catch(e) {}
 
-  const keywordsHtml = vehicle.keywords.map(k => '<span class="keyword-tag">' + k + '</span>').join('')
+  // グレード・タイヤサイズテーブル
+  const uniqueGrades = grades.filter((g: any) => g.grade_name)
+  const hasTireData = grades.some((g: any) => g.tire_size)
+  let gradeTableHtml = ''
+  if (uniqueGrades.length > 0) {
+    let rows = uniqueGrades.map((g: any) => {
+      const ts = g.tire_size || '-'
+      const dt = g.drive_type || '-'
+      return '<tr><td class="grade-cell">' + g.grade_name + '</td><td class="drive-cell">' + dt + '</td><td class="tire-cell">' + ts + '</td></tr>'
+    }).join('')
+    gradeTableHtml = `
+      <div class="overflow-x-auto">
+        <table class="grade-table">
+          <thead><tr><th>グレード</th><th>駆動方式</th><th>タイヤサイズ</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`
+  }
 
-  const sameMaker = Object.entries(VEHICLES)
-    .filter(([s, d]) => d.maker === vehicle.maker && s !== slug)
-    .map(([s, d]) => '<a href="/vehicle/' + s + '" class="nearby-link">' + d.name + '</a>')
-    .join('')
+  // 商品検索URL
+  const searchUrl = '/search?vm_maker=' + encodeURIComponent(maker) + '&vm_model=' + encodeURIComponent(model)
+
+  const safeModel = model.replace(/</g, '&lt;')
+  const safeMaker = maker.replace(/</g, '&lt;')
+  const descText = richData ? richData.desc : safeMaker + ' ' + safeModel + 'のグレード・タイヤサイズ情報と、適合する中古パーツを検索できます。'
+  const keywordsHtml = richData ? richData.keywords.map(k => '<span class="keyword-tag">' + k + '</span>').join('') : ''
 
   return c.html(`<!DOCTYPE html>
 <html lang="ja">
@@ -8879,34 +9077,33 @@ app.get('/vehicle/:slug', async (c) => {
     <meta charset="UTF-8">
     <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${vehicle.maker} ${vehicle.name}のパーツ・整備ガイド - PARTS HUB</title>
-    <meta name="description" content="${vehicle.maker} ${vehicle.name}（${vehicle.years}）の整備・交換パーツガイド。${vehicle.keywords.slice(0,3).join('、')}など、よく交換されるパーツの情報と中古パーツの探し方を解説。">
-    <link rel="canonical" href="https://parts-hub-tci.com/vehicle/${slug}">
-    ${hreflang("/vehicle/" + slug)}
+    <title>${safeMaker} ${safeModel}のパーツ・整備ガイド - PARTS HUB</title>
+    <meta name="description" content="${safeMaker} ${safeModel}の整備・交換パーツガイド。${uniqueGrades.length}グレード収録。適合する中古パーツを検索できます。">
+    <link rel="canonical" href="https://parts-hub-tci.com/vehicle/${encodeURIComponent(maker)}/${encodeURIComponent(model)}">
+    ${hreflang("/vehicle/" + encodeURIComponent(maker) + "/" + encodeURIComponent(model))}
     <meta property="og:type" content="article">
-    <meta property="og:title" content="${vehicle.maker} ${vehicle.name}のパーツ・整備ガイド - PARTS HUB">
-    <meta property="og:description" content="${vehicle.name}の整備・交換パーツガイド。${vehicle.keywords.slice(0,3).join('、')}など主要パーツの情報。">
-    <meta property="og:url" content="https://parts-hub-tci.com/vehicle/${slug}">
+    <meta property="og:title" content="${safeMaker} ${safeModel}のパーツ・整備ガイド - PARTS HUB">
+    <meta property="og:description" content="${safeModel}の${uniqueGrades.length}グレード情報と適合パーツ検索">
+    <meta property="og:url" content="https://parts-hub-tci.com/vehicle/${encodeURIComponent(maker)}/${encodeURIComponent(model)}">
     <meta property="og:site_name" content="PARTS HUB">
     <meta property="og:image" content="https://parts-hub-tci.com/icons/og-default.png">
     <meta property="og:locale" content="ja_JP">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="${vehicle.maker} ${vehicle.name}のパーツ・整備ガイド">
-    <meta name="twitter:description" content="${vehicle.name}の整備・交換パーツガイド。中古パーツの探し方も解説。">
+    <meta name="twitter:title" content="${safeMaker} ${safeModel}のパーツ・整備ガイド">
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
     <script type="application/ld+json">${JSON.stringify({
       "@context": "https://schema.org",
       "@type": "Article",
-      "headline": vehicle.maker + ' ' + vehicle.name + 'のパーツ・整備ガイド',
-      "description": vehicle.desc,
-      "url": 'https://parts-hub-tci.com/vehicle/' + slug,
+      "headline": maker + ' ' + model + 'のパーツ・整備ガイド',
+      "description": descText,
+      "url": 'https://parts-hub-tci.com/vehicle/' + encodeURIComponent(maker) + '/' + encodeURIComponent(model),
       "publisher": { "@type": "Organization", "name": "PARTS HUB", "url": "https://parts-hub-tci.com/" },
       "breadcrumb": {
         "@type": "BreadcrumbList",
         "itemListElement": [
           { "@type": "ListItem", "position": 1, "name": "PARTS HUB", "item": "https://parts-hub-tci.com/" },
           { "@type": "ListItem", "position": 2, "name": "車種別パーツガイド", "item": "https://parts-hub-tci.com/vehicle" },
-          { "@type": "ListItem", "position": 3, "name": vehicle.maker + ' ' + vehicle.name }
+          { "@type": "ListItem", "position": 3, "name": maker + ' ' + model }
         ]
       }
     })}</script>
@@ -8918,7 +9115,7 @@ app.get('/vehicle/:slug', async (c) => {
       body { font-family: 'Noto Sans JP', sans-serif; }
       .hero-vehicle { background: linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #334155 100%); }
       .spec-item { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
-      .spec-label { font-size: 12px; color: #94a3b8; width: 80px; flex-shrink: 0; }
+      .spec-label { font-size: 12px; color: #94a3b8; width: 90px; flex-shrink: 0; }
       .spec-value { font-size: 14px; font-weight: 600; color: white; }
       .section-heading { font-size: 17px; font-weight: 700; color: #1f2937; position: relative; padding-left: 14px; }
       .section-heading::before { content: ''; position: absolute; left: 0; top: 2px; bottom: 2px; width: 3px; background: linear-gradient(180deg, #ef4444, #f97316); border-radius: 2px; }
@@ -8932,23 +9129,20 @@ app.get('/vehicle/:slug', async (c) => {
       .product-title { font-size: 12px; font-weight: 600; color: #1f2937; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 34px; }
       .product-price { font-size: 14px; font-weight: 800; color: #dc2626; margin-top: 4px; }
       .product-cond { font-size: 10px; font-weight: 400; color: #9ca3af; margin-left: 6px; }
-      @media (min-width: 640px) {
-        .product-card { border-radius: 12px; }
-        .product-info { padding: 12px; }
-        .product-title { font-size: 13px; min-height: 36px; }
-        .product-price { font-size: 16px; margin-top: 6px; }
-        .product-cond { font-size: 11px; margin-left: 8px; }
-      }
-      .cat-tag { display: inline-block; padding: 5px 10px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 20px; color: #374151; font-size: 12px; font-weight: 500; text-decoration: none; transition: all 0.15s; margin: 2px; }
-      .cat-tag:hover { background: #fef2f2; border-color: #fca5a5; color: #dc2626; }
+      @media (min-width: 640px) { .product-card { border-radius: 12px; } .product-info { padding: 12px; } .product-title { font-size: 13px; min-height: 36px; } .product-price { font-size: 16px; margin-top: 6px; } .product-cond { font-size: 11px; margin-left: 8px; } }
       .nearby-link { display: inline-block; padding: 7px 12px; background: white; border: 1px solid #e5e7eb; border-radius: 8px; color: #374151; font-size: 13px; font-weight: 500; text-decoration: none; transition: all 0.15s; margin: 2px; }
       .nearby-link:hover { background: #fef2f2; border-color: #fca5a5; color: #dc2626; }
-      @media (min-width: 640px) {
-        .cat-tag { padding: 6px 14px; font-size: 13px; margin: 3px; }
-        .nearby-link { padding: 8px 16px; font-size: 14px; margin: 3px; }
-      }
       .info-card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #f3f4f6; }
       .cta-section { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); }
+      .grade-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      .grade-table th { background: #f9fafb; padding: 10px 12px; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb; text-align: left; font-size: 12px; white-space: nowrap; }
+      .grade-table td { padding: 9px 12px; border-bottom: 1px solid #f3f4f6; color: #4b5563; }
+      .grade-table tr:hover td { background: #fefce8; }
+      .grade-cell { font-weight: 600; color: #1f2937; }
+      .drive-cell { font-size: 12px; }
+      .tire-cell { font-size: 12px; font-family: monospace; }
+      .product-count-badge { display: inline-flex; align-items: center; gap: 6px; padding: 8px 20px; background: #dc2626; color: white; font-size: 14px; font-weight: 700; border-radius: 50px; text-decoration: none; transition: all 0.2s; box-shadow: 0 2px 8px rgba(220,38,38,0.3); }
+      .product-count-badge:hover { background: #b91c1c; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(220,38,38,0.4); }
       ${BREADCRUMB_CSS}
     </style>
 </head>
@@ -8957,77 +9151,57 @@ app.get('/vehicle/:slug', async (c) => {
         <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
             <a href="/vehicle" class="text-gray-600 hover:text-gray-900 flex items-center gap-2"><i class="fas fa-arrow-left"></i><span class="text-sm font-medium">車種一覧</span></a>
             <a href="/" class="text-red-500 font-bold text-lg">PARTS HUB</a>
-            <a href="/register" class="text-sm font-semibold text-white bg-red-500 hover:bg-red-600 px-4 py-1.5 rounded-lg transition-colors">無料登録</a>
+            <a href="${searchUrl}" class="text-sm font-semibold text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-lg transition-colors"><i class="fas fa-search mr-1"></i>パーツ検索</a>
         </div>
     </header>
-    ${breadcrumbHtml([{name:'PARTS HUB',url:'/'},{name:'車種別パーツガイド',url:'/vehicle'},{name:vehicle.maker+' '+vehicle.name}])}
+    ${breadcrumbHtml([{name:'PARTS HUB',url:'/'},{name:'車種別パーツガイド',url:'/vehicle'},{name:safeMaker+' '+safeModel}])}
 
-    <section class="hero-vehicle text-white py-12 sm:py-16">
+    <section class="hero-vehicle text-white py-10 sm:py-14">
         <div class="max-w-4xl mx-auto px-4">
-            <div class="text-center mb-8">
-                <div class="inline-block px-3 py-1 bg-red-500/20 text-red-300 text-xs font-semibold rounded-full tracking-wider mb-4">${vehicle.maker} / ${vehicle.type}</div>
-                <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2">${vehicle.maker} ${vehicle.name}</h1>
-                <p class="text-slate-500 text-sm">${vehicle.nameEn} / ${vehicle.years}</p>
+            <div class="text-center mb-6">
+                <div class="inline-block px-3 py-1 bg-red-500/20 text-red-300 text-xs font-semibold rounded-full tracking-wider mb-4">${safeMaker}${driveTypes.length > 0 ? ' / ' + driveTypes.join('・') : ''}</div>
+                <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2">${safeMaker} ${safeModel}</h1>
+                <p class="text-slate-400 text-sm">${uniqueGrades.length}グレード収録${hasTireData ? ' / タイヤサイズ情報あり' : ''}</p>
             </div>
             <div class="max-w-md mx-auto">
-                <div class="spec-item"><span class="spec-label">メーカー</span><span class="spec-value">${vehicle.maker}</span></div>
-                <div class="spec-item"><span class="spec-label">車種名</span><span class="spec-value">${vehicle.name}（${vehicle.nameEn}）</span></div>
-                <div class="spec-item"><span class="spec-label">年式</span><span class="spec-value">${vehicle.years}</span></div>
-                <div class="spec-item" style="border-bottom:none"><span class="spec-label">タイプ</span><span class="spec-value">${vehicle.type}</span></div>
+                <div class="spec-item"><span class="spec-label">メーカー</span><span class="spec-value">${safeMaker}</span></div>
+                <div class="spec-item"><span class="spec-label">車種名</span><span class="spec-value">${safeModel}</span></div>
+                <div class="spec-item"><span class="spec-label">グレード数</span><span class="spec-value">${uniqueGrades.length}</span></div>
+                ${driveTypes.length > 0 ? '<div class="spec-item"><span class="spec-label">駆動方式</span><span class="spec-value">' + driveTypes.join(' / ') + '</span></div>' : ''}
+                <div class="spec-item" style="border-bottom:none"><span class="spec-label">適合パーツ</span><span class="spec-value">${productCount > 0 ? productCount + '件出品中' : '出品を待つ'}</span></div>
             </div>
+            ${productCount > 0 ? '<div class="text-center mt-6"><a href="' + searchUrl + '" class="product-count-badge"><i class="fas fa-search"></i>' + safeModel + 'の適合パーツ ' + productCount + '件を見る</a></div>' : ''}
         </div>
     </section>
 
     <main class="max-w-4xl mx-auto px-4 py-10 sm:py-14">
-        <section class="mb-12">
-            <h2 class="section-heading mb-6">整備・パーツの特徴</h2>
-            <div class="info-card">
-                <p class="text-sm text-gray-700 leading-relaxed">${vehicle.desc}</p>
-            </div>
-        </section>
+        ${richData ? '<section class="mb-12"><h2 class="section-heading mb-6">整備・パーツの特徴</h2><div class="info-card"><p class="text-sm text-gray-700 leading-relaxed">' + richData.desc + '</p></div></section>' : ''}
 
-        <section class="mb-12">
-            <h2 class="section-heading mb-6">よく交換されるパーツ</h2>
-            <div class="flex flex-wrap">${keywordsHtml}</div>
-            <div class="mt-4">
-                <a href="/search?q=${encodeURIComponent(vehicle.name)}" class="inline-flex items-center text-sm text-red-500 font-semibold hover:underline">
-                    ${vehicle.name}のパーツを検索する<i class="fas fa-chevron-right ml-1 text-xs"></i>
-                </a>
-            </div>
-        </section>
+        ${keywordsHtml ? '<section class="mb-12"><h2 class="section-heading mb-6">よく交換されるパーツ</h2><div class="flex flex-wrap">' + keywordsHtml + '</div><div class="mt-4"><a href="' + searchUrl + '" class="inline-flex items-center text-sm text-red-500 font-semibold hover:underline">' + safeModel + 'の適合パーツを検索する<i class="fas fa-chevron-right ml-1 text-xs"></i></a></div></section>' : ''}
 
-        ${productsHtml ? '<section class="mb-12"><div class="flex items-center justify-between mb-6"><h2 class="section-heading">出品中のパーツ</h2><a href="/search" class="text-sm text-red-500 font-semibold hover:underline">すべて見る<i class="fas fa-chevron-right ml-1 text-xs"></i></a></div><div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">' + productsHtml + '</div></section>' : ''}
+        ${gradeTableHtml ? '<section class="mb-12"><h2 class="section-heading mb-6">グレード・タイヤサイズ一覧</h2><div class="info-card p-0 sm:p-0" style="padding:0;overflow:hidden;">' + gradeTableHtml + '</div></section>' : ''}
 
-        ${categoriesHtml ? '<section class="mb-12"><h2 class="section-heading mb-6">カテゴリから探す</h2><div class="flex flex-wrap">' + categoriesHtml + '</div></section>' : ''}
+        ${productsHtml ? '<section class="mb-12"><div class="flex items-center justify-between mb-6"><h2 class="section-heading">この車種の出品パーツ</h2><a href="' + searchUrl + '" class="text-sm text-red-500 font-semibold hover:underline">すべて見る<i class="fas fa-chevron-right ml-1 text-xs"></i></a></div><div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">' + productsHtml + '</div></section>' : '<section class="mb-12"><h2 class="section-heading mb-6">この車種の出品パーツ</h2><div class="info-card text-center py-8"><i class="fas fa-box-open text-gray-300 text-4xl mb-3"></i><p class="text-gray-500 text-sm mb-4">現在、' + safeModel + 'に適合するパーツの出品はありません</p><a href="/listing" class="inline-block px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg text-sm transition-colors"><i class="fas fa-plus mr-1"></i>パーツを出品する</a></div></section>'}
 
         <section class="mb-12">
             <h2 class="section-heading mb-6">PARTS HUBで中古パーツを探すメリット</h2>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div class="info-card text-center">
-                    <div class="text-2xl font-black text-red-500 mb-2">0円</div>
-                    <p class="text-xs text-gray-500">出品手数料</p>
-                </div>
-                <div class="info-card text-center">
-                    <div class="text-2xl font-black text-red-500 mb-2">10%</div>
-                    <p class="text-xs text-gray-500">販売時手数料のみ</p>
-                </div>
-                <div class="info-card text-center">
-                    <div class="text-2xl font-black text-red-500 mb-2">Stripe</div>
-                    <p class="text-xs text-gray-500">安全なエスクロー決済</p>
-                </div>
+                <div class="info-card text-center"><div class="text-2xl font-black text-red-500 mb-2">0円</div><p class="text-xs text-gray-500">出品手数料</p></div>
+                <div class="info-card text-center"><div class="text-2xl font-black text-red-500 mb-2">10%</div><p class="text-xs text-gray-500">販売時手数料のみ</p></div>
+                <div class="info-card text-center"><div class="text-2xl font-black text-red-500 mb-2">Stripe</div><p class="text-xs text-gray-500">安全なエスクロー決済</p></div>
             </div>
         </section>
 
-        ${sameMaker ? '<section class="mb-12"><h2 class="section-heading mb-6">' + vehicle.maker + 'の他の車種</h2><div class="flex flex-wrap">' + sameMaker + '</div></section>' : ''}
+        ${sameMakerHtml ? '<section class="mb-12"><h2 class="section-heading mb-6">' + safeMaker + 'の他の車種</h2><div class="flex flex-wrap">' + sameMakerHtml + '</div></section>' : ''}
     </main>
 
     <section class="cta-section text-white py-14 sm:py-20">
         <div class="max-w-3xl mx-auto px-4 text-center">
-            <h2 class="text-xl sm:text-2xl font-bold mb-4">${vehicle.name}のパーツをお探しですか？</h2>
-            <p class="text-slate-400 text-sm sm:text-base mb-8 leading-relaxed">PARTS HUBなら全国の整備工場が出品する中古・リビルトパーツから、<br class="hidden sm:block">お探しの${vehicle.name}用パーツが見つかるかもしれません。</p>
+            <h2 class="text-xl sm:text-2xl font-bold mb-4">${safeModel}のパーツをお探しですか？</h2>
+            <p class="text-slate-400 text-sm sm:text-base mb-8 leading-relaxed">PARTS HUBなら全国の整備工場が出品する中古・リビルトパーツから、<br class="hidden sm:block">お探しの${safeModel}用パーツが見つかるかもしれません。</p>
             <div class="flex flex-col sm:flex-row gap-3 justify-center">
-                <a href="/search?q=${encodeURIComponent(vehicle.name)}" class="inline-block px-8 py-3.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-colors text-base shadow-lg shadow-red-500/20">${vehicle.name}のパーツを検索</a>
-                <a href="/register" class="inline-block px-8 py-3.5 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl transition-colors text-base border border-white/20">無料で会員登録</a>
+                <a href="${searchUrl}" class="inline-block px-8 py-3.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-colors text-base shadow-lg shadow-red-500/20"><i class="fas fa-search mr-2"></i>${safeModel}の適合パーツを検索</a>
+                <a href="/listing" class="inline-block px-8 py-3.5 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl transition-colors text-base border border-white/20"><i class="fas fa-plus mr-2"></i>パーツを出品する</a>
             </div>
         </div>
     </section>
