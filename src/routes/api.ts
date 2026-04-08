@@ -526,4 +526,31 @@ api.get('/vehicle-master/tire-size', async (c) => {
   }
 })
 
+// 出品者プロフィール取得
+api.get('/seller/:id/profile', async (c) => {
+  try {
+    const sellerId = c.req.param('id')
+    const seller = await c.env.DB.prepare(`
+      SELECT id, name, nickname, company_name, shop_type, bio, 
+        profile_image_url, rating, is_verified, total_sales, total_transactions,
+        prefecture, created_at
+      FROM users WHERE id = ?
+    `).bind(sellerId).first() as any
+
+    if (!seller) {
+      return c.json({ success: false, error: '出品者が見つかりません' }, 404)
+    }
+
+    // プロフィール画像をURL変換
+    if (seller.profile_image_url) {
+      seller.profile_image_url = toImageUrl(seller.profile_image_url)
+    }
+
+    return c.json({ success: true, seller })
+  } catch (error) {
+    console.error('Seller profile error:', error)
+    return c.json({ success: false, error: '取得に失敗しました' }, 500)
+  }
+})
+
 export default api

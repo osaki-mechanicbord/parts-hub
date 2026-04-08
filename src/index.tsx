@@ -6455,6 +6455,14 @@ app.get('/seller/:id', async (c) => {
         <style>
             body { font-family: 'Noto Sans JP', 'Inter', sans-serif; }
             .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+            .sp-card { display: block; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #f3f4f6; text-decoration: none; transition: all 0.2s; position: relative; }
+            .sp-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.1); transform: translateY(-2px); }
+            .sp-card-img { aspect-ratio: 1; overflow: hidden; background: #f9fafb; }
+            .sp-card-img img { width: 100%; height: 100%; object-fit: cover; }
+            .sp-card-body { padding: 10px 12px; }
+            .sp-card-title { font-size: 12px; font-weight: 600; color: #1f2937; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 34px; }
+            .sp-card-price { font-size: 15px; font-weight: 800; color: #dc2626; margin-top: 4px; }
+            .sp-sold-badge { position: absolute; top: 6px; left: 6px; background: rgba(0,0,0,0.75); color: white; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; }
         </style>
     </head>
     <body class="bg-gray-50 min-h-screen">
@@ -6533,26 +6541,51 @@ app.get('/seller/:id', async (c) => {
                 </div>
             </div>
 
-            <!-- フィルター -->
-            <div class="flex items-center gap-2 mb-4 overflow-x-auto pb-2">
-                <button onclick="filterReviews(0)" class="filter-btn active px-3 py-1.5 text-xs font-semibold rounded-full bg-red-500 text-white" data-rating="0">すべて</button>
-                <button onclick="filterReviews(5)" class="filter-btn px-3 py-1.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200" data-rating="5"><i class="fas fa-star text-yellow-400 mr-0.5"></i>5</button>
-                <button onclick="filterReviews(4)" class="filter-btn px-3 py-1.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200" data-rating="4"><i class="fas fa-star text-yellow-400 mr-0.5"></i>4</button>
-                <button onclick="filterReviews(3)" class="filter-btn px-3 py-1.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200" data-rating="3"><i class="fas fa-star text-yellow-400 mr-0.5"></i>3</button>
-                <button onclick="filterReviews(2)" class="filter-btn px-3 py-1.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200" data-rating="2"><i class="fas fa-star text-yellow-400 mr-0.5"></i>2</button>
-                <button onclick="filterReviews(1)" class="filter-btn px-3 py-1.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200" data-rating="1"><i class="fas fa-star text-yellow-400 mr-0.5"></i>1</button>
-            </div>
-
-            <!-- レビュー一覧 -->
-            <div id="reviews-list" class="space-y-4">
-                <div class="text-center py-8 text-gray-400"><i class="fas fa-spinner fa-spin text-2xl"></i><p class="mt-2 text-sm">レビューを読み込み中...</p></div>
-            </div>
-
-            <!-- もっと見る -->
-            <div id="load-more" class="hidden text-center mt-6">
-                <button onclick="loadMoreReviews()" class="px-6 py-2.5 bg-white border border-gray-300 rounded-full text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
-                    <i class="fas fa-chevron-down mr-1"></i>もっと見る
+            <!-- タブ切り替え -->
+            <div class="flex border-b border-gray-200 mb-6">
+                <button onclick="switchSellerTab('products')" id="tab-products" class="seller-tab flex-1 py-3 text-center text-sm font-bold border-b-2 border-red-500 text-red-500 transition-colors">
+                    <i class="fas fa-box mr-1.5"></i>出品商品 <span id="products-count-badge" class="ml-1 text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full">-</span>
                 </button>
+                <button onclick="switchSellerTab('reviews')" id="tab-reviews" class="seller-tab flex-1 py-3 text-center text-sm font-bold border-b-2 border-transparent text-gray-400 hover:text-gray-600 transition-colors">
+                    <i class="fas fa-star mr-1.5"></i>レビュー <span id="reviews-count-badge" class="ml-1 text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">-</span>
+                </button>
+            </div>
+
+            <!-- ===== 出品商品タブ ===== -->
+            <div id="panel-products">
+                <div id="seller-products-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <div class="col-span-full text-center py-8 text-gray-400"><i class="fas fa-spinner fa-spin text-2xl"></i><p class="mt-2 text-sm">出品商品を読み込み中...</p></div>
+                </div>
+                <div id="load-more-products" class="hidden text-center mt-6">
+                    <button onclick="loadMoreProducts()" class="px-6 py-2.5 bg-white border border-gray-300 rounded-full text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+                        <i class="fas fa-chevron-down mr-1"></i>もっと見る
+                    </button>
+                </div>
+            </div>
+
+            <!-- ===== レビュータブ ===== -->
+            <div id="panel-reviews" class="hidden">
+                <!-- フィルター -->
+                <div class="flex items-center gap-2 mb-4 overflow-x-auto pb-2">
+                    <button onclick="filterReviews(0)" class="filter-btn active px-3 py-1.5 text-xs font-semibold rounded-full bg-red-500 text-white" data-rating="0">すべて</button>
+                    <button onclick="filterReviews(5)" class="filter-btn px-3 py-1.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200" data-rating="5"><i class="fas fa-star text-yellow-400 mr-0.5"></i>5</button>
+                    <button onclick="filterReviews(4)" class="filter-btn px-3 py-1.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200" data-rating="4"><i class="fas fa-star text-yellow-400 mr-0.5"></i>4</button>
+                    <button onclick="filterReviews(3)" class="filter-btn px-3 py-1.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200" data-rating="3"><i class="fas fa-star text-yellow-400 mr-0.5"></i>3</button>
+                    <button onclick="filterReviews(2)" class="filter-btn px-3 py-1.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200" data-rating="2"><i class="fas fa-star text-yellow-400 mr-0.5"></i>2</button>
+                    <button onclick="filterReviews(1)" class="filter-btn px-3 py-1.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200" data-rating="1"><i class="fas fa-star text-yellow-400 mr-0.5"></i>1</button>
+                </div>
+
+                <!-- レビュー一覧 -->
+                <div id="reviews-list" class="space-y-4">
+                    <div class="text-center py-8 text-gray-400"><i class="fas fa-spinner fa-spin text-2xl"></i><p class="mt-2 text-sm">レビューを読み込み中...</p></div>
+                </div>
+
+                <!-- もっと見る -->
+                <div id="load-more" class="hidden text-center mt-6">
+                    <button onclick="loadMoreReviews()" class="px-6 py-2.5 bg-white border border-gray-300 rounded-full text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+                        <i class="fas fa-chevron-down mr-1"></i>もっと見る
+                    </button>
+                </div>
             </div>
         </main>
 
@@ -6564,8 +6597,11 @@ app.get('/seller/:id', async (c) => {
         let currentOffset = 0;
         let currentRatingFilter = 0;
         const LIMIT = 20;
+        let productsLoaded = false;
+        let productsOffset = 0;
+        const PRODUCTS_LIMIT = 30;
 
-        document.addEventListener('DOMContentLoaded', () => { loadSummary(); loadReviews(); });
+        document.addEventListener('DOMContentLoaded', () => { loadSummary(); loadSellerProducts(); });
 
         async function loadSummary() {
             try {
@@ -6576,11 +6612,15 @@ app.get('/seller/:id', async (c) => {
 
                 // 名前は別APIで取得
                 try {
-                    const uRes = await axios.get('/api/products?user_id=' + SELLER_ID + '&limit=1');
-                    if (uRes.data.success && uRes.data.data && uRes.data.data.length > 0) {
-                        const p = uRes.data.data[0];
-                        document.getElementById('seller-name').textContent = p.shop_name || p.seller_name || p.company_name || '出品者 #' + SELLER_ID;
-                        document.getElementById('seller-type').textContent = getShopTypeLabel(p.shop_type);
+                    const uRes = await axios.get('/api/seller/' + SELLER_ID + '/profile');
+                    if (uRes.data.success && uRes.data.seller) {
+                        const s = uRes.data.seller;
+                        document.getElementById('seller-name').textContent = s.nickname || s.company_name || s.name || '出品者 #' + SELLER_ID;
+                        document.getElementById('seller-type').textContent = getShopTypeLabel(s.shop_type);
+                        if (s.profile_image_url) {
+                            const avatar = document.getElementById('seller-avatar');
+                            avatar.innerHTML = '<img src="' + s.profile_image_url + '" alt="" class="w-full h-full object-cover">';
+                        }
                     } else {
                         document.getElementById('seller-name').textContent = '出品者 #' + SELLER_ID;
                     }
@@ -6707,6 +6747,92 @@ app.get('/seller/:id', async (c) => {
         }
 
         function loadMoreReviews() { loadReviews(); }
+
+        // === 出品商品 ===
+        async function loadSellerProducts() {
+            try {
+                const res = await axios.get('/api/products/search?seller_id=' + SELLER_ID + '&limit=' + PRODUCTS_LIMIT + '&offset=' + productsOffset);
+                const products = (res.data.success ? res.data.products : []) || [];
+                const grid = document.getElementById('seller-products-grid');
+
+                // 件数バッジ更新
+                if (productsOffset === 0) {
+                    // 総件数を別途取得（上限なし）
+                    try {
+                        const cntRes = await axios.get('/api/products/search?seller_id=' + SELLER_ID + '&count_only=1');
+                        const total = cntRes.data.total || products.length;
+                        document.getElementById('products-count-badge').textContent = total;
+                    } catch(e) {
+                        document.getElementById('products-count-badge').textContent = products.length;
+                    }
+                }
+
+                if (productsOffset === 0 && products.length === 0) {
+                    grid.innerHTML = '<div class="col-span-full text-center py-12 bg-white rounded-2xl"><i class="fas fa-box-open text-4xl text-gray-300 mb-3"></i><p class="text-gray-500">出品中の商品はありません</p></div>';
+                    document.getElementById('load-more-products').classList.add('hidden');
+                    return;
+                }
+
+                const condLabels = { new:'新品', like_new:'未使用に近い', good:'目立った傷や汚れなし', fair:'やや傷や汚れあり', poor:'傷や汚れあり', junk:'ジャンク品' };
+                const html = products.map(function(p) {
+                    const img = p.image_url || '/icons/icon.svg';
+                    const taxPrice = Math.floor(p.price * 1.1).toLocaleString();
+                    const condLabel = condLabels[p.condition] || p.condition || '';
+                    const isSold = p.status === 'sold';
+                    const shippingBadge = p.shipping_type === 'seller_paid'
+                        ? '<span class="text-xs text-emerald-600 font-bold">送料込</span>'
+                        : '<span class="text-xs text-blue-600 font-bold">着払い</span>';
+                    const universalBadge = p.is_universal ? '<span class="inline-block bg-purple-100 text-purple-700 text-[10px] font-bold px-1.5 py-0.5 rounded mt-1">汎用品</span>' : '';
+                    return '<a href="/products/' + p.id + '" class="sp-card">' +
+                        (isSold ? '<div class="sp-sold-badge">SOLD</div>' : '') +
+                        '<div class="sp-card-img"><img src="' + img + '" alt="" loading="lazy" onerror="this.src=\'/icons/icon.svg\'"></div>' +
+                        '<div class="sp-card-body">' +
+                        '<div class="sp-card-title">' + (p.title || '').replace(/</g, '&lt;') + '</div>' +
+                        universalBadge +
+                        '<div class="sp-card-price">¥' + taxPrice + '<span class="text-[10px] text-gray-500 font-normal ml-0.5">税込</span></div>' +
+                        '<div class="flex items-center justify-between mt-1">' +
+                        '<span class="text-[10px] text-gray-400">' + condLabel + '</span>' +
+                        shippingBadge +
+                        '</div>' +
+                        '</div></a>';
+                }).join('');
+
+                if (productsOffset === 0) {
+                    grid.innerHTML = html;
+                } else {
+                    grid.insertAdjacentHTML('beforeend', html);
+                }
+
+                productsOffset += products.length;
+                document.getElementById('load-more-products').classList.toggle('hidden', products.length < PRODUCTS_LIMIT);
+                productsLoaded = true;
+            } catch(e) {
+                console.error('Products load error:', e);
+                if (productsOffset === 0) {
+                    document.getElementById('seller-products-grid').innerHTML = '<div class="col-span-full text-center py-8 text-gray-400"><p>商品の読み込みに失敗しました</p></div>';
+                }
+            }
+        }
+
+        function loadMoreProducts() { loadSellerProducts(); }
+
+        // === タブ切り替え ===
+        function switchSellerTab(tab) {
+            const tabs = ['products', 'reviews'];
+            tabs.forEach(function(t) {
+                const btn = document.getElementById('tab-' + t);
+                const panel = document.getElementById('panel-' + t);
+                if (t === tab) {
+                    btn.className = 'seller-tab flex-1 py-3 text-center text-sm font-bold border-b-2 border-red-500 text-red-500 transition-colors';
+                    panel.classList.remove('hidden');
+                } else {
+                    btn.className = 'seller-tab flex-1 py-3 text-center text-sm font-bold border-b-2 border-transparent text-gray-400 hover:text-gray-600 transition-colors';
+                    panel.classList.add('hidden');
+                }
+            });
+            // レビュータブ初回表示時にロード
+            if (tab === 'reviews' && currentOffset === 0) { loadReviews(); }
+        }
 
         function getShopTypeLabel(type) {
             const labels = { factory:'整備工場', dealer:'ディーラー', parts_shop:'パーツショップ', recycler:'リサイクルショップ', individual:'個人' };

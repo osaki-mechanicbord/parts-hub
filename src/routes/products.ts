@@ -50,9 +50,18 @@ app.get('/search', async (c) => {
     const condition = c.req.query('condition')
     const vmMaker = c.req.query('vm_maker')
     const vmModel = c.req.query('vm_model')
+    const sellerId = c.req.query('seller_id')
+    const limit = Math.min(parseInt(c.req.query('limit') || '60') || 60, 100)
+    const offset = parseInt(c.req.query('offset') || '0') || 0
+    const countOnly = c.req.query('count_only')
 
     let conditions = ["p.status IN ('active', 'sold')"]
     let params: any[] = []
+
+    if (sellerId) {
+      conditions.push('p.user_id = ?')
+      params.push(sellerId)
+    }
 
     if (keyword) {
       conditions.push('(p.title LIKE ? OR p.description LIKE ? OR p.part_number LIKE ? OR p.compatible_models LIKE ?)')
@@ -72,22 +81,30 @@ app.get('/search', async (c) => {
     if (priceMax) { conditions.push('p.price <= ?'); params.push(priceMax) }
     if (condition) { conditions.push('p.condition = ?'); params.push(condition) }
 
+    const whereClause = conditions.join(' AND ')
+
+    // count_only モード: 総件数だけ返す
+    if (countOnly) {
+      const countResult = await c.env.DB.prepare(`
+        SELECT COUNT(DISTINCT p.id) as total FROM products p WHERE ${whereClause}
+      `).bind(...params).first() as any
+      return c.json({ success: true, total: countResult?.total || 0 })
+    }
+
     let orderBy = 'p.created_at DESC'
     if (sort === 'price_asc') orderBy = 'p.price ASC'
     else if (sort === 'price_desc') orderBy = 'p.price DESC'
     else if (sort === 'popular') orderBy = 'p.favorite_count DESC, p.view_count DESC'
 
-    const whereClause = conditions.join(' AND ')
-
     const { results } = await c.env.DB.prepare(`
       SELECT DISTINCT p.id, p.title, p.price, p.condition, p.status,
-        p.favorite_count, p.view_count,
+        p.favorite_count, p.view_count, p.shipping_type, p.is_universal, p.user_id,
         (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as image_url,
         (SELECT COUNT(*) FROM product_comments WHERE product_id = p.id) as comment_count
       FROM products p
       WHERE ${whereClause}
       ORDER BY ${orderBy}
-      LIMIT 60
+      LIMIT ${limit} OFFSET ${offset}
     `).bind(...params).all()
 
     const products = results.map((p: any) => ({
