@@ -60,11 +60,11 @@ app.get('/search', async (c) => {
     }
 
     if (vmMaker) {
-      conditions.push('(p.vm_maker = ? OR EXISTS (SELECT 1 FROM product_compatibility pc2 WHERE pc2.product_id = p.id AND pc2.vm_maker = ?))')
+      conditions.push('(p.is_universal = 1 OR p.vm_maker = ? OR EXISTS (SELECT 1 FROM product_compatibility pc2 WHERE pc2.product_id = p.id AND pc2.vm_maker = ?))')
       params.push(vmMaker, vmMaker)
     }
     if (vmModel) {
-      conditions.push('(p.vm_model = ? OR EXISTS (SELECT 1 FROM product_compatibility pc3 WHERE pc3.product_id = p.id AND pc3.vm_model = ?))')
+      conditions.push('(p.is_universal = 1 OR p.vm_model = ? OR EXISTS (SELECT 1 FROM product_compatibility pc3 WHERE pc3.product_id = p.id AND pc3.vm_model = ?))')
       params.push(vmModel, vmModel)
     }
 
@@ -247,8 +247,8 @@ app.post('/', async (c) => {
         user_id, seller_id, title, description, price, category_id, subcategory_id,
         maker_id, model_id, part_number, compatible_models, condition,
         stock_quantity, status, is_proxy,
-        vm_maker, vm_model, vm_grade, vm_tire_size, shipping_type
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        vm_maker, vm_model, vm_grade, vm_tire_size, shipping_type, is_universal
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       userId,
       userId,
@@ -269,7 +269,8 @@ app.post('/', async (c) => {
       body.vm_model || null,
       body.vm_grade || null,
       body.vm_tire_size || null,
-      body.shipping_type || 'buyer_paid'
+      body.shipping_type || 'buyer_paid',
+      body.is_universal ? 1 : 0
     ).run()
 
     const productId = result.meta.last_row_id
@@ -360,6 +361,7 @@ app.put('/:id', async (c) => {
         vm_grade = ?,
         vm_tire_size = ?,
         shipping_type = COALESCE(?, shipping_type),
+        is_universal = ?,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).bind(
@@ -380,6 +382,7 @@ app.put('/:id', async (c) => {
       body.vm_grade || null,
       body.vm_tire_size || null,
       body.shipping_type || null,
+      body.is_universal ? 1 : 0,
       productId
     ).run()
 

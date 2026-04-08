@@ -489,9 +489,14 @@ app.get('/sitemap.xml', async (c) => {
     const productModels = await env.DB.prepare(`
       SELECT DISTINCT vm_maker, vm_model FROM products WHERE status IN ('active', 'sold') AND vm_maker IS NOT NULL AND vm_model IS NOT NULL AND vm_maker != '' AND vm_model != ''
     `).all()
+    // 汎用品（is_universal=1）があるか確認
+    const universalCount = await env.DB.prepare(`
+      SELECT COUNT(*) as cnt FROM products WHERE status IN ('active', 'sold') AND is_universal = 1
+    `).first() as any
+    const hasUniversalProducts = (universalCount?.cnt || 0) > 0
     const makersWithProducts = new Set((productMakers.results || []).map((r: any) => r.vm_maker))
     const modelsWithProducts = new Set((productModels.results || []).map((r: any) => r.vm_maker + '|||' + r.vm_model))
-    const hasAnyProducts = makersWithProducts.size > 0
+    const hasAnyProducts = makersWithProducts.size > 0 || hasUniversalProducts
 
     // 47都道府県ページをsitemapに追加
     const prefSlugs = Object.keys(PREFECTURES)
@@ -499,10 +504,18 @@ app.get('/sitemap.xml', async (c) => {
       staticPages.push({ url: '/area/' + slug, changefreq: 'weekly', priority: '0.6' })
     })
 
-    // 都道府県×メーカー クロスページ（商品があるメーカーのみ）
+    // 都道府県×メーカー クロスページ（商品があるメーカー + 汎用品がある場合は主要メーカー）
     if (hasAnyProducts) {
+      // 汎用品がある場合は主要12メーカーも含める
+      const areaMakers = new Set(makersWithProducts)
+      if (hasUniversalProducts) {
+        const topMakers = await env.DB.prepare(`
+          SELECT maker FROM vehicle_master GROUP BY maker ORDER BY COUNT(DISTINCT model) DESC LIMIT 20
+        `).all()
+        ;(topMakers.results || []).forEach((m: any) => areaMakers.add(m.maker))
+      }
       prefSlugs.forEach(slug => {
-        makersWithProducts.forEach((maker: string) => {
+        areaMakers.forEach((maker: string) => {
           staticPages.push({
             url: '/area/' + slug + '/' + encodeURIComponent(maker),
             changefreq: 'weekly',
@@ -512,27 +525,50 @@ app.get('/sitemap.xml', async (c) => {
       })
     }
 
-    // 車種別ページをsitemapに追加（商品がある車種のみ）
+    // 車種別ページをsitemapに追加（商品がある車種のみ / 汎用品がある場合は全車種）
     staticPages.push({ url: '/vehicle', changefreq: 'weekly', priority: '0.7' })
 
-    // メーカー一覧ページ（商品があるメーカーのみ）
-    makersWithProducts.forEach(maker => {
-      staticPages.push({
-        url: '/vehicle/' + encodeURIComponent(maker),
-        changefreq: 'weekly',
-        priority: '0.65'
+    if (hasUniversalProducts) {
+      // 汎用品がある場合は全メーカー・全車種をsitemapに追加（上位メーカーのみ）
+      const allVehicles = await env.DB.prepare(`
+        SELECT maker, model FROM vehicle_master GROUP BY maker, model ORDER BY maker, model
+      `).all()
+      const allMakersSet = new Set<string>()
+      ;(allVehicles.results || []).forEach((v: any) => {
+        allMakersSet.add(v.maker)
+        staticPages.push({
+          url: '/vehicle/' + encodeURIComponent(v.maker) + '/' + encodeURIComponent(v.model),
+          changefreq: 'weekly',
+          priority: '0.55'
+        })
       })
-    })
+      allMakersSet.forEach(maker => {
+        staticPages.push({
+          url: '/vehicle/' + encodeURIComponent(maker),
+          changefreq: 'weekly',
+          priority: '0.6'
+        })
+      })
+    } else {
+      // メーカー一覧ページ（商品があるメーカーのみ）
+      makersWithProducts.forEach(maker => {
+        staticPages.push({
+          url: '/vehicle/' + encodeURIComponent(maker),
+          changefreq: 'weekly',
+          priority: '0.65'
+        })
+      })
 
-    // 車種詳細ページ（商品がある車種のみ）
-    modelsWithProducts.forEach(key => {
-      const [maker, model] = key.split('|||')
-      staticPages.push({
-        url: '/vehicle/' + encodeURIComponent(maker) + '/' + encodeURIComponent(model),
-        changefreq: 'weekly',
-        priority: '0.6'
+      // 車種詳細ページ（商品がある車種のみ）
+      modelsWithProducts.forEach(key => {
+        const [maker, model] = key.split('|||')
+        staticPages.push({
+          url: '/vehicle/' + encodeURIComponent(maker) + '/' + encodeURIComponent(model),
+          changefreq: 'weekly',
+          priority: '0.6'
+        })
       })
-    })
+    }
 
     // 整備ガイドページをsitemapに追加
     staticPages.push({ url: '/guide', changefreq: 'monthly', priority: '0.6' })
@@ -3807,6 +3843,10 @@ app.get('/products/:id', async (c) => {
                                     <td class="py-3 text-gray-600 font-medium">送料負担</td>
                                     <td id="product-shipping-type" class="py-3 text-gray-900 text-right">-</td>
                                 </tr>
+                                <tr id="product-universal-row" style="display:none;">
+                                    <td class="py-3 text-gray-600 font-medium">適合範囲</td>
+                                    <td class="py-3 text-right"><span class="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs font-semibold"><i class="fas fa-globe"></i>全車種対応（汎用品）</span></td>
+                                </tr>
                             </tbody>
                         </table>
 
@@ -4467,7 +4507,29 @@ app.get('/listing', (c) => {
                     </div>
                 </div>
 
-                <!-- ===== 4. 適合車両情報（アコーディオン） ===== -->
+                <!-- ===== 4. 全車種対応（汎用品）チェック ===== -->
+                <div class="section-card">
+                    <label class="flex items-center gap-3 p-4 cursor-pointer rounded-xl hover:bg-green-50 transition-colors" id="universal-label">
+                        <input type="checkbox" id="is-universal" onchange="toggleUniversal(this.checked)" class="w-5 h-5 text-green-600 rounded border-gray-300 focus:ring-green-500 cursor-pointer" style="accent-color:#16a34a;">
+                        <div class="section-header-icon bg-green-50 text-green-600" style="width:36px;height:36px;min-width:36px;">
+                            <i class="fas fa-globe"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-bold text-sm text-gray-900">全車種対応（汎用品）</div>
+                            <div class="text-xs text-gray-400">チェックすると全ての車種ページ・エリアページに表示されます</div>
+                        </div>
+                    </label>
+                    <div id="universal-notice" class="hidden px-4 pb-4">
+                        <div class="bg-green-50 border border-green-200 rounded-lg p-3 flex items-start gap-2">
+                            <i class="fas fa-check-circle text-green-500 mt-0.5"></i>
+                            <div class="text-xs text-green-700 leading-relaxed">
+                                <strong>汎用品として出品されます。</strong>すべての車種別ページとエリア別ページの商品一覧に自動的に表示されます。下の適合車両情報は任意ですが、入力するとより検索されやすくなります。
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== 5. 適合車両情報（アコーディオン） ===== -->
                 <div class="section-card">
                     <div class="section-header accordion-toggle" onclick="toggleAccordion(this)">
                         <div class="section-header-icon bg-purple-50 text-purple-500">
@@ -4917,6 +4979,21 @@ app.get('/listing', (c) => {
                 });
                 el.classList.add('active');
                 document.getElementById('shipping-type').value = el.getAttribute('data-value');
+            }
+
+            // 全車種対応（汎用品）トグル
+            function toggleUniversal(checked) {
+                var notice = document.getElementById('universal-notice');
+                var label = document.getElementById('universal-label');
+                if (checked) {
+                    notice.classList.remove('hidden');
+                    label.style.background = '#f0fdf4';
+                    label.style.borderColor = '#86efac';
+                } else {
+                    notice.classList.add('hidden');
+                    label.style.background = '';
+                    label.style.borderColor = '';
+                }
             }
 
             // アコーディオン
@@ -8929,12 +9006,12 @@ app.get('/area/:pref/:maker', async (c) => {
     const safePref = pref.name
     const totalModels = models.length
 
-    // 出品商品数（この都道府県×メーカー）
+    // 出品商品数（この都道府県×メーカー / 汎用品含む）
     let productCount = 0
     try {
       const cnt = await DB.prepare(`
         SELECT COUNT(DISTINCT p.id) as cnt FROM products p
-        WHERE p.status IN ('active','sold') AND p.vm_maker = ?
+        WHERE p.status IN ('active','sold') AND (p.is_universal = 1 OR p.vm_maker = ?)
       `).bind(maker).first() as any
       productCount = cnt?.cnt || 0
     } catch(e) {}
@@ -9100,12 +9177,12 @@ app.get('/area/:pref/:maker/:model', async (c) => {
     const hasTire = grades.some((g: any) => g.tire_size)
     const driveTypes = [...new Set(grades.filter((g: any) => g.drive_type).map((g: any) => g.drive_type))]
 
-    // 出品商品数
+    // 出品商品数（汎用品含む）
     let productCount = 0
     try {
       const cnt = await DB.prepare(`
         SELECT COUNT(DISTINCT p.id) as cnt FROM products p
-        WHERE p.status IN ('active','sold') AND p.vm_maker = ? AND p.vm_model = ?
+        WHERE p.status IN ('active','sold') AND (p.is_universal = 1 OR (p.vm_maker = ? AND p.vm_model = ?))
       `).bind(maker, model).first() as any
       productCount = cnt?.cnt || 0
     } catch(e) {}
@@ -9483,13 +9560,13 @@ app.get('/vehicle/:makerOrSlug', async (c) => {
     const totalGrades = models.reduce((s: number, m: any) => s + m.grade_count, 0)
     const hasTire = models.some((m: any) => m.tire_count > 0)
 
-    // 同メーカーの出品商品数
+    // 同メーカーの出品商品数（汎用品を含む）
     let productCount = 0
     try {
       const cnt = await DB.prepare(`
         SELECT COUNT(DISTINCT p.id) as cnt FROM products p
         WHERE p.status IN ('active','sold')
-          AND (p.vm_maker = ? OR EXISTS (SELECT 1 FROM product_compatibility pc WHERE pc.product_id = p.id AND pc.vm_maker = ?))
+          AND (p.is_universal = 1 OR p.vm_maker = ? OR EXISTS (SELECT 1 FROM product_compatibility pc WHERE pc.product_id = p.id AND pc.vm_maker = ?))
       `).bind(param, param).first() as any
       productCount = cnt?.cnt || 0
     } catch(e) {}
@@ -9708,12 +9785,20 @@ app.get('/vehicle/:maker/:model', async (c) => {
     // ユニークな駆動方式
     driveTypes = [...new Set(results.filter((r: any) => r.drive_type).map((r: any) => r.drive_type))]
 
-    // この車種の出品商品数
+    // この車種の出品商品数（汎用品を含む）
     const cnt = await DB.prepare(`
       SELECT COUNT(DISTINCT p.id) as cnt FROM products p
       WHERE p.status IN ('active', 'sold')
-        AND (p.vm_maker = ? OR EXISTS (SELECT 1 FROM product_compatibility pc WHERE pc.product_id = p.id AND pc.vm_maker = ?))
-        AND (p.vm_model = ? OR EXISTS (SELECT 1 FROM product_compatibility pc WHERE pc.product_id = p.id AND pc.vm_model = ?))
+        AND (
+          p.is_universal = 1
+          OR p.vm_maker = ?
+          OR EXISTS (SELECT 1 FROM product_compatibility pc WHERE pc.product_id = p.id AND pc.vm_maker = ?)
+        )
+        AND (
+          p.is_universal = 1
+          OR p.vm_model = ?
+          OR EXISTS (SELECT 1 FROM product_compatibility pc WHERE pc.product_id = p.id AND pc.vm_model = ?)
+        )
     `).bind(maker, maker, model, model).first() as any
     productCount = cnt?.cnt || 0
   } catch (e) {
@@ -9728,14 +9813,14 @@ app.get('/vehicle/:maker/:model', async (c) => {
   let productsHtml = ''
   try {
     const prods = await DB.prepare(`
-      SELECT DISTINCT p.id, p.title, p.price, p.condition, p.status,
+      SELECT DISTINCT p.id, p.title, p.price, p.condition, p.status, p.is_universal, p.shipping_type,
         (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as image_url
       FROM products p
       LEFT JOIN product_compatibility pc ON pc.product_id = p.id
       WHERE p.status IN ('active', 'sold')
-        AND (p.vm_maker = ? OR pc.vm_maker = ?)
-        AND (p.vm_model = ? OR pc.vm_model = ?)
-      ORDER BY p.created_at DESC LIMIT 8
+        AND (p.is_universal = 1 OR p.vm_maker = ? OR pc.vm_maker = ?)
+        AND (p.is_universal = 1 OR p.vm_model = ? OR pc.vm_model = ?)
+      ORDER BY p.is_universal ASC, p.created_at DESC LIMIT 8
     `).bind(maker, maker, model, model).all()
 
     const condMap: Record<string,string> = { new:'新品', like_new:'未使用に近い', good:'良好', fair:'やや傷あり', poor:'状態不良' }
@@ -9748,7 +9833,8 @@ app.get('/vehicle/:maker/:model', async (c) => {
       const shippingBadge = p.shipping_type === 'seller_paid'
         ? '<span style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 5px;border-radius:4px;font-weight:600;">送料込</span>'
         : '<span style="font-size:9px;background:#dbeafe;color:#1d4ed8;padding:1px 5px;border-radius:4px;font-weight:600;">着払い</span>'
-      return '<a href="/products/' + p.id + '" class="product-card" style="position:relative;">' + soldBadge + '<div class="product-img-wrap"><img src="' + imgUrl + '" alt="' + safeTitle + '" class="product-img" loading="lazy"></div><div class="product-info"><p class="product-title">' + safeTitle + '</p><p class="product-price">&yen;' + priceTaxIncluded + '<span style="font-size:10px;font-weight:400;color:#6b7280;margin-left:2px;">税込</span><span class="product-cond">' + cond + '</span></p><div style="margin-top:4px;">' + shippingBadge + '</div></div></a>'
+      const universalBadge = p.is_universal ? '<span style="font-size:9px;background:#fef3c7;color:#92400e;padding:1px 5px;border-radius:4px;font-weight:600;margin-left:3px;">汎用品</span>' : ''
+      return '<a href="/products/' + p.id + '" class="product-card" style="position:relative;">' + soldBadge + '<div class="product-img-wrap"><img src="' + imgUrl + '" alt="' + safeTitle + '" class="product-img" loading="lazy"></div><div class="product-info"><p class="product-title">' + safeTitle + '</p><p class="product-price">&yen;' + priceTaxIncluded + '<span style="font-size:10px;font-weight:400;color:#6b7280;margin-left:2px;">税込</span><span class="product-cond">' + cond + '</span></p><div style="margin-top:4px;">' + shippingBadge + universalBadge + '</div></div></a>'
     }).join('')
   } catch(e) { console.error('Vehicle products error:', e) }
 

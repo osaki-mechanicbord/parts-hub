@@ -208,6 +208,7 @@ class ProductListingForm {
         condition: getVal('condition-select'),
         stock_quantity: getIntVal('stock-quantity') || 1,
         shipping_type: getVal('shipping-type') || 'buyer_paid',
+        is_universal: document.getElementById('is-universal') && document.getElementById('is-universal').checked ? 1 : 0,
         status: 'active',
         // vehicle_master 連動データ
         vm_maker: getVal('vm-maker-name') || null,
@@ -640,6 +641,15 @@ async function loadProductForEdit(productId) {
         if (product.model_id) {
           await productForm.loadModels(product.maker_id)
           el = document.getElementById('model-select'); if (el) el.value = product.model_id
+        }
+      }
+
+      // 全車種対応（汎用品）の復元
+      if (product.is_universal) {
+        var uniCb = document.getElementById('is-universal')
+        if (uniCb) {
+          uniCb.checked = true
+          if (typeof toggleUniversal === 'function') toggleUniversal(true)
         }
       }
 

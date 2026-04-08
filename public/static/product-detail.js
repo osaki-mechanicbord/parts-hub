@@ -281,6 +281,12 @@ function renderProduct() {
         }
     }
     
+    // 汎用品バッジ表示
+    if (product.is_universal) {
+        var universalRow = document.getElementById('product-universal-row');
+        if (universalRow) universalRow.style.display = '';
+    }
+    
     // 適合車両情報
     if (product.compatibility) {
         renderCompatibility();
