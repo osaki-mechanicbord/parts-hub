@@ -232,6 +232,7 @@ payment.get('/config', async (c) => {
 payment.get('/calculate-fees', async (c) => {
   try {
     const amount = parseInt(c.req.query('amount') || '0')
+    const method = (c.req.query('method') || 'card') as 'card' | 'bank_transfer'
     if (!amount) {
       return c.json({ success: false, error: '金額を指定してください' }, 400)
     }
@@ -239,7 +240,7 @@ payment.get('/calculate-fees', async (c) => {
     if (!validation.valid) {
       return c.json({ success: false, error: validation.error }, 400)
     }
-    const fees = calculateFees(amount)
+    const fees = calculateFees(amount, method)
     return c.json({ success: true, fees })
   } catch (error: any) {
     console.error('Fee calc error:', error)
@@ -286,8 +287,8 @@ payment.post('/create-checkout-session', authMiddleware, async (c) => {
       return c.json({ success: false, error: amountValidation.error }, 400)
     }
 
-    // 手数料計算
-    const fees = calculateFees(product.price as number)
+    // 手数料計算（カード決済: +330円決済手数料）
+    const fees = calculateFees(product.price as number, 'card')
 
     // ★ 商品を即座に「売却中」にする（他のユーザーが購入できないように）
     // NOTE: SQLiteのCHECK制約でreservedが使えない場合はsoldを使用
@@ -297,13 +298,13 @@ payment.post('/create-checkout-session', authMiddleware, async (c) => {
       WHERE id = ? AND status = 'active'
     `).bind(product_id).run()
 
-    // 取引レコード作成
+    // 取引レコード作成（カード決済: payment_method='card'）
     const transactionResult = await c.env.DB.prepare(`
       INSERT INTO transactions (
         product_id, buyer_id, seller_id, amount, fee, 
-        status, created_at, updated_at
+        payment_method, status, created_at, updated_at
       )
-      VALUES (?, ?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))
+      VALUES (?, ?, ?, ?, ?, 'card', 'pending', datetime('now'), datetime('now'))
     `).bind(
       product_id,
       userId,
@@ -994,8 +995,8 @@ payment.post('/create-invoice-order', authMiddleware, async (c) => {
       return c.json({ success: false, error: '自分の商品は購入できません' }, 400)
     }
 
-    // 手数料計算
-    const fees = calculateFees(product.price as number)
+    // 手数料計算（銀行振込: カード決済手数料なし）
+    const fees = calculateFees(product.price as number, 'bank_transfer')
 
     // 請求書番号生成 (INV-YYYYMMDD-NNNN)
     const now = new Date()

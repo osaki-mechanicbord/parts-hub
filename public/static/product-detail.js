@@ -666,16 +666,21 @@ async function purchaseProduct() {
     const taxAmount = calcTaxAmount(priceExTax);
     const priceIncTax = calcTaxIncluded(priceExTax);
     const platformFee = Math.floor(priceExTax * 0.10);
-    const total = priceIncTax + platformFee;
+    const cardProcessingFee = 330; // カード決済手数料（税込）
+    const totalCard = priceIncTax + platformFee + cardProcessingFee;
+    const totalBank = priceIncTax + platformFee;
     
     // 支払い方法選択モーダルを表示
-    showPaymentMethodModal(priceExTax, taxAmount, priceIncTax, platformFee, total);
+    showPaymentMethodModal(priceExTax, taxAmount, priceIncTax, platformFee, cardProcessingFee, totalCard, totalBank);
 }
 
-function showPaymentMethodModal(priceExTax, taxAmount, priceIncTax, platformFee, total) {
+function showPaymentMethodModal(priceExTax, taxAmount, priceIncTax, platformFee, cardProcessingFee, totalCard, totalBank) {
     // 既存モーダルがあれば削除
     const existing = document.getElementById('payment-method-modal');
     if (existing) existing.remove();
+    
+    // グローバルに金額を保持（toggleで使う）
+    window._paymentAmounts = { priceExTax, taxAmount, priceIncTax, platformFee, cardProcessingFee, totalCard, totalBank };
     
     const modal = document.createElement('div');
     modal.id = 'payment-method-modal';
@@ -688,47 +693,53 @@ function showPaymentMethodModal(priceExTax, taxAmount, priceIncTax, platformFee,
                     <button onclick="closePaymentModal()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#666;">&times;</button>
                 </div>
                 
-                <!-- 金額内訳 -->
-                <div style="background:#f8f9fa;border-radius:12px;padding:16px;margin-bottom:20px;">
-                    <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#666;">商品価格（税抜）</span><span>¥${priceExTax.toLocaleString()}</span></div>
-                    <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#666;">消費税（10%）</span><span>¥${taxAmount.toLocaleString()}</span></div>
-                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#666;">サービス手数料（10%）</span><span>¥${platformFee.toLocaleString()}</span></div>
-                    <div style="border-top:2px solid #e5e7eb;padding-top:8px;display:flex;justify-content:space-between;">
-                        <span style="font-weight:bold;font-size:16px;">お支払い合計</span>
-                        <span style="font-weight:bold;font-size:18px;color:#ef4444;">¥${total.toLocaleString()}</span>
-                    </div>
-                </div>
-                
                 <!-- 支払い方法選択 -->
                 <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px;">
                     <!-- カード決済 -->
-                    <label id="method-card-label" style="display:flex;align-items:center;padding:16px;border:2px solid #3b82f6;border-radius:12px;cursor:pointer;background:#eff6ff;transition:all 0.2s;">
-                        <input type="radio" name="payment_method" value="card" checked onchange="togglePaymentMethod()" style="margin-right:12px;width:18px;height:18px;">
-                        <i class="fas fa-credit-card" style="font-size:24px;color:#3b82f6;margin-right:12px;"></i>
+                    <label id="method-card-label" style="display:flex;align-items:flex-start;padding:16px;border:2px solid #3b82f6;border-radius:12px;cursor:pointer;background:#eff6ff;transition:all 0.2s;">
+                        <input type="radio" name="payment_method" value="card" checked onchange="togglePaymentMethod()" style="margin-right:12px;margin-top:2px;width:18px;height:18px;flex-shrink:0;">
+                        <i class="fas fa-credit-card" style="font-size:24px;color:#3b82f6;margin-right:12px;flex-shrink:0;margin-top:2px;"></i>
                         <div>
                             <div style="font-weight:bold;color:#111;">クレジットカード決済</div>
                             <div style="font-size:12px;color:#666;">Visa / Mastercard / JCB / Amex — 即時決済</div>
+                            <div style="font-size:12px;color:#dc2626;font-weight:600;margin-top:4px;">カード決済手数料 ¥${cardProcessingFee.toLocaleString()}（税込）が加算されます</div>
                         </div>
                     </label>
                     
-                    <!-- 請求書払い -->
-                    <label id="method-invoice-label" style="display:flex;align-items:center;padding:16px;border:2px solid #e5e7eb;border-radius:12px;cursor:pointer;background:#fff;transition:all 0.2s;">
-                        <input type="radio" name="payment_method" value="invoice" onchange="togglePaymentMethod()" style="margin-right:12px;width:18px;height:18px;">
-                        <i class="fas fa-file-invoice-dollar" style="font-size:24px;color:#10b981;margin-right:12px;"></i>
+                    <!-- 銀行振込 -->
+                    <label id="method-invoice-label" style="display:flex;align-items:flex-start;padding:16px;border:2px solid #e5e7eb;border-radius:12px;cursor:pointer;background:#fff;transition:all 0.2s;">
+                        <input type="radio" name="payment_method" value="invoice" onchange="togglePaymentMethod()" style="margin-right:12px;margin-top:2px;width:18px;height:18px;flex-shrink:0;">
+                        <i class="fas fa-university" style="font-size:24px;color:#10b981;margin-right:12px;flex-shrink:0;margin-top:2px;"></i>
                         <div>
-                            <div style="font-weight:bold;color:#111;">請求書払い（銀行振込）</div>
-                            <div style="font-size:12px;color:#666;">法人・個人事業主向け — 振込確認後に発送</div>
+                            <div style="font-weight:bold;color:#111;">銀行振込</div>
+                            <div style="font-size:12px;color:#666;">振込確認後に発送 — カード決済手数料なし</div>
+                            <div style="font-size:12px;color:#b45309;font-weight:600;margin-top:4px;">※ 振込手数料は購入者様のご負担となります</div>
                         </div>
                     </label>
                 </div>
                 
-                <!-- 請求書払いフォーム（非表示） -->
+                <!-- 金額内訳 -->
+                <div id="fee-breakdown" style="background:#f8f9fa;border-radius:12px;padding:16px;margin-bottom:20px;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#666;">商品価格（税抜）</span><span>¥${priceExTax.toLocaleString()}</span></div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#666;">消費税（10%）</span><span>¥${taxAmount.toLocaleString()}</span></div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#666;">サービス手数料（10%）</span><span>¥${platformFee.toLocaleString()}</span></div>
+                    <div id="card-fee-row" style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#dc2626;font-weight:600;">カード決済手数料</span><span style="color:#dc2626;font-weight:600;">¥${cardProcessingFee.toLocaleString()}</span></div>
+                    <div style="border-top:2px solid #e5e7eb;padding-top:8px;display:flex;justify-content:space-between;">
+                        <span style="font-weight:bold;font-size:16px;">お支払い合計</span>
+                        <span id="total-amount-display" style="font-weight:bold;font-size:18px;color:#ef4444;">¥${totalCard.toLocaleString()}</span>
+                    </div>
+                    <div id="bank-fee-note" style="display:none;margin-top:8px;padding:8px;background:#fefce8;border-radius:6px;">
+                        <p style="font-size:11px;color:#92400e;margin:0;"><i class="fas fa-info-circle" style="margin-right:4px;"></i>上記に加え、振込手数料が別途かかります（金融機関により異なります）</p>
+                    </div>
+                </div>
+                
+                <!-- 銀行振込フォーム（非表示） -->
                 <div id="invoice-form-section" style="display:none;margin-bottom:20px;">
                     <h3 style="font-weight:bold;margin-bottom:12px;color:#111;"><i class="fas fa-building" style="color:#10b981;margin-right:8px;"></i>請求先情報</h3>
                     <div style="display:flex;flex-direction:column;gap:10px;">
                         <div>
-                            <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:4px;">会社名 <span style="color:#ef4444;">*</span></label>
-                            <input type="text" id="inv-company" placeholder="例：株式会社○○自動車" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;box-sizing:border-box;">
+                            <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:4px;">会社名・氏名 <span style="color:#ef4444;">*</span></label>
+                            <input type="text" id="inv-company" placeholder="例：株式会社○○自動車 / 山田太郎" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;box-sizing:border-box;">
                         </div>
                         <div>
                             <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:4px;">担当者名</label>
@@ -750,7 +761,7 @@ function showPaymentMethodModal(priceExTax, taxAmount, priceIncTax, platformFee,
                         </div>
                     </div>
                     <div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:12px;margin-top:12px;">
-                        <p style="font-size:12px;color:#92400e;"><i class="fas fa-info-circle" style="margin-right:6px;"></i>請求書はPARTS HUB運営より発行されます。振込期限は注文後7日間です。振込確認後に出品者へ発送依頼が送信されます。</p>
+                        <p style="font-size:12px;color:#92400e;"><i class="fas fa-info-circle" style="margin-right:6px;"></i>振込先はPARTS HUB指定口座です。振込期限は注文後7日間です。振込確認後に出品者へ発送依頼が送信されます。振込手数料はお客様負担となります。</p>
                     </div>
                 </div>
             </div>
@@ -759,7 +770,7 @@ function showPaymentMethodModal(priceExTax, taxAmount, priceIncTax, platformFee,
             <div style="padding:0 24px 24px;display:flex;gap:12px;">
                 <button onclick="closePaymentModal()" style="flex:1;padding:14px;border:1px solid #d1d5db;border-radius:10px;background:#fff;font-size:15px;cursor:pointer;color:#374151;">キャンセル</button>
                 <button id="confirm-purchase-btn" onclick="confirmPurchase()" style="flex:2;padding:14px;border:none;border-radius:10px;background:#ef4444;color:#fff;font-size:15px;font-weight:bold;cursor:pointer;">
-                    <i class="fas fa-shopping-cart" style="margin-right:8px;"></i>購入を確定する
+                    <i class="fas fa-credit-card" style="margin-right:8px;"></i>カード決済で購入
                 </button>
             </div>
         </div>
@@ -777,24 +788,38 @@ function togglePaymentMethod() {
     const invoiceLabel = document.getElementById('method-invoice-label');
     const invoiceForm = document.getElementById('invoice-form-section');
     const confirmBtn = document.getElementById('confirm-purchase-btn');
+    const cardFeeRow = document.getElementById('card-fee-row');
+    const totalDisplay = document.getElementById('total-amount-display');
+    const bankFeeNote = document.getElementById('bank-fee-note');
     const selected = document.querySelector('input[name="payment_method"]:checked')?.value;
+    const amounts = window._paymentAmounts || {};
     
     if (selected === 'invoice') {
+        // 銀行振込選択
         cardLabel.style.border = '2px solid #e5e7eb';
         cardLabel.style.background = '#fff';
         invoiceLabel.style.border = '2px solid #10b981';
         invoiceLabel.style.background = '#ecfdf5';
         invoiceForm.style.display = 'block';
-        confirmBtn.innerHTML = '<i class="fas fa-file-invoice-dollar" style="margin-right:8px;"></i>請求書払いで注文する';
+        confirmBtn.innerHTML = '<i class="fas fa-file-invoice-dollar" style="margin-right:8px;"></i>銀行振込で注文する';
         confirmBtn.style.background = '#10b981';
+        // カード手数料行を非表示、合計金額を銀行振込金額に切替
+        if (cardFeeRow) cardFeeRow.style.display = 'none';
+        if (totalDisplay) totalDisplay.textContent = '¥' + (amounts.totalBank || 0).toLocaleString();
+        if (bankFeeNote) bankFeeNote.style.display = 'block';
     } else {
+        // カード決済選択
         cardLabel.style.border = '2px solid #3b82f6';
         cardLabel.style.background = '#eff6ff';
         invoiceLabel.style.border = '2px solid #e5e7eb';
         invoiceLabel.style.background = '#fff';
         invoiceForm.style.display = 'none';
-        confirmBtn.innerHTML = '<i class="fas fa-shopping-cart" style="margin-right:8px;"></i>購入を確定する';
+        confirmBtn.innerHTML = '<i class="fas fa-credit-card" style="margin-right:8px;"></i>カード決済で購入する';
         confirmBtn.style.background = '#ef4444';
+        // カード手数料行を表示、合計金額をカード金額に切替
+        if (cardFeeRow) cardFeeRow.style.display = 'flex';
+        if (totalDisplay) totalDisplay.textContent = '¥' + (amounts.totalCard || 0).toLocaleString();
+        if (bankFeeNote) bankFeeNote.style.display = 'none';
     }
 }
 
@@ -885,9 +910,11 @@ function resetConfirmButton(method) {
     if (!btn) return;
     btn.disabled = false;
     if (method === 'invoice') {
-        btn.innerHTML = '<i class="fas fa-file-invoice-dollar" style="margin-right:8px;"></i>請求書払いで注文する';
+        btn.innerHTML = '<i class="fas fa-file-invoice-dollar" style="margin-right:8px;"></i>銀行振込で注文する';
+        btn.style.background = '#10b981';
     } else {
-        btn.innerHTML = '<i class="fas fa-shopping-cart" style="margin-right:8px;"></i>購入を確定する';
+        btn.innerHTML = '<i class="fas fa-credit-card" style="margin-right:8px;"></i>カード決済で購入する';
+        btn.style.background = '#ef4444';
     }
 }
 

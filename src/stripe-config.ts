@@ -6,6 +6,9 @@ export const STRIPE_CONFIG = {
   // プラットフォーム手数料（10%）
   PLATFORM_FEE_PERCENTAGE: 0.10,
   
+  // カード決済手数料（税込、購入者負担）
+  CARD_PROCESSING_FEE: 330,
+  
   // 最低取引金額（100円）
   MIN_TRANSACTION_AMOUNT: 100,
   
@@ -34,14 +37,21 @@ export function getStripeClient(c: Context): Stripe {
 }
 
 // 手数料計算
-// ★ 修正: Stripe手数料は購入者に転嫁しない（プラットフォーム手数料に内包）
-// 購入者が支払う金額 = 商品価格 + プラットフォーム手数料(10%)
-// Stripeが差し引く手数料 = 合計金額 × 3.6% (Stripeが自動徴収)
-// プラットフォーム実収入 = プラットフォーム手数料 - Stripe手数料
-// 出品者が受け取る金額 = 商品価格 - プラットフォーム手数料
-export function calculateFees(amount: number): {
+// paymentMethod: 'card' | 'bank_transfer'
+//
+// ■ カード決済の場合:
+//   購入者が支払う金額 = 商品価格 + プラットフォーム手数料(10%) + カード決済手数料(330円)
+//   Stripeが差し引く手数料 = 合計金額 × 3.6% (Stripeが自動徴収)
+//   出品者が受け取る金額 = 商品価格 - プラットフォーム手数料
+//
+// ■ 銀行振込の場合:
+//   購入者が支払う金額 = 商品価格 + プラットフォーム手数料(10%)
+//   ※ 振込手数料は購入者が銀行に直接支払い（別途負担）
+//   出品者が受け取る金額 = 商品価格 - プラットフォーム手数料
+export function calculateFees(amount: number, paymentMethod: 'card' | 'bank_transfer' = 'card'): {
   subtotal: number
   platformFee: number
+  cardProcessingFee: number
   stripeFee: number
   total: number
   sellerReceives: number
@@ -49,19 +59,23 @@ export function calculateFees(amount: number): {
   // プラットフォーム手数料: 10%
   const platformFee = Math.floor(amount * STRIPE_CONFIG.PLATFORM_FEE_PERCENTAGE)
   
-  // 購入者が支払う合計金額（商品価格 + プラットフォーム手数料のみ）
-  const total = amount + platformFee
+  // カード決済手数料: カード決済時のみ330円（税込）
+  const cardProcessingFee = paymentMethod === 'card' ? STRIPE_CONFIG.CARD_PROCESSING_FEE : 0
+  
+  // 購入者が支払う合計金額
+  const total = amount + platformFee + cardProcessingFee
   
   // Stripe手数料: 合計金額の3.6% (Stripeが自動で差し引く、参考値)
   const stripeFeePercentage = 0.036
-  const stripeFee = Math.floor(total * stripeFeePercentage)
+  const stripeFee = paymentMethod === 'card' ? Math.floor(total * stripeFeePercentage) : 0
   
-  // 出品者が受け取る金額
+  // 出品者が受け取る金額（支払い方法に関係なく同じ）
   const sellerReceives = amount - platformFee
   
   return {
     subtotal: amount,
     platformFee: platformFee,
+    cardProcessingFee: cardProcessingFee,
     stripeFee: stripeFee,       // 参考値（Stripeが自動徴収）
     total: total,               // 購入者の支払い額
     sellerReceives: sellerReceives
