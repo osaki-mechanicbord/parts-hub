@@ -207,7 +207,7 @@ api.get('/products', async (c) => {
     const productsQuery = `
       SELECT 
         p.id, p.title, p.description, p.price, p.condition,
-        p.status,
+        p.status, p.shipping_type, p.is_universal,
         p.view_count, p.favorite_count, p.part_number,
         p.created_at,
         c.name as category_name,
