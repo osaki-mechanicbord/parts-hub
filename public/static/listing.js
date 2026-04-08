@@ -828,12 +828,13 @@ async function loadProductForEdit(productId) {
         if (shippingInput) shippingInput.value = product.shipping_type
       }
 
-      // 編集モードでtop_categoryをチップ選択に反映
+      // 編集モードでtop_categoryをチップ選択に反映（複数選択対応）
       if (product.top_category) {
+        var selectedCats = product.top_category.split(',')
         var tcChips = document.querySelectorAll('.tc-chip')
         tcChips.forEach(function(chip) {
           chip.classList.remove('active')
-          if (chip.getAttribute('data-value') === product.top_category) {
+          if (selectedCats.indexOf(chip.getAttribute('data-value')) !== -1) {
             chip.classList.add('active')
           }
         })

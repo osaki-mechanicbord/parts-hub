@@ -188,10 +188,10 @@ api.get('/products', async (c) => {
       params.push(condition)
     }
 
-    // top_categoryフィルター（TOPページカテゴリタブ用）
+    // top_categoryフィルター（TOPページカテゴリタブ用 / 複数選択カンマ区切り対応）
     if (topCategory) {
-      conditions.push('p.top_category = ?')
-      params.push(topCategory)
+      conditions.push("(',' || p.top_category || ',') LIKE ?")
+      params.push(`%,${topCategory},%`)
     }
 
     // prefectureフィルター（エリア別ページ用）
@@ -307,7 +307,7 @@ api.get('/products/search', async (c) => {
     if (priceMin) { conditions.push('p.price >= ?'); params.push(priceMin) }
     if (priceMax) { conditions.push('p.price <= ?'); params.push(priceMax) }
     if (condition) { conditions.push('p.condition = ?'); params.push(condition) }
-    if (topCategory) { conditions.push('p.top_category = ?'); params.push(topCategory) }
+    if (topCategory) { conditions.push("(',' || p.top_category || ',') LIKE ?"); params.push(`%,${topCategory},%`) }
     if (prefecture && prefecture !== 'all') {
       conditions.push("(p.prefecture = ? OR p.prefecture = 'all')")
       params.push(prefecture)

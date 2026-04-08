@@ -4471,7 +4471,7 @@ app.get('/listing', (c) => {
                         </div>
                     </div>
                     <div class="section-body">
-                        <input type="hidden" id="top-category" value="other">
+                        <input type="hidden" id="top-category" value="">
                         <div class="flex flex-wrap gap-2" id="top-category-chips">
                             <button type="button" class="tc-chip" data-value="car" onclick="selectTopCategory(this)"><i class="fas fa-car mr-1"></i>乗用車</button>
                             <button type="button" class="tc-chip" data-value="truck" onclick="selectTopCategory(this)"><i class="fas fa-truck-moving mr-1"></i>トラック</button>
@@ -4484,8 +4484,9 @@ app.get('/listing', (c) => {
                             <button type="button" class="tc-chip" data-value="tools" onclick="selectTopCategory(this)"><i class="fas fa-tools mr-1"></i>工具</button>
                             <button type="button" class="tc-chip" data-value="rebuilt" onclick="selectTopCategory(this)"><i class="fas fa-sync-alt mr-1"></i>リビルト</button>
                             <button type="button" class="tc-chip" data-value="electrical" onclick="selectTopCategory(this)"><i class="fas fa-bolt mr-1"></i>電装</button>
-                            <button type="button" class="tc-chip active" data-value="other" onclick="selectTopCategory(this)"><i class="fas fa-ellipsis-h mr-1"></i>その他車両</button>
+                            <button type="button" class="tc-chip" data-value="other" onclick="selectTopCategory(this)"><i class="fas fa-ellipsis-h mr-1"></i>その他車両</button>
                         </div>
+                        <p class="text-xs text-gray-400 mt-2"><i class="fas fa-info-circle mr-1"></i>複数選択できます</p>
                     </div>
                 </div>
 
@@ -5035,12 +5036,11 @@ app.get('/listing', (c) => {
             (async function checkArgosEnabled() {
               try {
                 var res = await fetch('/api/argos/status');
-                if (res.ok) {
-                  var data = await res.json();
-                  if (data.success && data.enabled) {
-                    var el = document.getElementById('argos-vin-section');
-                    if (el) el.style.display = '';
-                  }
+                if (!res.ok) return; // 503等 → 非表示のまま（コンソール抑制）
+                var data = await res.json();
+                if (data.success && data.enabled) {
+                  var el = document.getElementById('argos-vin-section');
+                  if (el) el.style.display = '';
                 }
               } catch(e) { /* ARGOS未有効 → セクション非表示のまま */ }
             })();
@@ -5141,13 +5141,15 @@ app.get('/listing', (c) => {
                 document.getElementById('condition-select').value = el.getAttribute('data-value');
             }
 
-            // 大枠カテゴリ選択
+            // 大枠カテゴリ選択（複数選択対応）
             function selectTopCategory(el) {
-                document.querySelectorAll('.tc-chip').forEach(function(c) {
-                    c.classList.remove('active');
+                el.classList.toggle('active');
+                // 選択中のカテゴリをカンマ区切りで取得
+                var selected = [];
+                document.querySelectorAll('.tc-chip.active').forEach(function(c) {
+                    selected.push(c.getAttribute('data-value'));
                 });
-                el.classList.add('active');
-                document.getElementById('top-category').value = el.getAttribute('data-value');
+                document.getElementById('top-category').value = selected.length > 0 ? selected.join(',') : 'other';
             }
 
             // 都道府県選択
