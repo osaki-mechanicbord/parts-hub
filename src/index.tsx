@@ -6800,7 +6800,7 @@ app.get('/seller/:id', async (c) => {
                     const universalBadge = p.is_universal ? '<span class="inline-block bg-purple-100 text-purple-700 text-[10px] font-bold px-1.5 py-0.5 rounded mt-1">汎用品</span>' : '';
                     return '<a href="/products/' + p.id + '" class="sp-card">' +
                         (isSold ? '<div class="sp-sold-badge">SOLD</div>' : '') +
-                        '<div class="sp-card-img"><img src="' + img + '" alt="" loading="lazy" onerror="this.src=\'/icons/icon.svg\'"></div>' +
+                        '<div class="sp-card-img"><img src="' + img + '" alt="" loading="lazy" onerror="this.src=&quot;/icons/icon.svg&quot;"></div>' +
                         '<div class="sp-card-body">' +
                         '<div class="sp-card-title">' + (p.title || '').replace(/</g, '&lt;') + '</div>' +
                         universalBadge +
