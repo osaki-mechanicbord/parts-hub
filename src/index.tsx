@@ -1431,19 +1431,37 @@ app.get('/', (c) => {
                         <i class="fas fa-car mr-1"></i>乗用車
                     </button>
                     <button onclick="switchCategoryTab('truck')" class="cat-tab whitespace-nowrap px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all" data-cat="truck">
-                        <i class="fas fa-truck mr-1"></i>トラック
+                        <i class="fas fa-truck-moving mr-1"></i>トラック
                     </button>
-                    <button onclick="switchCategoryTab('bike')" class="cat-tab whitespace-nowrap px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all" data-cat="bike">
+                    <button onclick="switchCategoryTab('bus')" class="cat-tab whitespace-nowrap px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all" data-cat="bus">
+                        <i class="fas fa-bus mr-1"></i>バス
+                    </button>
+                    <button onclick="switchCategoryTab('motorcycle')" class="cat-tab whitespace-nowrap px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all" data-cat="motorcycle">
                         <i class="fas fa-motorcycle mr-1"></i>バイク
                     </button>
+                    <button onclick="switchCategoryTab('forklift')" class="cat-tab whitespace-nowrap px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all" data-cat="forklift">
+                        <i class="fas fa-pallet mr-1"></i>フォークリフト
+                    </button>
+                    <button onclick="switchCategoryTab('heavy_equipment')" class="cat-tab whitespace-nowrap px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all" data-cat="heavy_equipment">
+                        <i class="fas fa-hard-hat mr-1"></i>重機
+                    </button>
+                    <button onclick="switchCategoryTab('ship')" class="cat-tab whitespace-nowrap px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all" data-cat="ship">
+                        <i class="fas fa-ship mr-1"></i>船舶
+                    </button>
+                    <button onclick="switchCategoryTab('agriculture')" class="cat-tab whitespace-nowrap px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all" data-cat="agriculture">
+                        <i class="fas fa-tractor mr-1"></i>農機具
+                    </button>
                     <button onclick="switchCategoryTab('tools')" class="cat-tab whitespace-nowrap px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all" data-cat="tools">
-                        <i class="fas fa-wrench mr-1"></i>工具
+                        <i class="fas fa-tools mr-1"></i>工具
                     </button>
                     <button onclick="switchCategoryTab('rebuilt')" class="cat-tab whitespace-nowrap px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all" data-cat="rebuilt">
-                        <i class="fas fa-recycle mr-1"></i>リビルト
+                        <i class="fas fa-sync-alt mr-1"></i>リビルト
                     </button>
-                    <button onclick="switchCategoryTab('electric')" class="cat-tab whitespace-nowrap px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all" data-cat="electric">
+                    <button onclick="switchCategoryTab('electrical')" class="cat-tab whitespace-nowrap px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all" data-cat="electrical">
                         <i class="fas fa-bolt mr-1"></i>電装
+                    </button>
+                    <button onclick="switchCategoryTab('other')" class="cat-tab whitespace-nowrap px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all" data-cat="other">
+                        <i class="fas fa-ellipsis-h mr-1"></i>その他車両
                     </button>
                 </div>
                 
@@ -1687,15 +1705,21 @@ app.get('/', (c) => {
             let currentSortTab = 'new';
             let currentCategoryTab = '';
 
-            // カテゴリタブ→フィルター値のマッピング
+            // カテゴリタブ→フィルター値のマッピング（top_categoryベース）
             const categoryTabMap = {
                 '': {},
-                'car': { query: '乗用車' },
-                'truck': { query: 'トラック' },
-                'bike': { query: 'バイク' },
-                'tools': { category_id: 13 },
-                'rebuilt': { category_id: 15 },
-                'electric': { category_id: 4 }
+                'car': { top_category: 'car' },
+                'truck': { top_category: 'truck' },
+                'bus': { top_category: 'bus' },
+                'motorcycle': { top_category: 'motorcycle' },
+                'forklift': { top_category: 'forklift' },
+                'heavy_equipment': { top_category: 'heavy_equipment' },
+                'ship': { top_category: 'ship' },
+                'agriculture': { top_category: 'agriculture' },
+                'tools': { top_category: 'tools' },
+                'rebuilt': { top_category: 'rebuilt' },
+                'electrical': { top_category: 'electrical' },
+                'other': { top_category: 'other' }
             };
 
             // ソートタブ切り替え
@@ -1739,17 +1763,14 @@ app.get('/', (c) => {
                         btn.classList.add('bg-gray-100', 'text-gray-600');
                     }
                 });
-                // カテゴリフィルター適用
+                // カテゴリフィルター適用（top_categoryベース）
                 var catConfig = categoryTabMap[cat] || {};
-                // 既存のカテゴリ/キーワードフィルターをクリア
+                // 既存のカテゴリフィルターをクリア
                 delete currentFilters.category_id;
-                // カテゴリタブのキーワードはcatQueryとして管理
                 delete currentFilters.cat_query;
-                if (catConfig.category_id) {
-                    currentFilters.category_id = catConfig.category_id;
-                }
-                if (catConfig.query) {
-                    currentFilters.cat_query = catConfig.query;
+                delete currentFilters.top_category;
+                if (catConfig.top_category) {
+                    currentFilters.top_category = catConfig.top_category;
                 }
                 currentPage = 1;
                 loadProducts();
@@ -1781,16 +1802,11 @@ app.get('/', (c) => {
                 loading.classList.remove('hidden');
                 
                 try {
-                    // cat_queryとqueryをマージしてAPIに渡す
+                    // フィルターをそのままAPIに渡す（top_categoryも含む）
                     const apiFilters = {};
                     Object.keys(currentFilters).forEach(function(k) {
-                        if (k !== 'cat_query') apiFilters[k] = currentFilters[k];
+                        apiFilters[k] = currentFilters[k];
                     });
-                    // カテゴリタブのキーワードと検索キーワードを結合
-                    var combinedQuery = [];
-                    if (currentFilters.cat_query) combinedQuery.push(currentFilters.cat_query);
-                    if (currentFilters.query) combinedQuery.push(currentFilters.query);
-                    if (combinedQuery.length > 0) apiFilters.query = combinedQuery.join(' ');
                     
                     const params = new URLSearchParams({
                         page: currentPage,
@@ -4154,6 +4170,28 @@ app.get('/listing', (c) => {
                 border-color: #ef4444; background: #fef2f2; color: #dc2626; font-weight: 600;
             }
 
+            /* 大枠カテゴリ選択チップ */
+            .tc-chip {
+                padding: 8px 14px; border: 2px solid #e5e7eb; border-radius: 10px;
+                cursor: pointer; transition: all 0.2s; background: #fff;
+                font-size: 13px; font-weight: 600; color: #374151; white-space: nowrap;
+            }
+            .tc-chip:hover { border-color: #818cf8; background: #eef2ff; }
+            .tc-chip.active {
+                border-color: #6366f1; background: #eef2ff; color: #4338ca; box-shadow: 0 0 0 1px #6366f1;
+            }
+
+            /* 都道府県選択チップ */
+            .pref-chip {
+                padding: 6px 12px; border: 1.5px solid #e5e7eb; border-radius: 8px;
+                cursor: pointer; transition: all 0.2s; background: #fff;
+                font-size: 12px; font-weight: 500; color: #374151; white-space: nowrap;
+            }
+            .pref-chip:hover { border-color: #2dd4bf; background: #f0fdfa; }
+            .pref-chip.active {
+                border-color: #14b8a6; background: #f0fdfa; color: #0f766e; box-shadow: 0 0 0 1px #14b8a6;
+            }
+
             /* 送料選択チップ */
             .shipping-chip {
                 padding: 14px 16px; border: 2px solid #e5e7eb; border-radius: 14px;
@@ -4416,6 +4454,122 @@ app.get('/listing', (c) => {
                                 <input type="text" id="part-number"
                                        class="form-input"
                                        placeholder="例: 04465-12345">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== 大枠カテゴリ選択 ===== -->
+                <div class="section-card">
+                    <div class="section-header">
+                        <div class="section-header-icon bg-indigo-50 text-indigo-500">
+                            <i class="fas fa-th-large"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-sm text-gray-900">車両・商品カテゴリ <span class="required">必須</span></div>
+                            <div class="text-xs text-gray-400">TOPページの表示カテゴリを選択してください</div>
+                        </div>
+                    </div>
+                    <div class="section-body">
+                        <input type="hidden" id="top-category" value="other">
+                        <div class="flex flex-wrap gap-2" id="top-category-chips">
+                            <button type="button" class="tc-chip" data-value="car" onclick="selectTopCategory(this)"><i class="fas fa-car mr-1"></i>乗用車</button>
+                            <button type="button" class="tc-chip" data-value="truck" onclick="selectTopCategory(this)"><i class="fas fa-truck-moving mr-1"></i>トラック</button>
+                            <button type="button" class="tc-chip" data-value="bus" onclick="selectTopCategory(this)"><i class="fas fa-bus mr-1"></i>バス</button>
+                            <button type="button" class="tc-chip" data-value="motorcycle" onclick="selectTopCategory(this)"><i class="fas fa-motorcycle mr-1"></i>バイク</button>
+                            <button type="button" class="tc-chip" data-value="forklift" onclick="selectTopCategory(this)"><i class="fas fa-pallet mr-1"></i>フォークリフト</button>
+                            <button type="button" class="tc-chip" data-value="heavy_equipment" onclick="selectTopCategory(this)"><i class="fas fa-hard-hat mr-1"></i>重機</button>
+                            <button type="button" class="tc-chip" data-value="ship" onclick="selectTopCategory(this)"><i class="fas fa-ship mr-1"></i>船舶</button>
+                            <button type="button" class="tc-chip" data-value="agriculture" onclick="selectTopCategory(this)"><i class="fas fa-tractor mr-1"></i>農機具</button>
+                            <button type="button" class="tc-chip" data-value="tools" onclick="selectTopCategory(this)"><i class="fas fa-tools mr-1"></i>工具</button>
+                            <button type="button" class="tc-chip" data-value="rebuilt" onclick="selectTopCategory(this)"><i class="fas fa-sync-alt mr-1"></i>リビルト</button>
+                            <button type="button" class="tc-chip" data-value="electrical" onclick="selectTopCategory(this)"><i class="fas fa-bolt mr-1"></i>電装</button>
+                            <button type="button" class="tc-chip active" data-value="other" onclick="selectTopCategory(this)"><i class="fas fa-ellipsis-h mr-1"></i>その他車両</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== エリア選択 ===== -->
+                <div class="section-card">
+                    <div class="section-header">
+                        <div class="section-header-icon bg-teal-50 text-teal-500">
+                            <i class="fas fa-map-marker-alt"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-sm text-gray-900">出品エリア</div>
+                            <div class="text-xs text-gray-400">商品の発送元エリアを選択してください（デフォルト: 全国対応）</div>
+                        </div>
+                    </div>
+                    <div class="section-body">
+                        <input type="hidden" id="prefecture" value="all">
+                        <div class="flex flex-wrap gap-2" id="prefecture-chips">
+                            <button type="button" class="pref-chip active" data-value="all" onclick="selectPrefecture(this)"><i class="fas fa-globe-asia mr-1"></i>全国</button>
+                        </div>
+                        <div class="mt-3">
+                            <div class="text-xs font-bold text-gray-500 mb-1.5">北海道・東北</div>
+                            <div class="flex flex-wrap gap-1.5 mb-2" id="pref-tohoku">
+                                <button type="button" class="pref-chip" data-value="hokkaido" onclick="selectPrefecture(this)">北海道</button>
+                                <button type="button" class="pref-chip" data-value="aomori" onclick="selectPrefecture(this)">青森</button>
+                                <button type="button" class="pref-chip" data-value="iwate" onclick="selectPrefecture(this)">岩手</button>
+                                <button type="button" class="pref-chip" data-value="miyagi" onclick="selectPrefecture(this)">宮城</button>
+                                <button type="button" class="pref-chip" data-value="akita" onclick="selectPrefecture(this)">秋田</button>
+                                <button type="button" class="pref-chip" data-value="yamagata" onclick="selectPrefecture(this)">山形</button>
+                                <button type="button" class="pref-chip" data-value="fukushima" onclick="selectPrefecture(this)">福島</button>
+                            </div>
+                            <div class="text-xs font-bold text-gray-500 mb-1.5">関東</div>
+                            <div class="flex flex-wrap gap-1.5 mb-2">
+                                <button type="button" class="pref-chip" data-value="tokyo" onclick="selectPrefecture(this)">東京</button>
+                                <button type="button" class="pref-chip" data-value="kanagawa" onclick="selectPrefecture(this)">神奈川</button>
+                                <button type="button" class="pref-chip" data-value="saitama" onclick="selectPrefecture(this)">埼玉</button>
+                                <button type="button" class="pref-chip" data-value="chiba" onclick="selectPrefecture(this)">千葉</button>
+                                <button type="button" class="pref-chip" data-value="ibaraki" onclick="selectPrefecture(this)">茨城</button>
+                                <button type="button" class="pref-chip" data-value="tochigi" onclick="selectPrefecture(this)">栃木</button>
+                                <button type="button" class="pref-chip" data-value="gunma" onclick="selectPrefecture(this)">群馬</button>
+                            </div>
+                            <div class="text-xs font-bold text-gray-500 mb-1.5">中部</div>
+                            <div class="flex flex-wrap gap-1.5 mb-2">
+                                <button type="button" class="pref-chip" data-value="niigata" onclick="selectPrefecture(this)">新潟</button>
+                                <button type="button" class="pref-chip" data-value="toyama" onclick="selectPrefecture(this)">富山</button>
+                                <button type="button" class="pref-chip" data-value="ishikawa" onclick="selectPrefecture(this)">石川</button>
+                                <button type="button" class="pref-chip" data-value="fukui" onclick="selectPrefecture(this)">福井</button>
+                                <button type="button" class="pref-chip" data-value="yamanashi" onclick="selectPrefecture(this)">山梨</button>
+                                <button type="button" class="pref-chip" data-value="nagano" onclick="selectPrefecture(this)">長野</button>
+                                <button type="button" class="pref-chip" data-value="gifu" onclick="selectPrefecture(this)">岐阜</button>
+                                <button type="button" class="pref-chip" data-value="shizuoka" onclick="selectPrefecture(this)">静岡</button>
+                                <button type="button" class="pref-chip" data-value="aichi" onclick="selectPrefecture(this)">愛知</button>
+                            </div>
+                            <div class="text-xs font-bold text-gray-500 mb-1.5">近畿</div>
+                            <div class="flex flex-wrap gap-1.5 mb-2">
+                                <button type="button" class="pref-chip" data-value="mie" onclick="selectPrefecture(this)">三重</button>
+                                <button type="button" class="pref-chip" data-value="shiga" onclick="selectPrefecture(this)">滋賀</button>
+                                <button type="button" class="pref-chip" data-value="kyoto" onclick="selectPrefecture(this)">京都</button>
+                                <button type="button" class="pref-chip" data-value="osaka" onclick="selectPrefecture(this)">大阪</button>
+                                <button type="button" class="pref-chip" data-value="hyogo" onclick="selectPrefecture(this)">兵庫</button>
+                                <button type="button" class="pref-chip" data-value="nara" onclick="selectPrefecture(this)">奈良</button>
+                                <button type="button" class="pref-chip" data-value="wakayama" onclick="selectPrefecture(this)">和歌山</button>
+                            </div>
+                            <div class="text-xs font-bold text-gray-500 mb-1.5">中国・四国</div>
+                            <div class="flex flex-wrap gap-1.5 mb-2">
+                                <button type="button" class="pref-chip" data-value="tottori" onclick="selectPrefecture(this)">鳥取</button>
+                                <button type="button" class="pref-chip" data-value="shimane" onclick="selectPrefecture(this)">島根</button>
+                                <button type="button" class="pref-chip" data-value="okayama" onclick="selectPrefecture(this)">岡山</button>
+                                <button type="button" class="pref-chip" data-value="hiroshima" onclick="selectPrefecture(this)">広島</button>
+                                <button type="button" class="pref-chip" data-value="yamaguchi" onclick="selectPrefecture(this)">山口</button>
+                                <button type="button" class="pref-chip" data-value="tokushima" onclick="selectPrefecture(this)">徳島</button>
+                                <button type="button" class="pref-chip" data-value="kagawa" onclick="selectPrefecture(this)">香川</button>
+                                <button type="button" class="pref-chip" data-value="ehime" onclick="selectPrefecture(this)">愛媛</button>
+                                <button type="button" class="pref-chip" data-value="kochi" onclick="selectPrefecture(this)">高知</button>
+                            </div>
+                            <div class="text-xs font-bold text-gray-500 mb-1.5">九州・沖縄</div>
+                            <div class="flex flex-wrap gap-1.5">
+                                <button type="button" class="pref-chip" data-value="fukuoka" onclick="selectPrefecture(this)">福岡</button>
+                                <button type="button" class="pref-chip" data-value="saga" onclick="selectPrefecture(this)">佐賀</button>
+                                <button type="button" class="pref-chip" data-value="nagasaki" onclick="selectPrefecture(this)">長崎</button>
+                                <button type="button" class="pref-chip" data-value="kumamoto" onclick="selectPrefecture(this)">熊本</button>
+                                <button type="button" class="pref-chip" data-value="oita" onclick="selectPrefecture(this)">大分</button>
+                                <button type="button" class="pref-chip" data-value="miyazaki" onclick="selectPrefecture(this)">宮崎</button>
+                                <button type="button" class="pref-chip" data-value="kagoshima" onclick="selectPrefecture(this)">鹿児島</button>
+                                <button type="button" class="pref-chip" data-value="okinawa" onclick="selectPrefecture(this)">沖縄</button>
                             </div>
                         </div>
                     </div>
@@ -4985,6 +5139,24 @@ app.get('/listing', (c) => {
                     el.insertBefore(check, el.firstChild);
                 }
                 document.getElementById('condition-select').value = el.getAttribute('data-value');
+            }
+
+            // 大枠カテゴリ選択
+            function selectTopCategory(el) {
+                document.querySelectorAll('.tc-chip').forEach(function(c) {
+                    c.classList.remove('active');
+                });
+                el.classList.add('active');
+                document.getElementById('top-category').value = el.getAttribute('data-value');
+            }
+
+            // 都道府県選択
+            function selectPrefecture(el) {
+                document.querySelectorAll('.pref-chip').forEach(function(c) {
+                    c.classList.remove('active');
+                });
+                el.classList.add('active');
+                document.getElementById('prefecture').value = el.getAttribute('data-value');
             }
 
             // 送料タイプ選択
@@ -8838,10 +9010,10 @@ app.get('/area/:pref', async (c) => {
   let categoriesHtml = ''
 
   try {
-    // 最新の出品商品を取得
+    // 最新の出品商品を取得（該当エリア + 全国対応の商品）
     const prods = await DB.prepare(
-      "SELECT p.id, p.title, p.price, p.condition, p.status, p.shipping_type, p.is_universal, (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order ASC LIMIT 1) as image_url FROM products p WHERE p.status = 'active' ORDER BY p.created_at DESC LIMIT 8"
-    ).all()
+      "SELECT p.id, p.title, p.price, p.condition, p.status, p.shipping_type, p.is_universal, (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order ASC LIMIT 1) as image_url FROM products p WHERE p.status = 'active' AND (p.prefecture = ? OR p.prefecture = 'all') ORDER BY p.created_at DESC LIMIT 8"
+    ).bind(prefSlug).all()
     productsCount = prods.results.length
     const condMap: Record<string,string> = { new:'新品', like_new:'未使用に近い', good:'良好', fair:'やや傷あり', poor:'状態不良' }
     productsHtml = prods.results.map((p: any) => {
@@ -9153,7 +9325,8 @@ app.get('/area/:pref/:maker', async (c) => {
       const cnt = await DB.prepare(`
         SELECT COUNT(DISTINCT p.id) as cnt FROM products p
         WHERE p.status IN ('active','sold') AND (p.is_universal = 1 OR p.vm_maker = ?)
-      `).bind(maker).first() as any
+        AND (p.prefecture = ? OR p.prefecture = 'all')
+      `).bind(maker, prefSlug).first() as any
       productCount = cnt?.cnt || 0
     } catch(e) {}
 
@@ -9324,7 +9497,8 @@ app.get('/area/:pref/:maker/:model', async (c) => {
       const cnt = await DB.prepare(`
         SELECT COUNT(DISTINCT p.id) as cnt FROM products p
         WHERE p.status IN ('active','sold') AND (p.is_universal = 1 OR (p.vm_maker = ? AND p.vm_model = ?))
-      `).bind(maker, model).first() as any
+        AND (p.prefecture = ? OR p.prefecture = 'all')
+      `).bind(maker, model, prefSlug).first() as any
       productCount = cnt?.cnt || 0
     } catch(e) {}
 

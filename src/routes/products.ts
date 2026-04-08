@@ -273,8 +273,9 @@ app.post('/', async (c) => {
         user_id, seller_id, title, description, price, category_id, subcategory_id,
         maker_id, model_id, part_number, compatible_models, condition,
         stock_quantity, status, is_proxy,
-        vm_maker, vm_model, vm_grade, vm_tire_size, shipping_type, is_universal
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        vm_maker, vm_model, vm_grade, vm_tire_size, shipping_type, is_universal,
+        top_category, prefecture
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       userId,
       userId,
@@ -296,7 +297,9 @@ app.post('/', async (c) => {
       body.vm_grade || null,
       body.vm_tire_size || null,
       body.shipping_type || 'buyer_paid',
-      body.is_universal ? 1 : 0
+      body.is_universal ? 1 : 0,
+      body.top_category || 'other',
+      body.prefecture || 'all'
     ).run()
 
     const productId = result.meta.last_row_id
@@ -388,6 +391,8 @@ app.put('/:id', async (c) => {
         vm_tire_size = ?,
         shipping_type = COALESCE(?, shipping_type),
         is_universal = ?,
+        top_category = COALESCE(?, top_category),
+        prefecture = COALESCE(?, prefecture),
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).bind(
@@ -409,6 +414,8 @@ app.put('/:id', async (c) => {
       body.vm_tire_size || null,
       body.shipping_type || null,
       body.is_universal ? 1 : 0,
+      body.top_category || null,
+      body.prefecture || null,
       productId
     ).run()
 

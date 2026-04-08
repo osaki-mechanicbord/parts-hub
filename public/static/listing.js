@@ -209,6 +209,8 @@ class ProductListingForm {
         stock_quantity: getIntVal('stock-quantity') || 1,
         shipping_type: getVal('shipping-type') || 'buyer_paid',
         is_universal: document.getElementById('is-universal') && document.getElementById('is-universal').checked ? 1 : 0,
+        top_category: getVal('top-category') || 'other',
+        prefecture: getVal('prefecture') || 'all',
         status: 'active',
         // vehicle_master 連動データ
         vm_maker: getVal('vm-maker-name') || null,
@@ -358,6 +360,8 @@ class ProductListingForm {
         stock_quantity: getIntVal('stock-quantity') || 1,
         shipping_type: getVal('shipping-type') || 'buyer_paid',
         is_universal: document.getElementById('is-universal') && document.getElementById('is-universal').checked ? 1 : 0,
+        top_category: getVal('top-category') || 'other',
+        prefecture: getVal('prefecture') || 'all',
         status: 'draft',
         vm_maker: getVal('vm-maker-name') || null,
         vm_model: getVal('vm-model-name') || null,
@@ -822,6 +826,32 @@ async function loadProductForEdit(productId) {
         })
         var shippingInput = document.getElementById('shipping-type')
         if (shippingInput) shippingInput.value = product.shipping_type
+      }
+
+      // 編集モードでtop_categoryをチップ選択に反映
+      if (product.top_category) {
+        var tcChips = document.querySelectorAll('.tc-chip')
+        tcChips.forEach(function(chip) {
+          chip.classList.remove('active')
+          if (chip.getAttribute('data-value') === product.top_category) {
+            chip.classList.add('active')
+          }
+        })
+        var tcInput = document.getElementById('top-category')
+        if (tcInput) tcInput.value = product.top_category
+      }
+
+      // 編集モードでprefectureをチップ選択に反映
+      if (product.prefecture) {
+        var prefChips = document.querySelectorAll('.pref-chip')
+        prefChips.forEach(function(chip) {
+          chip.classList.remove('active')
+          if (chip.getAttribute('data-value') === product.prefecture) {
+            chip.classList.add('active')
+          }
+        })
+        var prefInput = document.getElementById('prefecture')
+        if (prefInput) prefInput.value = product.prefecture
       }
 
       // 編集モードでconditionをチップ選択に反映

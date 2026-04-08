@@ -136,6 +136,8 @@ api.get('/products', async (c) => {
     const condition = c.req.query('condition')
     const vmMaker = c.req.query('vm_maker')
     const vmModel = c.req.query('vm_model')
+    const topCategory = c.req.query('top_category')
+    const prefecture = c.req.query('prefecture')
     const page = parseInt(c.req.query('page') || '1')
     const limit = parseInt(c.req.query('limit') || '20')
     const sort = c.req.query('sort') || 'created_desc'
@@ -184,6 +186,18 @@ api.get('/products', async (c) => {
     if (condition) {
       conditions.push('p.condition = ?')
       params.push(condition)
+    }
+
+    // top_categoryフィルター（TOPページカテゴリタブ用）
+    if (topCategory) {
+      conditions.push('p.top_category = ?')
+      params.push(topCategory)
+    }
+
+    // prefectureフィルター（エリア別ページ用）
+    if (prefecture && prefecture !== 'all') {
+      conditions.push("(p.prefecture = ? OR p.prefecture = 'all')")
+      params.push(prefecture)
     }
 
     // ソート順
@@ -265,6 +279,8 @@ api.get('/products/search', async (c) => {
     const vmMaker = c.req.query('vm_maker')
     const vmModel = c.req.query('vm_model')
     const sellerId = c.req.query('seller_id')
+    const topCategory = c.req.query('top_category')
+    const prefecture = c.req.query('prefecture')
     const limit = Math.min(parseInt(c.req.query('limit') || '60'), 100)
     const offset = parseInt(c.req.query('offset') || '0')
     const countOnly = c.req.query('count_only') === 'true'
@@ -291,6 +307,11 @@ api.get('/products/search', async (c) => {
     if (priceMin) { conditions.push('p.price >= ?'); params.push(priceMin) }
     if (priceMax) { conditions.push('p.price <= ?'); params.push(priceMax) }
     if (condition) { conditions.push('p.condition = ?'); params.push(condition) }
+    if (topCategory) { conditions.push('p.top_category = ?'); params.push(topCategory) }
+    if (prefecture && prefecture !== 'all') {
+      conditions.push("(p.prefecture = ? OR p.prefecture = 'all')")
+      params.push(prefecture)
+    }
 
     const whereClause = conditions.join(' AND ')
 
