@@ -3,11 +3,11 @@ import { Context } from 'hono'
 
 // Stripe設定
 export const STRIPE_CONFIG = {
-  // プラットフォーム手数料（10%）
+  // プラットフォーム手数料（10%）- 出品者負担（メルカリ方式）
   PLATFORM_FEE_PERCENTAGE: 0.10,
   
-  // カード決済手数料（税込、購入者負担）
-  CARD_PROCESSING_FEE: 330,
+  // カード決済手数料 - 廃止（購入者負担なし）
+  CARD_PROCESSING_FEE: 0,
   
   // 最低取引金額（100円）
   MIN_TRANSACTION_AMOUNT: 100,
@@ -36,18 +36,18 @@ export function getStripeClient(c: Context): Stripe {
   })
 }
 
-// 手数料計算
+// 手数料計算（メルカリ方式：出品者のみ10%負担）
 // paymentMethod: 'card' | 'bank_transfer'
 //
-// ■ カード決済の場合:
-//   購入者が支払う金額 = 商品価格 + プラットフォーム手数料(10%) + カード決済手数料(330円)
-//   Stripeが差し引く手数料 = 合計金額 × 3.6% (Stripeが自動徴収)
-//   出品者が受け取る金額 = 商品価格 - プラットフォーム手数料
+// ■ 購入者が支払う金額 = 商品価格のみ（手数料なし）
+// ■ 出品者が受け取る金額 = 商品価格 − プラットフォーム手数料(10%)
+// ■ プラットフォーム収益 = 商品価格 × 10%
 //
-// ■ 銀行振込の場合:
-//   購入者が支払う金額 = 商品価格 + プラットフォーム手数料(10%)
-//   ※ 振込手数料は購入者が銀行に直接支払い（別途負担）
-//   出品者が受け取る金額 = 商品価格 - プラットフォーム手数料
+// 例: 商品価格 10,000円の場合
+//   購入者の支払い: 10,000円
+//   出品者の受取り: 9,000円
+//   PARTS HUB収益: 1,000円
+//   ※ Stripe手数料(3.6%)はプラットフォーム収益から負担
 export function calculateFees(amount: number, paymentMethod: 'card' | 'bank_transfer' = 'card'): {
   subtotal: number
   platformFee: number
@@ -56,29 +56,29 @@ export function calculateFees(amount: number, paymentMethod: 'card' | 'bank_tran
   total: number
   sellerReceives: number
 } {
-  // プラットフォーム手数料: 10%
+  // プラットフォーム手数料: 10%（出品者負担）
   const platformFee = Math.floor(amount * STRIPE_CONFIG.PLATFORM_FEE_PERCENTAGE)
   
-  // カード決済手数料: カード決済時のみ330円（税込）
-  const cardProcessingFee = paymentMethod === 'card' ? STRIPE_CONFIG.CARD_PROCESSING_FEE : 0
+  // カード決済手数料: 0円（購入者負担なし）
+  const cardProcessingFee = 0
   
-  // 購入者が支払う合計金額
-  const total = amount + platformFee + cardProcessingFee
+  // 購入者が支払う合計金額 = 商品価格のみ
+  const total = amount
   
   // Stripe手数料: 合計金額の3.6% (Stripeが自動で差し引く、参考値)
   const stripeFeePercentage = 0.036
   const stripeFee = paymentMethod === 'card' ? Math.floor(total * stripeFeePercentage) : 0
   
-  // 出品者が受け取る金額（支払い方法に関係なく同じ）
+  // 出品者が受け取る金額 = 商品価格 - プラットフォーム手数料(10%)
   const sellerReceives = amount - platformFee
   
   return {
     subtotal: amount,
-    platformFee: platformFee,
-    cardProcessingFee: cardProcessingFee,
-    stripeFee: stripeFee,       // 参考値（Stripeが自動徴収）
-    total: total,               // 購入者の支払い額
-    sellerReceives: sellerReceives
+    platformFee: platformFee,       // 出品者から徴収
+    cardProcessingFee: cardProcessingFee, // 常に0
+    stripeFee: stripeFee,           // 参考値（Stripeが自動徴収）
+    total: total,                   // 購入者の支払い額 = 商品価格
+    sellerReceives: sellerReceives  // 出品者の受取額
   }
 }
 

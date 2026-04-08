@@ -287,7 +287,7 @@ payment.post('/create-checkout-session', authMiddleware, async (c) => {
       return c.json({ success: false, error: amountValidation.error }, 400)
     }
 
-    // 手数料計算（カード決済: +330円決済手数料）
+    // 手数料計算（メルカリ方式：購入者は商品価格のみ、手数料は出品者負担）
     const fees = calculateFees(product.price as number, 'card')
 
     // ★ 商品を即座に「売却中」にする（他のユーザーが購入できないように）
@@ -995,7 +995,7 @@ payment.post('/create-invoice-order', authMiddleware, async (c) => {
       return c.json({ success: false, error: '自分の商品は購入できません' }, 400)
     }
 
-    // 手数料計算（銀行振込: カード決済手数料なし）
+    // 手数料計算（メルカリ方式：購入者は商品価格のみ、手数料は出品者負担）
     const fees = calculateFees(product.price as number, 'bank_transfer')
 
     // 請求書番号生成 (INV-YYYYMMDD-NNNN)
