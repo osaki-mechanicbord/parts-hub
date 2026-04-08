@@ -275,7 +275,7 @@ app.post('/', async (c) => {
         stock_quantity, status, is_proxy,
         vm_maker, vm_model, vm_grade, vm_tire_size, shipping_type, is_universal,
         top_category, prefecture,
-        jan_code, manufacturer_name, product_number, manufacturer_url
+        jan_code, manufacturer, product_number, manufacturer_url
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       userId,
@@ -399,7 +399,7 @@ app.put('/:id', async (c) => {
         top_category = COALESCE(?, top_category),
         prefecture = COALESCE(?, prefecture),
         jan_code = ?,
-        manufacturer_name = ?,
+        manufacturer = ?,
         product_number = ?,
         manufacturer_url = ?,
         updated_at = CURRENT_TIMESTAMP

@@ -748,7 +748,7 @@ async function loadProductForEdit(productId) {
       el = document.getElementById('stock-quantity'); if (el) el.value = product.stock_quantity || 1
       el = document.getElementById('part-number'); if (el) el.value = product.part_number || ''
       el = document.getElementById('jan-code'); if (el) el.value = product.jan_code || ''
-      el = document.getElementById('manufacturer-name'); if (el) el.value = product.manufacturer_name || ''
+      el = document.getElementById('manufacturer-name'); if (el) el.value = product.manufacturer_name || product.manufacturer || ''
       el = document.getElementById('product-number'); if (el) el.value = product.product_number || ''
       el = document.getElementById('manufacturer-url'); if (el) el.value = product.manufacturer_url || ''
       

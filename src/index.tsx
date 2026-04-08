@@ -3675,7 +3675,7 @@ app.get('/products/:id', async (c) => {
       // JANコード（GTIN）がある場合
       if (p.jan_code) productSchema.gtin13 = p.jan_code
       // メーカー名がある場合
-      if (p.manufacturer_name) productSchema.brand = { "@type": "Brand", "name": p.manufacturer_name }
+      if (p.manufacturer_name || p.manufacturer) productSchema.brand = { "@type": "Brand", "name": p.manufacturer_name || p.manufacturer }
       // 製品番号がある場合
       if (p.product_number) productSchema.productID = p.product_number
       // AggregateRating があれば追加

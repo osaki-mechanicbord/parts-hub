@@ -1131,7 +1131,8 @@ function renderProductSpecs(product) {
     var section = document.getElementById('product-specs-section');
     if (!section) return;
 
-    var hasAnySpec = product.jan_code || product.manufacturer_name || product.part_number || product.product_number || product.manufacturer_url;
+    var mfrName = product.manufacturer_name || product.manufacturer || null;
+    var hasAnySpec = product.jan_code || mfrName || product.part_number || product.product_number || product.manufacturer_url;
     if (!hasAnySpec) {
         section.style.display = 'none';
         return;
@@ -1148,11 +1149,11 @@ function renderProductSpecs(product) {
     }
 
     // メーカー名
-    if (product.manufacturer_name) {
+    if (mfrName) {
         var row = document.getElementById('spec-manufacturer-row');
         var val = document.getElementById('spec-manufacturer');
         if (row) row.style.display = '';
-        if (val) val.textContent = product.manufacturer_name;
+        if (val) val.textContent = mfrName;
     }
 
     // 品番 (part_number は既存フィールドだが、スペック欄にも表示)
