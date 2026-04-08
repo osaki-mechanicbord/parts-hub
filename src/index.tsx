@@ -42,12 +42,13 @@ const BUILD_VERSION = '20260404a'
 const v = (path: string) => `${path}?v=${BUILD_VERSION}`
 
 // ページ速度最適化: preconnect + DNS prefetch
-const PERF_HINTS = `<link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
-<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+const PERF_HINTS = `<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="dns-prefetch" href="https://cdn.tailwindcss.com">
 <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">`
+
+// Tailwind CSS（ビルド済み本番用CSS）
+const TAILWIND_CSS = `<link rel="stylesheet" href="/static/tailwind.css?v=${BUILD_VERSION}">`
 
 // 多言語SEO: hreflangタグ生成ヘルパー
 const hreflang = (path: string) => `<link rel="alternate" hreflang="ja" href="https://parts-hub-tci.com${path}">
@@ -1016,7 +1017,7 @@ app.get('/', (c) => {
         <link rel="icon" type="image/svg+xml" href="/icons/logo.svg">
         
         <!-- スタイル -->
-        <script src="https://cdn.tailwindcss.com"></script>
+        ${TAILWIND_CSS}
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         
         <style>
@@ -1132,19 +1133,6 @@ app.get('/', (c) => {
             }
         </style>
         
-        <script>
-            tailwind.config = {
-                theme: {
-                    extend: {
-                        colors: {
-                            primary: '#ff4757',
-                            secondary: '#5f27cd',
-                        }
-                    }
-                }
-            }
-        </script>
-
         <!-- 構造化データ（JSON-LD） -->
         <script type="application/ld+json">
         {
@@ -2255,7 +2243,7 @@ app.get('/news', (c) => {
           "isPartOf": { "@type": "WebSite", "name": "PARTS HUB", "url": "https://parts-hub-tci.com" }
         }
         </script>
-        <script src="https://cdn.tailwindcss.com"></script>
+        ${TAILWIND_CSS}
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>${BREADCRUMB_CSS}</style>
     </head>
@@ -2789,7 +2777,7 @@ app.get('/news/:category/:year/:month/:slug', async (c) => {
         ${articleJsonLd}
         ${breadcrumbJsonLd}
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
-        <script src="https://cdn.tailwindcss.com"></script>
+        ${TAILWIND_CSS}
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         ${getArticleDetailCSS()}
     </head>
@@ -2839,7 +2827,7 @@ app.get('/news/:slug', (c) => {
         ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>記事詳細 - PARTS HUBニュース</title>
-        <script src="https://cdn.tailwindcss.com"></script>
+        ${TAILWIND_CSS}
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         ${getArticleDetailCSS()}
     </head>
@@ -2891,7 +2879,7 @@ app.get('/login', (c) => {
         <meta name="description" content="PARTS HUBにログイン。自動車パーツの売買・出品を始めましょう。">
         <meta name="robots" content="noindex, follow">
         <meta name="theme-color" content="#ff4757">
-        <script src="https://cdn.tailwindcss.com"></script>
+        ${TAILWIND_CSS}
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
         <style>
@@ -3205,7 +3193,7 @@ app.get('/register', (c) => {
         <meta name="description" content="PARTS HUBに新規登録。無料で自動車パーツの売買が始められます。">
         <meta name="robots" content="noindex, follow">
         <meta name="theme-color" content="#ff4757">
-        <script src="https://cdn.tailwindcss.com"></script>
+        ${TAILWIND_CSS}
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
         <style>
@@ -3728,7 +3716,7 @@ app.get('/products/:id', async (c) => {
         ${productJsonLd}
         ${breadcrumbJsonLd}
         <meta name="theme-color" content="#ff4757">
-        <script src="https://cdn.tailwindcss.com"></script>
+        ${TAILWIND_CSS}
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>
             .main-image-container {
@@ -4055,7 +4043,7 @@ app.get('/listing', (c) => {
         <meta property="og:url" content="https://parts-hub-tci.com/listing">
         <meta property="og:site_name" content="PARTS HUB">
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
-        <script src="https://cdn.tailwindcss.com"></script>
+        ${TAILWIND_CSS}
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
         <style>
@@ -5294,7 +5282,7 @@ app.get('/chat', (c) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>メッセージ - PARTS HUB（パーツハブ）</title>
         <meta name="theme-color" content="#ff4757">
-        <script src="https://cdn.tailwindcss.com"></script>
+        ${TAILWIND_CSS}
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>
             .unread-badge {
@@ -5501,7 +5489,7 @@ app.get('/chat/:roomId', (c) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>メッセージ - PARTS HUB（パーツハブ）</title>
         <meta name="theme-color" content="#ff4757">
-        <script src="https://cdn.tailwindcss.com"></script>
+        ${TAILWIND_CSS}
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>
             .message-container {
@@ -5864,7 +5852,7 @@ app.get('/mypage', (c) => {
         <title>マイページ - PARTS HUB（パーツハブ）</title>
         <meta name="robots" content="noindex, nofollow">
         <meta name="theme-color" content="#ff4757">
-        <script src="https://cdn.tailwindcss.com"></script>
+        ${TAILWIND_CSS}
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>
             .scrollbar-hide::-webkit-scrollbar { display: none; }
@@ -6113,7 +6101,7 @@ app.get('/notifications', (c) => {
         <title>通知 - PARTS HUB（パーツハブ）</title>
         <meta name="robots" content="noindex, nofollow">
         <meta name="theme-color" content="#ff4757">
-        <script src="https://cdn.tailwindcss.com"></script>
+        ${TAILWIND_CSS}
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     </head>
     <body class="bg-gray-50 min-h-screen">
@@ -6191,7 +6179,7 @@ app.get('/profile/edit', (c) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>プロフィール編集 - PARTS HUB（パーツハブ）</title>
         <meta name="theme-color" content="#ff4757">
-        <script src="https://cdn.tailwindcss.com"></script>
+        ${TAILWIND_CSS}
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>
             .upload-area {
@@ -6480,7 +6468,7 @@ app.get('/widget', (c) => {
     <meta property="og:url" content="https://parts-hub-tci.com/widget">
     <meta name="robots" content="index, follow">
     <meta name="theme-color" content="#ff4757">
-    <script src="https://cdn.tailwindcss.com"></script>
+    ${TAILWIND_CSS}
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
@@ -6640,7 +6628,7 @@ app.get('/seller/:id', async (c) => {
         <meta name="description" content="PARTS HUBの出品者プロフィールとレビュー一覧です。取引実績やバッジ、評価を確認できます。">
         <meta name="robots" content="noindex">
         <meta name="theme-color" content="#ff4757">
-        <script src="https://cdn.tailwindcss.com"></script>
+        ${TAILWIND_CSS}
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
         <style>
@@ -7047,7 +7035,7 @@ app.get('/reviews/new', (c) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>レビューを書く - PARTS HUB（パーツハブ）</title>
         <meta name="theme-color" content="#ff4757">
-        <script src="https://cdn.tailwindcss.com"></script>
+        ${TAILWIND_CSS}
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>
             .star-rating {
@@ -7187,7 +7175,7 @@ app.get('/transactions/:id', (c) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>取引詳細 - PARTS HUB（パーツハブ）</title>
         <meta name="theme-color" content="#ff4757">
-        <script src="https://cdn.tailwindcss.com"></script>
+        ${TAILWIND_CSS}
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     </head>
     <body class="bg-gray-50 min-h-screen">
@@ -7239,8 +7227,8 @@ app.get('/transaction/:id/success', (c) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>購入完了 - PARTS HUB（パーツハブ）</title>
         <meta name="theme-color" content="#ff4757">
-        <script src="https://cdn.tailwindcss.com"></script>
-        <script>tailwind.config={theme:{extend:{colors:{primary:'#ff4757','primary-dark':'#ee3b4c'}}}}</script>
+        ${TAILWIND_CSS}
+        
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>
             @keyframes checkmark { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
@@ -7508,8 +7496,8 @@ app.get('/transaction/:id/cancel', async (c) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>決済キャンセル - PARTS HUB（パーツハブ）</title>
         <meta name="theme-color" content="#ff4757">
-        <script src="https://cdn.tailwindcss.com"></script>
-        <script>tailwind.config={theme:{extend:{colors:{primary:'#ff4757','primary-dark':'#ee3b4c'}}}}</script>
+        ${TAILWIND_CSS}
+        
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     </head>
     <body class="bg-gray-50 min-h-screen">
@@ -7575,7 +7563,7 @@ app.get('/contact', (c) => {
         <meta property="og:site_name" content="PARTS HUB">
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
         <meta name="theme-color" content="#ff4757">
-        <script src="https://cdn.tailwindcss.com"></script>
+        ${TAILWIND_CSS}
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>${BREADCRUMB_CSS}</style>
     </head>
@@ -7750,7 +7738,7 @@ app.get('/favorites', (c) => {
         <title>お気に入り - PARTS HUB（パーツハブ）</title>
         <meta name="robots" content="noindex, nofollow">
         <meta name="theme-color" content="#ff4757">
-        <script src="https://cdn.tailwindcss.com"></script>
+        ${TAILWIND_CSS}
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     </head>
     <body class="bg-gray-50 min-h-screen">
@@ -7914,7 +7902,7 @@ app.get('/search', (c) => {
         }
         </script>
         <meta name="theme-color" content="#ff4757">
-        <script src="https://cdn.tailwindcss.com"></script>
+        ${TAILWIND_CSS}
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>${BREADCRUMB_CSS}</style>
     </head>
@@ -8179,7 +8167,7 @@ app.get('/privacy', (c) => {
         <meta property="og:site_name" content="PARTS HUB">
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
         <meta name="theme-color" content="#ff4757">
-        <script src="https://cdn.tailwindcss.com"></script>
+        ${TAILWIND_CSS}
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>${BREADCRUMB_CSS}</style>
     </head>
@@ -8331,7 +8319,7 @@ app.get('/terms', (c) => {
         <meta property="og:site_name" content="PARTS HUB">
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
         <meta name="theme-color" content="#ff4757">
-        <script src="https://cdn.tailwindcss.com"></script>
+        ${TAILWIND_CSS}
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>${BREADCRUMB_CSS}</style>
     </head>
@@ -8572,7 +8560,7 @@ app.get('/password-reset', (c) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>パスワード再設定 - PARTS HUB（パーツハブ）</title>
         <meta name="theme-color" content="#ff4757">
-        <script src="https://cdn.tailwindcss.com"></script>
+        ${TAILWIND_CSS}
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     </head>
     <body class="bg-gradient-to-br from-red-50 to-pink-50 min-h-screen flex items-center justify-center px-4">
@@ -8692,7 +8680,7 @@ app.get('/security', (c) => {
         <meta property="og:site_name" content="PARTS HUB">
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
         <meta name="theme-color" content="#ff4757">
-        <script src="https://cdn.tailwindcss.com"></script>
+        ${TAILWIND_CSS}
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>${BREADCRUMB_CSS}</style>
     </head>
@@ -8956,7 +8944,7 @@ app.get('/area', (c) => {
     <meta property="og:image" content="https://parts-hub-tci.com/icons/og-default.png">
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
     <meta name="theme-color" content="#ff4757">
-    <script src="https://cdn.tailwindcss.com"></script>
+    ${TAILWIND_CSS}
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <style>
@@ -9090,7 +9078,7 @@ app.get('/area/:pref', async (c) => {
       }
     })}</script>
     <meta name="theme-color" content="#ff4757">
-    <script src="https://cdn.tailwindcss.com"></script>
+    ${TAILWIND_CSS}
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <style>
@@ -9394,7 +9382,7 @@ app.get('/area/:pref/:maker', async (c) => {
     <meta name="robots" content="${productCount > 0 ? 'index, follow, max-image-preview:large, max-snippet:-1' : 'noindex, follow'}">
     <script type="application/ld+json">${jsonLd}</script>
     <meta name="theme-color" content="#ff4757">
-    <script src="https://cdn.tailwindcss.com"></script>
+    ${TAILWIND_CSS}
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <style>
@@ -9568,7 +9556,7 @@ app.get('/area/:pref/:maker/:model', async (c) => {
     <meta name="robots" content="${productCount > 0 ? 'index, follow, max-image-preview:large, max-snippet:-1' : 'noindex, follow'}">
     <script type="application/ld+json">${jsonLd}</script>
     <meta name="theme-color" content="#ff4757">
-    <script src="https://cdn.tailwindcss.com"></script>
+    ${TAILWIND_CSS}
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <style>
@@ -9737,7 +9725,7 @@ app.get('/vehicle', async (c) => {
     <meta property="og:image" content="https://parts-hub-tci.com/icons/og-default.png">
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
     <meta name="theme-color" content="#ff4757">
-    <script src="https://cdn.tailwindcss.com"></script>
+    ${TAILWIND_CSS}
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <style>
@@ -9970,7 +9958,7 @@ app.get('/vehicle/:makerOrSlug', async (c) => {
     <meta name="robots" content="${productCount > 0 ? 'index, follow, max-image-preview:large, max-snippet:-1' : 'noindex, follow'}">
     <script type="application/ld+json">${jsonLd}</script>
     <meta name="theme-color" content="#ff4757">
-    <script src="https://cdn.tailwindcss.com"></script>
+    ${TAILWIND_CSS}
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <style>
@@ -10258,7 +10246,7 @@ app.get('/vehicle/:maker/:model', async (c) => {
       "itemListOrder": "https://schema.org/ItemListUnordered"
     }) + '</script>' : ''}
     <meta name="theme-color" content="#ff4757">
-    <script src="https://cdn.tailwindcss.com"></script>
+    ${TAILWIND_CSS}
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <style>
@@ -10538,7 +10526,7 @@ app.get('/partner', (c) => {
     '<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">' +
     '<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"PARTS HUB","item":"https://parts-hub-tci.com/"},{"@type":"ListItem","position":2,"name":"パートナー"}]}</script>' +
     '<meta name="theme-color" content="#ff4757">' +
-    '<script src="https://cdn.tailwindcss.com"></script>' +
+    '<link rel="stylesheet" href="/static/tailwind.css?v=' + BUILD_VERSION + '">' +
     '<link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">' +
     '<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">' +
     '<style>' +
@@ -10622,7 +10610,7 @@ app.get('/partner/:slug', (c) => {
     '<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">' +
     '<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="' + p.name + '向け - PARTS HUB">' +
     '<meta name="theme-color" content="#ff4757">' +
-    '<script src="https://cdn.tailwindcss.com"></script>' +
+    '<link rel="stylesheet" href="/static/tailwind.css?v=' + BUILD_VERSION + '">' +
     '<link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">' +
     '<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">' +
     '<style>' +
@@ -10859,7 +10847,7 @@ app.get('/guide', async (c) => {
     <meta property="og:image" content="https://parts-hub-tci.com/icons/og-default.png">
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
     <meta name="theme-color" content="#ff4757">
-    <script src="https://cdn.tailwindcss.com"></script>
+    ${TAILWIND_CSS}
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <style>
@@ -10971,7 +10959,7 @@ app.get('/guide/:slug', async (c) => {
       ]}
     })}</script>
     <meta name="theme-color" content="#ff4757">
-    <script src="https://cdn.tailwindcss.com"></script>
+    ${TAILWIND_CSS}
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <style>
@@ -11116,7 +11104,7 @@ app.get('/sitemap', async (c) => {
         <meta property="og:site_name" content="PARTS HUB">
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
         <meta name="theme-color" content="#ff4757">
-        <script src="https://cdn.tailwindcss.com"></script>
+        ${TAILWIND_CSS}
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>
           .sitemap-link { display:block; padding:8px 12px; border-radius:8px; color:#374151; text-decoration:none; transition:all 0.15s ease; }
@@ -11330,7 +11318,7 @@ app.get('/legal', (c) => {
         <meta property="og:site_name" content="PARTS HUB">
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
         <meta name="theme-color" content="#ff4757">
-        <script src="https://cdn.tailwindcss.com"></script>
+        ${TAILWIND_CSS}
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>${BREADCRUMB_CSS}</style>
     </head>
@@ -11521,7 +11509,7 @@ app.get('/argos-demo', (c) => {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ARGOS JPC 連携デモ - PARTS HUB</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  ${TAILWIND_CSS}
   <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
   <style>
     .vin-input { font-family: 'Courier New', monospace; font-size: 1.15rem; letter-spacing: 3px; text-transform: uppercase; }
@@ -12284,7 +12272,7 @@ app.get('/vehicle-demo', (c) => {
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>適合車両情報入力デモ - PARTS HUB</title>
-      <script src="https://cdn.tailwindcss.com"></script>
+      ${TAILWIND_CSS}
       <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
       <style>
         .step-active { background: linear-gradient(135deg, #ef4444, #ec4899); color: white; }
@@ -12749,13 +12737,8 @@ app.get('/bank-demo', (c) => {
         ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>銀行口座情報入力デモ - PARTS HUB</title>
-        <script src="https://cdn.tailwindcss.com"></script>
+        ${TAILWIND_CSS}
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-        <script>
-          tailwind.config = {
-            theme: { extend: { colors: { primary: '#ef4444', 'primary-dark': '#dc2626' } } }
-          }
-        </script>
         <style>
           .autocomplete-dropdown {
             max-height: 280px;
@@ -13368,9 +13351,27 @@ app.get('/faq', (c) => {
         <meta property="og:locale" content="ja_JP">
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
         <meta name="theme-color" content="#ff4757">
-        <script src="https://cdn.tailwindcss.com"></script>
+        ${TAILWIND_CSS}
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>${BREADCRUMB_CSS}</style>
+
+        <!-- BreadcrumbList JSON-LD -->
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "itemListElement": [{
+            "@type": "ListItem",
+            "position": 1,
+            "name": "PARTS HUB",
+            "item": "https://parts-hub-tci.com/"
+          },{
+            "@type": "ListItem",
+            "position": 2,
+            "name": "よくある質問（FAQ）"
+          }]
+        }
+        </script>
 
         <!-- 構造化データ（JSON-LD） - FAQ -->
         <script type="application/ld+json">
@@ -14324,8 +14325,8 @@ app.get('/admin/login', (c) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>管理者ログイン - PARTS HUB</title>
         <meta name="robots" content="noindex, nofollow">
-        <script src="https://cdn.tailwindcss.com"></script>
-        <script>tailwind.config={theme:{extend:{colors:{primary:'#ff4757','primary-dark':'#ee3b4c'}}}}</script>
+        ${TAILWIND_CSS}
+        
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     </head>
     <body class="bg-gray-100 min-h-screen flex items-center justify-center">
@@ -14457,7 +14458,7 @@ app.notFound((c) => {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ページが見つかりません - PARTS HUB</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  ${TAILWIND_CSS}
   <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-50 min-h-screen flex flex-col">
@@ -14498,7 +14499,7 @@ app.onError((err, c) => {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>エラー - PARTS HUB</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  ${TAILWIND_CSS}
   <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-50 min-h-screen flex flex-col">
@@ -14536,7 +14537,7 @@ app.get('/admin-old-unused', (c) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>管理画面 - PARTS HUB</title>
         <meta name="robots" content="noindex, nofollow">
-        <script src="https://cdn.tailwindcss.com"></script>
+        ${TAILWIND_CSS}
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     </head>
     <body class="bg-gray-100">

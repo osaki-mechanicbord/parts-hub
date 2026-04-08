@@ -3926,7 +3926,8 @@ adminPagesRoutes.get('/partners', (c) => {
 adminPagesRoutes.get('/cross-border', (c) => {
   const content = `
     <style>
-      .cb-stat-card { background:white; border-radius:16px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.06); border:1px solid #f3f4f6; }
+      .cb-stat-card { background:white; border-radius:16px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.06); border:1px solid #f3f4f6; transition:transform .15s; }
+      .cb-stat-card:hover { transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,0.08); }
       .cb-stat-value { font-size:28px; font-weight:800; color:#1f2937; }
       .cb-stat-label { font-size:12px; color:#9ca3af; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; }
       .cb-tab { padding:10px 20px; border-radius:10px; font-weight:600; font-size:14px; cursor:pointer; transition:all .2s; border:none; background:#f3f4f6; color:#6b7280; }
@@ -3936,8 +3937,11 @@ adminPagesRoutes.get('/cross-border', (c) => {
       .cb-card:hover { box-shadow:0 4px 12px rgba(0,0,0,0.08); }
       .cb-badge { display:inline-block; padding:2px 8px; border-radius:6px; font-size:11px; font-weight:600; }
       .cb-badge-draft { background:#f3f4f6; color:#6b7280; }
+      .cb-badge-ready { background:#fef9c3; color:#a16207; }
       .cb-badge-listed { background:#dcfce7; color:#16a34a; }
       .cb-badge-sold { background:#dbeafe; color:#2563eb; }
+      .cb-badge-cancelled { background:#fee2e2; color:#dc2626; }
+      .cb-badge-error { background:#fee2e2; color:#dc2626; }
       .demand-bar { height:6px; border-radius:3px; background:#e5e7eb; overflow:hidden; }
       .demand-fill { height:100%; border-radius:3px; transition:width .3s; }
       .rate-display { background:linear-gradient(135deg,#1e40af,#3b82f6); color:white; border-radius:12px; padding:16px 20px; }
@@ -3947,6 +3951,16 @@ adminPagesRoutes.get('/cross-border', (c) => {
       .filter-chip { padding:4px 12px; border-radius:20px; font-size:12px; font-weight:500; border:1px solid #d1d5db; cursor:pointer; transition:all .15s; }
       .filter-chip:hover { border-color:#3b82f6; }
       .filter-chip.active { background:#3b82f6; color:white; border-color:#3b82f6; }
+      .order-timeline { position:relative; padding-left:24px; }
+      .order-timeline::before { content:''; position:absolute; left:7px; top:4px; bottom:4px; width:2px; background:#e5e7eb; }
+      .order-step { position:relative; margin-bottom:12px; }
+      .order-step::before { content:''; position:absolute; left:-21px; top:4px; width:12px; height:12px; border-radius:50%; background:#e5e7eb; border:2px solid white; }
+      .order-step.active::before { background:#3b82f6; }
+      .order-step.done::before { background:#16a34a; }
+      .sim-row { display:grid; grid-template-columns:60px 1fr 1fr 1fr 1fr; gap:8px; padding:6px 8px; border-radius:6px; font-size:13px; }
+      .sim-row:nth-child(even) { background:#f9fafb; }
+      .listing-actions { display:flex; gap:4px; margin-top:8px; }
+      .listing-actions button { font-size:11px; padding:3px 8px; border-radius:6px; font-weight:600; border:1px solid transparent; cursor:pointer; transition:all .15s; }
     </style>
 
     <!-- 為替レート表示 -->
@@ -4003,6 +4017,19 @@ adminPagesRoutes.get('/cross-border', (c) => {
     <div id="tab-candidates">
       <!-- フィルター -->
       <div class="bg-white rounded-xl p-4 mb-4 border border-gray-100">
+        <!-- キーワード検索 -->
+        <div class="flex items-center gap-2 mb-3">
+          <div class="flex-1 relative">
+            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+            <input type="text" id="filter-keyword" placeholder="商品名・品番で検索..." class="w-full pl-9 pr-3 py-2 border rounded-lg text-sm" onkeydown="if(event.key==='Enter'){cbCandidateOffset=0;loadCandidates();}">
+          </div>
+          <select id="filter-sort" class="px-3 py-2 border rounded-lg text-sm text-gray-600" onchange="cbCandidateOffset=0;loadCandidates();">
+            <option value="newest">新着順</option>
+            <option value="price_desc">価格が高い順</option>
+            <option value="price_asc">価格が安い順</option>
+            <option value="popular">人気順</option>
+          </select>
+        </div>
         <div class="flex flex-wrap items-center gap-3">
           <span class="text-xs font-bold text-gray-500">メーカー:</span>
           <div class="flex flex-wrap gap-1">
@@ -4016,6 +4043,7 @@ adminPagesRoutes.get('/cross-border', (c) => {
             <button class="filter-chip" data-maker="三菱" onclick="filterMaker(this)">三菱</button>
             <button class="filter-chip" data-maker="いすゞ" onclick="filterMaker(this)">いすゞ</button>
             <button class="filter-chip" data-maker="日野" onclick="filterMaker(this)">日野</button>
+            <button class="filter-chip" data-maker="ダイハツ" onclick="filterMaker(this)">ダイハツ</button>
           </div>
         </div>
         <div class="flex flex-wrap items-center gap-3 mt-3">
@@ -4024,7 +4052,12 @@ adminPagesRoutes.get('/cross-border', (c) => {
             <button class="filter-chip active" data-cat="" onclick="filterCat(this)">すべて</button>
             <button class="filter-chip" data-cat="car" onclick="filterCat(this)">乗用車</button>
             <button class="filter-chip" data-cat="truck" onclick="filterCat(this)">トラック</button>
+            <button class="filter-chip" data-cat="bus" onclick="filterCat(this)">バス</button>
             <button class="filter-chip" data-cat="motorcycle" onclick="filterCat(this)">バイク</button>
+            <button class="filter-chip" data-cat="forklift" onclick="filterCat(this)">フォークリフト</button>
+            <button class="filter-chip" data-cat="heavy_equipment" onclick="filterCat(this)">重機</button>
+            <button class="filter-chip" data-cat="marine" onclick="filterCat(this)">船舶</button>
+            <button class="filter-chip" data-cat="agricultural" onclick="filterCat(this)">農機具</button>
             <button class="filter-chip" data-cat="tools" onclick="filterCat(this)">工具</button>
             <button class="filter-chip" data-cat="rebuilt" onclick="filterCat(this)">リビルト</button>
             <button class="filter-chip" data-cat="electrical" onclick="filterCat(this)">電装</button>
@@ -4035,9 +4068,10 @@ adminPagesRoutes.get('/cross-border', (c) => {
           <input type="number" id="filter-min-price" placeholder="¥下限" class="px-3 py-1.5 border rounded-lg text-sm w-28">
           <span class="text-gray-400">〜</span>
           <input type="number" id="filter-max-price" placeholder="¥上限" class="px-3 py-1.5 border rounded-lg text-sm w-28">
-          <button onclick="loadCandidates()" class="px-4 py-1.5 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 font-semibold">
+          <button onclick="cbCandidateOffset=0;loadCandidates()" class="px-4 py-1.5 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 font-semibold">
             <i class="fas fa-filter mr-1"></i>絞り込み
           </button>
+          <span class="text-xs text-gray-400 ml-2" id="candidates-count"></span>
         </div>
       </div>
 
@@ -4057,6 +4091,14 @@ adminPagesRoutes.get('/cross-border', (c) => {
 
     <!-- ===== 海外出品タブ ===== -->
     <div id="tab-listings" style="display:none">
+      <!-- ステータスフィルタ -->
+      <div class="flex gap-2 mb-4 flex-wrap">
+        <button class="filter-chip active" data-lstatus="" onclick="filterListingStatus(this)">すべて</button>
+        <button class="filter-chip" data-lstatus="draft" onclick="filterListingStatus(this)">下書き</button>
+        <button class="filter-chip" data-lstatus="ready" onclick="filterListingStatus(this)">出品準備完了</button>
+        <button class="filter-chip" data-lstatus="listed" onclick="filterListingStatus(this)">出品中</button>
+        <button class="filter-chip" data-lstatus="sold" onclick="filterListingStatus(this)">売却済</button>
+      </div>
       <div id="listings-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="text-center py-12 text-gray-400 col-span-full">読み込み中...</div>
       </div>
@@ -4064,8 +4106,38 @@ adminPagesRoutes.get('/cross-border', (c) => {
 
     <!-- ===== 海外注文タブ ===== -->
     <div id="tab-orders" style="display:none">
+      <div class="bg-white rounded-xl p-4 mb-4 border border-gray-100">
+        <p class="text-sm text-gray-500 mb-2"><i class="fas fa-info-circle mr-1"></i>注文フロー</p>
+        <div class="flex items-center gap-1 text-xs flex-wrap">
+          <span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded">受注</span><i class="fas fa-arrow-right text-gray-300"></i>
+          <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded">買取依頼</span><i class="fas fa-arrow-right text-gray-300"></i>
+          <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded">買取完了</span><i class="fas fa-arrow-right text-gray-300"></i>
+          <span class="px-2 py-1 bg-purple-100 text-purple-700 rounded">検品・梱包</span><i class="fas fa-arrow-right text-gray-300"></i>
+          <span class="px-2 py-1 bg-indigo-100 text-indigo-700 rounded">発送済</span><i class="fas fa-arrow-right text-gray-300"></i>
+          <span class="px-2 py-1 bg-green-100 text-green-700 rounded">配達完了</span><i class="fas fa-arrow-right text-gray-300"></i>
+          <span class="px-2 py-1 bg-green-200 text-green-800 rounded font-bold">取引完了</span>
+        </div>
+      </div>
       <div id="orders-list">
         <div class="text-center py-12 text-gray-400">読み込み中...</div>
+      </div>
+    </div>
+
+    <!-- ===== 利益シミュレーターモーダル ===== -->
+    <div id="sim-modal" class="modal-overlay">
+      <div class="modal-content" style="max-width:600px;">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-bold text-gray-800"><i class="fas fa-calculator mr-2 text-green-500"></i>為替別 利益シミュレーション</h3>
+          <button onclick="document.getElementById('sim-modal').classList.remove('show')" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+        </div>
+        <div class="bg-gray-50 rounded-xl p-4 mb-4">
+          <p class="text-sm text-gray-600">仕入原価(税込): <strong id="sim-cost">¥0</strong></p>
+          <p class="text-sm text-gray-600">販売価格: <strong id="sim-usd">$0</strong> / 送料: <strong id="sim-ship">$0</strong></p>
+        </div>
+        <div class="sim-row font-bold text-xs text-gray-500 mb-1">
+          <span>レート</span><span>売上(¥)</span><span>手数料</span><span>利益</span><span>利益率</span>
+        </div>
+        <div id="sim-results"></div>
       </div>
     </div>
 
@@ -4121,8 +4193,13 @@ adminPagesRoutes.get('/cross-border', (c) => {
             </div>
           </div>
           <div class="mt-3 pt-3 border-t border-blue-200 flex items-center justify-between">
-            <span class="text-sm text-blue-700">予想利益:</span>
-            <span class="text-xl font-bold" id="modal-profit">-</span>
+            <div>
+              <span class="text-sm text-blue-700">予想利益:</span>
+              <span class="text-xl font-bold" id="modal-profit">-</span>
+            </div>
+            <button onclick="openSimulator()" class="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-lg hover:bg-blue-200 font-semibold">
+              <i class="fas fa-calculator mr-1"></i>為替別シミュレーション
+            </button>
           </div>
         </div>
 
@@ -4142,8 +4219,9 @@ adminPagesRoutes.get('/cross-border', (c) => {
     <script>
     var cbCurrentRate = 150;
     var cbCandidateOffset = 0;
-    var cbCurrentFilters = { maker: '', top_category: '', min_price: '', max_price: '' };
+    var cbCurrentFilters = { maker: '', top_category: '', min_price: '', max_price: '', q: '' };
     var cbCurrentProduct = null;
+    var cbListingStatusFilter = '';
 
     // ===== 為替レート =====
     async function refreshRate() {
@@ -4216,6 +4294,10 @@ adminPagesRoutes.get('/cross-border', (c) => {
       var maxP = document.getElementById('filter-max-price').value;
       if (minP) params.set('min_price', minP);
       if (maxP) params.set('max_price', maxP);
+      var kw = document.getElementById('filter-keyword').value.trim();
+      if (kw) params.set('q', kw);
+      var sortVal = document.getElementById('filter-sort').value;
+      if (sortVal) params.set('sort', sortVal);
 
       try {
         var res = await axios.get('/api/admin/cross-border/candidates?' + params, {
@@ -4224,6 +4306,7 @@ adminPagesRoutes.get('/cross-border', (c) => {
         var grid = document.getElementById('candidates-grid');
         if (!append) grid.innerHTML = '';
 
+        document.getElementById('candidates-count').textContent = res.data.total + '件の候補';
         if (res.data.items.length === 0 && !append) {
           grid.innerHTML = '<div class="text-center py-12 text-gray-400 col-span-full"><i class="fas fa-box-open text-4xl mb-3"></i><p>候補商品がありません</p></div>';
           document.getElementById('candidates-load-more').classList.add('hidden');
@@ -4376,11 +4459,21 @@ adminPagesRoutes.get('/cross-border', (c) => {
       }
     }
 
+    // ===== 出品ステータスフィルタ =====
+    function filterListingStatus(el) {
+      document.querySelectorAll('[data-lstatus]').forEach(function(c) { c.classList.remove('active'); });
+      el.classList.add('active');
+      cbListingStatusFilter = el.getAttribute('data-lstatus');
+      loadListings();
+    }
+
     // ===== 海外出品一覧 =====
     async function loadListings() {
       var grid = document.getElementById('listings-grid');
       try {
-        var res = await axios.get('/api/admin/cross-border/listings', {
+        var url = '/api/admin/cross-border/listings';
+        if (cbListingStatusFilter) url += '?status=' + cbListingStatusFilter;
+        var res = await axios.get(url, {
           headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') }
         });
         if (!res.data.items || res.data.items.length === 0) {
@@ -4388,29 +4481,78 @@ adminPagesRoutes.get('/cross-border', (c) => {
           return;
         }
         var statusLabels = { draft:'下書き', translating:'翻訳中', ready:'出品準備完了', listed:'出品中', sold:'売却済', cancelled:'取消', error:'エラー' };
-        var statusColors = { draft:'cb-badge-draft', ready:'bg-yellow-100 text-yellow-700', listed:'cb-badge-listed', sold:'cb-badge-sold', cancelled:'bg-red-100 text-red-700', error:'bg-red-100 text-red-700' };
+        var statusColors = { draft:'cb-badge-draft', ready:'cb-badge-ready', listed:'cb-badge-listed', sold:'cb-badge-sold', cancelled:'cb-badge-cancelled', error:'cb-badge-error' };
+        // ステータス遷移ボタン生成
+        function getActionButtons(item) {
+          var s = item.status;
+          var btns = '';
+          if (s === 'draft') {
+            btns += '<button onclick="updateListingStatus(' + item.id + ',\\'ready\\')" style="background:#fef9c3;color:#a16207;">出品準備完了にする</button>';
+            btns += '<button onclick="deleteListing(' + item.id + ')" style="background:#fee2e2;color:#dc2626;">削除</button>';
+          } else if (s === 'ready') {
+            btns += '<button onclick="updateListingStatus(' + item.id + ',\\'listed\\')" style="background:#dcfce7;color:#16a34a;">出品中にする</button>';
+            btns += '<button onclick="updateListingStatus(' + item.id + ',\\'draft\\')" style="background:#f3f4f6;color:#6b7280;">下書きに戻す</button>';
+          } else if (s === 'listed') {
+            btns += '<button onclick="updateListingStatus(' + item.id + ',\\'sold\\')" style="background:#dbeafe;color:#2563eb;">売却済にする</button>';
+            btns += '<button onclick="updateListingStatus(' + item.id + ',\\'cancelled\\')" style="background:#fee2e2;color:#dc2626;">出品取消</button>';
+          }
+          return btns ? '<div class="listing-actions">' + btns + '</div>' : '';
+        }
+
         grid.innerHTML = res.data.items.map(function(item) {
           var img = item.image_url || '/icons/icon.svg';
+          var dateStr = item.created_at ? new Date(item.created_at).toLocaleDateString('ja-JP') : '';
           return '<div class="cb-card p-4">' +
             '<div class="flex gap-3">' +
-              '<img src="' + escapeHtml(img) + '" class="w-16 h-16 object-cover rounded-lg" onerror="this.src=\\'/icons/icon.svg\\'">' +
-              '<div class="flex-1">' +
+              '<img src="' + escapeHtml(img) + '" class="w-16 h-16 object-cover rounded-lg flex-shrink-0" onerror="this.src=\\'/icons/icon.svg\\'">' +
+              '<div class="flex-1 min-w-0">' +
                 '<div class="flex items-center gap-2">' +
                   '<span class="cb-badge ' + (statusColors[item.status] || 'cb-badge-draft') + '">' + (statusLabels[item.status] || item.status) + '</span>' +
                   '<span class="text-xs text-gray-400">#' + item.id + '</span>' +
+                  '<span class="text-xs text-gray-300">' + dateStr + '</span>' +
                 '</div>' +
-                '<p class="font-semibold text-sm mt-1">' + escapeHtml(item.title_en || item.product_title) + '</p>' +
-                '<p class="text-xs text-gray-500">' + escapeHtml(item.product_title) + '</p>' +
+                '<p class="font-semibold text-sm mt-1 truncate" title="' + escapeHtml(item.title_en || '') + '">' + escapeHtml(item.title_en || item.product_title) + '</p>' +
+                '<p class="text-xs text-gray-500 truncate">' + escapeHtml(item.product_title || '') + '</p>' +
                 '<div class="flex items-center gap-3 mt-1">' +
-                  '<span class="font-bold text-blue-600">$' + (item.price_usd || 0) + '</span>' +
+                  '<span class="font-bold text-blue-600">$' + Number(item.price_usd || 0).toFixed(2) + '</span>' +
                   '<span class="text-xs text-gray-400">(¥' + Number(item.price_jpy || 0).toLocaleString() + ')</span>' +
+                  (item.external_url ? '<a href="' + escapeHtml(item.external_url) + '" target="_blank" class="text-xs text-blue-400 hover:underline"><i class="fas fa-external-link-alt mr-1"></i>eBay</a>' : '') +
                 '</div>' +
+                getActionButtons(item) +
               '</div>' +
             '</div>' +
           '</div>';
         }).join('');
       } catch(e) {
         grid.innerHTML = '<div class="text-center py-12 text-red-400 col-span-full">読み込みエラー</div>';
+      }
+    }
+
+    // ===== 出品ステータス更新 =====
+    async function updateListingStatus(id, newStatus) {
+      if (!confirm(newStatus === 'cancelled' ? '出品を取り消しますか？' : 'ステータスを変更しますか？')) return;
+      try {
+        await axios.put('/api/admin/cross-border/listings/' + id + '/status', { status: newStatus }, {
+          headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') }
+        });
+        loadListings();
+        loadStats();
+      } catch(e) {
+        alert('ステータス更新に失敗しました');
+      }
+    }
+
+    // ===== 出品削除 =====
+    async function deleteListing(id) {
+      if (!confirm('この出品データを削除しますか？')) return;
+      try {
+        await axios.delete('/api/admin/cross-border/listings/' + id, {
+          headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') }
+        });
+        loadListings();
+        loadStats();
+      } catch(e) {
+        alert(e.response?.data?.error || '削除に失敗しました');
       }
     }
 
@@ -4425,10 +4567,117 @@ adminPagesRoutes.get('/cross-border', (c) => {
           el.innerHTML = '<div class="text-center py-12 text-gray-400"><i class="fas fa-truck text-4xl mb-3"></i><p>海外注文はまだありません</p><p class="text-xs mt-1">eBay連携後、注文が入ると表示されます</p></div>';
           return;
         }
-        el.innerHTML = '<p class="text-sm text-gray-500">注文 ' + res.data.items.length + '件</p>';
+        var orderStatusLabels = {
+          pending:'受注', buyback_requested:'買取依頼中', buyback_completed:'買取完了',
+          preparing:'検品・梱包中', shipped:'発送済', delivered:'配達完了',
+          completed:'取引完了', cancelled:'キャンセル', refunded:'返金済'
+        };
+        var orderStatusColors = {
+          pending:'bg-yellow-100 text-yellow-700', buyback_requested:'bg-blue-100 text-blue-700',
+          buyback_completed:'bg-blue-100 text-blue-800', preparing:'bg-purple-100 text-purple-700',
+          shipped:'bg-indigo-100 text-indigo-700', delivered:'bg-green-100 text-green-700',
+          completed:'bg-green-200 text-green-800', cancelled:'bg-red-100 text-red-700',
+          refunded:'bg-red-100 text-red-700'
+        };
+        var nextStatus = {
+          pending:'buyback_requested', buyback_requested:'buyback_completed',
+          buyback_completed:'preparing', preparing:'shipped', shipped:'delivered',
+          delivered:'completed'
+        };
+
+        el.innerHTML = '<p class="text-sm text-gray-500 mb-3">注文 ' + res.data.items.length + '件</p>' +
+          res.data.items.map(function(o) {
+            var img = o.image_url ? (o.image_url.startsWith('http') ? o.image_url : '/r2/' + o.image_url) : '/icons/icon.svg';
+            var next = nextStatus[o.status];
+            var nextLabel = next ? orderStatusLabels[next] : null;
+            return '<div class="cb-card p-4 mb-3">' +
+              '<div class="flex gap-3">' +
+                '<img src="' + escapeHtml(img) + '" class="w-16 h-16 object-cover rounded-lg flex-shrink-0" onerror="this.src=\\'/icons/icon.svg\\'">' +
+                '<div class="flex-1 min-w-0">' +
+                  '<div class="flex items-center gap-2 flex-wrap">' +
+                    '<span class="cb-badge ' + (orderStatusColors[o.status] || '') + '">' + (orderStatusLabels[o.status] || o.status) + '</span>' +
+                    '<span class="text-xs text-gray-400">#' + o.id + '</span>' +
+                    (o.buyer_country ? '<span class="text-xs text-gray-400"><i class="fas fa-globe mr-1"></i>' + escapeHtml(o.buyer_country) + '</span>' : '') +
+                  '</div>' +
+                  '<p class="font-semibold text-sm mt-1 truncate">' + escapeHtml(o.title_en || o.product_title || '') + '</p>' +
+                  '<div class="flex items-center gap-3 mt-1">' +
+                    '<span class="font-bold text-blue-600">$' + Number(o.sale_price_usd || 0).toFixed(2) + '</span>' +
+                    '<span class="text-xs text-gray-400">(¥' + Number(o.sale_price_jpy || 0).toLocaleString() + ')</span>' +
+                    (o.profit_jpy ? '<span class="text-xs font-bold ' + (o.profit_jpy > 0 ? 'text-green-600' : 'text-red-600') + '">利益 ¥' + Number(o.profit_jpy).toLocaleString() + '</span>' : '') +
+                  '</div>' +
+                  (o.tracking_number ? '<p class="text-xs text-gray-400 mt-1"><i class="fas fa-shipping-fast mr-1"></i>追跡: ' + escapeHtml(o.tracking_number) + '</p>' : '') +
+                  (o.buyer_name ? '<p class="text-xs text-gray-400 mt-0.5"><i class="fas fa-user mr-1"></i>' + escapeHtml(o.buyer_name) + '</p>' : '') +
+                '</div>' +
+              '</div>' +
+              (next ? '<div class="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2">' +
+                (o.status === 'preparing' ? '<input type="text" id="tracking-' + o.id + '" placeholder="追跡番号を入力" class="px-2 py-1 border rounded text-xs flex-1">' +
+                '<select id="shipmethod-' + o.id + '" class="px-2 py-1 border rounded text-xs"><option value="EMS">EMS</option><option value="DHL">DHL</option><option value="FedEx">FedEx</option><option value="船便">船便</option></select>' : '') +
+                '<button onclick="advanceOrder(' + o.id + ',\\'' + next + '\\')" class="px-3 py-1.5 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600 font-semibold ml-auto"><i class="fas fa-arrow-right mr-1"></i>' + nextLabel + 'へ</button>' +
+              '</div>' : '') +
+            '</div>';
+          }).join('');
       } catch(e) {
         el.innerHTML = '<div class="text-center py-12 text-red-400">読み込みエラー</div>';
       }
+    }
+
+    // ===== 注文ステータス進行 =====
+    async function advanceOrder(orderId, newStatus) {
+      var data = { status: newStatus };
+      if (newStatus === 'shipped') {
+        var tn = document.getElementById('tracking-' + orderId);
+        var sm = document.getElementById('shipmethod-' + orderId);
+        if (tn) data.tracking_number = tn.value;
+        if (sm) data.shipping_method = sm.value;
+        if (!data.tracking_number) { alert('追跡番号を入力してください'); return; }
+      }
+      if (!confirm((newStatus === 'cancelled' ? 'キャンセルしますか？' : 'ステータスを進めますか？'))) return;
+      try {
+        await axios.put('/api/admin/cross-border/orders/' + orderId + '/status', data, {
+          headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') }
+        });
+        loadOrders();
+        loadStats();
+      } catch(e) {
+        alert('更新に失敗しました');
+      }
+    }
+
+    // ===== 利益シミュレーター =====
+    async function openSimulator() {
+      if (!cbCurrentProduct) return;
+      var costJpy = Math.floor(Number(cbCurrentProduct.price) * 1.1);
+      var priceUsd = parseFloat(document.getElementById('modal-price-usd').value) || 0;
+      var shipUsd = parseFloat(document.getElementById('modal-shipping-usd').value) || 0;
+      document.getElementById('sim-cost').textContent = '¥' + costJpy.toLocaleString();
+      document.getElementById('sim-usd').textContent = '$' + priceUsd.toFixed(2);
+      document.getElementById('sim-ship').textContent = '$' + shipUsd.toFixed(2);
+
+      try {
+        var res = await axios.post('/api/admin/cross-border/simulate-profit', {
+          price_jpy: cbCurrentProduct.price, price_usd: priceUsd, shipping_cost_usd: shipUsd
+        }, { headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') } });
+
+        if (res.data.success) {
+          var html = '';
+          res.data.simulations.forEach(function(s) {
+            var color = s.profit > 0 ? 'text-green-600' : 'text-red-600';
+            var highlight = Math.abs(s.rate - cbCurrentRate) < 3 ? 'background:#eff6ff;font-weight:700;' : '';
+            html += '<div class="sim-row" style="' + highlight + '">' +
+              '<span>¥' + s.rate + '</span>' +
+              '<span>¥' + s.saleJpy.toLocaleString() + '</span>' +
+              '<span class="text-gray-500">-¥' + s.fees.toLocaleString() + '</span>' +
+              '<span class="font-bold ' + color + '">¥' + s.profit.toLocaleString() + '</span>' +
+              '<span class="' + color + '">' + s.margin + '%</span>' +
+            '</div>';
+          });
+          document.getElementById('sim-results').innerHTML = html;
+        }
+      } catch(e) {
+        document.getElementById('sim-results').innerHTML = '<p class="text-red-400 text-sm py-4 text-center">シミュレーションに失敗しました</p>';
+      }
+
+      document.getElementById('sim-modal').classList.add('show');
     }
 
     // ===== 初期化 =====

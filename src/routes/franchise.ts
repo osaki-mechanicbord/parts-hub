@@ -7,10 +7,10 @@ const franchise = new Hono<{ Bindings: Bindings }>()
 // ── ヘルパー ──
 const BUILD_VERSION = '20260407a'
 const v = (path: string) => `${path}?v=${BUILD_VERSION}`
-const PERF_HINTS = `<link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
-<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+const PERF_HINTS = `<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>`
+const TAILWIND_CSS = `<link rel="stylesheet" href="/static/tailwind.css?v=${BUILD_VERSION}">`
 
 const hreflang = (path: string) => `<link rel="alternate" hreflang="ja" href="https://parts-hub-tci.com${path}">
 <link rel="alternate" hreflang="x-default" href="https://parts-hub-tci.com${path}">`
@@ -214,7 +214,7 @@ franchise.get('/', async (c) => {
     })}</script>
     <meta name="theme-color" content="#ff4757">
     ${PERF_HINTS}
-    <script src="https://cdn.tailwindcss.com"></script>
+    ${TAILWIND_CSS}
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
     <style>

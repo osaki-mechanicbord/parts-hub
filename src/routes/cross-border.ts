@@ -161,12 +161,18 @@ crossBorder.get('/candidates', async (c) => {
     const minPrice = c.req.query('min_price')
     const maxPrice = c.req.query('max_price')
     const sort = c.req.query('sort') || 'newest'
+    const keyword = c.req.query('q')
 
     let conditions = ["p.status = 'active'"]
     let params: any[] = []
 
     // 既に海外出品済みの商品を除外
     conditions.push("p.id NOT IN (SELECT product_id FROM cross_border_listings WHERE status NOT IN ('cancelled','error'))")
+
+    if (keyword) {
+      conditions.push("(p.title LIKE ? OR p.description LIKE ? OR p.part_number LIKE ?)")
+      params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`)
+    }
 
     if (maker) {
       conditions.push('p.vm_maker = ?')
@@ -432,6 +438,26 @@ crossBorder.put('/listings/:id', async (c) => {
 })
 
 // ============================================================
+// 出品データ削除
+// ============================================================
+crossBorder.delete('/listings/:id', async (c) => {
+  const { DB } = c.env as any
+  const id = c.req.param('id')
+
+  try {
+    // sold 状態のものは削除不可
+    const listing = await DB.prepare('SELECT status FROM cross_border_listings WHERE id = ?').bind(id).first() as any
+    if (!listing) return c.json({ success: false, error: '出品データが見つかりません' }, 404)
+    if (listing.status === 'sold') return c.json({ success: false, error: '売却済みの出品は削除できません' }, 400)
+
+    await DB.prepare('DELETE FROM cross_border_listings WHERE id = ?').bind(id).run()
+    return c.json({ success: true })
+  } catch (error) {
+    return c.json({ success: false, error: '削除に失敗しました' }, 500)
+  }
+})
+
+// ============================================================
 // 海外注文一覧
 // ============================================================
 crossBorder.get('/orders', async (c) => {
@@ -448,9 +474,114 @@ crossBorder.get('/orders', async (c) => {
       LIMIT 50
     `).all()
 
-    return c.json({ success: true, items: results })
+    const items = results.map((r: any) => ({
+      ...r,
+      image_url: r.image_url ? (r.image_url.startsWith('http') ? r.image_url : '/r2/' + r.image_url) : null
+    }))
+
+    return c.json({ success: true, items })
   } catch (error) {
     return c.json({ success: false, error: '注文一覧の取得に失敗しました' }, 500)
+  }
+})
+
+// ============================================================
+// 海外注文ステータス更新
+// ============================================================
+crossBorder.put('/orders/:id/status', async (c) => {
+  const { DB } = c.env as any
+  const id = c.req.param('id')
+
+  try {
+    const { status, tracking_number, shipping_method } = await c.req.json()
+
+    const validStatuses = ['pending','buyback_requested','buyback_completed','preparing','shipped','delivered','completed','cancelled','refunded']
+    if (!validStatuses.includes(status)) {
+      return c.json({ success: false, error: '無効なステータスです' }, 400)
+    }
+
+    // タイムスタンプ更新
+    let extraSql = ''
+    if (status === 'buyback_completed') extraSql = ', buyback_completed_at = CURRENT_TIMESTAMP'
+    else if (status === 'shipped') extraSql = ', shipped_at = CURRENT_TIMESTAMP'
+    else if (status === 'delivered') extraSql = ', delivered_at = CURRENT_TIMESTAMP'
+    else if (status === 'completed') extraSql = ', completed_at = CURRENT_TIMESTAMP'
+
+    let sql = `UPDATE cross_border_orders SET status = ?, updated_at = CURRENT_TIMESTAMP${extraSql}`
+    const params: any[] = [status]
+
+    if (tracking_number) {
+      sql += ', tracking_number = ?'
+      params.push(tracking_number)
+    }
+    if (shipping_method) {
+      sql += ', shipping_method = ?'
+      params.push(shipping_method)
+    }
+
+    sql += ' WHERE id = ?'
+    params.push(id)
+
+    await DB.prepare(sql).bind(...params).run()
+
+    // 配送完了時に cross_border_listings も更新
+    if (status === 'completed') {
+      await DB.prepare(`
+        UPDATE cross_border_listings SET status = 'sold', sold_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+        WHERE id = (SELECT listing_id FROM cross_border_orders WHERE id = ?)
+      `).bind(id).run()
+    }
+
+    return c.json({ success: true })
+  } catch (error) {
+    return c.json({ success: false, error: 'ステータス更新に失敗しました' }, 500)
+  }
+})
+
+// ============================================================
+// eBayカテゴリマッピング取得
+// ============================================================
+crossBorder.get('/category-map', async (c) => {
+  // PARTS HUBカテゴリ → eBayカテゴリIDのマッピング
+  const categoryMap: Record<string, { ebay_id: string; ebay_name: string }> = {
+    'car': { ebay_id: '6028', ebay_name: 'Car & Truck Parts & Accessories' },
+    'truck': { ebay_id: '33612', ebay_name: 'Commercial Truck Parts' },
+    'motorcycle': { ebay_id: '10063', ebay_name: 'Motorcycle Parts' },
+    'bus': { ebay_id: '180011', ebay_name: 'Bus & Coach Parts' },
+    'forklift': { ebay_id: '111381', ebay_name: 'Forklift Parts & Accessories' },
+    'heavy_equipment': { ebay_id: '177644', ebay_name: 'Heavy Equipment Parts & Accessories' },
+    'marine': { ebay_id: '26429', ebay_name: 'Boat Parts' },
+    'agricultural': { ebay_id: '91376', ebay_name: 'Tractor Parts' },
+    'tools': { ebay_id: '34998', ebay_name: 'Automotive Tools & Supplies' },
+    'rebuilt': { ebay_id: '33612', ebay_name: 'Car & Truck Parts (Remanufactured)' },
+    'electrical': { ebay_id: '33542', ebay_name: 'Car & Truck Charging & Starting Systems' },
+    'other': { ebay_id: '6028', ebay_name: 'Other Vehicle Parts' }
+  }
+
+  return c.json({ success: true, categories: categoryMap })
+})
+
+// ============================================================
+// 利益シミュレーション（複数為替レートで計算）
+// ============================================================
+crossBorder.post('/simulate-profit', async (c) => {
+  try {
+    const { price_jpy, price_usd, shipping_cost_usd } = await c.req.json()
+    const costJpy = Math.floor(Number(price_jpy) * 1.1) // 税込仕入れ価格
+    const rates = [130, 135, 140, 145, 150, 155, 160]
+
+    const simulations = rates.map(rate => {
+      const saleJpy = Math.floor((price_usd + shipping_cost_usd) * rate)
+      const fees = Math.floor(saleJpy * 0.16) // eBay 13% + PayPal 3%
+      const shippingJpy = Math.floor(shipping_cost_usd * rate)
+      const profit = saleJpy - costJpy - fees - shippingJpy
+      const margin = saleJpy > 0 ? Math.round((profit / saleJpy) * 100) : 0
+      return { rate, saleJpy, fees, shippingJpy, profit, margin }
+    })
+
+    return c.json({ success: true, costJpy, simulations })
+  } catch (error) {
+    return c.json({ success: false, error: 'シミュレーション失敗' }, 500)
   }
 })
 

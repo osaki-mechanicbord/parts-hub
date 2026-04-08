@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+/* カスタムテーマ - PARTS HUB ブランドカラー */
+@theme {
+  --color-primary: #ff4757;
+  --color-primary-dark: #ee3b4c;
+}
+
+@source "../src/index.tsx";
+@source "../src/routes/admin-pages.ts";
+@source "../src/routes/franchise.ts";
+@source "../public/static/listing.js";
+@source "../public/static/product-detail.js";
+@source "../public/static/mypage.js";
+@source "../public/static/comments.js";
+@source "../public/static/reviews.js";
+@source "../public/static/transaction-detail.js";
+@source "../public/static/profile-edit.js";
+@source "../public/static/notifications.js";
+@source "../public/static/widget.js";
+@source "../public/static/auth-header.js";
+@source "../public/static/notification-badge.js";
