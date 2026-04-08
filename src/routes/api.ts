@@ -221,7 +221,7 @@ api.get('/products', async (c) => {
     const productsQuery = `
       SELECT 
         p.id, p.title, p.description, p.price, p.condition,
-        p.status, p.shipping_type, p.is_universal,
+        p.status, p.shipping_type, p.is_universal, p.top_category, p.prefecture,
         p.view_count, p.favorite_count, p.part_number,
         p.created_at,
         c.name as category_name,
@@ -330,7 +330,7 @@ api.get('/products/search', async (c) => {
 
     const { results } = await c.env.DB.prepare(`
       SELECT DISTINCT p.id, p.title, p.price, p.condition, p.status,
-        p.favorite_count, p.view_count, p.shipping_type, p.is_universal,
+        p.favorite_count, p.view_count, p.shipping_type, p.is_universal, p.top_category, p.prefecture,
         (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as image_url,
         (SELECT COUNT(*) FROM product_comments WHERE product_id = p.id) as comment_count
       FROM products p
