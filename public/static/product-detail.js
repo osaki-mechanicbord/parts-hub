@@ -286,6 +286,9 @@ function renderProduct() {
         var universalRow = document.getElementById('product-universal-row');
         if (universalRow) universalRow.style.display = '';
     }
+
+    // 製品スペック情報の表示
+    renderProductSpecs(product);
     
     // 適合車両情報
     if (product.compatibility) {
@@ -1121,4 +1124,67 @@ function copyProductUrl() {
             }, 2000);
         }
     });
+}
+
+// 製品スペック情報を表示
+function renderProductSpecs(product) {
+    var section = document.getElementById('product-specs-section');
+    if (!section) return;
+
+    var hasAnySpec = product.jan_code || product.manufacturer_name || product.part_number || product.product_number || product.manufacturer_url;
+    if (!hasAnySpec) {
+        section.style.display = 'none';
+        return;
+    }
+
+    section.style.display = '';
+
+    // JANコード
+    if (product.jan_code) {
+        var row = document.getElementById('spec-jan-code-row');
+        var val = document.getElementById('spec-jan-code');
+        if (row) row.style.display = '';
+        if (val) val.textContent = product.jan_code;
+    }
+
+    // メーカー名
+    if (product.manufacturer_name) {
+        var row = document.getElementById('spec-manufacturer-row');
+        var val = document.getElementById('spec-manufacturer');
+        if (row) row.style.display = '';
+        if (val) val.textContent = product.manufacturer_name;
+    }
+
+    // 品番 (part_number は既存フィールドだが、スペック欄にも表示)
+    if (product.part_number) {
+        var row = document.getElementById('spec-part-number-row');
+        var val = document.getElementById('spec-part-number');
+        if (row) row.style.display = '';
+        if (val) val.textContent = product.part_number;
+    }
+
+    // 製品番号
+    if (product.product_number) {
+        var row = document.getElementById('spec-product-number-row');
+        var val = document.getElementById('spec-product-number');
+        if (row) row.style.display = '';
+        if (val) val.textContent = product.product_number;
+    }
+
+    // メーカーページリンク
+    if (product.manufacturer_url) {
+        var row = document.getElementById('spec-manufacturer-url-row');
+        var link = document.getElementById('spec-manufacturer-link');
+        if (row) row.style.display = '';
+        if (link) {
+            link.href = product.manufacturer_url;
+            // ドメイン名を表示してわかりやすく
+            try {
+                var domain = new URL(product.manufacturer_url).hostname.replace('www.', '');
+                link.innerHTML = '<i class="fas fa-external-link-alt"></i>' + domain + ' で確認する';
+            } catch(e) {
+                link.innerHTML = '<i class="fas fa-external-link-alt"></i>カタログを確認する';
+            }
+        }
+    }
 }

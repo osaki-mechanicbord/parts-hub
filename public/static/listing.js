@@ -211,6 +211,10 @@ class ProductListingForm {
         is_universal: document.getElementById('is-universal') && document.getElementById('is-universal').checked ? 1 : 0,
         top_category: getVal('top-category') || 'other',
         prefecture: getVal('prefecture') || 'all',
+        jan_code: getVal('jan-code') || null,
+        manufacturer_name: getVal('manufacturer-name') || null,
+        product_number: getVal('product-number') || null,
+        manufacturer_url: getVal('manufacturer-url') || null,
         status: 'active',
         // vehicle_master 連動データ
         vm_maker: getVal('vm-maker-name') || null,
@@ -362,6 +366,10 @@ class ProductListingForm {
         is_universal: document.getElementById('is-universal') && document.getElementById('is-universal').checked ? 1 : 0,
         top_category: getVal('top-category') || 'other',
         prefecture: getVal('prefecture') || 'all',
+        jan_code: getVal('jan-code') || null,
+        manufacturer_name: getVal('manufacturer-name') || null,
+        product_number: getVal('product-number') || null,
+        manufacturer_url: getVal('manufacturer-url') || null,
         status: 'draft',
         vm_maker: getVal('vm-maker-name') || null,
         vm_model: getVal('vm-model-name') || null,
@@ -739,6 +747,10 @@ async function loadProductForEdit(productId) {
       el = document.getElementById('product-price'); if (el) el.value = product.price || ''
       el = document.getElementById('stock-quantity'); if (el) el.value = product.stock_quantity || 1
       el = document.getElementById('part-number'); if (el) el.value = product.part_number || ''
+      el = document.getElementById('jan-code'); if (el) el.value = product.jan_code || ''
+      el = document.getElementById('manufacturer-name'); if (el) el.value = product.manufacturer_name || ''
+      el = document.getElementById('product-number'); if (el) el.value = product.product_number || ''
+      el = document.getElementById('manufacturer-url'); if (el) el.value = product.manufacturer_url || ''
       
       if (product.category_id) {
         el = document.getElementById('category-select'); if (el) el.value = product.category_id

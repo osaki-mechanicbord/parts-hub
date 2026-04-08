@@ -3672,6 +3672,12 @@ app.get('/products/:id', async (c) => {
       }
       // 品番がある場合 mpn を追加
       if (p.part_number) productSchema.mpn = p.part_number
+      // JANコード（GTIN）がある場合
+      if (p.jan_code) productSchema.gtin13 = p.jan_code
+      // メーカー名がある場合
+      if (p.manufacturer_name) productSchema.brand = { "@type": "Brand", "name": p.manufacturer_name }
+      // 製品番号がある場合
+      if (p.product_number) productSchema.productID = p.product_number
       // AggregateRating があれば追加
       if (aggregateRating) productSchema.aggregateRating = aggregateRating
 
@@ -3864,6 +3870,52 @@ app.get('/products/:id', async (c) => {
                             </h3>
                             <div id="oem-parts-list" class="space-y-1.5"></div>
                         </div>
+                    </div>
+
+                    <!-- 製品スペック情報 -->
+                    <div id="product-specs-section" style="display:none;" class="bg-white rounded-xl shadow-sm p-5 mb-4">
+                        <h2 class="font-bold text-gray-900 mb-4 text-lg">
+                            <i class="fas fa-microchip text-cyan-500 mr-2"></i>製品スペック情報
+                        </h2>
+                        <table class="w-full text-sm">
+                            <tbody>
+                                <tr id="spec-jan-code-row" style="display:none;" class="border-b">
+                                    <td class="py-3 text-gray-600 font-medium w-1/3">
+                                        <i class="fas fa-barcode text-gray-400 mr-1.5"></i>JANコード
+                                    </td>
+                                    <td id="spec-jan-code" class="py-3 text-gray-900 text-right font-mono">-</td>
+                                </tr>
+                                <tr id="spec-manufacturer-row" style="display:none;" class="border-b">
+                                    <td class="py-3 text-gray-600 font-medium w-1/3">
+                                        <i class="fas fa-industry text-gray-400 mr-1.5"></i>メーカー名
+                                    </td>
+                                    <td id="spec-manufacturer" class="py-3 text-gray-900 text-right font-semibold">-</td>
+                                </tr>
+                                <tr id="spec-part-number-row" style="display:none;" class="border-b">
+                                    <td class="py-3 text-gray-600 font-medium w-1/3">
+                                        <i class="fas fa-hashtag text-gray-400 mr-1.5"></i>品番
+                                    </td>
+                                    <td id="spec-part-number" class="py-3 text-gray-900 text-right font-mono">-</td>
+                                </tr>
+                                <tr id="spec-product-number-row" style="display:none;" class="border-b">
+                                    <td class="py-3 text-gray-600 font-medium w-1/3">
+                                        <i class="fas fa-tag text-gray-400 mr-1.5"></i>製品番号
+                                    </td>
+                                    <td id="spec-product-number" class="py-3 text-gray-900 text-right font-mono">-</td>
+                                </tr>
+                                <tr id="spec-manufacturer-url-row" style="display:none;">
+                                    <td class="py-3 text-gray-600 font-medium w-1/3">
+                                        <i class="fas fa-external-link-alt text-gray-400 mr-1.5"></i>メーカーページ
+                                    </td>
+                                    <td id="spec-manufacturer-url" class="py-3 text-right">
+                                        <a id="spec-manufacturer-link" href="#" target="_blank" rel="noopener noreferrer"
+                                           class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-cyan-50 text-cyan-700 rounded-lg text-xs font-semibold hover:bg-cyan-100 transition-colors">
+                                            <i class="fas fa-external-link-alt"></i>カタログを確認する
+                                        </a>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                     
                     <!-- 出品者情報カード（レビュー・バッジ付き） -->
@@ -4446,6 +4498,54 @@ app.get('/listing', (c) => {
                                        placeholder="例: 04465-12345">
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- ===== 製品スペック情報 ===== -->
+                <div class="section-card">
+                    <div class="section-header">
+                        <div class="section-header-icon bg-cyan-50 text-cyan-500">
+                            <i class="fas fa-barcode"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-sm text-gray-900">製品スペック情報 <span class="optional">任意</span></div>
+                            <div class="text-xs text-gray-400">入力すると商品詳細ページに表示され、購入者が製品を特定しやすくなります</div>
+                        </div>
+                    </div>
+                    <div class="section-body">
+                        <div class="field-row">
+                            <div>
+                                <label class="form-label">JANコード <span class="optional">任意</span></label>
+                                <input type="text" id="jan-code"
+                                       class="form-input"
+                                       placeholder="例: 4901234567890"
+                                       maxlength="13"
+                                       pattern="[0-9]*"
+                                       inputmode="numeric">
+                            </div>
+                            <div>
+                                <label class="form-label">メーカー名 <span class="optional">任意</span></label>
+                                <input type="text" id="manufacturer-name"
+                                       class="form-input"
+                                       placeholder="例: DENSO, NGK, AISIN">
+                            </div>
+                        </div>
+                        <div class="field-row">
+                            <div>
+                                <label class="form-label">品番 <span class="optional">任意</span></label>
+                                <input type="text" id="product-number"
+                                       class="form-input"
+                                       placeholder="例: DFP-0105">
+                            </div>
+                            <div>
+                                <label class="form-label">メーカーページリンク <span class="optional">任意</span></label>
+                                <input type="url" id="manufacturer-url"
+                                       class="form-input"
+                                       placeholder="https://www.denso.com/jp/ja/products/..."
+                                       style="font-size: 0.85rem;">
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-2"><i class="fas fa-info-circle mr-1"></i>メーカーページリンクを入力すると、購入者がメーカーカタログを直接確認できます</p>
                     </div>
                 </div>
 

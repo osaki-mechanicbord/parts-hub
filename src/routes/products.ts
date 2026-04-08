@@ -274,8 +274,9 @@ app.post('/', async (c) => {
         maker_id, model_id, part_number, compatible_models, condition,
         stock_quantity, status, is_proxy,
         vm_maker, vm_model, vm_grade, vm_tire_size, shipping_type, is_universal,
-        top_category, prefecture
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        top_category, prefecture,
+        jan_code, manufacturer_name, product_number, manufacturer_url
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       userId,
       userId,
@@ -299,7 +300,11 @@ app.post('/', async (c) => {
       body.shipping_type || 'buyer_paid',
       body.is_universal ? 1 : 0,
       body.top_category || 'other',
-      body.prefecture || 'all'
+      body.prefecture || 'all',
+      body.jan_code || null,
+      body.manufacturer_name || null,
+      body.product_number || null,
+      body.manufacturer_url || null
     ).run()
 
     const productId = result.meta.last_row_id
@@ -393,6 +398,10 @@ app.put('/:id', async (c) => {
         is_universal = ?,
         top_category = COALESCE(?, top_category),
         prefecture = COALESCE(?, prefecture),
+        jan_code = ?,
+        manufacturer_name = ?,
+        product_number = ?,
+        manufacturer_url = ?,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).bind(
@@ -416,6 +425,10 @@ app.put('/:id', async (c) => {
       body.is_universal ? 1 : 0,
       body.top_category || null,
       body.prefecture || null,
+      body.jan_code !== undefined ? (body.jan_code || null) : null,
+      body.manufacturer_name !== undefined ? (body.manufacturer_name || null) : null,
+      body.product_number !== undefined ? (body.product_number || null) : null,
+      body.manufacturer_url !== undefined ? (body.manufacturer_url || null) : null,
       productId
     ).run()
 
