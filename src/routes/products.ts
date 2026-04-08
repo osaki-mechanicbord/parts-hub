@@ -353,6 +353,24 @@ app.post('/', async (c) => {
       ).run()
     }
 
+    // IndexNow自動通知（新規出品時にBing/Yandex/Naverへ即時インデックス要求）
+    if (body.status !== 'draft') {
+      try {
+        const INDEXNOW_KEY = '7f8378e8529bb2b7f7d90488df2cf78c'
+        const productUrl = `https://parts-hub-tci.com/products/${productId}`
+        await fetch('https://api.indexnow.org/indexnow', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            host: 'parts-hub-tci.com',
+            key: INDEXNOW_KEY,
+            keyLocation: `https://parts-hub-tci.com/${INDEXNOW_KEY}.txt`,
+            urlList: [productUrl, 'https://parts-hub-tci.com/sitemap.xml', 'https://parts-hub-tci.com/search']
+          })
+        })
+      } catch (e) { /* IndexNow通知エラーは無視（メイン処理に影響させない） */ }
+    }
+
     return c.json({
       success: true,
       data: {

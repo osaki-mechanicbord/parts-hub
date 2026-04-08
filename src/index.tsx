@@ -3599,6 +3599,9 @@ app.get('/products/:id', async (c) => {
   let ssrProductNumber = ''
   let ssrJanCode = ''
   let ssrManufacturerUrl = ''
+  let ssrIsUniversal = false
+  let ssrRelatedProducts: any[] = []
+  let productNotFound = false
   try {
     const p = await DB.prepare(`
       SELECT p.*, c.name as category_name,
@@ -3623,8 +3626,22 @@ app.get('/products/:id', async (c) => {
       const pCondMap: Record<string, string> = { new: '新品', like_new: '未使用に近い', good: '目立った傷や汚れなし', fair: 'やや傷や汚れあり', poor: '状態が悪い' }
       const pCondLabel = pCondMap[String(p.condition)] || String(p.condition || '中古')
       const pAvail = p.status === 'active' ? 'https://schema.org/InStock' : 'https://schema.org/SoldOut'
-      seoTitle = `${pTitle} - PARTS HUB（パーツハブ）`
-      seoDesc = pDesc || `${pTitle}｜${pCat}｜¥${pPriceTaxIncluded.toLocaleString()}（税込）｜${pCondLabel}｜PARTS HUB`
+      // タイトルに品番を含めることで品番検索でのヒット率を向上
+      const titleParts: string[] = [pTitle]
+      if (p.part_number && !pTitle.includes(p.part_number)) titleParts.push(p.part_number)
+      if ((p.manufacturer_name || p.manufacturer) && !pTitle.includes(p.manufacturer_name || p.manufacturer)) titleParts.push(p.manufacturer_name || p.manufacturer)
+      seoTitle = `${titleParts.join(' ')} - PARTS HUB（パーツハブ）`.substring(0, 70)
+      // 品番・メーカー情報を含む詳細なmeta description
+      const descParts: string[] = []
+      descParts.push(pTitle)
+      if (p.part_number) descParts.push(`品番:${p.part_number}`)
+      if (p.manufacturer_name || p.manufacturer) descParts.push(`メーカー:${p.manufacturer_name || p.manufacturer}`)
+      if (p.product_number) descParts.push(`製品番号:${p.product_number}`)
+      descParts.push(`${pCat}`)
+      descParts.push(`¥${pPriceTaxIncluded.toLocaleString()}（税込）`)
+      descParts.push(pCondLabel)
+      descParts.push('PARTS HUB')
+      seoDesc = pDesc || descParts.join('｜').substring(0, 160)
       seoImage = pImage
       seoPrice = String(pPriceTaxIncluded)
 
@@ -3643,6 +3660,7 @@ app.get('/products/:id', async (c) => {
       ssrProductNumber = String(p.product_number || '')
       ssrJanCode = String(p.jan_code || '')
       ssrManufacturerUrl = String(p.manufacturer_url || '')
+      ssrIsUniversal = !!p.is_universal
       ssrShippingType = p.shipping_type === 'seller_paid' 
         ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-700 rounded-full text-xs font-semibold"><i class="fas fa-check-circle"></i>送料込み（出品者負担）</span>'
         : '<span class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs font-semibold"><i class="fas fa-box"></i>着払い（購入者負担）</span>'
@@ -3690,7 +3708,7 @@ app.get('/products/:id', async (c) => {
         "@context": "https://schema.org",
         "@type": "Product",
         "name": p.title,
-        "description": pDesc,
+        "description": seoDesc,
         "image": allImages.length > 1 ? allImages : pImage,
         "url": seoUrl,
         "category": pCat,
@@ -3725,6 +3743,18 @@ app.get('/products/:id', async (c) => {
       // AggregateRating があれば追加
       if (aggregateRating) productSchema.aggregateRating = aggregateRating
 
+      // 同カテゴリの関連商品を取得（SEO内部リンク構築）
+      try {
+        const { results: related } = await DB.prepare(`
+          SELECT p.id, p.title, p.price, p.condition, p.shipping_type,
+            (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as main_image
+          FROM products p
+          WHERE p.category_id = ? AND p.id != ? AND p.status = 'active'
+          ORDER BY p.created_at DESC LIMIT 6
+        `).bind(p.category_id, productId).all()
+        ssrRelatedProducts = related || []
+      } catch(e) { /* 関連商品取得エラーは無視 */ }
+
       productJsonLd = `<script type="application/ld+json">${JSON.stringify(productSchema)}</script>`
       breadcrumbJsonLd = `<script type="application/ld+json">${JSON.stringify({
         "@context": "https://schema.org",
@@ -3735,8 +3765,49 @@ app.get('/products/:id', async (c) => {
           { "@type": "ListItem", "position": 3, "name": p.title }
         ]
       })}</script>`
+    } else {
+      productNotFound = true
     }
   } catch(e) { console.error('Product SSR SEO error:', e) }
+
+  // 商品が存在しない場合は404を返す
+  if (productNotFound) {
+    return c.html(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>商品が見つかりません - PARTS HUB</title>
+        <meta name="robots" content="noindex, nofollow">
+        <meta name="description" content="お探しの商品は存在しないか、削除された可能性があります。">
+        ${TAILWIND_CSS}
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    </head>
+    <body class="bg-gray-50">
+        <header class="bg-white border-b border-gray-200">
+            <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+                <a href="/" class="text-red-500 font-bold text-lg">PARTS HUB</a>
+            </div>
+        </header>
+        <main class="max-w-2xl mx-auto px-4 py-20 text-center">
+            <div class="text-6xl text-gray-300 mb-6"><i class="fas fa-box-open"></i></div>
+            <h1 class="text-2xl font-bold text-gray-900 mb-4">商品が見つかりません</h1>
+            <p class="text-gray-600 mb-8">お探しの商品は存在しないか、既に削除された可能性があります。</p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="/search" class="px-6 py-3 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition-colors">
+                    <i class="fas fa-search mr-2"></i>パーツを検索する
+                </a>
+                <a href="/" class="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors">
+                    <i class="fas fa-home mr-2"></i>トップページへ
+                </a>
+            </div>
+        </main>
+    </body>
+    </html>
+    `, 404)
+  }
+
   return c.html(`
     <!DOCTYPE html>
     <html lang="ja">
@@ -3899,7 +3970,7 @@ app.get('/products/:id', async (c) => {
                                     <td class="py-3 text-gray-600 font-medium">送料負担</td>
                                     <td id="product-shipping-type" class="py-3 text-gray-900 text-right">${ssrShippingType}</td>
                                 </tr>
-                                <tr id="product-universal-row" style="display:none;">
+                                <tr id="product-universal-row" style="${ssrIsUniversal ? '' : 'display:none;'}">
                                     <td class="py-3 text-gray-600 font-medium">適合範囲</td>
                                     <td class="py-3 text-right"><span class="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs font-semibold"><i class="fas fa-globe"></i>全車種対応（汎用品）</span></td>
                                 </tr>
@@ -3917,42 +3988,42 @@ app.get('/products/:id', async (c) => {
                     </div>
 
                     <!-- 製品スペック情報 -->
-                    <div id="product-specs-section" style="display:none;" class="bg-white rounded-xl shadow-sm p-5 mb-4">
+                    <div id="product-specs-section" style="${(ssrJanCode && ssrJanCode !== '' && ssrJanCode !== 'undefined') || (ssrManufacturer && ssrManufacturer !== '' && ssrManufacturer !== 'undefined') || (ssrProductNumber && ssrProductNumber !== '' && ssrProductNumber !== 'undefined') || (ssrManufacturerUrl && ssrManufacturerUrl !== '' && ssrManufacturerUrl !== 'undefined') ? '' : 'display:none;'}" class="bg-white rounded-xl shadow-sm p-5 mb-4">
                         <h2 class="font-bold text-gray-900 mb-4 text-lg">
                             <i class="fas fa-microchip text-cyan-500 mr-2"></i>製品スペック情報
                         </h2>
                         <table class="w-full text-sm">
                             <tbody>
-                                <tr id="spec-jan-code-row" style="display:none;" class="border-b">
+                                <tr id="spec-jan-code-row" style="${ssrJanCode && ssrJanCode !== '' && ssrJanCode !== 'undefined' ? '' : 'display:none;'}" class="border-b">
                                     <td class="py-3 text-gray-600 font-medium w-1/3">
                                         <i class="fas fa-barcode text-gray-400 mr-1.5"></i>JANコード
                                     </td>
-                                    <td id="spec-jan-code" class="py-3 text-gray-900 text-right font-mono">-</td>
+                                    <td id="spec-jan-code" class="py-3 text-gray-900 text-right font-mono">${ssrJanCode || '-'}</td>
                                 </tr>
-                                <tr id="spec-manufacturer-row" style="display:none;" class="border-b">
+                                <tr id="spec-manufacturer-row" style="${ssrManufacturer && ssrManufacturer !== '' && ssrManufacturer !== 'undefined' ? '' : 'display:none;'}" class="border-b">
                                     <td class="py-3 text-gray-600 font-medium w-1/3">
                                         <i class="fas fa-industry text-gray-400 mr-1.5"></i>メーカー名
                                     </td>
-                                    <td id="spec-manufacturer" class="py-3 text-gray-900 text-right font-semibold">-</td>
+                                    <td id="spec-manufacturer" class="py-3 text-gray-900 text-right font-semibold">${ssrManufacturer || '-'}</td>
                                 </tr>
-                                <tr id="spec-part-number-row" style="display:none;" class="border-b">
+                                <tr id="spec-part-number-row" style="${ssrPartNumber && ssrPartNumber !== '-' && ssrPartNumber !== '' && ssrPartNumber !== 'undefined' ? '' : 'display:none;'}" class="border-b">
                                     <td class="py-3 text-gray-600 font-medium w-1/3">
                                         <i class="fas fa-hashtag text-gray-400 mr-1.5"></i>品番
                                     </td>
-                                    <td id="spec-part-number" class="py-3 text-gray-900 text-right font-mono">-</td>
+                                    <td id="spec-part-number" class="py-3 text-gray-900 text-right font-mono">${ssrPartNumber || '-'}</td>
                                 </tr>
-                                <tr id="spec-product-number-row" style="display:none;" class="border-b">
+                                <tr id="spec-product-number-row" style="${ssrProductNumber && ssrProductNumber !== '' && ssrProductNumber !== 'undefined' ? '' : 'display:none;'}" class="border-b">
                                     <td class="py-3 text-gray-600 font-medium w-1/3">
                                         <i class="fas fa-tag text-gray-400 mr-1.5"></i>製品番号
                                     </td>
-                                    <td id="spec-product-number" class="py-3 text-gray-900 text-right font-mono">-</td>
+                                    <td id="spec-product-number" class="py-3 text-gray-900 text-right font-mono">${ssrProductNumber || '-'}</td>
                                 </tr>
-                                <tr id="spec-manufacturer-url-row" style="display:none;">
+                                <tr id="spec-manufacturer-url-row" style="${ssrManufacturerUrl && ssrManufacturerUrl !== '' && ssrManufacturerUrl !== 'undefined' ? '' : 'display:none;'}">
                                     <td class="py-3 text-gray-600 font-medium w-1/3">
                                         <i class="fas fa-external-link-alt text-gray-400 mr-1.5"></i>メーカーページ
                                     </td>
                                     <td id="spec-manufacturer-url" class="py-3 text-right">
-                                        <a id="spec-manufacturer-link" href="#" target="_blank" rel="noopener noreferrer"
+                                        <a id="spec-manufacturer-link" href="${ssrManufacturerUrl || '#'}" target="_blank" rel="noopener noreferrer"
                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-cyan-50 text-cyan-700 rounded-lg text-xs font-semibold hover:bg-cyan-100 transition-colors">
                                             <i class="fas fa-external-link-alt"></i>カタログを確認する
                                         </a>
@@ -4028,7 +4099,7 @@ app.get('/products/:id', async (c) => {
                         <i class="fas fa-car text-primary mr-2"></i>適合車両情報
                     </h2>
                     <div id="compatibility-info" class="text-gray-700">
-                        読み込み中...
+                        ${ssrIsUniversal ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs font-semibold"><i class="fas fa-globe"></i>全車種対応（汎用品）</span>' : '<p class="text-gray-500 text-sm">適合車両情報は商品詳細から確認できます</p>'}
                     </div>
                 </div>
             </div>
@@ -4063,6 +4134,42 @@ app.get('/products/:id', async (c) => {
                     </div>
                 </div>
             </div>
+            <!-- 関連商品セクション（SSR内部リンク構築） -->
+            ${ssrRelatedProducts.length > 0 ? `
+            <div class="mt-6">
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h2 class="text-xl font-bold text-gray-900 mb-4">
+                        <i class="fas fa-th-large text-primary mr-2"></i>同じカテゴリの商品
+                    </h2>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        ${ssrRelatedProducts.map((rp: any) => {
+                          const rpPrice = Math.floor(Number(rp.price || 0) * 1.1)
+                          const rpImg = rp.main_image ? (String(rp.main_image).startsWith('/r2/') ? `https://parts-hub-tci.com${rp.main_image}` : `https://parts-hub-tci.com/r2/${String(rp.main_image).replace(/^\/?(r2\/)?/, '')}`) : 'https://placehold.co/300x300/e2e8f0/64748b?text=No+Image'
+                          const rpTitle = String(rp.title || '').replace(/</g, '&lt;')
+                          const rpCondMap: Record<string, string> = { new: '新品', like_new: '未使用に近い', good: '目立った傷なし', fair: 'やや傷あり', poor: '状態悪い' }
+                          const rpCond = rpCondMap[String(rp.condition)] || '中古'
+                          return `
+                        <a href="/products/${rp.id}" class="block group">
+                            <div class="aspect-square bg-gray-100 rounded-lg overflow-hidden mb-2">
+                                <img src="${rpImg}" alt="${rpTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform" loading="lazy">
+                            </div>
+                            <h3 class="text-sm font-medium text-gray-900 line-clamp-2 group-hover:text-red-500 transition-colors">${rpTitle}</h3>
+                            <p class="text-lg font-bold text-gray-900 mt-1">¥${rpPrice.toLocaleString()}</p>
+                            <div class="flex items-center gap-2 mt-1">
+                                <span class="text-xs text-gray-500">${rpCond}</span>
+                                ${rp.shipping_type === 'seller_paid' ? '<span class="text-xs text-green-600">送料込み</span>' : ''}
+                            </div>
+                        </a>`
+                        }).join('')}
+                    </div>
+                    <div class="mt-4 text-center">
+                        <a href="/search?category=${encodeURIComponent(ssrCategory)}" class="text-red-500 hover:text-red-600 font-semibold text-sm">
+                            ${ssrCategory}の商品をもっと見る <i class="fas fa-chevron-right text-xs"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            ` : ''}
         </main>
 
         <!-- 値下げモーダル -->
