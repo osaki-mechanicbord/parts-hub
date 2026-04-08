@@ -3582,6 +3582,23 @@ app.get('/products/:id', async (c) => {
   let productJsonLd = ''
   let breadcrumbJsonLd = ''
   let seoPrice = '0'
+  // SSR body用プリセット変数（Googlebotが初期HTMLで読める）
+  let ssrTitle = ''
+  let ssrPrice = ''
+  let ssrPriceLabel = '（税込）'
+  let ssrDescription = ''
+  let ssrCategory = '-'
+  let ssrPartNumber = '-'
+  let ssrConditionBadge = ''
+  let ssrBcTitle = '商品詳細'
+  let ssrMainImage = ''
+  let ssrSellerName = '-'
+  let ssrShippingType = '-'
+  let ssrStockQty = '-'
+  let ssrManufacturer = ''
+  let ssrProductNumber = ''
+  let ssrJanCode = ''
+  let ssrManufacturerUrl = ''
   try {
     const p = await DB.prepare(`
       SELECT p.*, c.name as category_name,
@@ -3610,6 +3627,28 @@ app.get('/products/:id', async (c) => {
       seoDesc = pDesc || `${pTitle}｜${pCat}｜¥${pPriceTaxIncluded.toLocaleString()}（税込）｜${pCondLabel}｜PARTS HUB`
       seoImage = pImage
       seoPrice = String(pPriceTaxIncluded)
+
+      // SSR body用データをセット（Googlebotが初期HTMLで読めるようにする）
+      ssrTitle = pTitle
+      ssrPrice = `¥${pPriceTaxIncluded.toLocaleString()}`
+      ssrPriceLabel = p.shipping_type === 'seller_paid' ? '（税込・送料込）' : '（税込・送料別）'
+      ssrDescription = String(p.description || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      ssrCategory = pCat
+      ssrPartNumber = String(p.part_number || '-')
+      ssrBcTitle = pTitle.length > 30 ? pTitle.substring(0, 30) + '...' : pTitle
+      ssrMainImage = pImage
+      ssrSellerName = pSeller
+      ssrStockQty = String(p.stock_quantity || '1')
+      ssrManufacturer = String(p.manufacturer || p.manufacturer_name || '')
+      ssrProductNumber = String(p.product_number || '')
+      ssrJanCode = String(p.jan_code || '')
+      ssrManufacturerUrl = String(p.manufacturer_url || '')
+      ssrShippingType = p.shipping_type === 'seller_paid' 
+        ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-700 rounded-full text-xs font-semibold"><i class="fas fa-check-circle"></i>送料込み（出品者負担）</span>'
+        : '<span class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs font-semibold"><i class="fas fa-box"></i>着払い（購入者負担）</span>'
+      const condColorMap: Record<string, string> = { new: 'bg-green-100 text-green-800', like_new: 'bg-blue-100 text-blue-800', good: 'bg-gray-100 text-gray-800', fair: 'bg-yellow-100 text-yellow-800', poor: 'bg-red-100 text-red-800' }
+      const condColor = condColorMap[String(p.condition)] || 'bg-gray-100 text-gray-800'
+      ssrConditionBadge = `<span class="px-3 py-1 rounded-full text-xs font-semibold ${condColor}">${pCondLabel}</span>${p.status === 'sold' ? ' <span class="px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800">SOLD OUT</span>' : ''}`
 
       // 全商品画像を取得
       const allImages: string[] = [pImage]
@@ -3762,7 +3801,7 @@ app.get('/products/:id', async (c) => {
                 <div class="w-16"></div> <!-- スペーサー -->
             </div>
         </header>
-        <nav aria-label="パンくずリスト" class="bc-nav"><div class="bc-wrap"><a href="/" class="bc-link">PARTS HUB</a><span class="bc-sep"><i class="fas fa-chevron-right"></i></span><a href="/search" class="bc-link">パーツ検索</a><span class="bc-sep"><i class="fas fa-chevron-right"></i></span><span id="bc-product-title" class="bc-current">商品詳細</span></div></nav>
+        <nav aria-label="パンくずリスト" class="bc-nav"><div class="bc-wrap"><a href="/" class="bc-link">PARTS HUB</a><span class="bc-sep"><i class="fas fa-chevron-right"></i></span><a href="/search" class="bc-link">パーツ検索</a><span class="bc-sep"><i class="fas fa-chevron-right"></i></span><span id="bc-product-title" class="bc-current">${ssrBcTitle}</span></div></nav>
 
         <!-- メインコンテンツ -->
         <main id="product-detail-container" class="max-w-6xl mx-auto px-4 py-6">
@@ -3773,8 +3812,8 @@ app.get('/products/:id', async (c) => {
                     <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-4">
                         <div class="aspect-square bg-gray-100 flex items-center justify-center">
                             <img id="main-product-image" 
-                                 src="https://placehold.co/600x600/e2e8f0/64748b?text=Loading..." 
-                                 alt="商品画像" 
+                                 src="${ssrMainImage || 'https://placehold.co/600x600/e2e8f0/64748b?text=Loading...'}" 
+                                 alt="${ssrTitle || '商品画像'}" 
                                  class="w-full h-full object-cover"
                                  onerror="this.src='https://placehold.co/600x600/e2e8f0/64748b?text=No+Image'">
                         </div>
@@ -3791,19 +3830,19 @@ app.get('/products/:id', async (c) => {
                     <!-- 商品タイトルと基本情報 -->
                     <div class="bg-white rounded-xl shadow-sm p-5 mb-4">
                         <h1 id="product-title" class="text-2xl font-bold text-gray-900 mb-3 leading-tight">
-                            読み込み中...
+                            ${ssrTitle || '読み込み中...'}
                         </h1>
                         
                         <!-- 状態バッジ -->
                         <div id="product-condition-badge" class="inline-block mb-4">
-                            <!-- JavaScriptで生成 -->
+                            ${ssrConditionBadge}
                         </div>
                         
                         <!-- 価格 -->
                         <div class="mb-6">
                             <div class="flex items-baseline space-x-2">
-                                <span id="product-price" class="text-4xl font-bold text-gray-900">¥0</span>
-                                <span id="product-price-label" class="text-gray-500 text-sm">（税込）</span>
+                                <span id="product-price" class="text-4xl font-bold text-gray-900">${ssrPrice || '¥0'}</span>
+                                <span id="product-price-label" class="text-gray-500 text-sm">${ssrPriceLabel}</span>
                             </div>
                             <div id="tax-detail" class="mt-1"></div>
                         </div>
@@ -3846,19 +3885,19 @@ app.get('/products/:id', async (c) => {
                             <tbody>
                                 <tr class="border-b">
                                     <td class="py-3 text-gray-600 font-medium">カテゴリ</td>
-                                    <td id="product-category" class="py-3 text-gray-900 text-right">-</td>
+                                    <td id="product-category" class="py-3 text-gray-900 text-right">${ssrCategory}</td>
                                 </tr>
                                 <tr class="border-b">
                                     <td class="py-3 text-gray-600 font-medium">部品番号</td>
-                                    <td id="product-part-number" class="py-3 text-gray-900 text-right">-</td>
+                                    <td id="product-part-number" class="py-3 text-gray-900 text-right">${ssrPartNumber}</td>
                                 </tr>
                                 <tr class="border-b">
                                     <td class="py-3 text-gray-600 font-medium">在庫数</td>
-                                    <td id="product-stock" class="py-3 text-gray-900 text-right">-</td>
+                                    <td id="product-stock" class="py-3 text-gray-900 text-right">${ssrStockQty}</td>
                                 </tr>
                                 <tr>
                                     <td class="py-3 text-gray-600 font-medium">送料負担</td>
-                                    <td id="product-shipping-type" class="py-3 text-gray-900 text-right">-</td>
+                                    <td id="product-shipping-type" class="py-3 text-gray-900 text-right">${ssrShippingType}</td>
                                 </tr>
                                 <tr id="product-universal-row" style="display:none;">
                                     <td class="py-3 text-gray-600 font-medium">適合範囲</td>
@@ -3938,7 +3977,7 @@ app.get('/products/:id', async (c) => {
                                 </div>
                                 <div class="flex-1 min-w-0">
                                     <a id="seller-shop-link" href="#" class="hover:underline">
-                                        <div id="seller-shop-name" class="font-semibold text-gray-900 truncate">-</div>
+                                        <div id="seller-shop-name" class="font-semibold text-gray-900 truncate">${ssrSellerName}</div>
                                     </a>
                                     <div class="flex items-center flex-wrap gap-1 text-sm text-gray-500">
                                         <span id="seller-shop-type">-</span>
@@ -3977,7 +4016,7 @@ app.get('/products/:id', async (c) => {
                 <div class="bg-white rounded-xl shadow-sm p-6">
                     <h2 class="text-xl font-bold text-gray-900 mb-4">商品の説明</h2>
                     <div id="product-description" class="text-gray-700 whitespace-pre-wrap leading-relaxed">
-                        読み込み中...
+                        ${ssrDescription || '読み込み中...'}
                     </div>
                 </div>
             </div>
