@@ -1004,7 +1004,7 @@ app.get('/', (c) => {
         
         <!-- PWA対応 -->
         <meta name="theme-color" content="#ff4757">
-        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="default">
         <meta name="apple-mobile-web-app-title" content="PARTS HUB">
         <link rel="manifest" href="/manifest.json">
@@ -8840,7 +8840,7 @@ app.get('/area/:pref', async (c) => {
   try {
     // 最新の出品商品を取得
     const prods = await DB.prepare(
-      "SELECT p.id, p.title, p.price, p.condition, p.status, pi.image_url FROM products p LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.display_order = 0 WHERE p.status = 'active' ORDER BY p.created_at DESC LIMIT 8"
+      "SELECT p.id, p.title, p.price, p.condition, p.status, p.shipping_type, p.is_universal, pi.image_url FROM products p LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.display_order = 0 WHERE p.status = 'active' ORDER BY p.created_at DESC LIMIT 8"
     ).all()
     productsCount = prods.results.length
     const condMap: Record<string,string> = { new:'新品', like_new:'未使用に近い', good:'良好', fair:'やや傷あり', poor:'状態不良' }
