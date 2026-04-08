@@ -481,49 +481,56 @@ app.get('/sitemap.xml', async (c) => {
       { url: '/area', changefreq: 'weekly', priority: '0.6' },
     ];
 
+    // === 商品があるメーカー・車種のみサイトマップに掲載（クロールバジェット最適化） ===
+    // 商品が紐づいているメーカー・車種を取得
+    const productMakers = await env.DB.prepare(`
+      SELECT DISTINCT vm_maker FROM products WHERE status IN ('active', 'sold') AND vm_maker IS NOT NULL AND vm_maker != ''
+    `).all()
+    const productModels = await env.DB.prepare(`
+      SELECT DISTINCT vm_maker, vm_model FROM products WHERE status IN ('active', 'sold') AND vm_maker IS NOT NULL AND vm_model IS NOT NULL AND vm_maker != '' AND vm_model != ''
+    `).all()
+    const makersWithProducts = new Set((productMakers.results || []).map((r: any) => r.vm_maker))
+    const modelsWithProducts = new Set((productModels.results || []).map((r: any) => r.vm_maker + '|||' + r.vm_model))
+    const hasAnyProducts = makersWithProducts.size > 0
+
     // 47都道府県ページをsitemapに追加
     const prefSlugs = Object.keys(PREFECTURES)
     prefSlugs.forEach(slug => {
       staticPages.push({ url: '/area/' + slug, changefreq: 'weekly', priority: '0.6' })
     })
 
-    // 都道府県×メーカー クロスページ（人気メーカー上位15）
-    const topMakersForSitemap = await env.DB.prepare(`
-      SELECT maker FROM vehicle_master GROUP BY maker ORDER BY COUNT(DISTINCT model) DESC LIMIT 15
-    `).all()
-    const crossMakers = (topMakersForSitemap.results || []).map((m: any) => m.maker)
-    prefSlugs.forEach(slug => {
-      crossMakers.forEach((maker: string) => {
-        staticPages.push({
-          url: '/area/' + slug + '/' + encodeURIComponent(maker),
-          changefreq: 'weekly',
-          priority: '0.55'
+    // 都道府県×メーカー クロスページ（商品があるメーカーのみ）
+    if (hasAnyProducts) {
+      prefSlugs.forEach(slug => {
+        makersWithProducts.forEach((maker: string) => {
+          staticPages.push({
+            url: '/area/' + slug + '/' + encodeURIComponent(maker),
+            changefreq: 'weekly',
+            priority: '0.55'
+          })
         })
       })
-    })
+    }
 
-    // 車種別ページをsitemapに追加（DB全車種を動的取得）
+    // 車種別ページをsitemapに追加（商品がある車種のみ）
     staticPages.push({ url: '/vehicle', changefreq: 'weekly', priority: '0.7' })
-    // 旧slugリダイレクトは除外し、新URL形式のみ登録
-    const allVehicles = await env.DB.prepare(`
-      SELECT maker, model FROM vehicle_master
-      GROUP BY maker, model ORDER BY maker, model
-    `).all()
-    const makerSet = new Set<string>()
-    ;(allVehicles.results || []).forEach((v: any) => {
-      makerSet.add(v.maker)
-      staticPages.push({
-        url: '/vehicle/' + encodeURIComponent(v.maker) + '/' + encodeURIComponent(v.model),
-        changefreq: 'weekly',
-        priority: '0.6'
-      })
-    })
-    // メーカー別一覧ページもsitemapに追加
-    makerSet.forEach(maker => {
+
+    // メーカー一覧ページ（商品があるメーカーのみ）
+    makersWithProducts.forEach(maker => {
       staticPages.push({
         url: '/vehicle/' + encodeURIComponent(maker),
         changefreq: 'weekly',
         priority: '0.65'
+      })
+    })
+
+    // 車種詳細ページ（商品がある車種のみ）
+    modelsWithProducts.forEach(key => {
+      const [maker, model] = key.split('|||')
+      staticPages.push({
+        url: '/vehicle/' + encodeURIComponent(maker) + '/' + encodeURIComponent(model),
+        changefreq: 'weekly',
+        priority: '0.6'
       })
     })
 
@@ -8989,7 +8996,7 @@ app.get('/area/:pref/:maker', async (c) => {
     <meta property="og:url" content="https://parts-hub-tci.com/area/${prefSlug}/${encodeURIComponent(maker)}">
     <meta property="og:site_name" content="PARTS HUB">
     <meta property="og:image" content="https://parts-hub-tci.com/icons/og-default.png">
-    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+    <meta name="robots" content="${productCount > 0 ? 'index, follow, max-image-preview:large, max-snippet:-1' : 'noindex, follow'}">
     <script type="application/ld+json">${jsonLd}</script>
     <meta name="theme-color" content="#ff4757">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -9162,7 +9169,7 @@ app.get('/area/:pref/:maker/:model', async (c) => {
     <meta property="og:url" content="https://parts-hub-tci.com/area/${prefSlug}/${encodeURIComponent(maker)}/${encodeURIComponent(model)}">
     <meta property="og:site_name" content="PARTS HUB">
     <meta property="og:image" content="https://parts-hub-tci.com/icons/og-default.png">
-    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+    <meta name="robots" content="${productCount > 0 ? 'index, follow, max-image-preview:large, max-snippet:-1' : 'noindex, follow'}">
     <script type="application/ld+json">${jsonLd}</script>
     <meta name="theme-color" content="#ff4757">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -9564,7 +9571,7 @@ app.get('/vehicle/:makerOrSlug', async (c) => {
     <meta property="og:locale" content="ja_JP">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="${safeMaker}の車種別パーツガイド - PARTS HUB">
-    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+    <meta name="robots" content="${productCount > 0 ? 'index, follow, max-image-preview:large, max-snippet:-1' : 'noindex, follow'}">
     <script type="application/ld+json">${jsonLd}</script>
     <meta name="theme-color" content="#ff4757">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -9802,7 +9809,7 @@ app.get('/vehicle/:maker/:model', async (c) => {
     <meta property="og:locale" content="ja_JP">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="${safeMaker} ${safeModel}のパーツ・整備ガイド">
-    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+    <meta name="robots" content="${productCount > 0 ? 'index, follow, max-image-preview:large, max-snippet:-1' : 'noindex, follow'}">
     <script type="application/ld+json">${JSON.stringify({
       "@context": "https://schema.org",
       "@type": "WebPage",
@@ -9919,7 +9926,7 @@ app.get('/vehicle/:maker/:model', async (c) => {
 
         ${gradeTableHtml ? '<section class="mb-12"><h2 class="section-heading mb-6">グレード・タイヤサイズ一覧</h2><div class="info-card p-0 sm:p-0" style="padding:0;overflow:hidden;">' + gradeTableHtml + '</div></section>' : ''}
 
-        ${productsHtml ? '<section class="mb-12"><div class="flex items-center justify-between mb-6"><h2 class="section-heading">この車種の出品パーツ</h2><a href="' + searchUrl + '" class="text-sm text-red-500 font-semibold hover:underline">すべて見る<i class="fas fa-chevron-right ml-1 text-xs"></i></a></div><div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">' + productsHtml + '</div></section>' : '<section class="mb-12"><h2 class="section-heading mb-6">この車種の出品パーツ</h2><div class="info-card text-center py-8"><i class="fas fa-box-open text-gray-300 text-4xl mb-3"></i><p class="text-gray-500 text-sm mb-4">現在、' + safeModel + 'に適合するパーツの出品はありません</p><a href="/listing" class="inline-block px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg text-sm transition-colors"><i class="fas fa-plus mr-1"></i>パーツを出品する</a></div></section>'}
+        ${productsHtml ? '<section class="mb-12"><div class="flex items-center justify-between mb-6"><h2 class="section-heading">この車種の出品パーツ</h2><a href="' + searchUrl + '" class="text-sm text-red-500 font-semibold hover:underline">すべて見る<i class="fas fa-chevron-right ml-1 text-xs"></i></a></div><div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">' + productsHtml + '</div></section>' : '<section class="mb-12"><h2 class="section-heading mb-6">この車種の出品パーツ</h2><div class="info-card text-center py-10"><div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fas fa-box-open text-gray-300 text-2xl"></i></div><p class="text-gray-700 font-semibold mb-1">' + safeModel + 'の中古パーツは準備中です</p><p class="text-gray-400 text-xs mb-5">商品が登録され次第、こちらに掲載されます。<br>お持ちのパーツがあれば出品もお待ちしています。</p><div class="flex flex-col sm:flex-row gap-3 justify-center"><a href="/listing" class="inline-block px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg text-sm transition-colors"><i class="fas fa-plus mr-1"></i>パーツを出品する</a><a href="/search" class="inline-block px-6 py-2.5 border border-gray-300 hover:bg-gray-50 text-gray-600 font-semibold rounded-lg text-sm transition-colors"><i class="fas fa-search mr-1"></i>他の車種で探す</a></div></div></section>'}
 
         <section class="mb-12">
             <h2 class="section-heading mb-6">PARTS HUBで中古パーツを探すメリット</h2>
