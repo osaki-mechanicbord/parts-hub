@@ -3920,4 +3920,527 @@ adminPagesRoutes.get('/partners', (c) => {
   return c.html(AdminLayout('partners', 'パートナー管理', content));
 });
 
+// ============================================================
+// 越境EC管理画面
+// ============================================================
+adminPagesRoutes.get('/cross-border', (c) => {
+  const content = `
+    <style>
+      .cb-stat-card { background:white; border-radius:16px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.06); border:1px solid #f3f4f6; }
+      .cb-stat-value { font-size:28px; font-weight:800; color:#1f2937; }
+      .cb-stat-label { font-size:12px; color:#9ca3af; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; }
+      .cb-tab { padding:10px 20px; border-radius:10px; font-weight:600; font-size:14px; cursor:pointer; transition:all .2s; border:none; background:#f3f4f6; color:#6b7280; }
+      .cb-tab.active { background:#dc2626; color:white; }
+      .cb-tab:hover:not(.active) { background:#e5e7eb; }
+      .cb-card { background:white; border-radius:12px; border:1px solid #e5e7eb; overflow:hidden; transition:all .2s; }
+      .cb-card:hover { box-shadow:0 4px 12px rgba(0,0,0,0.08); }
+      .cb-badge { display:inline-block; padding:2px 8px; border-radius:6px; font-size:11px; font-weight:600; }
+      .cb-badge-draft { background:#f3f4f6; color:#6b7280; }
+      .cb-badge-listed { background:#dcfce7; color:#16a34a; }
+      .cb-badge-sold { background:#dbeafe; color:#2563eb; }
+      .demand-bar { height:6px; border-radius:3px; background:#e5e7eb; overflow:hidden; }
+      .demand-fill { height:100%; border-radius:3px; transition:width .3s; }
+      .rate-display { background:linear-gradient(135deg,#1e40af,#3b82f6); color:white; border-radius:12px; padding:16px 20px; }
+      .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:100; display:none; align-items:center; justify-content:center; }
+      .modal-overlay.show { display:flex; }
+      .modal-content { background:white; border-radius:16px; max-width:800px; width:95%; max-height:90vh; overflow-y:auto; padding:24px; }
+      .filter-chip { padding:4px 12px; border-radius:20px; font-size:12px; font-weight:500; border:1px solid #d1d5db; cursor:pointer; transition:all .15s; }
+      .filter-chip:hover { border-color:#3b82f6; }
+      .filter-chip.active { background:#3b82f6; color:white; border-color:#3b82f6; }
+    </style>
+
+    <!-- 為替レート表示 -->
+    <div class="rate-display mb-6 flex items-center justify-between">
+      <div>
+        <div class="text-sm opacity-80">リアルタイム為替レート</div>
+        <div class="flex items-center gap-3 mt-1">
+          <span class="text-3xl font-bold" id="rate-value">---</span>
+          <span class="text-sm opacity-80">JPY / 1 USD</span>
+        </div>
+      </div>
+      <div class="text-right">
+        <div class="text-xs opacity-60" id="rate-updated">取得中...</div>
+        <button onclick="refreshRate()" class="mt-1 text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg transition">
+          <i class="fas fa-sync-alt mr-1"></i>更新
+        </button>
+      </div>
+    </div>
+
+    <!-- 統計カード -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div class="cb-stat-card">
+        <div class="cb-stat-label"><i class="fas fa-globe text-blue-400 mr-1"></i>海外出品中</div>
+        <div class="cb-stat-value mt-1" id="stat-active">0</div>
+      </div>
+      <div class="cb-stat-card">
+        <div class="cb-stat-label"><i class="fas fa-shopping-cart text-green-400 mr-1"></i>海外売上</div>
+        <div class="cb-stat-value mt-1" id="stat-sold">0</div>
+      </div>
+      <div class="cb-stat-card">
+        <div class="cb-stat-label"><i class="fas fa-dollar-sign text-yellow-500 mr-1"></i>海外売上(USD)</div>
+        <div class="cb-stat-value mt-1" id="stat-revenue">$0</div>
+      </div>
+      <div class="cb-stat-card">
+        <div class="cb-stat-label"><i class="fas fa-chart-line text-red-400 mr-1"></i>利益(JPY)</div>
+        <div class="cb-stat-value mt-1" id="stat-profit">¥0</div>
+      </div>
+    </div>
+
+    <!-- タブ切り替え -->
+    <div class="flex gap-2 mb-6 overflow-x-auto">
+      <button class="cb-tab active" data-tab="candidates" onclick="switchCBTab('candidates')">
+        <i class="fas fa-search mr-1"></i>買取候補
+      </button>
+      <button class="cb-tab" data-tab="listings" onclick="switchCBTab('listings')">
+        <i class="fas fa-globe mr-1"></i>海外出品
+      </button>
+      <button class="cb-tab" data-tab="orders" onclick="switchCBTab('orders')">
+        <i class="fas fa-truck mr-1"></i>海外注文
+      </button>
+    </div>
+
+    <!-- ===== 買取候補タブ ===== -->
+    <div id="tab-candidates">
+      <!-- フィルター -->
+      <div class="bg-white rounded-xl p-4 mb-4 border border-gray-100">
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="text-xs font-bold text-gray-500">メーカー:</span>
+          <div class="flex flex-wrap gap-1">
+            <button class="filter-chip active" data-maker="" onclick="filterMaker(this)">すべて</button>
+            <button class="filter-chip" data-maker="トヨタ" onclick="filterMaker(this)">トヨタ</button>
+            <button class="filter-chip" data-maker="日産" onclick="filterMaker(this)">日産</button>
+            <button class="filter-chip" data-maker="ホンダ" onclick="filterMaker(this)">ホンダ</button>
+            <button class="filter-chip" data-maker="スズキ" onclick="filterMaker(this)">スズキ</button>
+            <button class="filter-chip" data-maker="スバル" onclick="filterMaker(this)">スバル</button>
+            <button class="filter-chip" data-maker="マツダ" onclick="filterMaker(this)">マツダ</button>
+            <button class="filter-chip" data-maker="三菱" onclick="filterMaker(this)">三菱</button>
+            <button class="filter-chip" data-maker="いすゞ" onclick="filterMaker(this)">いすゞ</button>
+            <button class="filter-chip" data-maker="日野" onclick="filterMaker(this)">日野</button>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-3 mt-3">
+          <span class="text-xs font-bold text-gray-500">カテゴリ:</span>
+          <div class="flex flex-wrap gap-1">
+            <button class="filter-chip active" data-cat="" onclick="filterCat(this)">すべて</button>
+            <button class="filter-chip" data-cat="car" onclick="filterCat(this)">乗用車</button>
+            <button class="filter-chip" data-cat="truck" onclick="filterCat(this)">トラック</button>
+            <button class="filter-chip" data-cat="motorcycle" onclick="filterCat(this)">バイク</button>
+            <button class="filter-chip" data-cat="tools" onclick="filterCat(this)">工具</button>
+            <button class="filter-chip" data-cat="rebuilt" onclick="filterCat(this)">リビルト</button>
+            <button class="filter-chip" data-cat="electrical" onclick="filterCat(this)">電装</button>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 mt-3">
+          <span class="text-xs font-bold text-gray-500">価格帯:</span>
+          <input type="number" id="filter-min-price" placeholder="¥下限" class="px-3 py-1.5 border rounded-lg text-sm w-28">
+          <span class="text-gray-400">〜</span>
+          <input type="number" id="filter-max-price" placeholder="¥上限" class="px-3 py-1.5 border rounded-lg text-sm w-28">
+          <button onclick="loadCandidates()" class="px-4 py-1.5 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 font-semibold">
+            <i class="fas fa-filter mr-1"></i>絞り込み
+          </button>
+        </div>
+      </div>
+
+      <!-- 候補商品グリッド -->
+      <div id="candidates-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="text-center py-12 text-gray-400 col-span-full">
+          <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+          <p>読み込み中...</p>
+        </div>
+      </div>
+      <div class="text-center mt-4">
+        <button id="candidates-load-more" onclick="loadMoreCandidates()" class="hidden px-6 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-semibold text-gray-600">
+          もっと見る
+        </button>
+      </div>
+    </div>
+
+    <!-- ===== 海外出品タブ ===== -->
+    <div id="tab-listings" style="display:none">
+      <div id="listings-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="text-center py-12 text-gray-400 col-span-full">読み込み中...</div>
+      </div>
+    </div>
+
+    <!-- ===== 海外注文タブ ===== -->
+    <div id="tab-orders" style="display:none">
+      <div id="orders-list">
+        <div class="text-center py-12 text-gray-400">読み込み中...</div>
+      </div>
+    </div>
+
+    <!-- ===== 出品モーダル ===== -->
+    <div id="listing-modal" class="modal-overlay">
+      <div class="modal-content">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-bold text-gray-800"><i class="fas fa-globe-americas mr-2 text-blue-500"></i>海外出品設定</h3>
+          <button onclick="closeListingModal()" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+        </div>
+
+        <!-- 元商品情報 -->
+        <div class="bg-gray-50 rounded-xl p-4 mb-4 flex gap-4">
+          <img id="modal-img" src="" class="w-20 h-20 object-cover rounded-lg" onerror="this.src='/icons/icon.svg'">
+          <div>
+            <p class="font-bold text-gray-800" id="modal-title-ja">-</p>
+            <p class="text-sm text-gray-500" id="modal-maker">-</p>
+            <p class="text-lg font-bold text-red-600 mt-1" id="modal-price-ja">¥0</p>
+          </div>
+        </div>
+
+        <!-- AI翻訳 -->
+        <div class="mb-4">
+          <div class="flex items-center justify-between mb-2">
+            <label class="font-bold text-sm text-gray-700">英語タイトル</label>
+            <button onclick="aiTranslate()" id="ai-translate-btn" class="text-xs bg-purple-500 text-white px-3 py-1 rounded-lg hover:bg-purple-600">
+              <i class="fas fa-magic mr-1"></i>AI翻訳
+            </button>
+          </div>
+          <input type="text" id="modal-title-en" class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="English title for eBay...">
+        </div>
+
+        <div class="mb-4">
+          <label class="font-bold text-sm text-gray-700 mb-2 block">英語説明</label>
+          <textarea id="modal-desc-en" rows="5" class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="English description for eBay listing..."></textarea>
+        </div>
+
+        <!-- 価格設定 -->
+        <div class="bg-blue-50 rounded-xl p-4 mb-4">
+          <p class="font-bold text-sm text-blue-800 mb-3"><i class="fas fa-dollar-sign mr-1"></i>価格設定</p>
+          <div class="grid grid-cols-3 gap-3">
+            <div>
+              <label class="text-xs text-gray-500">仕入原価(税込)</label>
+              <p class="font-bold text-gray-800" id="modal-cost-jpy">¥0</p>
+            </div>
+            <div>
+              <label class="text-xs text-gray-500">販売価格(USD)</label>
+              <input type="number" id="modal-price-usd" step="0.01" class="w-full px-2 py-1.5 border rounded-lg text-sm font-bold" onchange="calcProfit()">
+            </div>
+            <div>
+              <label class="text-xs text-gray-500">送料(USD)</label>
+              <input type="number" id="modal-shipping-usd" step="0.01" value="30" class="w-full px-2 py-1.5 border rounded-lg text-sm" onchange="calcProfit()">
+            </div>
+          </div>
+          <div class="mt-3 pt-3 border-t border-blue-200 flex items-center justify-between">
+            <span class="text-sm text-blue-700">予想利益:</span>
+            <span class="text-xl font-bold" id="modal-profit">-</span>
+          </div>
+        </div>
+
+        <!-- アクションボタン -->
+        <div class="flex gap-3">
+          <button onclick="closeListingModal()" class="flex-1 px-4 py-2.5 border rounded-lg hover:bg-gray-50 font-semibold">キャンセル</button>
+          <button onclick="saveListing('draft')" class="flex-1 px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-semibold">
+            <i class="fas fa-save mr-1"></i>下書き保存
+          </button>
+          <button onclick="saveListing('ready')" class="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold">
+            <i class="fas fa-check mr-1"></i>出品準備完了
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+    var cbCurrentRate = 150;
+    var cbCandidateOffset = 0;
+    var cbCurrentFilters = { maker: '', top_category: '', min_price: '', max_price: '' };
+    var cbCurrentProduct = null;
+
+    // ===== 為替レート =====
+    async function refreshRate() {
+      try {
+        var res = await axios.get('/api/admin/cross-border/exchange-rate', {
+          headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') }
+        });
+        if (res.data.success) {
+          cbCurrentRate = res.data.rate;
+          document.getElementById('rate-value').textContent = res.data.rate.toFixed(2);
+          var info = res.data.cached ? '(キャッシュ)' : '(最新)';
+          document.getElementById('rate-updated').textContent = info + ' ' + new Date().toLocaleTimeString('ja-JP');
+        }
+      } catch(e) {
+        document.getElementById('rate-value').textContent = '取得失敗';
+      }
+    }
+
+    // ===== 統計読み込み =====
+    async function loadStats() {
+      try {
+        var res = await axios.get('/api/admin/cross-border/stats', {
+          headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') }
+        });
+        if (res.data.success) {
+          var l = res.data.listings, o = res.data.orders, r = res.data.revenue;
+          document.getElementById('stat-active').textContent = l.active || 0;
+          document.getElementById('stat-sold').textContent = l.sold || 0;
+          document.getElementById('stat-revenue').textContent = '$' + Number(r.total_revenue_usd || 0).toLocaleString();
+          document.getElementById('stat-profit').textContent = '¥' + Number(r.total_profit_jpy || 0).toLocaleString();
+        }
+      } catch(e) {}
+    }
+
+    // ===== タブ切り替え =====
+    function switchCBTab(tab) {
+      document.querySelectorAll('.cb-tab').forEach(function(b) {
+        b.classList.toggle('active', b.getAttribute('data-tab') === tab);
+      });
+      ['candidates','listings','orders'].forEach(function(t) {
+        document.getElementById('tab-' + t).style.display = t === tab ? '' : 'none';
+      });
+      if (tab === 'listings') loadListings();
+      if (tab === 'orders') loadOrders();
+    }
+
+    // ===== フィルタ =====
+    function filterMaker(el) {
+      document.querySelectorAll('[data-maker]').forEach(function(c) { c.classList.remove('active'); });
+      el.classList.add('active');
+      cbCurrentFilters.maker = el.getAttribute('data-maker');
+      cbCandidateOffset = 0;
+      loadCandidates();
+    }
+    function filterCat(el) {
+      document.querySelectorAll('[data-cat]').forEach(function(c) { c.classList.remove('active'); });
+      el.classList.add('active');
+      cbCurrentFilters.top_category = el.getAttribute('data-cat');
+      cbCandidateOffset = 0;
+      loadCandidates();
+    }
+
+    // ===== 買取候補一覧 =====
+    async function loadCandidates(append) {
+      if (!append) cbCandidateOffset = 0;
+      var params = new URLSearchParams({ limit: '12', offset: String(cbCandidateOffset) });
+      if (cbCurrentFilters.maker) params.set('maker', cbCurrentFilters.maker);
+      if (cbCurrentFilters.top_category) params.set('top_category', cbCurrentFilters.top_category);
+      var minP = document.getElementById('filter-min-price').value;
+      var maxP = document.getElementById('filter-max-price').value;
+      if (minP) params.set('min_price', minP);
+      if (maxP) params.set('max_price', maxP);
+
+      try {
+        var res = await axios.get('/api/admin/cross-border/candidates?' + params, {
+          headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') }
+        });
+        var grid = document.getElementById('candidates-grid');
+        if (!append) grid.innerHTML = '';
+
+        if (res.data.items.length === 0 && !append) {
+          grid.innerHTML = '<div class="text-center py-12 text-gray-400 col-span-full"><i class="fas fa-box-open text-4xl mb-3"></i><p>候補商品がありません</p></div>';
+          document.getElementById('candidates-load-more').classList.add('hidden');
+          return;
+        }
+
+        res.data.items.forEach(function(p) {
+          var priceJpy = Math.floor(p.price * 1.1);
+          var priceUsd = (priceJpy / cbCurrentRate).toFixed(2);
+          var imgSrc = p.image_url || '/icons/icon.svg';
+          grid.innerHTML += '<div class="cb-card">' +
+            '<div class="flex gap-3 p-3">' +
+              '<img src="' + escapeHtml(imgSrc) + '" class="w-20 h-20 object-cover rounded-lg flex-shrink-0" onerror="this.src=\\'/icons/icon.svg\\'">' +
+              '<div class="flex-1 min-w-0">' +
+                '<p class="font-semibold text-sm text-gray-800 truncate">' + escapeHtml(p.title) + '</p>' +
+                '<p class="text-xs text-gray-500 mt-0.5">' + escapeHtml(p.vm_maker || '') + ' ' + escapeHtml(p.vm_model || '') + '</p>' +
+                '<div class="flex items-center gap-2 mt-1">' +
+                  '<span class="font-bold text-red-600">¥' + priceJpy.toLocaleString() + '</span>' +
+                  '<span class="text-xs text-gray-400">→</span>' +
+                  '<span class="font-bold text-blue-600">$' + priceUsd + '</span>' +
+                '</div>' +
+                '<div class="flex items-center gap-2 mt-2">' +
+                  '<span class="text-xs text-gray-400"><i class="fas fa-eye mr-1"></i>' + (p.view_count || 0) + '</span>' +
+                  '<span class="text-xs text-gray-400"><i class="fas fa-heart mr-1"></i>' + (p.favorite_count || 0) + '</span>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="px-3 pb-3">' +
+              '<button onclick="openListingModal(' + p.id + ')" class="w-full py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 font-semibold">' +
+                '<i class="fas fa-globe-americas mr-1"></i>海外出品する' +
+              '</button>' +
+            '</div>' +
+          '</div>';
+        });
+
+        var btn = document.getElementById('candidates-load-more');
+        if (res.data.items.length >= 12 && cbCandidateOffset + 12 < res.data.total) {
+          btn.classList.remove('hidden');
+        } else {
+          btn.classList.add('hidden');
+        }
+      } catch(e) {
+        console.error('Candidates load error:', e);
+      }
+    }
+
+    function loadMoreCandidates() {
+      cbCandidateOffset += 12;
+      loadCandidates(true);
+    }
+
+    // ===== 出品モーダル =====
+    async function openListingModal(productId) {
+      try {
+        var res = await axios.get('/api/admin/products/' + productId, {
+          headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') }
+        });
+        var p = res.data.product || res.data;
+        cbCurrentProduct = p;
+
+        document.getElementById('modal-img').src = p.main_image || p.image_url || '/icons/icon.svg';
+        document.getElementById('modal-title-ja').textContent = p.title;
+        document.getElementById('modal-maker').textContent = (p.vm_maker || '') + ' ' + (p.vm_model || '');
+        var costJpy = Math.floor(Number(p.price) * 1.1);
+        document.getElementById('modal-price-ja').textContent = '¥' + costJpy.toLocaleString();
+        document.getElementById('modal-cost-jpy').textContent = '¥' + costJpy.toLocaleString();
+        // USD推奨価格（仕入れの2倍をデフォルト）
+        var suggestUsd = Math.ceil(costJpy / cbCurrentRate * 2);
+        document.getElementById('modal-price-usd').value = suggestUsd;
+        document.getElementById('modal-title-en').value = '';
+        document.getElementById('modal-desc-en').value = '';
+        calcProfit();
+        document.getElementById('listing-modal').classList.add('show');
+      } catch(e) {
+        alert('商品情報の取得に失敗しました');
+      }
+    }
+
+    function closeListingModal() {
+      document.getElementById('listing-modal').classList.remove('show');
+      cbCurrentProduct = null;
+    }
+
+    function calcProfit() {
+      var usd = parseFloat(document.getElementById('modal-price-usd').value) || 0;
+      var ship = parseFloat(document.getElementById('modal-shipping-usd').value) || 0;
+      var costJpy = cbCurrentProduct ? Math.floor(Number(cbCurrentProduct.price) * 1.1) : 0;
+      var saleJpy = Math.floor((usd + ship) * cbCurrentRate);
+      // eBay手数料約13% + PayPal約3%
+      var fees = Math.floor(saleJpy * 0.16);
+      var shippingCostJpy = Math.floor(ship * cbCurrentRate);
+      var profit = saleJpy - costJpy - fees - shippingCostJpy;
+      var el = document.getElementById('modal-profit');
+      el.textContent = '¥' + profit.toLocaleString();
+      el.className = 'text-xl font-bold ' + (profit > 0 ? 'text-green-600' : 'text-red-600');
+    }
+
+    // ===== AI翻訳 =====
+    async function aiTranslate() {
+      if (!cbCurrentProduct) return;
+      var btn = document.getElementById('ai-translate-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>翻訳中...';
+      try {
+        var res = await axios.post('/api/admin/cross-border/translate', {
+          title: cbCurrentProduct.title,
+          description: cbCurrentProduct.description,
+          maker: cbCurrentProduct.vm_maker,
+          model: cbCurrentProduct.vm_model,
+          condition: cbCurrentProduct.condition
+        }, { headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') } });
+
+        if (res.data.success) {
+          document.getElementById('modal-title-en').value = res.data.title_en || '';
+          document.getElementById('modal-desc-en').value = res.data.description_en || '';
+        } else {
+          alert(res.data.error || 'AI翻訳に失敗しました');
+        }
+      } catch(e) {
+        alert('AI翻訳エラー: ' + (e.response?.data?.error || e.message));
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-magic mr-1"></i>AI翻訳';
+      }
+    }
+
+    // ===== 出品保存 =====
+    async function saveListing(status) {
+      if (!cbCurrentProduct) return;
+      var titleEn = document.getElementById('modal-title-en').value.trim();
+      if (!titleEn) { alert('英語タイトルを入力してください'); return; }
+
+      try {
+        await axios.post('/api/admin/cross-border/listings', {
+          product_id: cbCurrentProduct.id,
+          title_en: titleEn,
+          description_en: document.getElementById('modal-desc-en').value,
+          price_usd: parseFloat(document.getElementById('modal-price-usd').value) || 0,
+          exchange_rate: cbCurrentRate,
+          shipping_cost_usd: parseFloat(document.getElementById('modal-shipping-usd').value) || 0,
+          status: status
+        }, { headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') } });
+
+        alert(status === 'ready' ? '出品準備完了しました！' : '下書き保存しました');
+        closeListingModal();
+        loadCandidates();
+        loadStats();
+      } catch(e) {
+        alert('保存に失敗しました');
+      }
+    }
+
+    // ===== 海外出品一覧 =====
+    async function loadListings() {
+      var grid = document.getElementById('listings-grid');
+      try {
+        var res = await axios.get('/api/admin/cross-border/listings', {
+          headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') }
+        });
+        if (!res.data.items || res.data.items.length === 0) {
+          grid.innerHTML = '<div class="text-center py-12 text-gray-400 col-span-full"><i class="fas fa-globe text-4xl mb-3"></i><p>海外出品データがありません</p><p class="text-xs mt-1">「買取候補」タブから商品を選んで出品してください</p></div>';
+          return;
+        }
+        var statusLabels = { draft:'下書き', translating:'翻訳中', ready:'出品準備完了', listed:'出品中', sold:'売却済', cancelled:'取消', error:'エラー' };
+        var statusColors = { draft:'cb-badge-draft', ready:'bg-yellow-100 text-yellow-700', listed:'cb-badge-listed', sold:'cb-badge-sold', cancelled:'bg-red-100 text-red-700', error:'bg-red-100 text-red-700' };
+        grid.innerHTML = res.data.items.map(function(item) {
+          var img = item.image_url || '/icons/icon.svg';
+          return '<div class="cb-card p-4">' +
+            '<div class="flex gap-3">' +
+              '<img src="' + escapeHtml(img) + '" class="w-16 h-16 object-cover rounded-lg" onerror="this.src=\\'/icons/icon.svg\\'">' +
+              '<div class="flex-1">' +
+                '<div class="flex items-center gap-2">' +
+                  '<span class="cb-badge ' + (statusColors[item.status] || 'cb-badge-draft') + '">' + (statusLabels[item.status] || item.status) + '</span>' +
+                  '<span class="text-xs text-gray-400">#' + item.id + '</span>' +
+                '</div>' +
+                '<p class="font-semibold text-sm mt-1">' + escapeHtml(item.title_en || item.product_title) + '</p>' +
+                '<p class="text-xs text-gray-500">' + escapeHtml(item.product_title) + '</p>' +
+                '<div class="flex items-center gap-3 mt-1">' +
+                  '<span class="font-bold text-blue-600">$' + (item.price_usd || 0) + '</span>' +
+                  '<span class="text-xs text-gray-400">(¥' + Number(item.price_jpy || 0).toLocaleString() + ')</span>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+          '</div>';
+        }).join('');
+      } catch(e) {
+        grid.innerHTML = '<div class="text-center py-12 text-red-400 col-span-full">読み込みエラー</div>';
+      }
+    }
+
+    // ===== 海外注文一覧 =====
+    async function loadOrders() {
+      var el = document.getElementById('orders-list');
+      try {
+        var res = await axios.get('/api/admin/cross-border/orders', {
+          headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') }
+        });
+        if (!res.data.items || res.data.items.length === 0) {
+          el.innerHTML = '<div class="text-center py-12 text-gray-400"><i class="fas fa-truck text-4xl mb-3"></i><p>海外注文はまだありません</p><p class="text-xs mt-1">eBay連携後、注文が入ると表示されます</p></div>';
+          return;
+        }
+        el.innerHTML = '<p class="text-sm text-gray-500">注文 ' + res.data.items.length + '件</p>';
+      } catch(e) {
+        el.innerHTML = '<div class="text-center py-12 text-red-400">読み込みエラー</div>';
+      }
+    }
+
+    // ===== 初期化 =====
+    (async function() {
+      await refreshRate();
+      loadStats();
+      loadCandidates();
+    })();
+    </script>
+  `;
+
+  return c.html(AdminLayout('cross-border', '越境EC管理', content));
+});
+
 export default adminPagesRoutes

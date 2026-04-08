@@ -23,6 +23,7 @@ import reviewsRoutes from './routes/reviews'
 import transactionsRoutes from './routes/transactions'
 import adminRoutes from './routes/admin'
 import adminPagesRoutes from './routes/admin-pages'
+import crossBorderRoutes from './routes/cross-border'
 import emailRoutes from './routes/email'
 import articlesRoutes from './routes/articles'
 import vehicleDemoRoutes from './routes/vehicle-demo'
@@ -888,6 +889,7 @@ app.route('/api/articles', articlesRoutes)
 app.route('/api/vehicle-demo', vehicleDemoRoutes)
 app.route('/api/argos-demo', argosDemoRoutes)
 app.route('/api/argos', argosRoutes)  // 本番用ARGOS JPC API（ARGOS_API_ENABLED=true時のみ有効、公開予定: 2026年6月〜）
+app.route('/api/admin/cross-border', crossBorderRoutes) // 越境EC管理API（adminRouteより先に登録）
 app.route('/api/admin', adminRoutes)
 app.route('/api/guides', guideApiRoutes) // ガイド記事自動生成API
 app.route('/franchise', franchiseRoutes) // パートナー募集LP
