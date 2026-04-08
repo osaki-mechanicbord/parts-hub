@@ -254,8 +254,17 @@ app.post('/', async (c) => {
 
     // 必須フィールドのバリデーション
     const userId = body.seller_id || body.user_id
-    if (!userId || !body.title || !body.price || !body.condition) {
-      return c.json({ success: false, error: '出品者ID、タイトル、価格、状態は必須です' }, 400)
+    const isDraft = body.status === 'draft'
+
+    if (!userId) {
+      return c.json({ success: false, error: '出品者IDは必須です' }, 400)
+    }
+    // 下書きはタイトルのみ必須、通常出品はフルバリデーション
+    if (!isDraft && (!body.title || !body.price || !body.condition)) {
+      return c.json({ success: false, error: 'タイトル、価格、状態は必須です' }, 400)
+    }
+    if (isDraft && !body.title) {
+      return c.json({ success: false, error: '下書き保存にはタイトルが必要です' }, 400)
     }
 
     // 商品登録

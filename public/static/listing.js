@@ -325,6 +325,118 @@ class ProductListingForm {
     }
   }
 
+  // 下書き保存
+  async saveDraft() {
+    try {
+      var userStr = localStorage.getItem('user')
+      var token = localStorage.getItem('token')
+      if (!userStr || !token) {
+        alert('下書き保存にはログインが必要です。')
+        window.location.href = '/login'
+        return
+      }
+      var user = JSON.parse(userStr)
+
+      var title = getVal('product-title')
+      if (!title) {
+        alert('下書き保存には商品タイトルを入力してください')
+        return
+      }
+
+      var formData = {
+        seller_id: user.id,
+        title: title,
+        description: getVal('product-description') || '',
+        price: getIntVal('product-price') || 0,
+        category_id: getIntVal('category-select') || null,
+        subcategory_id: getIntVal('subcategory-select') || null,
+        maker_id: getIntVal('maker-select') || null,
+        model_id: getIntVal('model-select') || null,
+        part_number: getVal('part-number') || null,
+        compatible_models: getVal('compatible-models') || null,
+        condition: getVal('condition-select') || 'good',
+        stock_quantity: getIntVal('stock-quantity') || 1,
+        shipping_type: getVal('shipping-type') || 'buyer_paid',
+        is_universal: document.getElementById('is-universal') && document.getElementById('is-universal').checked ? 1 : 0,
+        status: 'draft',
+        vm_maker: getVal('vm-maker-name') || null,
+        vm_model: getVal('vm-model-name') || null,
+        vm_grade: getVal('vm-grade-name') || null,
+        vm_tire_size: getVal('vm-tire-size') || null,
+        compatibility: {
+          year_from: getIntVal('year-from'),
+          year_to: getIntVal('year-to'),
+          model_code: getVal('model-code') || null,
+          grade: getVal('grade') || null,
+          engine_type: getVal('engine-type') || null,
+          drive_type: getVal('drive-type') || null,
+          transmission_type: getVal('transmission-type') || null,
+          oem_part_number: getVal('oem-part-number') || null,
+          verification_method: getVal('verification-method') || null,
+          fitment_notes: getVal('fitment-notes') || null,
+          tire_size: getVal('vm-tire-size') || null,
+          confidence_level: 4
+        }
+      }
+
+      // ローディング表示
+      var draftBtn = document.getElementById('draft-btn')
+      var originalText = draftBtn ? draftBtn.innerHTML : ''
+      if (draftBtn) {
+        draftBtn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:6px;"></i>保存中...'
+        draftBtn.disabled = true
+      }
+
+      var response;
+      if (window.EDIT_MODE && window.PRODUCT_ID) {
+        response = await axios.put('/api/products/' + window.PRODUCT_ID, formData, {
+          headers: { 'Authorization': 'Bearer ' + token }
+        })
+      } else {
+        response = await axios.post('/api/products', formData, {
+          headers: { 'Authorization': 'Bearer ' + token }
+        })
+      }
+
+      if (!response.data.success) {
+        throw new Error(response.data.error || '下書き保存に失敗しました')
+      }
+
+      var productId = window.EDIT_MODE ? window.PRODUCT_ID : response.data.data.id
+
+      // 画像アップロード（新規画像がある場合のみ）
+      if (this.uploadedImages.some(function(img) { return !img.uploaded })) {
+        await this.uploadImagesToR2(productId)
+      }
+
+      // 成功
+      var successBanner = document.createElement('div')
+      successBanner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#6366f1;color:#fff;text-align:center;padding:16px;font-size:16px;font-weight:700;z-index:9999;'
+      successBanner.innerHTML = '<i class="fas fa-save" style="margin-right:8px;"></i>下書きを保存しました！マイページに移動します...'
+      document.body.appendChild(successBanner)
+
+      setTimeout(function() {
+        window.location.href = '/mypage#listings'
+      }, 1500)
+
+    } catch (error) {
+      console.error('下書き保存エラー:', error)
+      var msg = '下書き保存に失敗しました。'
+      if (error.response && error.response.data && error.response.data.error) {
+        msg = error.response.data.error
+      } else if (error.message) {
+        msg = error.message
+      }
+      alert(msg)
+
+      var draftBtn = document.getElementById('draft-btn')
+      if (draftBtn) {
+        draftBtn.innerHTML = '<i class="far fa-save" style="margin-right:6px;"></i>下書き保存'
+        draftBtn.disabled = false
+      }
+    }
+  }
+
   // カテゴリ変更 → サブカテゴリ読込
   async loadSubcategories(categoryId) {
     var el = document.getElementById('subcategory-select')
@@ -601,7 +713,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     // ヘッダーのタイトルを変更
     var headerTitle = document.querySelector('header .font-bold.text-base')
     if (headerTitle) headerTitle.textContent = '商品を編集'
-    // 出品ボタンのテキスト変更
+    // 出品ボタンのテキスト変更（下書き判定はloadProductForEditで上書き）
     var submitBtn = document.getElementById('submit-btn')
     if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-save mr-2"></i>変更を保存'
     loadProductForEdit(window.PRODUCT_ID)
@@ -722,6 +834,15 @@ async function loadProductForEdit(productId) {
         })
         var conditionInput = document.getElementById('condition-select')
         if (conditionInput) conditionInput.value = product.condition
+      }
+
+      // 下書きの場合：出品ボタンを「出品する」に変更
+      if (product.status === 'draft') {
+        window.DRAFT_MODE = true
+        var headerTitle = document.querySelector('header .font-bold.text-base')
+        if (headerTitle) headerTitle.textContent = '下書きを編集'
+        var submitBtn = document.getElementById('submit-btn')
+        if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>出品する'
       }
       
     } else {

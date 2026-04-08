@@ -4191,6 +4191,18 @@ app.get('/listing', (c) => {
                 opacity: 0.6; cursor: not-allowed; transform: none;
                 box-shadow: none;
             }
+            .draft-btn {
+                width: 100%; background: #fff;
+                color: #6366f1; padding: 14px; border-radius: 14px;
+                font-weight: 700; font-size: 15px; border: 2px solid #6366f1; cursor: pointer;
+                transition: all 0.2s;
+            }
+            .draft-btn:hover {
+                background: #eef2ff;
+            }
+            .draft-btn:disabled {
+                opacity: 0.6; cursor: not-allowed;
+            }
 
             /* 横並びフィールド */
             .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -4712,6 +4724,9 @@ app.get('/listing', (c) => {
             <div class="max-w-2xl mx-auto">
                 <button type="button" id="submit-btn" onclick="productForm.submitForm()" class="submit-btn">
                     <i class="fas fa-check mr-2"></i>出品する
+                </button>
+                <button type="button" id="draft-btn" onclick="productForm.saveDraft()" class="draft-btn mt-2">
+                    <i class="far fa-save mr-1.5"></i>下書き保存
                 </button>
                 <div class="text-center mt-1.5">
                     <span class="text-xs text-gray-400">出品手数料は販売時に10%のみ</span>

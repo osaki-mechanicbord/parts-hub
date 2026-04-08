@@ -514,7 +514,11 @@ function renderListings() {
                 <button onclick="editProduct(${product.id})" class="flex-1 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 py-2 px-2 rounded-lg font-semibold transition-colors">
                     <i class="fas fa-edit mr-1"></i>編集
                 </button>
-                ${product.status === 'active' ? `
+                ${product.status === 'draft' ? `
+                    <button onclick="publishDraft(${product.id})" class="flex-1 text-xs bg-green-50 text-green-600 hover:bg-green-100 py-2 px-2 rounded-lg font-semibold transition-colors">
+                        <i class="fas fa-paper-plane mr-1"></i>出品
+                    </button>
+                ` : product.status === 'active' ? `
                     <button onclick="pauseProduct(${product.id})" class="flex-1 text-xs bg-yellow-50 text-yellow-600 hover:bg-yellow-100 py-2 px-2 rounded-lg font-semibold transition-colors">
                         <i class="fas fa-pause mr-1"></i>停止
                     </button>
@@ -562,6 +566,11 @@ function showToast(message, type = 'success') {
     toast.textContent = message;
     document.body.appendChild(toast);
     setTimeout(function() { toast.remove(); }, 2500);
+}
+
+// 下書きを出品（編集画面へ遷移）
+function publishDraft(productId) {
+    window.location.href = '/listing/edit/' + productId;
 }
 
 // 商品を停止
