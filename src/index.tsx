@@ -1366,7 +1366,7 @@ app.get('/', (c) => {
                                 <i class="fas fa-search absolute left-4 sm:left-5 top-1/2 -translate-y-1/2 text-gray-400 text-base sm:text-lg"></i>
                                 <input type="text" id="search-input" 
                                        placeholder="商品名、メーカー、品番で検索..." 
-                                       class="search-input w-full pl-11 sm:pl-14 pr-4 py-3 sm:py-4 rounded-xl border-0 text-gray-900 text-base sm:text-lg focus:outline-none focus:ring-4 focus:ring-white/50 shadow-2xl">
+                                       class="search-input w-full pl-11 sm:pl-14 pr-4 py-3 sm:py-4 rounded-xl border-0 bg-white text-gray-900 text-base sm:text-lg focus:outline-none focus:ring-4 focus:ring-white/50 shadow-2xl placeholder:text-gray-400">
                             </div>
                             <button onclick="performSearch()" 
                                     class="w-full sm:w-auto px-8 sm:px-10 py-3 sm:py-4 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-xl font-bold hover:from-red-600 hover:to-pink-600 transition-all shadow-2xl hover:shadow-red-500/50 text-base sm:text-lg">
