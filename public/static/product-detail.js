@@ -311,7 +311,7 @@ function renderProduct() {
     setupShareButtons();
 }
 
-// 手数料情報を表示（メルカリ方式：購入者は商品価格のみ、手数料なし）
+// 手数料情報を表示
 function renderFeeInfo() {
     const feeContainer = document.getElementById('fee-info');
     if (!feeContainer || !product) return;
@@ -319,6 +319,7 @@ function renderFeeInfo() {
     const priceExTax = Number(product.price);
     const taxAmount = calcTaxAmount(priceExTax);
     const priceIncTax = calcTaxIncluded(priceExTax);
+    const cardFee = 330;
     
     feeContainer.innerHTML = `
         <div class="text-sm text-gray-600 mt-2 space-y-1">
@@ -331,11 +332,17 @@ function renderFeeInfo() {
                 <span>¥${taxAmount.toLocaleString()}</span>
             </div>
             <div class="flex justify-between font-bold text-gray-800 border-t pt-1">
-                <span>お支払い合計</span>
+                <span>商品価格（税込）</span>
                 <span>¥${priceIncTax.toLocaleString()}</span>
             </div>
+            <div class="text-xs text-gray-500 mt-1">
+                <i class="fas fa-credit-card mr-1"></i>カード決済時は別途決済手数料¥${cardFee.toLocaleString()}（税込）がかかります
+            </div>
+            <div class="text-xs text-gray-500">
+                <i class="fas fa-university mr-1"></i>銀行振込時は振込手数料（各金融機関により異なる）がかかります
+            </div>
             <div class="text-xs text-green-600 mt-1">
-                <i class="fas fa-check-circle mr-1"></i>サービス手数料は無料です
+                <i class="fas fa-check-circle mr-1"></i>サービス手数料（販売手数料10%）は出品者が負担 — 購入者の負担なし
             </div>
         </div>
     `;
@@ -661,14 +668,14 @@ async function purchaseProduct() {
         return;
     }
     
-    // 金額計算（メルカリ方式：購入者は商品価格+消費税のみ）
+    // 金額計算
     const priceExTax = Number(product.price);
     const taxAmount = calcTaxAmount(priceExTax);
     const priceIncTax = calcTaxIncluded(priceExTax);
-    const platformFee = 0; // 購入者負担なし
-    const cardProcessingFee = 0; // 購入者負担なし
-    const totalCard = priceIncTax;
-    const totalBank = priceIncTax;
+    const platformFee = 0; // 購入者のサービス手数料は無料（出品者負担）
+    const cardProcessingFee = 330; // カード決済手数料¥330（税込）購入者負担
+    const totalCard = priceIncTax + cardProcessingFee;
+    const totalBank = priceIncTax; // 銀行振込は商品価格のみ（振込手数料は別途購入者負担）
     
     // 支払い方法選択モーダルを表示
     showPaymentMethodModal(priceExTax, taxAmount, priceIncTax, platformFee, cardProcessingFee, totalCard, totalBank);
@@ -702,7 +709,7 @@ function showPaymentMethodModal(priceExTax, taxAmount, priceIncTax, platformFee,
                         <div>
                             <div style="font-weight:bold;color:#111;">クレジットカード決済</div>
                             <div style="font-size:12px;color:#666;">Visa / Mastercard / JCB / Amex — 即時決済</div>
-                            <div style="font-size:12px;color:#10b981;font-weight:600;margin-top:4px;"><i class="fas fa-check-circle" style="margin-right:4px;"></i>手数料無料</div>
+                            <div style="font-size:12px;color:#b45309;font-weight:600;margin-top:4px;"><i class="fas fa-info-circle" style="margin-right:4px;"></i>決済手数料 ¥330（税込）</div>
                         </div>
                     </label>
                     
@@ -722,8 +729,8 @@ function showPaymentMethodModal(priceExTax, taxAmount, priceIncTax, platformFee,
                 <div id="fee-breakdown" style="background:#f8f9fa;border-radius:12px;padding:16px;margin-bottom:20px;">
                     <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#666;">商品価格（税抜）</span><span>¥${priceExTax.toLocaleString()}</span></div>
                     <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#666;">消費税（10%）</span><span>¥${taxAmount.toLocaleString()}</span></div>
-                    <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#10b981;"><i class="fas fa-check-circle" style="margin-right:4px;"></i>サービス手数料</span><span style="color:#10b981;font-weight:600;">¥0（無料）</span></div>
-                    <div id="card-fee-row" style="display:none;"></div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#10b981;"><i class="fas fa-check-circle" style="margin-right:4px;"></i>サービス手数料</span><span style="color:#10b981;font-weight:600;">¥0（出品者負担）</span></div>
+                    <div id="card-fee-row" style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#666;">カード決済手数料</span><span>¥${cardProcessingFee.toLocaleString()}</span></div>
                     <div style="border-top:2px solid #e5e7eb;padding-top:8px;display:flex;justify-content:space-between;">
                         <span style="font-weight:bold;font-size:16px;">お支払い合計</span>
                         <span id="total-amount-display" style="font-weight:bold;font-size:18px;color:#ef4444;">¥${totalCard.toLocaleString()}</span>
@@ -803,7 +810,7 @@ function togglePaymentMethod() {
         invoiceForm.style.display = 'block';
         confirmBtn.innerHTML = '<i class="fas fa-file-invoice-dollar" style="margin-right:8px;"></i>銀行振込で注文する';
         confirmBtn.style.background = '#10b981';
-        // 合計金額を銀行振込金額に切替（手数料なし、同額）
+        // 合計金額を銀行振込金額に切替（カード手数料なし、振込手数料は別途）
         if (cardFeeRow) cardFeeRow.style.display = 'none';
         if (totalDisplay) totalDisplay.textContent = '¥' + (amounts.totalBank || 0).toLocaleString();
         if (bankFeeNote) bankFeeNote.style.display = 'block';
@@ -816,8 +823,8 @@ function togglePaymentMethod() {
         invoiceForm.style.display = 'none';
         confirmBtn.innerHTML = '<i class="fas fa-credit-card" style="margin-right:8px;"></i>カード決済で購入する';
         confirmBtn.style.background = '#ef4444';
-        // 合計金額をカード金額に切替（手数料なし、同額）
-        if (cardFeeRow) cardFeeRow.style.display = 'none';
+        // 合計金額をカード金額に切替（カード手数料¥330含む）
+        if (cardFeeRow) cardFeeRow.style.display = 'flex';
         if (totalDisplay) totalDisplay.textContent = '¥' + (amounts.totalCard || 0).toLocaleString();
         if (bankFeeNote) bankFeeNote.style.display = 'none';
     }
