@@ -17,6 +17,33 @@ api.get('/health', (c) => {
   return c.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
+// バナー広告取得（公開API：アクティブなバナーのみ、表示期間フィルタ付き）
+api.get('/banners', async (c) => {
+  try {
+    const placement = c.req.query('placement') || 'top'
+    const now = new Date().toISOString()
+    const { results } = await c.env.DB.prepare(`
+      SELECT id, title, image_url, link_url, width, height, display_order
+      FROM ad_banners
+      WHERE is_active = 1
+        AND placement = ?
+        AND (start_date IS NULL OR start_date <= ?)
+        AND (end_date IS NULL OR end_date >= ?)
+      ORDER BY display_order ASC
+      LIMIT 5
+    `).bind(placement, now, now).all()
+
+    // 表示回数をインクリメント
+    for (const b of (results || [])) {
+      c.env.DB.prepare('UPDATE ad_banners SET view_count = view_count + 1 WHERE id = ?').bind((b as any).id).run()
+    }
+
+    return c.json({ success: true, banners: results || [] })
+  } catch (e: any) {
+    return c.json({ success: true, banners: [] })
+  }
+})
+
 // カテゴリ一覧
 api.get('/categories', async (c) => {
   try {

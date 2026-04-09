@@ -2618,4 +2618,175 @@ adminRoutes.get('/partners/stats', async (c) => {
   }
 })
 
+// =============================================
+// バナー広告管理 API
+// =============================================
+
+// バナー一覧取得（管理者用：全件取得）
+adminRoutes.get('/banners', async (c) => {
+  const env = c.env as any
+  try {
+    const { results } = await env.DB.prepare(`
+      SELECT * FROM ad_banners ORDER BY display_order ASC, created_at DESC
+    `).all()
+    return c.json({ success: true, banners: results || [] })
+  } catch (e: any) {
+    return c.json({ success: false, error: e.message }, 500)
+  }
+})
+
+// バナー1件取得
+adminRoutes.get('/banners/:id', async (c) => {
+  const env = c.env as any
+  const id = c.req.param('id')
+  try {
+    const banner = await env.DB.prepare('SELECT * FROM ad_banners WHERE id = ?').bind(id).first()
+    if (!banner) return c.json({ success: false, error: 'バナーが見つかりません' }, 404)
+    return c.json({ success: true, banner })
+  } catch (e: any) {
+    return c.json({ success: false, error: e.message }, 500)
+  }
+})
+
+// バナー作成
+adminRoutes.post('/banners', async (c) => {
+  const env = c.env as any
+  try {
+    const body = await c.req.json()
+    const { title, image_url, image_key, link_url, display_order, is_active, width, height, placement, start_date, end_date } = body
+    if (!title || !image_url) {
+      return c.json({ success: false, error: 'タイトルと画像URLは必須です' }, 400)
+    }
+    const result = await env.DB.prepare(`
+      INSERT INTO ad_banners (title, image_url, image_key, link_url, display_order, is_active, width, height, placement, start_date, end_date, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    `).bind(
+      title,
+      image_url,
+      image_key || null,
+      link_url || '',
+      display_order ?? 0,
+      is_active ?? 1,
+      width ?? 1200,
+      height ?? 400,
+      placement || 'top',
+      start_date || null,
+      end_date || null
+    ).run()
+    return c.json({ success: true, id: result.meta?.last_row_id })
+  } catch (e: any) {
+    return c.json({ success: false, error: e.message }, 500)
+  }
+})
+
+// バナー更新
+adminRoutes.put('/banners/:id', async (c) => {
+  const env = c.env as any
+  const id = c.req.param('id')
+  try {
+    const body = await c.req.json()
+    const { title, image_url, image_key, link_url, display_order, is_active, width, height, placement, start_date, end_date } = body
+    await env.DB.prepare(`
+      UPDATE ad_banners SET
+        title = COALESCE(?, title),
+        image_url = COALESCE(?, image_url),
+        image_key = COALESCE(?, image_key),
+        link_url = COALESCE(?, link_url),
+        display_order = COALESCE(?, display_order),
+        is_active = COALESCE(?, is_active),
+        width = COALESCE(?, width),
+        height = COALESCE(?, height),
+        placement = COALESCE(?, placement),
+        start_date = ?,
+        end_date = ?,
+        updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(
+      title ?? null, image_url ?? null, image_key ?? null, link_url ?? null,
+      display_order ?? null, is_active ?? null, width ?? null, height ?? null,
+      placement ?? null, start_date ?? null, end_date ?? null, id
+    ).run()
+    return c.json({ success: true })
+  } catch (e: any) {
+    return c.json({ success: false, error: e.message }, 500)
+  }
+})
+
+// バナー削除（R2画像も削除）
+adminRoutes.delete('/banners/:id', async (c) => {
+  const env = c.env as any
+  const id = c.req.param('id')
+  try {
+    const banner = await env.DB.prepare('SELECT image_key FROM ad_banners WHERE id = ?').bind(id).first() as any
+    if (banner?.image_key) {
+      try { await env.R2.delete(banner.image_key) } catch (e) { /* R2削除失敗は無視 */ }
+    }
+    await env.DB.prepare('DELETE FROM ad_banners WHERE id = ?').bind(id).run()
+    return c.json({ success: true })
+  } catch (e: any) {
+    return c.json({ success: false, error: e.message }, 500)
+  }
+})
+
+// バナー画像アップロード（R2）
+adminRoutes.post('/banners/upload', async (c) => {
+  const env = c.env as any
+  try {
+    const formData = await c.req.formData()
+    const file = formData.get('image') as File
+    if (!file) return c.json({ success: false, error: '画像ファイルが必要です' }, 400)
+
+    const maxSize = 5 * 1024 * 1024 // 5MB
+    if (file.size > maxSize) return c.json({ success: false, error: 'ファイルサイズは5MB以下にしてください' }, 400)
+
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']
+    if (!allowedTypes.includes(file.type)) return c.json({ success: false, error: 'JPEG, PNG, WEBP, GIF のみ対応' }, 400)
+
+    const timestamp = Date.now()
+    const randomStr = Math.random().toString(36).substring(2, 10)
+    const ext = file.name.split('.').pop() || 'jpg'
+    const key = `banners/${timestamp}-${randomStr}.${ext}`
+
+    const arrayBuffer = await file.arrayBuffer()
+    await env.R2.put(key, arrayBuffer, {
+      httpMetadata: { contentType: file.type }
+    })
+
+    return c.json({
+      success: true,
+      image_url: `/r2/${key}`,
+      image_key: key
+    })
+  } catch (e: any) {
+    return c.json({ success: false, error: e.message }, 500)
+  }
+})
+
+// バナークリック計測
+adminRoutes.post('/banners/:id/click', async (c) => {
+  const env = c.env as any
+  const id = c.req.param('id')
+  try {
+    await env.DB.prepare('UPDATE ad_banners SET click_count = click_count + 1 WHERE id = ?').bind(id).run()
+    return c.json({ success: true })
+  } catch (e: any) {
+    return c.json({ success: false }, 500)
+  }
+})
+
+// バナー表示順一括更新
+adminRoutes.put('/banners/reorder', async (c) => {
+  const env = c.env as any
+  try {
+    const { orders } = await c.req.json() // [{ id: 1, display_order: 0 }, ...]
+    for (const item of orders) {
+      await env.DB.prepare('UPDATE ad_banners SET display_order = ?, updated_at = datetime(\'now\') WHERE id = ?')
+        .bind(item.display_order, item.id).run()
+    }
+    return c.json({ success: true })
+  } catch (e: any) {
+    return c.json({ success: false, error: e.message }, 500)
+  }
+})
+
 export default adminRoutes

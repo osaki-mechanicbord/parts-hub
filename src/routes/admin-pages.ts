@@ -4692,4 +4692,454 @@ adminPagesRoutes.get('/cross-border', (c) => {
   return c.html(AdminLayout('cross-border', '越境EC管理', content));
 });
 
+// =============================================
+// バナー広告管理ページ
+// =============================================
+adminPagesRoutes.get('/banners', async (c) => {
+  const content = `
+    <div class="space-y-6">
+      <!-- ヘッダー -->
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-2xl font-bold text-gray-800"><i class="fas fa-images mr-2 text-red-500"></i>バナー広告管理</h2>
+          <p class="text-sm text-gray-500 mt-1">TOPページのニュースセクション上部に表示されるバナースライダーを管理します（最大5枚）</p>
+        </div>
+        <button onclick="openBannerModal()" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-semibold flex items-center gap-2">
+          <i class="fas fa-plus"></i>新規バナー追加
+        </button>
+      </div>
+
+      <!-- 推奨サイズ表示 -->
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div class="flex items-start gap-3">
+          <i class="fas fa-info-circle text-blue-500 mt-0.5"></i>
+          <div>
+            <p class="font-semibold text-blue-800 text-sm">バナー画像の推奨サイズ</p>
+            <p class="text-blue-700 text-xs mt-1">推奨: <strong>1200×400px</strong>（横3:縦1の比率）｜最大ファイルサイズ: <strong>5MB</strong>｜対応形式: JPEG, PNG, WebP, GIF</p>
+            <p class="text-blue-600 text-xs mt-1">※ スマートフォンでは自動的にフィットします。重要な内容は中央に配置してください。</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- プレビュー -->
+      <div class="bg-white rounded-xl shadow-sm border p-6">
+        <h3 class="text-sm font-bold text-gray-700 mb-3"><i class="fas fa-eye mr-1"></i>スライダープレビュー</h3>
+        <div id="preview-wrapper" class="relative overflow-hidden rounded-lg bg-gray-100" style="aspect-ratio:3/1; max-height:300px;">
+          <div id="preview-track" class="flex transition-transform duration-500 ease-in-out h-full"></div>
+          <div id="preview-dots" class="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5"></div>
+          <div id="preview-empty" class="flex items-center justify-center h-full text-gray-400">
+            <div class="text-center">
+              <i class="fas fa-image text-4xl mb-2"></i>
+              <p class="text-sm">バナーが登録されていません</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- バナー一覧テーブル -->
+      <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+        <div class="px-6 py-4 border-b flex items-center justify-between">
+          <h3 class="font-bold text-gray-800"><i class="fas fa-list mr-2"></i>登録バナー一覧</h3>
+          <span id="banner-count" class="text-sm text-gray-500">-</span>
+        </div>
+        <div id="banner-list" class="divide-y">
+          <div class="p-8 text-center text-gray-400"><div class="spinner mx-auto mb-2"></div>読み込み中...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- バナー追加/編集モーダル -->
+    <div id="banner-modal" class="fixed inset-0 bg-black bg-opacity-50 z-[100] hidden flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div class="sticky top-0 bg-white border-b px-6 py-4 rounded-t-2xl flex items-center justify-between">
+          <h3 id="modal-title" class="text-lg font-bold text-gray-800"><i class="fas fa-plus-circle mr-2 text-red-500"></i>新規バナー追加</h3>
+          <button onclick="closeBannerModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+        </div>
+        <div class="p-6 space-y-5">
+          <input type="hidden" id="edit-banner-id" value="">
+
+          <!-- バナー管理名 -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">バナー管理名 <span class="text-red-500">*</span></label>
+            <input type="text" id="banner-title" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-200 focus:border-red-400" placeholder="例: 春の新作パーツセール">
+          </div>
+
+          <!-- 画像アップロード -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">バナー画像 <span class="text-red-500">*</span></label>
+            <div id="upload-area" class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-red-300 hover:bg-red-50 transition-colors"
+                 onclick="document.getElementById('banner-file').click()">
+              <div id="upload-placeholder">
+                <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                <p class="text-sm text-gray-600">クリックして画像を選択<br><span class="text-xs text-gray-400">または、ドラッグ＆ドロップ</span></p>
+              </div>
+              <div id="upload-preview" class="hidden">
+                <img id="preview-img" src="" alt="プレビュー" class="max-h-40 mx-auto rounded">
+                <p id="upload-filename" class="text-xs text-gray-500 mt-2"></p>
+              </div>
+            </div>
+            <input type="file" id="banner-file" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" onchange="handleFileSelect(event)">
+            <div id="upload-progress" class="hidden mt-2">
+              <div class="w-full bg-gray-200 rounded-full h-2"><div id="progress-bar" class="bg-red-500 h-2 rounded-full transition-all" style="width:0%"></div></div>
+              <p id="progress-text" class="text-xs text-gray-500 mt-1">アップロード中...</p>
+            </div>
+            <input type="hidden" id="banner-image-url" value="">
+            <input type="hidden" id="banner-image-key" value="">
+          </div>
+
+          <!-- バナーサイズ指定 -->
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">推奨横幅 (px)</label>
+              <input type="number" id="banner-width" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg" value="1200" min="300" max="3000">
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">推奨高さ (px)</label>
+              <input type="number" id="banner-height" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg" value="400" min="100" max="1500">
+            </div>
+          </div>
+
+          <!-- リンクURL -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">リンク先URL <span class="text-gray-400 font-normal text-xs">（空欄の場合リンクなし）</span></label>
+            <input type="url" id="banner-link" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-200 focus:border-red-400" placeholder="https://example.com">
+          </div>
+
+          <!-- 表示順 -->
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">表示順</label>
+              <input type="number" id="banner-order" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg" value="0" min="0">
+              <p class="text-xs text-gray-400 mt-1">小さい数字が先に表示されます</p>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">表示状態</label>
+              <select id="banner-active" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg">
+                <option value="1">表示中</option>
+                <option value="0">非表示</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- 表示期間 -->
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">表示開始日 <span class="text-gray-400 font-normal text-xs">（空欄＝即時）</span></label>
+              <input type="datetime-local" id="banner-start" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg">
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">表示終了日 <span class="text-gray-400 font-normal text-xs">（空欄＝無期限）</span></label>
+              <input type="datetime-local" id="banner-end" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg">
+            </div>
+          </div>
+
+          <!-- エラーメッセージ -->
+          <div id="modal-error" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm"></div>
+        </div>
+
+        <div class="sticky bottom-0 bg-white border-t px-6 py-4 rounded-b-2xl flex justify-end gap-3">
+          <button onclick="closeBannerModal()" class="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium">キャンセル</button>
+          <button onclick="saveBanner()" id="save-btn" class="px-5 py-2.5 bg-red-500 text-white rounded-lg hover:bg-red-600 font-semibold flex items-center gap-2">
+            <i class="fas fa-save"></i>保存
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 削除確認モーダル -->
+    <div id="delete-modal" class="fixed inset-0 bg-black bg-opacity-50 z-[110] hidden flex items-center justify-center p-4">
+      <div class="bg-white rounded-xl p-6 max-w-sm w-full">
+        <h3 class="text-lg font-bold text-gray-800 mb-2"><i class="fas fa-exclamation-triangle text-red-500 mr-2"></i>バナーを削除</h3>
+        <p class="text-sm text-gray-600 mb-4">このバナーを削除しますか？この操作は取り消せません。</p>
+        <input type="hidden" id="delete-banner-id">
+        <div class="flex gap-3">
+          <button onclick="document.getElementById('delete-modal').classList.add('hidden')" class="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50">キャンセル</button>
+          <button onclick="confirmDelete()" class="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-semibold">削除する</button>
+        </div>
+      </div>
+    </div>
+
+    <style>
+      #upload-area.drag-over { border-color: #ef4444; background: #fef2f2; }
+      .banner-row:hover { background: #fafafa; }
+    </style>
+
+    <script>
+    const API = '/api/admin';
+    let banners = [];
+
+    // ====== 初期読み込み ======
+    async function loadBanners() {
+      try {
+        const token = localStorage.getItem('admin_token');
+        const res = await axios.get(API + '/banners', { headers: { Authorization: 'Bearer ' + token } });
+        banners = res.data.banners || [];
+        renderBannerList();
+        renderPreview();
+        document.getElementById('banner-count').textContent = banners.length + ' / 5 枠使用中';
+      } catch (e) {
+        document.getElementById('banner-list').innerHTML = '<div class="p-8 text-center text-red-500">読み込みに失敗しました</div>';
+      }
+    }
+
+    // ====== 一覧レンダリング ======
+    function renderBannerList() {
+      const list = document.getElementById('banner-list');
+      if (!banners.length) {
+        list.innerHTML = '<div class="p-12 text-center text-gray-400"><i class="fas fa-image text-4xl mb-3"></i><p>バナーが登録されていません</p><p class="text-xs mt-1">「新規バナー追加」から登録してください</p></div>';
+        return;
+      }
+      list.innerHTML = banners.map((b, idx) => {
+        const imgUrl = b.image_url.startsWith('/r2/') ? b.image_url : '/r2/' + b.image_url;
+        const statusBadge = b.is_active
+          ? '<span class="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-semibold">表示中</span>'
+          : '<span class="px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full text-xs font-semibold">非表示</span>';
+        const period = (b.start_date || b.end_date)
+          ? '<span class="text-xs text-gray-400">' + (b.start_date ? b.start_date.substring(0,10) : '即時') + ' 〜 ' + (b.end_date ? b.end_date.substring(0,10) : '無期限') + '</span>'
+          : '<span class="text-xs text-gray-400">期間制限なし</span>';
+        return '<div class="banner-row flex items-center gap-4 px-6 py-4 transition-colors">' +
+          '<div class="text-gray-400 text-sm font-mono w-6 text-center">' + b.display_order + '</div>' +
+          '<div class="w-32 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 border">' +
+            '<img src="' + imgUrl + '" alt="' + escapeHtml(b.title) + '" class="w-full h-full object-cover">' +
+          '</div>' +
+          '<div class="flex-1 min-w-0">' +
+            '<div class="flex items-center gap-2 mb-1">' +
+              '<span class="font-semibold text-gray-800 text-sm truncate">' + escapeHtml(b.title) + '</span>' +
+              statusBadge +
+            '</div>' +
+            '<div class="flex items-center gap-3 text-xs text-gray-500">' +
+              (b.link_url ? '<a href="' + b.link_url + '" target="_blank" class="text-blue-500 hover:underline truncate max-w-[200px]"><i class="fas fa-external-link-alt mr-1"></i>' + b.link_url.substring(0, 40) + '</a>' : '<span class="text-gray-400">リンクなし</span>') +
+              '<span>|</span>' + period +
+            '</div>' +
+          '</div>' +
+          '<div class="flex items-center gap-2 text-xs text-gray-400">' +
+            '<div class="text-center px-2"><div class="font-bold text-gray-700 text-sm">' + (b.view_count || 0).toLocaleString() + '</div><div>表示</div></div>' +
+            '<div class="text-center px-2"><div class="font-bold text-gray-700 text-sm">' + (b.click_count || 0).toLocaleString() + '</div><div>クリック</div></div>' +
+          '</div>' +
+          '<div class="flex items-center gap-1">' +
+            '<button onclick="editBanner(' + b.id + ')" class="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg" title="編集"><i class="fas fa-edit"></i></button>' +
+            '<button onclick="toggleBannerActive(' + b.id + ',' + (b.is_active ? 0 : 1) + ')" class="p-2 text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 rounded-lg" title="' + (b.is_active ? '非表示にする' : '表示する') + '"><i class="fas fa-' + (b.is_active ? 'eye-slash' : 'eye') + '"></i></button>' +
+            '<button onclick="showDeleteModal(' + b.id + ')" class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg" title="削除"><i class="fas fa-trash"></i></button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    // ====== プレビュースライダー ======
+    function renderPreview() {
+      const track = document.getElementById('preview-track');
+      const dots = document.getElementById('preview-dots');
+      const empty = document.getElementById('preview-empty');
+      const active = banners.filter(b => b.is_active);
+      if (!active.length) {
+        track.innerHTML = '';
+        dots.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+      track.innerHTML = active.slice(0, 5).map(b => {
+        const imgUrl = b.image_url.startsWith('/r2/') ? b.image_url : '/r2/' + b.image_url;
+        return '<div class="flex-shrink-0 w-full h-full"><img src="' + imgUrl + '" class="w-full h-full object-cover"></div>';
+      }).join('');
+      const total = Math.min(active.length, 5);
+      dots.innerHTML = Array.from({length: total}, (_, i) =>
+        '<button class="w-2 h-2 rounded-full ' + (i === 0 ? 'bg-red-500' : 'bg-gray-300') + '" data-pidx="' + i + '"></button>'
+      ).join('');
+      // Simple auto-slide for preview
+      let pIdx = 0;
+      clearInterval(window._previewTimer);
+      if (total > 1) {
+        window._previewTimer = setInterval(() => {
+          pIdx = (pIdx + 1) % total;
+          track.style.transform = 'translateX(-' + (pIdx * 100) + '%)';
+          dots.querySelectorAll('button').forEach((d, i) => d.className = 'w-2 h-2 rounded-full ' + (i === pIdx ? 'bg-red-500' : 'bg-gray-300'));
+        }, 1000);
+      }
+    }
+
+    // ====== モーダル操作 ======
+    function openBannerModal() {
+      document.getElementById('edit-banner-id').value = '';
+      document.getElementById('banner-title').value = '';
+      document.getElementById('banner-link').value = '';
+      document.getElementById('banner-order').value = banners.length;
+      document.getElementById('banner-active').value = '1';
+      document.getElementById('banner-width').value = '1200';
+      document.getElementById('banner-height').value = '400';
+      document.getElementById('banner-start').value = '';
+      document.getElementById('banner-end').value = '';
+      document.getElementById('banner-image-url').value = '';
+      document.getElementById('banner-image-key').value = '';
+      document.getElementById('upload-placeholder').classList.remove('hidden');
+      document.getElementById('upload-preview').classList.add('hidden');
+      document.getElementById('modal-error').classList.add('hidden');
+      document.getElementById('modal-title').innerHTML = '<i class="fas fa-plus-circle mr-2 text-red-500"></i>新規バナー追加';
+      document.getElementById('banner-modal').classList.remove('hidden');
+    }
+
+    function closeBannerModal() {
+      document.getElementById('banner-modal').classList.add('hidden');
+    }
+
+    async function editBanner(id) {
+      const token = localStorage.getItem('admin_token');
+      try {
+        const res = await axios.get(API + '/banners/' + id, { headers: { Authorization: 'Bearer ' + token } });
+        const b = res.data.banner;
+        document.getElementById('edit-banner-id').value = b.id;
+        document.getElementById('banner-title').value = b.title;
+        document.getElementById('banner-link').value = b.link_url || '';
+        document.getElementById('banner-order').value = b.display_order;
+        document.getElementById('banner-active').value = b.is_active;
+        document.getElementById('banner-width').value = b.width || 1200;
+        document.getElementById('banner-height').value = b.height || 400;
+        document.getElementById('banner-start').value = b.start_date ? b.start_date.substring(0, 16) : '';
+        document.getElementById('banner-end').value = b.end_date ? b.end_date.substring(0, 16) : '';
+        document.getElementById('banner-image-url').value = b.image_url;
+        document.getElementById('banner-image-key').value = b.image_key || '';
+        // Show existing image
+        const imgUrl = b.image_url.startsWith('/r2/') ? b.image_url : '/r2/' + b.image_url;
+        document.getElementById('preview-img').src = imgUrl;
+        document.getElementById('upload-filename').textContent = b.title;
+        document.getElementById('upload-placeholder').classList.add('hidden');
+        document.getElementById('upload-preview').classList.remove('hidden');
+        document.getElementById('modal-error').classList.add('hidden');
+        document.getElementById('modal-title').innerHTML = '<i class="fas fa-edit mr-2 text-blue-500"></i>バナーを編集';
+        document.getElementById('banner-modal').classList.remove('hidden');
+      } catch (e) { alert('バナー情報の取得に失敗しました'); }
+    }
+
+    // ====== 画像アップロード ======
+    function handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      uploadBannerImage(file);
+    }
+
+    // ドラッグ＆ドロップ
+    const uploadArea = document.getElementById('upload-area');
+    ['dragenter','dragover'].forEach(e => uploadArea?.addEventListener(e, (ev) => { ev.preventDefault(); uploadArea.classList.add('drag-over'); }));
+    ['dragleave','drop'].forEach(e => uploadArea?.addEventListener(e, (ev) => { ev.preventDefault(); uploadArea.classList.remove('drag-over'); }));
+    uploadArea?.addEventListener('drop', (ev) => {
+      const file = ev.dataTransfer?.files?.[0];
+      if (file) uploadBannerImage(file);
+    });
+
+    async function uploadBannerImage(file) {
+      if (file.size > 5 * 1024 * 1024) { showModalError('ファイルサイズは5MB以下にしてください'); return; }
+      const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+      if (!allowed.includes(file.type)) { showModalError('JPEG, PNG, WebP, GIF のみ対応しています'); return; }
+
+      const progress = document.getElementById('upload-progress');
+      const bar = document.getElementById('progress-bar');
+      const pText = document.getElementById('progress-text');
+      progress.classList.remove('hidden');
+      bar.style.width = '30%';
+      pText.textContent = 'アップロード中...';
+
+      try {
+        const token = localStorage.getItem('admin_token');
+        const fd = new FormData();
+        fd.append('image', file);
+        bar.style.width = '60%';
+        const res = await axios.post(API + '/banners/upload', fd, {
+          headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'multipart/form-data' }
+        });
+        bar.style.width = '100%';
+        pText.textContent = 'アップロード完了';
+        if (res.data.success) {
+          document.getElementById('banner-image-url').value = res.data.image_url;
+          document.getElementById('banner-image-key').value = res.data.image_key;
+          document.getElementById('preview-img').src = res.data.image_url;
+          document.getElementById('upload-filename').textContent = file.name + ' (' + (file.size / 1024).toFixed(0) + ' KB)';
+          document.getElementById('upload-placeholder').classList.add('hidden');
+          document.getElementById('upload-preview').classList.remove('hidden');
+        } else {
+          showModalError(res.data.error || 'アップロードに失敗しました');
+        }
+      } catch (e) {
+        showModalError('アップロードに失敗しました: ' + (e.response?.data?.error || e.message));
+      }
+      setTimeout(() => progress.classList.add('hidden'), 1500);
+    }
+
+    // ====== 保存 ======
+    async function saveBanner() {
+      const title = document.getElementById('banner-title').value.trim();
+      const imageUrl = document.getElementById('banner-image-url').value;
+      if (!title) { showModalError('バナー管理名を入力してください'); return; }
+      if (!imageUrl) { showModalError('バナー画像をアップロードしてください'); return; }
+
+      const token = localStorage.getItem('admin_token');
+      const payload = {
+        title: title,
+        image_url: imageUrl,
+        image_key: document.getElementById('banner-image-key').value || null,
+        link_url: document.getElementById('banner-link').value.trim(),
+        display_order: parseInt(document.getElementById('banner-order').value) || 0,
+        is_active: parseInt(document.getElementById('banner-active').value),
+        width: parseInt(document.getElementById('banner-width').value) || 1200,
+        height: parseInt(document.getElementById('banner-height').value) || 400,
+        start_date: document.getElementById('banner-start').value ? new Date(document.getElementById('banner-start').value).toISOString() : null,
+        end_date: document.getElementById('banner-end').value ? new Date(document.getElementById('banner-end').value).toISOString() : null
+      };
+
+      const editId = document.getElementById('edit-banner-id').value;
+      const btn = document.getElementById('save-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>保存中...';
+
+      try {
+        if (editId) {
+          await axios.put(API + '/banners/' + editId, payload, { headers: { Authorization: 'Bearer ' + token } });
+        } else {
+          await axios.post(API + '/banners', payload, { headers: { Authorization: 'Bearer ' + token } });
+        }
+        closeBannerModal();
+        loadBanners();
+      } catch (e) {
+        showModalError('保存に失敗しました: ' + (e.response?.data?.error || e.message));
+      }
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-save"></i>保存';
+    }
+
+    // ====== 表示/非表示切替 ======
+    async function toggleBannerActive(id, newState) {
+      const token = localStorage.getItem('admin_token');
+      try {
+        await axios.put(API + '/banners/' + id, { is_active: newState }, { headers: { Authorization: 'Bearer ' + token } });
+        loadBanners();
+      } catch (e) { alert('更新に失敗しました'); }
+    }
+
+    // ====== 削除 ======
+    function showDeleteModal(id) {
+      document.getElementById('delete-banner-id').value = id;
+      document.getElementById('delete-modal').classList.remove('hidden');
+    }
+    async function confirmDelete() {
+      const id = document.getElementById('delete-banner-id').value;
+      const token = localStorage.getItem('admin_token');
+      try {
+        await axios.delete(API + '/banners/' + id, { headers: { Authorization: 'Bearer ' + token } });
+        document.getElementById('delete-modal').classList.add('hidden');
+        loadBanners();
+      } catch (e) { alert('削除に失敗しました'); }
+    }
+
+    function showModalError(msg) {
+      const el = document.getElementById('modal-error');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+    }
+
+    // ====== 初期化 ======
+    loadBanners();
+    </script>
+  `;
+  return c.html(AdminLayout('banners', 'バナー広告管理', content));
+});
+
 export default adminPagesRoutes

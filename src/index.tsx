@@ -1501,6 +1501,26 @@ app.get('/', (c) => {
             </div>
         </section>
 
+        <!-- バナー広告スライダーセクション -->
+        <section id="banner-slider-section" class="hidden bg-white py-8">
+            <div class="max-w-7xl mx-auto px-4">
+                <div class="relative overflow-hidden rounded-2xl shadow-lg" id="banner-slider-wrapper">
+                    <div id="banner-slider-track" class="flex transition-transform duration-500 ease-in-out" style="will-change:transform;">
+                        <!-- バナーがAPIから動的に挿入される -->
+                    </div>
+                    <!-- ドットインジケーター -->
+                    <div id="banner-dots" class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 z-10"></div>
+                    <!-- 左右矢印（PC用） -->
+                    <button id="banner-prev" class="hidden md:flex absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/30 hover:bg-black/50 text-white rounded-full items-center justify-center transition-colors z-10" aria-label="前へ">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <button id="banner-next" class="hidden md:flex absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/30 hover:bg-black/50 text-white rounded-full items-center justify-center transition-colors z-10" aria-label="次へ">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
         <!-- PARTS HUBニュースセクション -->
         <section class="py-16 bg-gray-50">
             <div class="max-w-7xl mx-auto px-4">
@@ -1944,6 +1964,88 @@ app.get('/', (c) => {
                 \`;
             }
             
+            // =============================================
+            // バナー広告スライダー
+            // =============================================
+            (async function initBannerSlider() {
+                try {
+                    const res = await axios.get('/api/banners?placement=top');
+                    const banners = (res.data.banners || []).slice(0, 5);
+                    if (!banners.length) return;
+
+                    const section = document.getElementById('banner-slider-section');
+                    const track = document.getElementById('banner-slider-track');
+                    const dotsWrap = document.getElementById('banner-dots');
+                    if (!section || !track || !dotsWrap) return;
+
+                    // バナーHTML生成
+                    track.innerHTML = banners.map((b, i) => {
+                        const imgUrl = b.image_url.startsWith('/r2/') ? b.image_url : '/r2/' + b.image_url;
+                        const inner = '<img src=\"' + imgUrl + '\" alt=\"' + (b.title || '広告') + '\" class=\"w-full h-full object-cover\" loading=\"' + (i === 0 ? 'eager' : 'lazy') + '\" draggable=\"false\">';
+                        if (b.link_url) {
+                            return '<a href=\"' + b.link_url + '\" target=\"_blank\" rel=\"noopener\" class=\"flex-shrink-0 w-full block\" style=\"aspect-ratio:3/1;\" data-banner-id=\"' + b.id + '\" onclick=\"trackBannerClick(' + b.id + ')\">' + inner + '</a>';
+                        }
+                        return '<div class=\"flex-shrink-0 w-full\" style=\"aspect-ratio:3/1;\">' + inner + '</div>';
+                    }).join('');
+
+                    // ドット生成
+                    dotsWrap.innerHTML = banners.map((_, i) =>
+                        '<button class=\"w-2.5 h-2.5 rounded-full transition-all ' + (i === 0 ? 'bg-white scale-110' : 'bg-white/50') + '\" data-dot=\"' + i + '\"></button>'
+                    ).join('');
+
+                    section.classList.remove('hidden');
+
+                    let current = 0;
+                    const total = banners.length;
+                    if (total <= 1) {
+                        document.getElementById('banner-prev')?.classList.add('!hidden');
+                        document.getElementById('banner-next')?.classList.add('!hidden');
+                        dotsWrap.classList.add('hidden');
+                        return;
+                    }
+
+                    function goTo(idx) {
+                        current = ((idx % total) + total) % total;
+                        track.style.transform = 'translateX(-' + (current * 100) + '%)';
+                        dotsWrap.querySelectorAll('button').forEach((d, i) => {
+                            d.className = 'w-2.5 h-2.5 rounded-full transition-all ' + (i === current ? 'bg-white scale-110' : 'bg-white/50');
+                        });
+                    }
+
+                    // 自動スライド（1秒間隔）
+                    let autoTimer = setInterval(() => goTo(current + 1), 1000);
+                    const wrapper = document.getElementById('banner-slider-wrapper');
+
+                    // ホバー時は一時停止
+                    wrapper?.addEventListener('mouseenter', () => clearInterval(autoTimer));
+                    wrapper?.addEventListener('mouseleave', () => { autoTimer = setInterval(() => goTo(current + 1), 1000); });
+
+                    // 矢印クリック
+                    document.getElementById('banner-prev')?.addEventListener('click', () => { clearInterval(autoTimer); goTo(current - 1); autoTimer = setInterval(() => goTo(current + 1), 1000); });
+                    document.getElementById('banner-next')?.addEventListener('click', () => { clearInterval(autoTimer); goTo(current + 1); autoTimer = setInterval(() => goTo(current + 1), 1000); });
+
+                    // ドットクリック
+                    dotsWrap.querySelectorAll('button').forEach(d => {
+                        d.addEventListener('click', () => { clearInterval(autoTimer); goTo(Number(d.dataset.dot)); autoTimer = setInterval(() => goTo(current + 1), 1000); });
+                    });
+
+                    // スワイプ対応（モバイル）
+                    let touchStartX = 0;
+                    wrapper?.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; clearInterval(autoTimer); }, { passive: true });
+                    wrapper?.addEventListener('touchend', (e) => {
+                        const diff = touchStartX - e.changedTouches[0].clientX;
+                        if (Math.abs(diff) > 40) goTo(current + (diff > 0 ? 1 : -1));
+                        autoTimer = setInterval(() => goTo(current + 1), 1000);
+                    }, { passive: true });
+
+                } catch (e) { console.log('Banner load skipped:', e); }
+            })();
+
+            // バナークリック計測
+            window.trackBannerClick = function(id) {
+                axios.post('/api/admin/banners/' + id + '/click').catch(() => {});
+            };
+
             // カテゴリ読み込み
             async function loadCategories() {
                 try {
