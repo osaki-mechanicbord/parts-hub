@@ -4275,7 +4275,8 @@ adminPagesRoutes.get('/cross-border', (c) => {
     async function loadStats() {
       try {
         var res = await axios.get('/api/admin/cross-border/stats', {
-          headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') }
+          headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') },
+          timeout: 15000
         });
         if (res.data.success) {
           var l = res.data.listings, o = res.data.orders, r = res.data.revenue;
@@ -4284,7 +4285,9 @@ adminPagesRoutes.get('/cross-border', (c) => {
           document.getElementById('stat-revenue').textContent = '$' + Number(r.total_revenue_usd || 0).toLocaleString();
           document.getElementById('stat-profit').textContent = '¥' + Number(r.total_profit_jpy || 0).toLocaleString();
         }
-      } catch(e) {}
+      } catch(e) {
+        console.warn('Stats load error:', e);
+      }
     }
 
     // ===== タブ切り替え =====
@@ -4332,7 +4335,8 @@ adminPagesRoutes.get('/cross-border', (c) => {
 
       try {
         var res = await axios.get('/api/admin/cross-border/candidates?' + params, {
-          headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') }
+          headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') },
+          timeout: 15000
         });
         var grid = document.getElementById('candidates-grid');
         if (!append) grid.innerHTML = '';
@@ -4381,6 +4385,10 @@ adminPagesRoutes.get('/cross-border', (c) => {
         }
       } catch(e) {
         console.error('Candidates load error:', e);
+        var grid = document.getElementById('candidates-grid');
+        if (grid && !append) {
+          grid.innerHTML = '<div class="text-center py-12 text-gray-400 col-span-full"><i class="fas fa-exclamation-triangle text-4xl mb-3 text-yellow-400"></i><p>データの読み込みに失敗しました</p><p class="text-xs mt-1 text-gray-300">再読み込みしてください</p></div>';
+        }
       }
     }
 
@@ -4719,7 +4727,8 @@ adminPagesRoutes.get('/cross-border', (c) => {
     async function checkEbayConnection() {
       try {
         var res = await axios.get('/api/admin/ebay-sell/oauth/status', {
-          headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') }
+          headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') },
+          timeout: 15000
         });
         if (res.data.success && res.data.connected) {
           ebayConnected = true;
