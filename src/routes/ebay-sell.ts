@@ -449,6 +449,59 @@ ebaySell.get('/oauth/status', async (c) => {
 // =============================================
 
 /**
+ * eBay Location API ペイロード構築ヘルパー
+ * WAREHOUSEタイプの最小限ペイロード（eBay errorId 2004対策）
+ * WAREHOUSEは postalCode+country または city+stateOrProvince+country のみ必要
+ */
+function buildLocationPayload(loc: {
+  name: string
+  address_line1?: string
+  city: string
+  state_or_province?: string
+  postal_code: string
+  country?: string
+  phone?: string
+}): Record<string, any> {
+  // WAREHOUSEタイプ: postalCode + country が最小要件
+  const address: Record<string, string> = {
+    postalCode: loc.postal_code,
+    country: loc.country || 'JP'
+  }
+  // city, stateOrProvince は値がある場合のみ追加
+  if (loc.city && loc.city.trim()) address.city = loc.city.trim()
+  if (loc.state_or_province && loc.state_or_province.trim()) address.stateOrProvince = loc.state_or_province.trim()
+  // addressLine1 はWAREHOUSEでは省略（送ると2004エラーの原因になる場合がある）
+  if (loc.address_line1 && loc.address_line1.trim()) address.addressLine1 = loc.address_line1.trim()
+
+  // 最小限のペイロード: location + name のみ
+  // merchantLocationStatus, locationTypes はデフォルト値で十分（ENABLED, WAREHOUSE）
+  const payload: Record<string, any> = {
+    location: { address },
+    name: loc.name
+  }
+  // phone は値がある場合のみ（空文字列はNG）
+  if (loc.phone && loc.phone.trim()) payload.phone = loc.phone.trim()
+
+  return payload
+}
+
+/** merchantLocationKey を安全な形式に変換（英数字・ハイフン・アンダースコアのみ、最大36文字） */
+function sanitizeLocationKey(key: string): string {
+  return key.replace(/[^a-zA-Z0-9_-]/g, '').substring(0, 36)
+}
+
+/** eBay Inventory Location API 共通ヘッダー */
+function getLocationHeaders(token: string): Record<string, string> {
+  return {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'Content-Language': 'ja-JP',
+    'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US'  // 海外出品先マーケットプレイス
+  }
+}
+
+/**
  * POST /locations
  * 発送元ロケーションを作成・eBayに同期
  */
@@ -458,55 +511,76 @@ ebaySell.post('/locations', async (c) => {
   try {
     const body = await c.req.json()
     const { name, address_line1, city, state_or_province, postal_code, country, phone } = body
-    const merchantLocationKey = body.merchant_location_key || `parts-hub-${Date.now()}`
+    const merchantLocationKey = body.merchant_location_key || `ph-${Date.now()}`
 
-    if (!name || !address_line1 || !city || !postal_code) {
-      return c.json({ success: false, error: '名前・住所・市区町村・郵便番号は必須です' }, 400)
+    if (!name || !city || !postal_code) {
+      return c.json({ success: false, error: '名前・市区町村・郵便番号は必須です' }, 400)
     }
 
     // eBay に同期
     const token = await getUserToken(c.env)
     const apiBase = getApiBase(c.env)
 
-    const locationPayload = {
-      location: {
-        address: {
-          addressLine1: address_line1,
-          city: city,
-          stateOrProvince: state_or_province || '',
-          postalCode: postal_code,
-          country: country || 'JP'
-        }
-      },
-      name: name,
-      locationTypes: ['WAREHOUSE'],
-      merchantLocationStatus: 'ENABLED',
-      phone: phone || ''
-    }
+    const locationPayload = buildLocationPayload({
+      name, address_line1, city, state_or_province, postal_code, country, phone
+    })
+    const safeKey = sanitizeLocationKey(merchantLocationKey)
 
-    const res = await fetch(`${apiBase}/sell/inventory/v1/location/${merchantLocationKey}`, {
+    console.log('eBay createLocation request:', JSON.stringify({ key: safeKey, payload: locationPayload }))
+
+    const res = await fetch(`${apiBase}/sell/inventory/v1/location/${safeKey}`, {
       method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Content-Language': 'en-US'
-      },
+      headers: getLocationHeaders(token),
       body: JSON.stringify(locationPayload)
     })
 
-    if (!res.ok && res.status !== 204) {
+    // 204 = 成功、409 = 既に存在（同期済みとみなす）
+    const isSuccess = res.ok || res.status === 204
+    const isConflict = res.status === 409
+
+    if (!isSuccess && !isConflict) {
       const errText = await res.text()
       console.error('eBay create location error:', res.status, errText)
-      // DB には保存するがeBay同期失敗マーク
-      await DB.prepare(`
-        INSERT INTO ebay_inventory_locations (merchant_location_key, name, address_line1, city, state_or_province, postal_code, country, phone, ebay_synced)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
-      `).bind(merchantLocationKey, name, address_line1, city, state_or_province || '', postal_code, country || 'JP', phone || '').run()
 
-      return c.json({ success: true, merchant_location_key: merchantLocationKey, ebay_synced: false, ebay_error: errText })
+      // ペイロードなしで再試行（name + postalCode + country のみ）
+      console.log('Retrying with minimal payload...')
+      const minimalPayload = {
+        location: {
+          address: {
+            postalCode: postal_code,
+            country: country || 'JP'
+          }
+        },
+        name: name
+      }
+      const retryRes = await fetch(`${apiBase}/sell/inventory/v1/location/${safeKey}`, {
+        method: 'PUT',
+        headers: getLocationHeaders(token),
+        body: JSON.stringify(minimalPayload)
+      })
+
+      const retrySuccess = retryRes.ok || retryRes.status === 204 || retryRes.status === 409
+
+      if (!retrySuccess) {
+        const retryErrText = await retryRes.text()
+        console.error('eBay create location retry error:', retryRes.status, retryErrText)
+        // DB には保存するがeBay同期失敗マーク
+        await DB.prepare(`
+          INSERT INTO ebay_inventory_locations (merchant_location_key, name, address_line1, city, state_or_province, postal_code, country, phone, ebay_synced)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
+        `).bind(safeKey, name, address_line1 || '', city, state_or_province || '', postal_code, country || 'JP', phone || '').run()
+
+        return c.json({
+          success: true,
+          merchant_location_key: safeKey,
+          ebay_synced: false,
+          ebay_error: `初回: ${errText} | リトライ: ${retryErrText}`,
+          debug: { status1: res.status, status2: retryRes.status, payload: locationPayload, minimalPayload }
+        })
+      }
     }
 
-    // DB保存
+    // 成功: DB保存
     await DB.prepare(`
       INSERT INTO ebay_inventory_locations (merchant_location_key, name, address_line1, city, state_or_province, postal_code, country, phone, is_default, ebay_synced)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 1)
@@ -514,10 +588,11 @@ ebaySell.post('/locations', async (c) => {
         name = excluded.name, address_line1 = excluded.address_line1, city = excluded.city,
         state_or_province = excluded.state_or_province, postal_code = excluded.postal_code,
         country = excluded.country, phone = excluded.phone, ebay_synced = 1, updated_at = CURRENT_TIMESTAMP
-    `).bind(merchantLocationKey, name, address_line1, city, state_or_province || '', postal_code, country || 'JP', phone || '').run()
+    `).bind(safeKey, name, address_line1 || '', city, state_or_province || '', postal_code, country || 'JP', phone || '').run()
 
-    return c.json({ success: true, merchant_location_key: merchantLocationKey, ebay_synced: true })
+    return c.json({ success: true, merchant_location_key: safeKey, ebay_synced: true, was_conflict: isConflict })
   } catch (err: any) {
+    console.error('Location create exception:', err)
     return c.json({ success: false, error: err.message }, 500)
   }
 })
@@ -551,44 +626,67 @@ ebaySell.post('/locations/sync', async (c) => {
 
     const syncResults = []
     for (const loc of results) {
-      const locationPayload = {
-        location: {
-          address: {
-            addressLine1: loc.address_line1,
-            city: loc.city,
-            stateOrProvince: loc.state_or_province || '',
-            postalCode: loc.postal_code,
-            country: loc.country || 'JP'
-          }
-        },
-        name: loc.name,
-        locationTypes: ['WAREHOUSE'],
-        merchantLocationStatus: 'ENABLED',
-        phone: loc.phone || ''
-      }
+      const locationPayload = buildLocationPayload(loc)
+      const safeKey = sanitizeLocationKey(loc.merchant_location_key)
 
-      const res = await fetch(`${apiBase}/sell/inventory/v1/location/${loc.merchant_location_key}`, {
+      console.log('eBay syncLocation request:', JSON.stringify({ key: safeKey, payload: locationPayload }))
+
+      // まず通常ペイロードで試行
+      let res = await fetch(`${apiBase}/sell/inventory/v1/location/${safeKey}`, {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Content-Language': 'en-US'
-        },
+        headers: getLocationHeaders(token),
         body: JSON.stringify(locationPayload)
       })
 
-      if (res.ok || res.status === 204) {
+      let syncSuccess = res.ok || res.status === 204 || res.status === 409
+      let errText = ''
+      let retried = false
+
+      if (!syncSuccess) {
+        errText = await res.text()
+        console.error('eBay location sync error (attempt 1):', res.status, errText)
+
+        // 最小限ペイロードでリトライ
+        retried = true
+        const minimalPayload = {
+          location: {
+            address: {
+              postalCode: loc.postal_code,
+              country: loc.country || 'JP'
+            }
+          },
+          name: loc.name
+        }
+        console.log('Retrying sync with minimal payload:', JSON.stringify(minimalPayload))
+
+        res = await fetch(`${apiBase}/sell/inventory/v1/location/${safeKey}`, {
+          method: 'PUT',
+          headers: getLocationHeaders(token),
+          body: JSON.stringify(minimalPayload)
+        })
+        syncSuccess = res.ok || res.status === 204 || res.status === 409
+      }
+
+      if (syncSuccess) {
         await DB.prepare('UPDATE ebay_inventory_locations SET ebay_synced = 1, is_default = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?').bind(loc.id).run()
-        syncResults.push({ id: loc.id, name: loc.name, success: true })
+        syncResults.push({ id: loc.id, name: loc.name, success: true, retried })
       } else {
-        const errText = await res.text()
-        console.error('eBay location sync error:', res.status, errText)
-        syncResults.push({ id: loc.id, name: loc.name, success: false, status: res.status, error: errText })
+        const retryErrText = await res.text()
+        console.error('eBay location sync error (attempt 2):', res.status, retryErrText)
+        syncResults.push({
+          id: loc.id,
+          name: loc.name,
+          success: false,
+          status: res.status,
+          error: retried ? `初回: ${errText} | リトライ: ${retryErrText}` : retryErrText,
+          debug: { payload: locationPayload, key: safeKey }
+        })
       }
     }
 
     return c.json({ success: true, results: syncResults })
   } catch (err: any) {
+    console.error('Location sync exception:', err)
     return c.json({ success: false, error: err.message }, 500)
   }
 })
