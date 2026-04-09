@@ -4246,6 +4246,11 @@ adminPagesRoutes.get('/cross-border', (c) => {
     </div>
 
     <script>
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+    }
+
     var cbCurrentRate = 150;
     var cbCandidateOffset = 0;
     var cbCurrentFilters = { maker: '', top_category: '', min_price: '', max_price: '', q: '' };
@@ -4256,7 +4261,8 @@ adminPagesRoutes.get('/cross-border', (c) => {
     async function refreshRate() {
       try {
         var res = await axios.get('/api/admin/cross-border/exchange-rate', {
-          headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') }
+          headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') },
+          timeout: 10000
         });
         if (res.data.success) {
           cbCurrentRate = res.data.rate;
@@ -4265,7 +4271,8 @@ adminPagesRoutes.get('/cross-border', (c) => {
           document.getElementById('rate-updated').textContent = info + ' ' + new Date().toLocaleTimeString('ja-JP');
         }
       } catch(e) {
-        document.getElementById('rate-value').textContent = '取得失敗';
+        console.warn('為替レート取得失敗:', e);
+        document.getElementById('rate-value').textContent = cbCurrentRate.toFixed(2) + ' (デフォルト)';
       }
     }
 
@@ -4891,11 +4898,12 @@ adminPagesRoutes.get('/cross-border', (c) => {
     }
 
     // ===== 初期化 =====
-    (async function() {
-      await refreshRate();
-      loadStats();
-      loadCandidates();
-      checkEbayConnection();
+    (function() {
+      // 全て並列で非同期実行（1つが失敗/遅延しても他に影響しない）
+      refreshRate().catch(function(e) { console.warn('refreshRate error:', e); });
+      loadStats().catch(function(e) { console.warn('loadStats error:', e); });
+      loadCandidates().catch(function(e) { console.warn('loadCandidates error:', e); });
+      checkEbayConnection().catch(function(e) { console.warn('checkEbayConnection error:', e); });
     })();
     </script>
   `;
