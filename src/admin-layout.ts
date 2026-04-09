@@ -71,6 +71,12 @@ export const AdminSidebar = (currentPage: string) => `
             <span class="ml-3 ${currentPage === 'sales' ? 'font-medium' : ''}">売上レポート</span>
         </a>
         <div class="border-t border-gray-200 my-3"></div>
+        <p class="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">広告管理</p>
+        <a href="/admin/banners" class="flex items-center px-4 py-3 mb-2 ${currentPage === 'banners' ? 'bg-red-50 text-red-600' : 'text-gray-700 hover:bg-gray-50'} rounded-lg">
+            <i class="fas fa-images w-5"></i>
+            <span class="ml-3 ${currentPage === 'banners' ? 'font-medium' : ''}">バナー広告</span>
+        </a>
+        <div class="border-t border-gray-200 my-3"></div>
         <p class="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">越境EC</p>
         <a href="/admin/cross-border" class="flex items-center px-4 py-3 mb-2 ${currentPage === 'cross-border' ? 'bg-red-50 text-red-600' : 'text-gray-700 hover:bg-gray-50'} rounded-lg">
             <i class="fas fa-globe-americas w-5"></i>

@@ -5142,4 +5142,434 @@ adminPagesRoutes.get('/banners', async (c) => {
   return c.html(AdminLayout('banners', 'バナー広告管理', content));
 });
 
+// =============================================
+// バナー広告管理
+// =============================================
+adminPagesRoutes.get('/banners', (c) => {
+  const content = `
+    <div class="mb-6 flex items-center justify-between">
+      <div>
+        <h2 class="text-2xl font-bold text-gray-800 mb-1"><i class="fas fa-images text-indigo-500 mr-2"></i>バナー広告管理</h2>
+        <p class="text-gray-500 text-sm">TOPページに表示するバナー広告を管理します（最大5枚スライダー表示）</p>
+      </div>
+      <button onclick="openCreateModal()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold text-sm flex items-center gap-2">
+        <i class="fas fa-plus"></i>新規バナー追加
+      </button>
+    </div>
+
+    <!-- 統計カード -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div class="bg-white p-4 rounded-xl shadow-sm border">
+        <div class="text-xs text-gray-500 mb-1">登録バナー数</div>
+        <div id="stat-total" class="text-2xl font-bold text-gray-800">-</div>
+      </div>
+      <div class="bg-white p-4 rounded-xl shadow-sm border">
+        <div class="text-xs text-gray-500 mb-1">表示中</div>
+        <div id="stat-active" class="text-2xl font-bold text-green-600">-</div>
+      </div>
+      <div class="bg-white p-4 rounded-xl shadow-sm border">
+        <div class="text-xs text-gray-500 mb-1">総表示回数</div>
+        <div id="stat-views" class="text-2xl font-bold text-blue-600">-</div>
+      </div>
+      <div class="bg-white p-4 rounded-xl shadow-sm border">
+        <div class="text-xs text-gray-500 mb-1">総クリック数</div>
+        <div id="stat-clicks" class="text-2xl font-bold text-orange-600">-</div>
+      </div>
+    </div>
+
+    <!-- バナー一覧テーブル -->
+    <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 border-b">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">順序</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">プレビュー</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">タイトル</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">リンク</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">サイズ</th>
+              <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">状態</th>
+              <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">表示数</th>
+              <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">クリック</th>
+              <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">CTR</th>
+              <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">操作</th>
+            </tr>
+          </thead>
+          <tbody id="banners-tbody" class="divide-y divide-gray-100">
+            <tr><td colspan="10" class="px-4 py-8 text-center text-gray-400"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mx-auto mb-2"></div>読み込み中...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- プレビューセクション -->
+    <div class="mt-6 bg-white rounded-xl shadow-sm border p-6">
+      <h3 class="text-lg font-bold text-gray-800 mb-3"><i class="fas fa-eye text-indigo-500 mr-2"></i>スライダープレビュー</h3>
+      <p class="text-xs text-gray-400 mb-4">TOPページでの実際の表示をプレビューします（1秒自動スライド）</p>
+      <div id="preview-area" class="relative overflow-hidden rounded-xl bg-gray-100" style="aspect-ratio:3/1; max-width:900px;">
+        <div id="preview-track" class="flex transition-transform duration-500 ease-in-out h-full" style="will-change:transform;"></div>
+        <div id="preview-dots" class="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2 z-10"></div>
+      </div>
+    </div>
+
+    <!-- 作成/編集モーダル -->
+    <div id="banner-modal" class="fixed inset-0 bg-black/50 z-[100] hidden flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div class="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between rounded-t-2xl">
+          <h3 id="modal-title" class="text-lg font-bold text-gray-800"><i class="fas fa-image text-indigo-500 mr-2"></i>新規バナー追加</h3>
+          <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+        </div>
+        <div class="p-6 space-y-5">
+          <input type="hidden" id="edit-id" value="">
+
+          <!-- タイトル -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">管理名 <span class="text-red-500">*</span></label>
+            <input type="text" id="edit-title" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-indigo-300 focus:border-indigo-500" placeholder="例: 春のキャンペーンバナー">
+          </div>
+
+          <!-- 画像アップロード -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">バナー画像 <span class="text-red-500">*</span></label>
+            <div id="upload-area" class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-indigo-400 transition-colors cursor-pointer" onclick="document.getElementById('file-input').click()">
+              <div id="upload-placeholder">
+                <i class="fas fa-cloud-upload-alt text-3xl text-gray-300 mb-2"></i>
+                <p class="text-sm text-gray-500">クリックして画像を選択</p>
+                <p class="text-xs text-gray-400 mt-1">JPEG, PNG, WEBP, GIF（5MB以下）</p>
+              </div>
+              <img id="upload-preview" class="hidden max-h-48 mx-auto rounded-lg" alt="プレビュー">
+            </div>
+            <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" onchange="handleFileSelect(event)">
+            <div id="upload-progress" class="hidden mt-2">
+              <div class="w-full bg-gray-200 rounded-full h-2"><div id="upload-bar" class="bg-indigo-500 h-2 rounded-full transition-all" style="width:0%"></div></div>
+              <p id="upload-status" class="text-xs text-gray-500 mt-1">アップロード中...</p>
+            </div>
+            <input type="hidden" id="edit-image-url" value="">
+            <input type="hidden" id="edit-image-key" value="">
+          </div>
+
+          <!-- 推奨サイズ -->
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">横幅 (px)</label>
+              <input type="number" id="edit-width" class="w-full px-3 py-2 border rounded-lg text-sm" value="1200" min="300" max="3000">
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">高さ (px)</label>
+              <input type="number" id="edit-height" class="w-full px-3 py-2 border rounded-lg text-sm" value="400" min="100" max="1500">
+            </div>
+          </div>
+          <p class="text-xs text-gray-400 -mt-3">※推奨: 1200×400px（3:1 アスペクト比）</p>
+
+          <!-- リンクURL -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">リンクURL（任意）</label>
+            <input type="url" id="edit-link" class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="https://example.com（空欄ならリンクなし）">
+          </div>
+
+          <!-- 表示順 -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">表示順</label>
+            <input type="number" id="edit-order" class="w-full px-3 py-2 border rounded-lg text-sm" value="0" min="0">
+            <p class="text-xs text-gray-400 mt-1">数値が小さい順に表示されます</p>
+          </div>
+
+          <!-- 表示期間 -->
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">表示開始日（任意）</label>
+              <input type="datetime-local" id="edit-start" class="w-full px-3 py-2 border rounded-lg text-sm">
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">表示終了日（任意）</label>
+              <input type="datetime-local" id="edit-end" class="w-full px-3 py-2 border rounded-lg text-sm">
+            </div>
+          </div>
+          <p class="text-xs text-gray-400 -mt-3">※空欄＝即時表示・無期限</p>
+
+          <!-- 有効/無効 -->
+          <div class="flex items-center gap-3">
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="edit-active" checked class="sr-only peer">
+              <div class="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-indigo-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+            </label>
+            <span class="text-sm font-medium text-gray-700">表示を有効にする</span>
+          </div>
+        </div>
+        <div class="sticky bottom-0 bg-gray-50 border-t px-6 py-4 flex justify-end gap-3 rounded-b-2xl">
+          <button onclick="closeModal()" class="px-5 py-2 border rounded-lg text-sm hover:bg-gray-50">キャンセル</button>
+          <button id="save-btn" onclick="saveBanner()" class="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 font-semibold flex items-center gap-2">
+            <i class="fas fa-save"></i>保存
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+    // =============================================
+    // バナー広告管理 JS
+    // =============================================
+    const token = localStorage.getItem('admin_token');
+    const headers = { Authorization: 'Bearer ' + token };
+    let allBanners = [];
+
+    // ---------- 一覧読み込み ----------
+    async function loadBanners() {
+      try {
+        const res = await axios.get('/api/admin/banners', { headers });
+        allBanners = res.data.banners || [];
+        renderTable(allBanners);
+        renderStats(allBanners);
+        renderPreview(allBanners.filter(b => b.is_active));
+      } catch (e) {
+        document.getElementById('banners-tbody').innerHTML =
+          '<tr><td colspan="10" class="px-4 py-8 text-center text-red-500">読み込みに失敗しました</td></tr>';
+      }
+    }
+
+    // ---------- テーブル描画 ----------
+    function renderTable(banners) {
+      const tbody = document.getElementById('banners-tbody');
+      if (!banners.length) {
+        tbody.innerHTML = '<tr><td colspan="10" class="px-4 py-12 text-center text-gray-400"><i class="fas fa-images text-4xl mb-3 block"></i>バナーがまだ登録されていません</td></tr>';
+        return;
+      }
+      tbody.innerHTML = banners.map(b => {
+        const imgUrl = b.image_url && b.image_url.startsWith('/r2/') ? b.image_url : '/r2/' + (b.image_url || '');
+        const ctr = b.view_count > 0 ? ((b.click_count / b.view_count) * 100).toFixed(2) + '%' : '-';
+        const statusBadge = b.is_active
+          ? '<span class="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">表示中</span>'
+          : '<span class="px-2 py-1 bg-gray-100 text-gray-500 rounded-full text-xs font-semibold">非表示</span>';
+        return '<tr class="hover:bg-gray-50">' +
+          '<td class="px-4 py-3 text-center"><span class="inline-flex items-center justify-center w-8 h-8 bg-indigo-50 text-indigo-600 rounded-full font-bold text-sm">' + b.display_order + '</span></td>' +
+          '<td class="px-4 py-3"><img src="' + escapeHtml(imgUrl) + '" class="h-12 w-auto rounded shadow-sm max-w-[160px] object-cover" onerror="this.src=\\'/icons/icon.svg\\'"></td>' +
+          '<td class="px-4 py-3 font-medium text-gray-800">' + escapeHtml(b.title) + '</td>' +
+          '<td class="px-4 py-3 text-xs text-gray-500 max-w-[200px] truncate">' + (b.link_url ? '<a href="' + escapeHtml(b.link_url) + '" target="_blank" class="text-blue-500 hover:underline">' + escapeHtml(b.link_url) + '</a>' : '<span class="text-gray-300">なし</span>') + '</td>' +
+          '<td class="px-4 py-3 text-xs text-gray-500">' + b.width + '×' + b.height + '</td>' +
+          '<td class="px-4 py-3 text-center">' + statusBadge + '</td>' +
+          '<td class="px-4 py-3 text-center text-gray-600">' + (b.view_count || 0).toLocaleString() + '</td>' +
+          '<td class="px-4 py-3 text-center text-gray-600">' + (b.click_count || 0).toLocaleString() + '</td>' +
+          '<td class="px-4 py-3 text-center text-gray-600">' + ctr + '</td>' +
+          '<td class="px-4 py-3 text-center"><div class="flex items-center justify-center gap-1">' +
+            '<button onclick="editBanner(' + b.id + ')" class="p-1.5 text-blue-500 hover:bg-blue-50 rounded" title="編集"><i class="fas fa-edit"></i></button>' +
+            '<button onclick="toggleActive(' + b.id + ',' + (b.is_active ? 0 : 1) + ')" class="p-1.5 ' + (b.is_active ? 'text-yellow-500 hover:bg-yellow-50' : 'text-green-500 hover:bg-green-50') + ' rounded" title="' + (b.is_active ? '非表示にする' : '表示する') + '"><i class="fas fa-' + (b.is_active ? 'eye-slash' : 'eye') + '"></i></button>' +
+            '<button onclick="deleteBanner(' + b.id + ',\\'' + escapeHtml(b.title).replace(/'/g, "\\\\'") + '\\')" class="p-1.5 text-red-500 hover:bg-red-50 rounded" title="削除"><i class="fas fa-trash"></i></button>' +
+          '</div></td>' +
+        '</tr>';
+      }).join('');
+    }
+
+    // ---------- 統計描画 ----------
+    function renderStats(banners) {
+      document.getElementById('stat-total').textContent = banners.length;
+      document.getElementById('stat-active').textContent = banners.filter(b => b.is_active).length;
+      document.getElementById('stat-views').textContent = banners.reduce((s, b) => s + (b.view_count || 0), 0).toLocaleString();
+      document.getElementById('stat-clicks').textContent = banners.reduce((s, b) => s + (b.click_count || 0), 0).toLocaleString();
+    }
+
+    // ---------- プレビュースライダー ----------
+    let previewTimer = null;
+    function renderPreview(activeBanners) {
+      const track = document.getElementById('preview-track');
+      const dots = document.getElementById('preview-dots');
+      if (previewTimer) clearInterval(previewTimer);
+
+      const list = activeBanners.slice(0, 5);
+      if (!list.length) {
+        track.innerHTML = '<div class="flex-shrink-0 w-full h-full flex items-center justify-center text-gray-400"><i class="fas fa-images text-3xl mr-3"></i>有効なバナーがありません</div>';
+        dots.innerHTML = '';
+        return;
+      }
+      track.innerHTML = list.map(b => {
+        const imgUrl = b.image_url && b.image_url.startsWith('/r2/') ? b.image_url : '/r2/' + (b.image_url || '');
+        return '<div class="flex-shrink-0 w-full h-full"><img src="' + escapeHtml(imgUrl) + '" class="w-full h-full object-cover" onerror="this.src=\\'/icons/icon.svg\\'"></div>';
+      }).join('');
+      dots.innerHTML = list.map((_, i) =>
+        '<button class="w-2 h-2 rounded-full ' + (i === 0 ? 'bg-indigo-600' : 'bg-gray-300') + '" data-idx="' + i + '"></button>'
+      ).join('');
+
+      if (list.length <= 1) return;
+      let cur = 0;
+      function goTo(idx) {
+        cur = ((idx % list.length) + list.length) % list.length;
+        track.style.transform = 'translateX(-' + (cur * 100) + '%)';
+        dots.querySelectorAll('button').forEach((d, i) => {
+          d.className = 'w-2 h-2 rounded-full ' + (i === cur ? 'bg-indigo-600' : 'bg-gray-300');
+        });
+      }
+      previewTimer = setInterval(() => goTo(cur + 1), 1000);
+      dots.querySelectorAll('button').forEach(d => {
+        d.addEventListener('click', () => { clearInterval(previewTimer); goTo(Number(d.dataset.idx)); previewTimer = setInterval(() => goTo(cur + 1), 1000); });
+      });
+    }
+
+    // ---------- モーダル操作 ----------
+    function openCreateModal() {
+      document.getElementById('modal-title').innerHTML = '<i class="fas fa-plus text-indigo-500 mr-2"></i>新規バナー追加';
+      document.getElementById('edit-id').value = '';
+      document.getElementById('edit-title').value = '';
+      document.getElementById('edit-image-url').value = '';
+      document.getElementById('edit-image-key').value = '';
+      document.getElementById('edit-link').value = '';
+      document.getElementById('edit-order').value = allBanners.length;
+      document.getElementById('edit-width').value = '1200';
+      document.getElementById('edit-height').value = '400';
+      document.getElementById('edit-start').value = '';
+      document.getElementById('edit-end').value = '';
+      document.getElementById('edit-active').checked = true;
+      document.getElementById('upload-preview').classList.add('hidden');
+      document.getElementById('upload-placeholder').classList.remove('hidden');
+      document.getElementById('upload-progress').classList.add('hidden');
+      document.getElementById('banner-modal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('banner-modal').classList.add('hidden');
+    }
+
+    async function editBanner(id) {
+      try {
+        const res = await axios.get('/api/admin/banners/' + id, { headers });
+        const b = res.data.banner;
+        document.getElementById('modal-title').innerHTML = '<i class="fas fa-edit text-indigo-500 mr-2"></i>バナー編集';
+        document.getElementById('edit-id').value = b.id;
+        document.getElementById('edit-title').value = b.title;
+        document.getElementById('edit-image-url').value = b.image_url || '';
+        document.getElementById('edit-image-key').value = b.image_key || '';
+        document.getElementById('edit-link').value = b.link_url || '';
+        document.getElementById('edit-order').value = b.display_order;
+        document.getElementById('edit-width').value = b.width || 1200;
+        document.getElementById('edit-height').value = b.height || 400;
+        document.getElementById('edit-start').value = b.start_date ? b.start_date.substring(0, 16) : '';
+        document.getElementById('edit-end').value = b.end_date ? b.end_date.substring(0, 16) : '';
+        document.getElementById('edit-active').checked = !!b.is_active;
+
+        // プレビュー表示
+        if (b.image_url) {
+          const imgUrl = b.image_url.startsWith('/r2/') ? b.image_url : '/r2/' + b.image_url;
+          const preview = document.getElementById('upload-preview');
+          preview.src = imgUrl;
+          preview.classList.remove('hidden');
+          document.getElementById('upload-placeholder').classList.add('hidden');
+        }
+        document.getElementById('upload-progress').classList.add('hidden');
+        document.getElementById('banner-modal').classList.remove('hidden');
+      } catch (e) {
+        alert('バナー情報の取得に失敗しました');
+      }
+    }
+
+    // ---------- ファイルアップロード ----------
+    async function handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) { alert('ファイルサイズは5MB以下にしてください'); return; }
+
+      // プレビュー表示
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const preview = document.getElementById('upload-preview');
+        preview.src = e.target.result;
+        preview.classList.remove('hidden');
+        document.getElementById('upload-placeholder').classList.add('hidden');
+      };
+      reader.readAsDataURL(file);
+
+      // R2アップロード
+      const progress = document.getElementById('upload-progress');
+      const bar = document.getElementById('upload-bar');
+      const status = document.getElementById('upload-status');
+      progress.classList.remove('hidden');
+      bar.style.width = '30%';
+      status.textContent = 'アップロード中...';
+
+      try {
+        const fd = new FormData();
+        fd.append('image', file);
+        bar.style.width = '60%';
+        const res = await axios.post('/api/admin/banners/upload', fd, { headers });
+        bar.style.width = '100%';
+        if (res.data.success) {
+          document.getElementById('edit-image-url').value = res.data.image_url;
+          document.getElementById('edit-image-key').value = res.data.image_key;
+          status.textContent = 'アップロード完了';
+          bar.classList.remove('bg-indigo-500');
+          bar.classList.add('bg-green-500');
+        } else {
+          throw new Error(res.data.error);
+        }
+      } catch (e) {
+        status.textContent = 'アップロード失敗: ' + (e.response?.data?.error || e.message);
+        bar.classList.remove('bg-indigo-500');
+        bar.classList.add('bg-red-500');
+      }
+    }
+
+    // ---------- 保存 ----------
+    async function saveBanner() {
+      const id = document.getElementById('edit-id').value;
+      const title = document.getElementById('edit-title').value.trim();
+      const image_url = document.getElementById('edit-image-url').value;
+      const image_key = document.getElementById('edit-image-key').value;
+      const link_url = document.getElementById('edit-link').value.trim();
+      const display_order = parseInt(document.getElementById('edit-order').value) || 0;
+      const width = parseInt(document.getElementById('edit-width').value) || 1200;
+      const height = parseInt(document.getElementById('edit-height').value) || 400;
+      const start_date = document.getElementById('edit-start').value || null;
+      const end_date = document.getElementById('edit-end').value || null;
+      const is_active = document.getElementById('edit-active').checked ? 1 : 0;
+
+      if (!title) { alert('管理名を入力してください'); return; }
+      if (!image_url) { alert('画像をアップロードしてください'); return; }
+
+      const btn = document.getElementById('save-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>保存中...';
+
+      try {
+        const body = { title, image_url, image_key, link_url, display_order, width, height, is_active, placement: 'top', start_date, end_date };
+        if (id) {
+          await axios.put('/api/admin/banners/' + id, body, { headers });
+        } else {
+          await axios.post('/api/admin/banners', body, { headers });
+        }
+        closeModal();
+        loadBanners();
+      } catch (e) {
+        alert('保存に失敗しました: ' + (e.response?.data?.error || e.message));
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save"></i>保存';
+      }
+    }
+
+    // ---------- 表示/非表示切替 ----------
+    async function toggleActive(id, newState) {
+      try {
+        await axios.put('/api/admin/banners/' + id, { is_active: newState }, { headers });
+        loadBanners();
+      } catch (e) {
+        alert('更新に失敗しました');
+      }
+    }
+
+    // ---------- 削除 ----------
+    async function deleteBanner(id, title) {
+      if (!confirm('「' + title + '」を削除しますか？\\nR2の画像も削除されます。')) return;
+      try {
+        await axios.delete('/api/admin/banners/' + id, { headers });
+        loadBanners();
+      } catch (e) {
+        alert('削除に失敗しました');
+      }
+    }
+
+    // ---------- 初期読み込み ----------
+    loadBanners();
+    </script>
+  `;
+
+  return c.html(AdminLayout('banners', 'バナー広告管理', content));
+});
+
 export default adminPagesRoutes
