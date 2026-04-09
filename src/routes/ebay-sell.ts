@@ -532,6 +532,67 @@ ebaySell.get('/locations', async (c) => {
   return c.json({ success: true, locations: results || [] })
 })
 
+/**
+ * POST /locations/sync
+ * 未同期のロケーションをeBayに再同期
+ */
+ebaySell.post('/locations/sync', async (c) => {
+  const { DB } = c.env as any
+
+  try {
+    const token = await getUserToken(c.env)
+    const apiBase = getApiBase(c.env)
+
+    // 未同期のロケーションを取得
+    const { results } = await DB.prepare('SELECT * FROM ebay_inventory_locations WHERE ebay_synced = 0').all() as any
+    if (!results || results.length === 0) {
+      return c.json({ success: true, message: '未同期のロケーションはありません' })
+    }
+
+    const syncResults = []
+    for (const loc of results) {
+      const locationPayload = {
+        location: {
+          address: {
+            addressLine1: loc.address_line1,
+            city: loc.city,
+            stateOrProvince: loc.state_or_province || '',
+            postalCode: loc.postal_code,
+            country: loc.country || 'JP'
+          }
+        },
+        name: loc.name,
+        locationTypes: ['WAREHOUSE'],
+        merchantLocationStatus: 'ENABLED',
+        phone: loc.phone || ''
+      }
+
+      const res = await fetch(`${apiBase}/sell/inventory/v1/location/${loc.merchant_location_key}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Content-Language': 'en-US'
+        },
+        body: JSON.stringify(locationPayload)
+      })
+
+      if (res.ok || res.status === 204) {
+        await DB.prepare('UPDATE ebay_inventory_locations SET ebay_synced = 1, is_default = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?').bind(loc.id).run()
+        syncResults.push({ id: loc.id, name: loc.name, success: true })
+      } else {
+        const errText = await res.text()
+        console.error('eBay location sync error:', res.status, errText)
+        syncResults.push({ id: loc.id, name: loc.name, success: false, status: res.status, error: errText })
+      }
+    }
+
+    return c.json({ success: true, results: syncResults })
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message }, 500)
+  }
+})
+
 // =============================================
 // 3. eBay Account Policies（返品・支払い・配送ポリシー）
 // =============================================

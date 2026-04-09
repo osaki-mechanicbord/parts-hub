@@ -4774,11 +4774,38 @@ adminPagesRoutes.get('/cross-border', (c) => {
         if (res.data.success && res.data.locations.length > 0) {
           var loc = res.data.locations[0];
           ebayLocationKey = loc.merchant_location_key;
-          document.getElementById('ebay-location-name').textContent = loc.name + ' (' + loc.city + ', ' + loc.country + ')' + (loc.ebay_synced ? ' ✅' : ' ⚠️未同期');
+          var syncStatus = loc.ebay_synced ? ' ✅' : ' ⚠️未同期';
+          document.getElementById('ebay-location-name').innerHTML = escapeHtml(loc.name) + ' (' + escapeHtml(loc.city) + ', ' + escapeHtml(loc.country) + ')' + syncStatus + (!loc.ebay_synced ? ' <button onclick="syncEbayLocation()" style="margin-left:8px;padding:2px 10px;background:#3b82f6;color:white;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;">再同期</button>' : '');
         } else {
           document.getElementById('ebay-location-name').textContent = '未設定 - 出品には発送元の登録が必要です';
         }
       } catch(e) {}
+    }
+
+    async function syncEbayLocation() {
+      try {
+        var res = await axios.post('/api/admin/ebay-sell/locations/sync', {}, {
+          headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') },
+          timeout: 30000
+        });
+        if (res.data.success) {
+          var allOk = res.data.results && res.data.results.every(function(r) { return r.success; });
+          if (allOk) {
+            alert('✅ eBayへの同期が完了しました！');
+          } else {
+            var msg = '同期結果:\\n';
+            (res.data.results || []).forEach(function(r) {
+              msg += r.name + ': ' + (r.success ? '✅ 成功' : '❌ 失敗 - ' + (r.error || '')) + '\\n';
+            });
+            alert(msg);
+          }
+          loadEbayLocations();
+        } else {
+          alert('同期に失敗しました: ' + (res.data.error || ''));
+        }
+      } catch(e) {
+        alert('同期エラー: ' + (e.response?.data?.error || e.message));
+      }
     }
 
     function openLocationModal() {
