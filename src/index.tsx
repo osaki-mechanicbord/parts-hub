@@ -5780,15 +5780,20 @@ app.get('/chat', (c) => {
                     const otherUserName = isBuyer ? room.seller_name : room.buyer_name;
                     const roleLabel = isBuyer ? '出品者' : '購入者';
                     const lastMessage = room.last_message || 'まだメッセージがありません';
-                    const lastMessageTime = room.last_message_at 
-                        ? new Date(room.last_message_at).toLocaleString('ja-JP', { 
-                            timeZone: 'Asia/Tokyo',
-                            month: 'short', 
-                            day: 'numeric', 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                          })
-                        : '';
+                    let lastMessageTime = '';
+                    if (room.last_message_at) {
+                        const raw = room.last_message_at;
+                        const d = new Date(raw.includes('Z') || raw.includes('+') ? raw : raw + 'Z');
+                        const now = new Date();
+                        const today = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+                        const msgDay = new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+                        const isToday = today.toDateString() === msgDay.toDateString();
+                        if (isToday) {
+                            lastMessageTime = d.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', hour: '2-digit', minute: '2-digit' });
+                        } else {
+                            lastMessageTime = d.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                        }
+                    }
                     
                     // 既読マーク: 自分が送ったメッセージが既読かどうか
                     const iMyLastMsg = room.last_message_sender_id == currentUserId;
@@ -5860,15 +5865,15 @@ app.get('/chat/:roomId', (c) => {
             .message-container {
                 display: flex;
                 flex-direction: column;
-                height: calc(100vh - 140px);
+                height: calc(100vh - 120px);
             }
             .messages-list {
                 flex: 1;
                 overflow-y: auto;
-                padding: 1rem;
+                padding: 0.75rem;
             }
             .message-bubble {
-                max-width: 70%;
+                max-width: 75%;
                 word-wrap: break-word;
             }
             .message-sent {
@@ -5881,29 +5886,86 @@ app.get('/chat/:roomId', (c) => {
                 background: white;
                 border: 1px solid #e5e7eb;
             }
+            .chat-header {
+                background: white;
+                border-bottom: 1px solid #e5e7eb;
+                position: sticky;
+                top: 0;
+                z-index: 50;
+            }
+            .chat-header-top {
+                display: flex;
+                align-items: center;
+                padding: 10px 16px;
+                gap: 12px;
+                border-bottom: 1px solid #f3f4f6;
+            }
+            .chat-header-product {
+                display: flex;
+                align-items: center;
+                padding: 8px 16px;
+                gap: 10px;
+                background: #f9fafb;
+            }
+            .back-btn {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                color: #374151;
+                font-size: 14px;
+                font-weight: 500;
+                text-decoration: none;
+                padding: 6px 10px;
+                border-radius: 8px;
+                transition: background 0.2s;
+                white-space: nowrap;
+            }
+            .back-btn:hover {
+                background: #f3f4f6;
+            }
+            .skeleton {
+                background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+                background-size: 200% 100%;
+                animation: skeleton-loading 1.5s infinite;
+                border-radius: 4px;
+            }
+            @keyframes skeleton-loading {
+                0% { background-position: 200% 0; }
+                100% { background-position: -200% 0; }
+            }
         </style>
     </head>
     <body class="bg-gray-50">
         <!-- ヘッダー -->
-        <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
-            <div class="max-w-4xl mx-auto px-4 py-4">
-                <div class="flex items-center gap-3">
-                    <div class="flex items-center gap-3">
-                        <a href="/" class="text-red-500 hover:text-red-600 transition-colors flex-shrink-0" title="TOPへ"><i class="fas fa-home text-lg"></i></a>
-                    <button onclick="window.location.href='/chat'" class="text-gray-600 hover:text-gray-900">
-                        <i class="fas fa-arrow-left text-xl"></i>
-                    </button>
-                    </div>
-                    <div id="header-product-image" class="flex-shrink-0">
-                        <div class="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-box text-gray-400"></i>
-                        </div>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <h1 id="other-user-name" class="font-bold text-gray-900 truncate">読み込み中...</h1>
-                        <p id="product-title" class="text-sm text-gray-600 truncate">-</p>
+        <header class="chat-header">
+            <!-- 上段: 戻るボタン + タイトル -->
+            <div class="chat-header-top">
+                <a href="/chat" class="back-btn">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>一覧</span>
+                </a>
+                <div class="flex-1 text-center">
+                    <span id="other-user-name" class="font-bold text-gray-900 text-sm">
+                        <span class="skeleton inline-block" style="width:80px;height:16px;"></span>
+                    </span>
+                </div>
+                <div style="width:52px;"></div>
+            </div>
+            <!-- 下段: 商品情報 -->
+            <div class="chat-header-product">
+                <div id="header-product-image" class="flex-shrink-0">
+                    <div class="w-9 h-9 bg-gray-200 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-box text-gray-400 text-xs"></i>
                     </div>
                 </div>
+                <div class="flex-1 min-w-0">
+                    <p id="product-title" class="text-xs text-gray-700 truncate font-medium">
+                        <span class="skeleton inline-block" style="width:140px;height:13px;"></span>
+                    </p>
+                </div>
+                <a id="product-link" href="#" class="hidden text-xs text-red-500 hover:text-red-600 flex-shrink-0 whitespace-nowrap">
+                    商品を見る <i class="fas fa-external-link-alt text-[10px]"></i>
+                </a>
             </div>
         </header>
 
@@ -6004,18 +6066,30 @@ app.get('/chat/:roomId', (c) => {
                             const isBuyer = room.buyer_id == currentUserId;
                             const otherUserName = isBuyer ? room.seller_name : room.buyer_name;
                             
-                            document.getElementById('other-user-name').textContent = otherUserName;
-                            document.getElementById('product-title').textContent = room.product_title;
+                            document.getElementById('other-user-name').textContent = otherUserName || '相手ユーザー';
+                            document.getElementById('product-title').textContent = room.product_title || '商品情報';
 
                             // 商品画像
                             if (room.product_image) {
                                 document.getElementById('header-product-image').innerHTML = 
-                                    '<img src="' + room.product_image + '" class="w-10 h-10 rounded-lg object-cover">';
+                                    '<img src="' + room.product_image + '" class="w-9 h-9 rounded-lg object-cover">';
                             }
+
+                            // 商品リンク
+                            if (room.product_id) {
+                                const prodLink = document.getElementById('product-link');
+                                prodLink.href = '/products/' + room.product_id;
+                                prodLink.classList.remove('hidden');
+                            }
+                        } else {
+                            document.getElementById('other-user-name').textContent = 'メッセージ';
+                            document.getElementById('product-title').textContent = '';
                         }
                     }
                 } catch (error) {
                     console.error('Failed to load room info:', error);
+                    document.getElementById('other-user-name').textContent = 'メッセージ';
+                    document.getElementById('product-title').textContent = '情報を取得できませんでした';
                 }
             }
 
@@ -6093,7 +6167,10 @@ app.get('/chat/:roomId', (c) => {
             function createMessageHTML(msg) {
                 const isSent = msg.sender_id == currentUserId;
                 const bubbleClass = isSent ? 'message-sent' : 'message-received';
-                const timeStr = new Date(msg.created_at).toLocaleString('ja-JP', { 
+                // D1のCURRENT_TIMESTAMPはUTCだがTZ情報がないため明示的に付与
+                const rawDate = msg.created_at;
+                const dateObj = new Date(rawDate.includes('Z') || rawDate.includes('+') ? rawDate : rawDate + 'Z');
+                const timeStr = dateObj.toLocaleString('ja-JP', { 
                     timeZone: 'Asia/Tokyo',
                     hour: '2-digit', 
                     minute: '2-digit' 
