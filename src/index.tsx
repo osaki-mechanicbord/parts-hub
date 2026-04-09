@@ -2014,21 +2014,21 @@ app.get('/', (c) => {
                         });
                     }
 
-                    // 自動スライド（1秒間隔）
-                    let autoTimer = setInterval(() => goTo(current + 1), 1000);
+                    // 自動スライド（3秒間隔）
+                    let autoTimer = setInterval(() => goTo(current + 1), 3000);
                     const wrapper = document.getElementById('banner-slider-wrapper');
 
                     // ホバー時は一時停止
                     wrapper?.addEventListener('mouseenter', () => clearInterval(autoTimer));
-                    wrapper?.addEventListener('mouseleave', () => { autoTimer = setInterval(() => goTo(current + 1), 1000); });
+                    wrapper?.addEventListener('mouseleave', () => { autoTimer = setInterval(() => goTo(current + 1), 3000); });
 
                     // 矢印クリック
-                    document.getElementById('banner-prev')?.addEventListener('click', () => { clearInterval(autoTimer); goTo(current - 1); autoTimer = setInterval(() => goTo(current + 1), 1000); });
-                    document.getElementById('banner-next')?.addEventListener('click', () => { clearInterval(autoTimer); goTo(current + 1); autoTimer = setInterval(() => goTo(current + 1), 1000); });
+                    document.getElementById('banner-prev')?.addEventListener('click', () => { clearInterval(autoTimer); goTo(current - 1); autoTimer = setInterval(() => goTo(current + 1), 3000); });
+                    document.getElementById('banner-next')?.addEventListener('click', () => { clearInterval(autoTimer); goTo(current + 1); autoTimer = setInterval(() => goTo(current + 1), 3000); });
 
                     // ドットクリック
                     dotsWrap.querySelectorAll('button').forEach(d => {
-                        d.addEventListener('click', () => { clearInterval(autoTimer); goTo(Number(d.dataset.dot)); autoTimer = setInterval(() => goTo(current + 1), 1000); });
+                        d.addEventListener('click', () => { clearInterval(autoTimer); goTo(Number(d.dataset.dot)); autoTimer = setInterval(() => goTo(current + 1), 3000); });
                     });
 
                     // スワイプ対応（モバイル）
@@ -2037,7 +2037,7 @@ app.get('/', (c) => {
                     wrapper?.addEventListener('touchend', (e) => {
                         const diff = touchStartX - e.changedTouches[0].clientX;
                         if (Math.abs(diff) > 40) goTo(current + (diff > 0 ? 1 : -1));
-                        autoTimer = setInterval(() => goTo(current + 1), 1000);
+                        autoTimer = setInterval(() => goTo(current + 1), 3000);
                     }, { passive: true });
 
                 } catch (e) { console.log('Banner load skipped:', e); }

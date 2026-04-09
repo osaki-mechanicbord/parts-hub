@@ -5061,7 +5061,7 @@ adminPagesRoutes.get('/banners', async (c) => {
           pIdx = (pIdx + 1) % total;
           track.style.transform = 'translateX(-' + (pIdx * 100) + '%)';
           dots.querySelectorAll('button').forEach((d, i) => d.className = 'w-2 h-2 rounded-full ' + (i === pIdx ? 'bg-red-500' : 'bg-gray-300'));
-        }, 1000);
+        }, 3000);
       }
     }
 
