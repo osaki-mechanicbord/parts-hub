@@ -10123,6 +10123,18 @@ app.get('/area/:pref', async (c) => {
         </div>
     </section>
 
+    <!-- バナー広告スライダーセクション（都道府県別） -->
+    <section id="area-banner-section" class="hidden bg-white py-6 sm:py-8">
+      <div class="max-w-6xl mx-auto px-3 sm:px-4">
+        <div class="relative overflow-hidden rounded-xl sm:rounded-2xl shadow-lg" id="area-banner-wrapper">
+          <div id="area-banner-track" class="flex transition-transform duration-500 ease-in-out" style="will-change:transform;"></div>
+          <div id="area-banner-dots" class="absolute bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2 flex gap-2 z-10"></div>
+          <button id="area-banner-prev" class="hidden md:flex absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/30 hover:bg-black/50 text-white rounded-full items-center justify-center transition-colors z-10" aria-label="前へ"><i class="fas fa-chevron-left"></i></button>
+          <button id="area-banner-next" class="hidden md:flex absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/30 hover:bg-black/50 text-white rounded-full items-center justify-center transition-colors z-10" aria-label="次へ"><i class="fas fa-chevron-right"></i></button>
+        </div>
+      </div>
+    </section>
+
     <main class="max-w-6xl mx-auto px-3 sm:px-4 py-8 sm:py-12 lg:py-14">
 
         <!-- PARTS HUBの特長 -->
@@ -10224,8 +10236,61 @@ app.get('/area/:pref', async (c) => {
     </section>
 
     ${Footer()}
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
     <script src="${v('/static/auth-header.js')}"></script>
     <script src="${v('/static/notification-badge.js')}"></script>
+    <script>
+    // バナー広告スライダー（都道府県別）
+    (async function initAreaBanner() {
+      try {
+        const res = await axios.get('/api/banners?placement=${prefSlug}');
+        const banners = (res.data.banners || []).slice(0, 5);
+        if (!banners.length) return;
+        const section = document.getElementById('area-banner-section');
+        const track = document.getElementById('area-banner-track');
+        const dotsWrap = document.getElementById('area-banner-dots');
+        if (!section || !track || !dotsWrap) return;
+        track.innerHTML = banners.map(function(b, i) {
+          var imgUrl = b.image_url.startsWith('/r2/') ? b.image_url : '/r2/' + b.image_url;
+          var inner = '<img src="' + imgUrl + '" alt="' + (b.title || '広告') + '" class="w-full h-full object-cover" loading="' + (i === 0 ? 'eager' : 'lazy') + '" draggable="false">';
+          if (b.link_url) {
+            return '<a href="' + b.link_url + '" target="_blank" rel="noopener" class="flex-shrink-0 w-full block" style="aspect-ratio:3/1;" onclick="trackBannerClick(' + b.id + ')">' + inner + '</a>';
+          }
+          return '<div class="flex-shrink-0 w-full" style="aspect-ratio:3/1;">' + inner + '</div>';
+        }).join('');
+        dotsWrap.innerHTML = banners.map(function(_, i) {
+          return '<button class="w-2.5 h-2.5 rounded-full transition-all ' + (i === 0 ? 'bg-white scale-110' : 'bg-white/50') + '" data-dot="' + i + '"></button>';
+        }).join('');
+        section.classList.remove('hidden');
+        var current = 0, total = banners.length;
+        if (total <= 1) { dotsWrap.classList.add('hidden'); return; }
+        function goTo(idx) {
+          current = ((idx % total) + total) % total;
+          track.style.transform = 'translateX(-' + (current * 100) + '%)';
+          dotsWrap.querySelectorAll('button').forEach(function(d, i) {
+            d.className = 'w-2.5 h-2.5 rounded-full transition-all ' + (i === current ? 'bg-white scale-110' : 'bg-white/50');
+          });
+        }
+        var autoTimer = setInterval(function() { goTo(current + 1); }, 1000);
+        var wrapper = document.getElementById('area-banner-wrapper');
+        wrapper.addEventListener('mouseenter', function() { clearInterval(autoTimer); });
+        wrapper.addEventListener('mouseleave', function() { autoTimer = setInterval(function() { goTo(current + 1); }, 1000); });
+        document.getElementById('area-banner-prev').addEventListener('click', function() { clearInterval(autoTimer); goTo(current - 1); autoTimer = setInterval(function() { goTo(current + 1); }, 1000); });
+        document.getElementById('area-banner-next').addEventListener('click', function() { clearInterval(autoTimer); goTo(current + 1); autoTimer = setInterval(function() { goTo(current + 1); }, 1000); });
+        dotsWrap.querySelectorAll('button').forEach(function(d) {
+          d.addEventListener('click', function() { clearInterval(autoTimer); goTo(Number(d.dataset.dot)); autoTimer = setInterval(function() { goTo(current + 1); }, 1000); });
+        });
+        var touchStartX = 0;
+        wrapper.addEventListener('touchstart', function(e) { touchStartX = e.touches[0].clientX; clearInterval(autoTimer); }, { passive: true });
+        wrapper.addEventListener('touchend', function(e) {
+          var diff = touchStartX - e.changedTouches[0].clientX;
+          if (Math.abs(diff) > 40) goTo(current + (diff > 0 ? 1 : -1));
+          autoTimer = setInterval(function() { goTo(current + 1); }, 1000);
+        }, { passive: true });
+      } catch(e) { console.log('Area banner skipped:', e); }
+    })();
+    window.trackBannerClick = function(id) { axios.post('/api/admin/banners/' + id + '/click').catch(function(){}); };
+    </script>
 </body>
 </html>`)
 })
