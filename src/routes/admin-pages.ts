@@ -3963,6 +3963,35 @@ adminPagesRoutes.get('/cross-border', (c) => {
       .listing-actions button { font-size:11px; padding:3px 8px; border-radius:6px; font-weight:600; border:1px solid transparent; cursor:pointer; transition:all .15s; }
     </style>
 
+    <!-- eBay連携ステータス -->
+    <div id="ebay-connect-bar" class="mb-4 p-4 rounded-xl border border-gray-200 bg-white">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <i class="fab fa-ebay text-2xl text-blue-600"></i>
+          <div>
+            <p class="font-bold text-sm text-gray-800">eBay Sell API 連携</p>
+            <p class="text-xs text-gray-500" id="ebay-connect-status">確認中...</p>
+          </div>
+        </div>
+        <div id="ebay-connect-actions">
+          <button onclick="connectEbay()" class="text-xs bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-semibold hidden" id="btn-connect-ebay">
+            <i class="fab fa-ebay mr-1"></i>eBayアカウント連携
+          </button>
+          <span class="text-xs bg-green-100 text-green-700 px-3 py-1.5 rounded-lg font-semibold hidden" id="ebay-connected-badge">
+            <i class="fas fa-check-circle mr-1"></i>連携済み
+          </span>
+        </div>
+      </div>
+      <div id="ebay-location-bar" class="hidden mt-3 pt-3 border-t border-gray-100">
+        <div class="flex items-center justify-between">
+          <p class="text-xs text-gray-500"><i class="fas fa-warehouse mr-1"></i>発送元: <span id="ebay-location-name" class="font-semibold text-gray-700">未設定</span></p>
+          <button onclick="openLocationModal()" class="text-xs text-blue-600 hover:text-blue-700 font-semibold">
+            <i class="fas fa-edit mr-1"></i>設定
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- 為替レート表示 -->
     <div class="rate-display mb-6 flex items-center justify-between">
       <div>
@@ -4209,8 +4238,8 @@ adminPagesRoutes.get('/cross-border', (c) => {
           <button onclick="saveListing('draft')" class="flex-1 px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-semibold">
             <i class="fas fa-save mr-1"></i>下書き保存
           </button>
-          <button onclick="saveListing('ready')" class="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold">
-            <i class="fas fa-check mr-1"></i>出品準備完了
+          <button onclick="saveAndPublishToEbay()" id="btn-ebay-publish" class="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold">
+            <i class="fab fa-ebay mr-1"></i>eBayに出品
           </button>
         </div>
       </div>
@@ -4680,11 +4709,193 @@ adminPagesRoutes.get('/cross-border', (c) => {
       document.getElementById('sim-modal').classList.add('show');
     }
 
+    // ===== eBay連携機能 =====
+    var ebayConnected = false;
+    var ebayPolicies = null;
+    var ebayLocationKey = null;
+
+    async function checkEbayConnection() {
+      try {
+        var res = await axios.get('/api/admin/ebay-sell/oauth/status', {
+          headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') }
+        });
+        if (res.data.success && res.data.connected) {
+          ebayConnected = true;
+          document.getElementById('ebay-connect-status').textContent = 
+            'Production環境 / トークン有効期限: ' + new Date(res.data.token.expires_at).toLocaleDateString('ja-JP');
+          document.getElementById('ebay-connected-badge').classList.remove('hidden');
+          document.getElementById('btn-connect-ebay').classList.add('hidden');
+          document.getElementById('ebay-location-bar').classList.remove('hidden');
+          loadEbayLocations();
+        } else {
+          document.getElementById('ebay-connect-status').textContent = res.data.has_ru_name 
+            ? '未連携 - eBayアカウントの認証が必要です' 
+            : '未連携 - EBAY_RU_NAME の設定が必要です';
+          document.getElementById('btn-connect-ebay').classList.remove('hidden');
+          if (!res.data.has_ru_name) document.getElementById('btn-connect-ebay').disabled = true;
+        }
+      } catch(e) {
+        document.getElementById('ebay-connect-status').textContent = 'ステータス確認に失敗しました';
+        document.getElementById('btn-connect-ebay').classList.remove('hidden');
+      }
+    }
+
+    async function connectEbay() {
+      try {
+        var res = await axios.get('/api/admin/ebay-sell/oauth/auth-url', {
+          headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') }
+        });
+        if (res.data.success) {
+          window.open(res.data.auth_url, '_blank');
+        } else {
+          alert(res.data.error || 'OAuth URL の生成に失敗しました');
+        }
+      } catch(e) {
+        alert('eBay認証URLの取得に失敗しました');
+      }
+    }
+
+    async function loadEbayLocations() {
+      try {
+        var res = await axios.get('/api/admin/ebay-sell/locations', {
+          headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') }
+        });
+        if (res.data.success && res.data.locations.length > 0) {
+          var loc = res.data.locations[0];
+          ebayLocationKey = loc.merchant_location_key;
+          document.getElementById('ebay-location-name').textContent = loc.name + ' (' + loc.city + ', ' + loc.country + ')' + (loc.ebay_synced ? ' ✅' : ' ⚠️未同期');
+        } else {
+          document.getElementById('ebay-location-name').textContent = '未設定 - 出品には発送元の登録が必要です';
+        }
+      } catch(e) {}
+    }
+
+    function openLocationModal() {
+      var html = '<div style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center;" id="loc-modal-overlay" onclick="if(event.target===this)this.remove()">' +
+        '<div style="background:white;border-radius:16px;max-width:500px;width:95%;padding:24px;" onclick="event.stopPropagation()">' +
+        '<h3 class="text-lg font-bold mb-4"><i class="fas fa-warehouse mr-2 text-blue-500"></i>発送元ロケーション設定</h3>' +
+        '<div class="space-y-3">' +
+        '<div><label class="text-xs text-gray-500">倉庫名</label><input type="text" id="loc-name" class="w-full px-3 py-2 border rounded-lg text-sm" value="PARTS HUB 本社倉庫" placeholder="倉庫名"></div>' +
+        '<div><label class="text-xs text-gray-500">住所</label><input type="text" id="loc-address" class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="1-2-3 Shibuya"></div>' +
+        '<div class="grid grid-cols-2 gap-3">' +
+        '<div><label class="text-xs text-gray-500">市区町村</label><input type="text" id="loc-city" class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="Shibuya-ku"></div>' +
+        '<div><label class="text-xs text-gray-500">都道府県</label><input type="text" id="loc-state" class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="Tokyo"></div>' +
+        '</div>' +
+        '<div class="grid grid-cols-2 gap-3">' +
+        '<div><label class="text-xs text-gray-500">郵便番号</label><input type="text" id="loc-postal" class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="150-0002"></div>' +
+        '<div><label class="text-xs text-gray-500">電話番号</label><input type="text" id="loc-phone" class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="03-1234-5678"></div>' +
+        '</div>' +
+        '</div>' +
+        '<div class="flex gap-3 mt-4">' +
+        '<button onclick="document.getElementById(\'loc-modal-overlay\').remove()" class="flex-1 px-4 py-2 border rounded-lg font-semibold">キャンセル</button>' +
+        '<button onclick="saveLocation()" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"><i class="fas fa-save mr-1"></i>保存してeBayに同期</button>' +
+        '</div></div></div>';
+      document.body.insertAdjacentHTML('beforeend', html);
+    }
+
+    async function saveLocation() {
+      var payload = {
+        name: document.getElementById('loc-name').value,
+        address_line1: document.getElementById('loc-address').value,
+        city: document.getElementById('loc-city').value,
+        state_or_province: document.getElementById('loc-state').value,
+        postal_code: document.getElementById('loc-postal').value,
+        country: 'JP',
+        phone: document.getElementById('loc-phone').value
+      };
+      if (!payload.name || !payload.address_line1 || !payload.city || !payload.postal_code) {
+        alert('名前・住所・市区町村・郵便番号は必須です');
+        return;
+      }
+      try {
+        var res = await axios.post('/api/admin/ebay-sell/locations', payload, {
+          headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') }
+        });
+        if (res.data.success) {
+          ebayLocationKey = res.data.merchant_location_key;
+          alert('ロケーションを保存しました' + (res.data.ebay_synced ? '（eBay同期済み）' : '（eBay同期は後で実行されます）'));
+          var overlay = document.getElementById('loc-modal-overlay');
+          if (overlay) overlay.remove();
+          loadEbayLocations();
+        } else {
+          alert('保存に失敗しました: ' + (res.data.error || ''));
+        }
+      } catch(e) {
+        alert('エラーが発生しました');
+      }
+    }
+
+    // eBayに直接出品（保存 → Inventory登録 → Offer公開）
+    async function saveAndPublishToEbay() {
+      if (!ebayConnected) {
+        alert('先にeBayアカウントを連携してください。');
+        return;
+      }
+      var titleEn = document.getElementById('modal-title-en').value;
+      var descEn = document.getElementById('modal-desc-en').value;
+      var priceUsd = parseFloat(document.getElementById('modal-price-usd').value);
+      var shipUsd = parseFloat(document.getElementById('modal-shipping-usd').value) || 0;
+
+      if (!titleEn) { alert('英語タイトルは必須です。AI翻訳を実行してください。'); return; }
+      if (!priceUsd || priceUsd <= 0) { alert('USD価格を設定してください。'); return; }
+
+      var btn = document.getElementById('btn-ebay-publish');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>eBay出品中...';
+
+      try {
+        // まず出品データを保存
+        var saveRes = await axios.post('/api/admin/cross-border/listings', {
+          product_id: cbCurrentProduct.id,
+          title_en: titleEn,
+          description_en: descEn,
+          price_usd: priceUsd,
+          exchange_rate: cbCurrentRate,
+          shipping_cost_usd: shipUsd
+        }, { headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') } });
+
+        if (!saveRes.data.success) {
+          alert('出品データの保存に失敗: ' + (saveRes.data.error || ''));
+          return;
+        }
+
+        var listingId = saveRes.data.id;
+
+        // eBay Quick List
+        var ebayRes = await axios.post('/api/admin/ebay-sell/quick-list', {
+          listing_id: listingId,
+          price_usd: priceUsd
+        }, { headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') } });
+
+        if (ebayRes.data.success && ebayRes.data.ebay_url) {
+          closeListingModal();
+          alert('✅ eBayへの出品が完了しました！\\n\\n' + ebayRes.data.ebay_url);
+          loadStats();
+          loadListings();
+        } else {
+          var msg = 'eBay出品処理で問題が発生しました。\\n\\n';
+          if (ebayRes.data.steps) {
+            ebayRes.data.steps.forEach(function(s) {
+              msg += s.step + ': ' + (s.success ? '✅' : '❌ ' + (s.error || '')) + '\\n';
+            });
+          }
+          msg += '\\n' + (ebayRes.data.message || '');
+          alert(msg);
+        }
+      } catch(e) {
+        alert('エラーが発生しました: ' + (e.response?.data?.error || e.message));
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fab fa-ebay mr-1"></i>eBayに出品';
+      }
+    }
+
     // ===== 初期化 =====
     (async function() {
       await refreshRate();
       loadStats();
       loadCandidates();
+      checkEbayConnection();
     })();
     </script>
   `;

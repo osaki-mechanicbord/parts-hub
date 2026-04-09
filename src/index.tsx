@@ -33,6 +33,7 @@ import guideApiRoutes from './routes/guide'
 import { breadcrumbHtml, BREADCRUMB_CSS } from './breadcrumb'
 import franchiseRoutes from './routes/franchise'
 import ebayRoutes from './routes/ebay'
+import ebaySellRoutes from './routes/ebay-sell'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -897,6 +898,7 @@ app.route('/api/vehicle-demo', vehicleDemoRoutes)
 app.route('/api/argos-demo', argosDemoRoutes)
 app.route('/api/argos', argosRoutes)  // 本番用ARGOS JPC API（ARGOS_API_ENABLED=true時のみ有効、公開予定: 2026年6月〜）
 app.route('/api/ebay', ebayRoutes) // eBay Browse API連携
+app.route('/api/admin/ebay-sell', ebaySellRoutes) // eBay Sell API連携（出品・注文管理）
 app.route('/api/admin/cross-border', crossBorderRoutes) // 越境EC管理API（adminRouteより先に登録）
 app.route('/api/admin', adminRoutes)
 app.route('/api/guides', guideApiRoutes) // ガイド記事自動生成API

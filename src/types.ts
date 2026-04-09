@@ -20,6 +20,7 @@ export type Bindings = {
   EBAY_CLIENT_SECRET?: string
   EBAY_DEV_ID?: string
   EBAY_ENVIRONMENT?: string // 'sandbox' or 'production'
+  EBAY_RU_NAME?: string // eBay Redirect URL name (OAuth callback)
   // JWT
   JWT_SECRET?: string
 }
