@@ -8160,9 +8160,6 @@ app.get('/search', (c) => {
         <style>
             ${BREADCRUMB_CSS}
             /* 検索ページ専用スタイル */
-            .search-hero { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #4338ca 100%); }
-            .search-input-main { box-shadow: 0 8px 32px rgba(0,0,0,0.2); border: 2px solid rgba(255,255,255,0.2); transition: all 0.3s; }
-            .search-input-main:focus { border-color: #ef4444; box-shadow: 0 8px 32px rgba(239,68,68,0.3); }
             .cat-grid-item { transition: all 0.2s; cursor: pointer; border: 2px solid transparent; }
             .cat-grid-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-color: #ef4444; }
             .cat-grid-item.active { border-color: #ef4444; background: #fef2f2; }
@@ -8178,8 +8175,8 @@ app.get('/search', (c) => {
             .filter-tag .remove:hover{opacity:1}
             .search-stats{font-size:12px;color:#6b7280;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
             .search-stats span{display:flex;align-items:center;gap:4px}
-            .suggest-chip { display:inline-flex; align-items:center; gap:4px; padding:6px 14px; border-radius:999px; font-size:12px; background:#f3f4f6; color:#4b5563; cursor:pointer; transition:all 0.15s; border:1px solid #e5e7eb; }
-            .suggest-chip:hover { background:#fee2e2; color:#dc2626; border-color:#fecaca; }
+            .suggest-chip { display:inline-flex; align-items:center; gap:4px; padding:6px 14px; border-radius:999px; font-size:12px; background:rgba(255,255,255,0.1); color:rgba(255,255,255,0.8); cursor:pointer; transition:all 0.15s; border:1px solid rgba(255,255,255,0.2); }
+            .suggest-chip:hover { background:rgba(255,255,255,0.2); color:#fff; border-color:rgba(255,255,255,0.4); }
             .product-card { transition: all 0.2s; }
             .product-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
             .view-toggle-btn { padding: 6px 10px; border-radius: 8px; border: 1px solid #e5e7eb; background: #fff; color: #6b7280; cursor: pointer; transition: all 0.15s; }
@@ -8187,54 +8184,107 @@ app.get('/search', (c) => {
             .sticky-search { position: sticky; top: 0; z-index: 50; transition: all 0.3s; }
             .sticky-search.scrolled { box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
             @keyframes fadeInUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+            @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-20px); } }
             .fade-in { animation: fadeInUp 0.3s ease forwards; }
         </style>
     </head>
     <body class="bg-gray-50 min-h-screen">
         <!-- ============================================ -->
-        <!-- 検索ヒーローセクション（TOPページとの差別化） -->
+        <!-- ヒーローセクション（TOPページと同じ） -->
         <!-- ============================================ -->
-        <div class="search-hero text-white">
-            <div class="max-w-5xl mx-auto px-4 pt-6 pb-8">
-                <!-- ナビゲーション -->
-                <div class="flex items-center justify-between mb-6">
-                    <a href="/" class="flex items-center gap-2 text-white/80 hover:text-white transition-colors text-sm">
-                        <i class="fas fa-home"></i>
-                        <span class="hidden sm:inline">PARTS HUB</span>
-                    </a>
-                    <div class="flex items-center gap-3">
-                        <a href="/listing" class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full transition-colors">
-                            <i class="fas fa-plus mr-1"></i>出品する
-                        </a>
+        <section class="relative py-20 overflow-hidden bg-gradient-to-br from-indigo-900 via-purple-900 to-gray-900">
+            <!-- パターンオーバーレイ -->
+            <div class="absolute inset-0 z-0 opacity-10">
+                <svg class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <pattern id="gear-pattern" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
+                            <circle cx="50" cy="50" r="20" fill="none" stroke="white" stroke-width="2"/>
+                            <line x1="50" y1="30" x2="50" y2="10" stroke="white" stroke-width="2"/>
+                            <line x1="50" y1="70" x2="50" y2="90" stroke="white" stroke-width="2"/>
+                            <line x1="30" y1="50" x2="10" y2="50" stroke="white" stroke-width="2"/>
+                            <line x1="70" y1="50" x2="90" y2="50" stroke="white" stroke-width="2"/>
+                        </pattern>
+                    </defs>
+                    <rect width="100%" height="100%" fill="url(#gear-pattern)" />
+                </svg>
+            </div>
+            
+            <!-- コンテンツ -->
+            <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center text-white">
+                    <div class="flex items-center justify-center mb-6">
+                        <div class="w-20 h-20 mr-4 flex-shrink-0 drop-shadow-2xl" style="animation:float 6s ease-in-out infinite">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="80" height="80">
+                              <defs>
+                                <linearGradient id="heroLogoGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                                  <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+                                  <stop offset="100%" style="stop-color:#ffffff;stop-opacity:0.9" />
+                                </linearGradient>
+                              </defs>
+                              <circle cx="50" cy="50" r="48" fill="none" stroke="url(#heroLogoGrad2)" stroke-width="2"/>
+                              <g fill="url(#heroLogoGrad2)">
+                                <rect x="47" y="5" width="6" height="15" rx="1"/>
+                                <rect x="47" y="80" width="6" height="15" rx="1"/>
+                                <rect x="5" y="47" width="15" height="6" rx="1"/>
+                                <rect x="80" y="47" width="15" height="6" rx="1"/>
+                                <rect x="72" y="18" width="15" height="6" rx="1" transform="rotate(45 79.5 21)"/>
+                                <rect x="13" y="18" width="15" height="6" rx="1" transform="rotate(-45 20.5 21)"/>
+                                <rect x="72" y="76" width="15" height="6" rx="1" transform="rotate(-45 79.5 79)"/>
+                                <rect x="13" y="76" width="15" height="6" rx="1" transform="rotate(45 20.5 79)"/>
+                              </g>
+                              <circle cx="50" cy="50" r="22" fill="url(#heroLogoGrad2)"/>
+                              <g stroke="rgba(255,255,255,0.5)" stroke-width="2" fill="none">
+                                <line x1="50" y1="50" x2="50" y2="32"/>
+                                <line x1="50" y1="50" x2="50" y2="68"/>
+                                <line x1="50" y1="50" x2="32" y2="50"/>
+                                <line x1="50" y1="50" x2="68" y2="50"/>
+                              </g>
+                              <g fill="rgba(255,255,255,0.8)">
+                                <circle cx="50" cy="32" r="3"/>
+                                <circle cx="50" cy="68" r="3"/>
+                                <circle cx="32" cy="50" r="3"/>
+                                <circle cx="68" cy="50" r="3"/>
+                              </g>
+                              <circle cx="50" cy="50" r="8" fill="rgba(255,255,255,0.3)"/>
+                            </svg>
+                        </div>
+                        <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold drop-shadow-lg">
+                            PARTS HUB
+                        </h1>
                     </div>
-                </div>
-                <!-- メイン検索 -->
-                <div class="text-center mb-5">
-                    <h1 class="text-xl sm:text-2xl font-bold mb-2 tracking-tight">パーツをさがす</h1>
-                    <p class="text-white/60 text-xs sm:text-sm">全国の整備工場から、あなたに合ったパーツを見つけよう</p>
-                </div>
-                <div class="max-w-2xl mx-auto relative">
-                    <input type="text" id="search-input" placeholder="商品名・品番・メーカー名で検索"
-                           value="${q.replace(/"/g, '&quot;')}"
-                           class="search-input-main w-full pl-12 pr-12 py-4 rounded-2xl text-gray-900 text-sm sm:text-base bg-white focus:outline-none">
-                    <i class="fas fa-search absolute left-4.5 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></i>
-                    <button id="clear-search-btn" onclick="clearSearchInput()" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 hidden">
-                        <i class="fas fa-times-circle text-lg"></i>
-                    </button>
-                </div>
-                <!-- 人気キーワード -->
-                <div class="max-w-2xl mx-auto mt-4 text-center">
-                    <div class="flex items-center justify-center gap-2 flex-wrap">
-                        <span class="text-white/40 text-xs"><i class="fas fa-fire text-orange-400 mr-1"></i>人気:</span>
-                        <button class="suggest-chip bg-white/10 border-white/20 text-white/80 hover:bg-white/20 hover:text-white" onclick="quickSearch('LED ヘッドライト')">LED ヘッドライト</button>
-                        <button class="suggest-chip bg-white/10 border-white/20 text-white/80 hover:bg-white/20 hover:text-white" onclick="quickSearch('ブレーキパッド')">ブレーキパッド</button>
-                        <button class="suggest-chip bg-white/10 border-white/20 text-white/80 hover:bg-white/20 hover:text-white" onclick="quickSearch('オイルフィルター')">オイルフィルター</button>
-                        <button class="suggest-chip bg-white/10 border-white/20 text-white/80 hover:bg-white/20 hover:text-white" onclick="quickSearch('ワークランプ')">ワークランプ</button>
-                        <button class="suggest-chip bg-white/10 border-white/20 text-white/80 hover:bg-white/20 hover:text-white" onclick="quickSearch('SST')">SST</button>
+                    <p class="text-lg sm:text-xl md:text-2xl mb-2 sm:mb-3 font-semibold drop-shadow-lg">倉庫のデッドストック<br class="sm:hidden">そろそろ現金化しませんか？</p>
+                    <p class="text-sm sm:text-base md:text-lg text-white/95 mb-6 sm:mb-8 md:mb-10 max-w-3xl mx-auto drop-shadow-md px-4">
+                        車体番号から適合部品を検索して<br class="sm:hidden">手軽に適合検索しながら売買できます。
+                    </p>
+                    
+                    <!-- 検索バー -->
+                    <div class="max-w-3xl mx-auto">
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <div class="flex-1 relative">
+                                <i class="fas fa-search absolute left-4 sm:left-5 top-1/2 -translate-y-1/2 text-gray-400 text-base sm:text-lg"></i>
+                                <input type="text" id="search-input" 
+                                       placeholder="商品名、メーカー、品番で検索..." 
+                                       value="${q.replace(/"/g, '&quot;')}"
+                                       class="w-full pl-11 sm:pl-14 pr-4 py-3 sm:py-4 rounded-xl border-0 bg-white text-gray-900 text-base sm:text-lg focus:outline-none focus:ring-4 focus:ring-white/50 shadow-2xl placeholder:text-gray-400">
+                            </div>
+                            <button onclick="performSearch()" 
+                                    class="w-full sm:w-auto px-8 sm:px-10 py-3 sm:py-4 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-xl font-bold hover:from-red-600 hover:to-pink-600 transition-all shadow-2xl hover:shadow-red-500/50 text-base sm:text-lg">
+                                <i class="fas fa-search mr-2"></i>検索
+                            </button>
+                        </div>
+                        <!-- 人気キーワード -->
+                        <div class="mt-4 flex items-center justify-center gap-2 flex-wrap">
+                            <span class="text-white/40 text-xs"><i class="fas fa-fire text-orange-400 mr-1"></i>人気:</span>
+                            <button class="suggest-chip" onclick="quickSearch('LED ヘッドライト')">LED ヘッドライト</button>
+                            <button class="suggest-chip" onclick="quickSearch('ブレーキパッド')">ブレーキパッド</button>
+                            <button class="suggest-chip" onclick="quickSearch('オイルフィルター')">オイルフィルター</button>
+                            <button class="suggest-chip" onclick="quickSearch('ワークランプ')">ワークランプ</button>
+                            <button class="suggest-chip" onclick="quickSearch('SST')">SST</button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
 
         ${breadcrumbHtml([{name:'PARTS HUB',url:'/'},{name:'パーツ検索'}])}
 
@@ -8551,7 +8601,7 @@ app.get('/search', (c) => {
 
             // スティッキー検索バーの表示制御
             function initStickySearch() {
-                const hero = document.querySelector('.search-hero');
+                const hero = document.querySelector('section.relative.py-20');
                 const stickyBar = document.getElementById('sticky-search-bar');
                 const stickyInput = document.getElementById('sticky-search-input');
                 const mainInput = document.getElementById('search-input');
@@ -8585,8 +8635,10 @@ app.get('/search', (c) => {
 
             // 検索入力のクリアボタン制御
             function updateClearBtn() {
-                const v = document.getElementById('search-input').value;
-                document.getElementById('clear-search-btn').classList.toggle('hidden', !v);
+                // clear button is optional (hero layout may not have it)
+                var v = document.getElementById('search-input').value;
+                var btn = document.getElementById('clear-search-btn');
+                if (btn) btn.classList.toggle('hidden', !v);
             }
             function clearSearchInput() {
                 document.getElementById('search-input').value = '';
