@@ -280,6 +280,10 @@ api.get('/products/search', async (c) => {
     const vmModel = c.req.query('vm_model')
     const sellerId = c.req.query('seller_id')
     const topCategory = c.req.query('top_category')
+    const categoryName = c.req.query('category')
+    const shippingType = c.req.query('shipping_type')
+    const isUniversal = c.req.query('is_universal')
+    const statusFilter = c.req.query('status')
     const prefecture = c.req.query('prefecture')
     const limit = Math.min(parseInt(c.req.query('limit') || '60'), 100)
     const offset = parseInt(c.req.query('offset') || '0')
@@ -287,6 +291,26 @@ api.get('/products/search', async (c) => {
 
     let conditions = ["p.status IN ('active', 'sold')"]
     let params: any[] = []
+
+    // カテゴリ名フィルター（日本語カテゴリ名で絞り込み）
+    if (categoryName) {
+      conditions.push('EXISTS (SELECT 1 FROM categories cat WHERE cat.id = p.category_id AND cat.name = ?)')
+      params.push(categoryName)
+    }
+    // 送料タイプフィルター
+    if (shippingType) {
+      conditions.push('p.shipping_type = ?')
+      params.push(shippingType)
+    }
+    // 汎用品フィルター
+    if (isUniversal === '1') {
+      conditions.push('p.is_universal = 1')
+    }
+    // ステータスフィルター（activeのみ表示等）
+    if (statusFilter === 'active') {
+      // 既存のIN条件を上書き - activeのみ
+      conditions[0] = "p.status = 'active'"
+    }
 
     if (keyword) {
       conditions.push('(p.title LIKE ? OR p.description LIKE ? OR p.part_number LIKE ? OR p.compatible_models LIKE ?)')

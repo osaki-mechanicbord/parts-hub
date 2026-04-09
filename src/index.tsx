@@ -8119,8 +8119,10 @@ app.get('/favorites', (c) => {
   `)
 })
 
-// 検索ページ
+// 検索ページ（強化版）
 app.get('/search', (c) => {
+  const q = c.req.query('q') || ''
+  const cat = c.req.query('category') || ''
   return c.html(`
     <!DOCTYPE html>
     <html lang="ja">
@@ -8129,7 +8131,7 @@ app.get('/search', (c) => {
         <meta name="google-site-verification" content="kHpRFWBlOATd13JxYZMj39kWaBbphQY-ygUj15kFJvs">
         ${PERF_HINTS}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>商品検索 - PARTS HUB（パーツハブ）</title>
+        <title>${cat ? cat + 'の検索結果' : '商品検索'} - PARTS HUB（パーツハブ）</title>
         <meta name="description" content="自動車パーツ・純正部品・工具をキーワード・カテゴリ・車種から検索。全国の整備工場が出品する中古・新品パーツを簡単に見つけられます。">
         <link rel="canonical" href="https://parts-hub-tci.com/search">
         ${hreflang("/search")}
@@ -8155,106 +8157,348 @@ app.get('/search', (c) => {
         <meta name="theme-color" content="#ff4757">
         ${TAILWIND_CSS}
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-        <style>${BREADCRUMB_CSS}</style>
+        <style>
+            ${BREADCRUMB_CSS}
+            /* 検索ページ専用スタイル */
+            .search-hero { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #4338ca 100%); }
+            .search-input-main { box-shadow: 0 8px 32px rgba(0,0,0,0.2); border: 2px solid rgba(255,255,255,0.2); transition: all 0.3s; }
+            .search-input-main:focus { border-color: #ef4444; box-shadow: 0 8px 32px rgba(239,68,68,0.3); }
+            .cat-grid-item { transition: all 0.2s; cursor: pointer; border: 2px solid transparent; }
+            .cat-grid-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-color: #ef4444; }
+            .cat-grid-item.active { border-color: #ef4444; background: #fef2f2; }
+            .cat-grid-item.active .cat-icon { color: #ef4444; }
+            .cat-grid-item.active .cat-name { color: #dc2626; font-weight: 700; }
+            .cat-chip{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;font-size:13px;font-weight:600;white-space:nowrap;border:2px solid #e5e7eb;background:#fff;color:#374151;cursor:pointer;transition:all .15s;flex-shrink:0}
+            .cat-chip:hover{border-color:#ef4444;color:#ef4444;background:#fef2f2}
+            .cat-chip.active{border-color:#ef4444;background:#ef4444;color:#fff}
+            .cat-chip i{font-size:14px}
+            .filter-tag{display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:600;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;cursor:pointer}
+            .filter-tag:hover{background:#fee2e2}
+            .filter-tag .remove{font-size:14px;margin-left:2px;opacity:0.6}
+            .filter-tag .remove:hover{opacity:1}
+            .search-stats{font-size:12px;color:#6b7280;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+            .search-stats span{display:flex;align-items:center;gap:4px}
+            .suggest-chip { display:inline-flex; align-items:center; gap:4px; padding:6px 14px; border-radius:999px; font-size:12px; background:#f3f4f6; color:#4b5563; cursor:pointer; transition:all 0.15s; border:1px solid #e5e7eb; }
+            .suggest-chip:hover { background:#fee2e2; color:#dc2626; border-color:#fecaca; }
+            .product-card { transition: all 0.2s; }
+            .product-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+            .view-toggle-btn { padding: 6px 10px; border-radius: 8px; border: 1px solid #e5e7eb; background: #fff; color: #6b7280; cursor: pointer; transition: all 0.15s; }
+            .view-toggle-btn.active { background: #ef4444; color: #fff; border-color: #ef4444; }
+            .sticky-search { position: sticky; top: 0; z-index: 50; transition: all 0.3s; }
+            .sticky-search.scrolled { box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
+            @keyframes fadeInUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+            .fade-in { animation: fadeInUp 0.3s ease forwards; }
+        </style>
     </head>
     <body class="bg-gray-50 min-h-screen">
-        <!-- ヘッダー -->
-        <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
-            <div class="max-w-6xl mx-auto px-4 py-3 sm:py-4">
-                <div class="flex items-center gap-2 sm:gap-3">
-                    <a href="/" class="text-red-500 hover:text-red-600 transition-colors flex-shrink-0" title="TOPへ"><i class="fas fa-home text-lg sm:text-xl"></i></a>
-                    <button onclick="window.history.back()" class="text-gray-600 hover:text-gray-900 flex-shrink-0">
-                        <i class="fas fa-arrow-left text-lg sm:text-xl"></i>
-                    </button>
-                    <div class="flex-1 relative">
-                        <input type="text" id="search-input" placeholder="商品名、メーカー、型番で検索" 
-                               class="w-full pl-9 sm:pl-10 pr-4 py-2.5 sm:py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-500 text-sm sm:text-base">
-                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm sm:text-base"></i>
+        <!-- ============================================ -->
+        <!-- 検索ヒーローセクション（TOPページとの差別化） -->
+        <!-- ============================================ -->
+        <div class="search-hero text-white">
+            <div class="max-w-5xl mx-auto px-4 pt-6 pb-8">
+                <!-- ナビゲーション -->
+                <div class="flex items-center justify-between mb-6">
+                    <a href="/" class="flex items-center gap-2 text-white/80 hover:text-white transition-colors text-sm">
+                        <i class="fas fa-home"></i>
+                        <span class="hidden sm:inline">PARTS HUB</span>
+                    </a>
+                    <div class="flex items-center gap-3">
+                        <a href="/listing" class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full transition-colors">
+                            <i class="fas fa-plus mr-1"></i>出品する
+                        </a>
                     </div>
                 </div>
-                
-                <!-- フィルター -->
-                <div class="mt-3 sm:mt-4 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                    <button onclick="toggleFilter()" class="px-3 sm:px-4 py-2 bg-white border-2 border-gray-300 rounded-lg text-xs sm:text-sm font-semibold hover:border-red-500 whitespace-nowrap flex-shrink-0">
-                        <i class="fas fa-filter mr-1"></i>フィルター
+                <!-- メイン検索 -->
+                <div class="text-center mb-5">
+                    <h1 class="text-xl sm:text-2xl font-bold mb-2 tracking-tight">パーツをさがす</h1>
+                    <p class="text-white/60 text-xs sm:text-sm">全国の整備工場から、あなたに合ったパーツを見つけよう</p>
+                </div>
+                <div class="max-w-2xl mx-auto relative">
+                    <input type="text" id="search-input" placeholder="商品名・品番・メーカー名で検索"
+                           value="${q.replace(/"/g, '&quot;')}"
+                           class="search-input-main w-full pl-12 pr-12 py-4 rounded-2xl text-gray-900 text-sm sm:text-base bg-white focus:outline-none">
+                    <i class="fas fa-search absolute left-4.5 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></i>
+                    <button id="clear-search-btn" onclick="clearSearchInput()" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 hidden">
+                        <i class="fas fa-times-circle text-lg"></i>
                     </button>
-                    <select id="sort-select" class="px-3 sm:px-4 py-2 bg-white border-2 border-gray-300 rounded-lg text-xs sm:text-sm font-semibold flex-shrink-0">
-                        <option value="newest">新着順</option>
-                        <option value="price_asc">価格が安い順</option>
-                        <option value="price_desc">価格が高い順</option>
-                        <option value="popular">人気順</option>
-                    </select>
+                </div>
+                <!-- 人気キーワード -->
+                <div class="max-w-2xl mx-auto mt-4 text-center">
+                    <div class="flex items-center justify-center gap-2 flex-wrap">
+                        <span class="text-white/40 text-xs"><i class="fas fa-fire text-orange-400 mr-1"></i>人気:</span>
+                        <button class="suggest-chip bg-white/10 border-white/20 text-white/80 hover:bg-white/20 hover:text-white" onclick="quickSearch('LED ヘッドライト')">LED ヘッドライト</button>
+                        <button class="suggest-chip bg-white/10 border-white/20 text-white/80 hover:bg-white/20 hover:text-white" onclick="quickSearch('ブレーキパッド')">ブレーキパッド</button>
+                        <button class="suggest-chip bg-white/10 border-white/20 text-white/80 hover:bg-white/20 hover:text-white" onclick="quickSearch('オイルフィルター')">オイルフィルター</button>
+                        <button class="suggest-chip bg-white/10 border-white/20 text-white/80 hover:bg-white/20 hover:text-white" onclick="quickSearch('ワークランプ')">ワークランプ</button>
+                        <button class="suggest-chip bg-white/10 border-white/20 text-white/80 hover:bg-white/20 hover:text-white" onclick="quickSearch('SST')">SST</button>
+                    </div>
                 </div>
             </div>
-        </header>
+        </div>
+
         ${breadcrumbHtml([{name:'PARTS HUB',url:'/'},{name:'パーツ検索'}])}
 
+        <!-- ============================================ -->
+        <!-- カテゴリグリッド（常時表示・TOPとの差別化ポイント） -->
+        <!-- ============================================ -->
+        <section class="bg-white border-b border-gray-200 py-5">
+            <div class="max-w-5xl mx-auto px-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-sm font-bold text-gray-800"><i class="fas fa-th-large text-red-500 mr-1.5"></i>カテゴリから探す</h2>
+                    <button id="cat-expand-btn" onclick="toggleCategoryGrid()" class="text-xs text-gray-400 hover:text-red-500 transition-colors hidden sm:inline-flex items-center gap-1">
+                        <span id="cat-expand-text">もっと見る</span>
+                        <i id="cat-expand-icon" class="fas fa-chevron-down text-[10px]"></i>
+                    </button>
+                </div>
+                <div id="category-grid" class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+                    <div class="cat-grid-item active rounded-xl p-2.5 text-center bg-white" data-cat="" onclick="selectCategoryGrid(this, '')">
+                        <div class="cat-icon text-xl mb-1 text-gray-500"><i class="fas fa-th-large"></i></div>
+                        <div class="cat-name text-[11px] text-gray-600 leading-tight">すべて</div>
+                    </div>
+                    <div class="cat-grid-item rounded-xl p-2.5 text-center bg-white" data-cat="エンジンパーツ" onclick="selectCategoryGrid(this, 'エンジンパーツ')">
+                        <div class="cat-icon text-xl mb-1 text-gray-500"><i class="fas fa-cog"></i></div>
+                        <div class="cat-name text-[11px] text-gray-600 leading-tight">エンジン</div>
+                    </div>
+                    <div class="cat-grid-item rounded-xl p-2.5 text-center bg-white" data-cat="ブレーキパーツ" onclick="selectCategoryGrid(this, 'ブレーキパーツ')">
+                        <div class="cat-icon text-xl mb-1 text-gray-500"><i class="fas fa-circle-stop"></i></div>
+                        <div class="cat-name text-[11px] text-gray-600 leading-tight">ブレーキ</div>
+                    </div>
+                    <div class="cat-grid-item rounded-xl p-2.5 text-center bg-white" data-cat="サスペンション" onclick="selectCategoryGrid(this, 'サスペンション')">
+                        <div class="cat-icon text-xl mb-1 text-gray-500"><i class="fas fa-arrows-up-down"></i></div>
+                        <div class="cat-name text-[11px] text-gray-600 leading-tight">足回り</div>
+                    </div>
+                    <div class="cat-grid-item rounded-xl p-2.5 text-center bg-white" data-cat="電装パーツ" onclick="selectCategoryGrid(this, '電装パーツ')">
+                        <div class="cat-icon text-xl mb-1 text-gray-500"><i class="fas fa-bolt"></i></div>
+                        <div class="cat-name text-[11px] text-gray-600 leading-tight">電装</div>
+                    </div>
+                    <div class="cat-grid-item rounded-xl p-2.5 text-center bg-white" data-cat="外装パーツ" onclick="selectCategoryGrid(this, '外装パーツ')">
+                        <div class="cat-icon text-xl mb-1 text-gray-500"><i class="fas fa-car"></i></div>
+                        <div class="cat-name text-[11px] text-gray-600 leading-tight">外装</div>
+                    </div>
+                    <div class="cat-grid-item rounded-xl p-2.5 text-center bg-white" data-cat="内装パーツ" onclick="selectCategoryGrid(this, '内装パーツ')">
+                        <div class="cat-icon text-xl mb-1 text-gray-500"><i class="fas fa-couch"></i></div>
+                        <div class="cat-name text-[11px] text-gray-600 leading-tight">内装</div>
+                    </div>
+                    <div class="cat-grid-item rounded-xl p-2.5 text-center bg-white" data-cat="ホイール・タイヤ" onclick="selectCategoryGrid(this, 'ホイール・タイヤ')">
+                        <div class="cat-icon text-xl mb-1 text-gray-500"><i class="fas fa-tire"></i></div>
+                        <div class="cat-name text-[11px] text-gray-600 leading-tight">タイヤ</div>
+                    </div>
+                    <div class="cat-grid-item rounded-xl p-2.5 text-center bg-white extra-cat" data-cat="排気系パーツ" onclick="selectCategoryGrid(this, '排気系パーツ')">
+                        <div class="cat-icon text-xl mb-1 text-gray-500"><i class="fas fa-wind"></i></div>
+                        <div class="cat-name text-[11px] text-gray-600 leading-tight">排気系</div>
+                    </div>
+                    <div class="cat-grid-item rounded-xl p-2.5 text-center bg-white extra-cat" data-cat="駆動系パーツ" onclick="selectCategoryGrid(this, '駆動系パーツ')">
+                        <div class="cat-icon text-xl mb-1 text-gray-500"><i class="fas fa-gears"></i></div>
+                        <div class="cat-name text-[11px] text-gray-600 leading-tight">駆動系</div>
+                    </div>
+                    <div class="cat-grid-item rounded-xl p-2.5 text-center bg-white extra-cat" data-cat="冷却系パーツ" onclick="selectCategoryGrid(this, '冷却系パーツ')">
+                        <div class="cat-icon text-xl mb-1 text-gray-500"><i class="fas fa-temperature-low"></i></div>
+                        <div class="cat-name text-[11px] text-gray-600 leading-tight">冷却系</div>
+                    </div>
+                    <div class="cat-grid-item rounded-xl p-2.5 text-center bg-white extra-cat" data-cat="ボディパーツ" onclick="selectCategoryGrid(this, 'ボディパーツ')">
+                        <div class="cat-icon text-xl mb-1 text-gray-500"><i class="fas fa-car-side"></i></div>
+                        <div class="cat-name text-[11px] text-gray-600 leading-tight">ボディ</div>
+                    </div>
+                    <div class="cat-grid-item rounded-xl p-2.5 text-center bg-white extra-cat" data-cat="工具" onclick="selectCategoryGrid(this, '工具')">
+                        <div class="cat-icon text-xl mb-1 text-gray-500"><i class="fas fa-wrench"></i></div>
+                        <div class="cat-name text-[11px] text-gray-600 leading-tight">工具</div>
+                    </div>
+                    <div class="cat-grid-item rounded-xl p-2.5 text-center bg-white extra-cat" data-cat="SST（特殊工具）" onclick="selectCategoryGrid(this, 'SST（特殊工具）')">
+                        <div class="cat-icon text-xl mb-1 text-gray-500"><i class="fas fa-screwdriver-wrench"></i></div>
+                        <div class="cat-name text-[11px] text-gray-600 leading-tight">SST</div>
+                    </div>
+                    <div class="cat-grid-item rounded-xl p-2.5 text-center bg-white extra-cat" data-cat="リビルト品" onclick="selectCategoryGrid(this, 'リビルト品')">
+                        <div class="cat-icon text-xl mb-1 text-gray-500"><i class="fas fa-recycle"></i></div>
+                        <div class="cat-name text-[11px] text-gray-600 leading-tight">リビルト</div>
+                    </div>
+                    <div class="cat-grid-item rounded-xl p-2.5 text-center bg-white extra-cat" data-cat="設備" onclick="selectCategoryGrid(this, '設備')">
+                        <div class="cat-icon text-xl mb-1 text-gray-500"><i class="fas fa-industry"></i></div>
+                        <div class="cat-name text-[11px] text-gray-600 leading-tight">設備</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================ -->
+        <!-- スティッキー検索バー（スクロール時用） -->
+        <!-- ============================================ -->
+        <div id="sticky-search-bar" class="sticky-search bg-white border-b border-gray-200" style="display:none;">
+            <div class="max-w-5xl mx-auto px-4 py-2.5">
+                <div class="flex items-center gap-2">
+                    <a href="/" class="text-red-500 hover:text-red-600 transition-colors flex-shrink-0" title="TOPへ">
+                        <i class="fas fa-home text-lg"></i>
+                    </a>
+                    <div class="flex-1 relative">
+                        <input type="text" id="sticky-search-input" placeholder="商品名・品番・メーカー名で検索"
+                               class="w-full pl-9 pr-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-red-500 text-sm bg-gray-50 focus:bg-white transition-colors">
+                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                    </div>
+                    <button onclick="toggleFilter()" id="sticky-filter-btn" class="flex items-center gap-1.5 px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm font-semibold hover:border-red-500 hover:text-red-500 transition-colors flex-shrink-0">
+                        <i class="fas fa-sliders-h"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================ -->
         <!-- 詳細フィルターパネル -->
-        <div id="filter-panel" class="hidden bg-white border-b border-gray-200">
-            <div class="max-w-6xl mx-auto px-4 py-4 space-y-4">
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <!-- ============================================ -->
+        <div id="filter-panel" class="hidden bg-white border-b border-gray-200 shadow-lg" style="position:relative;z-index:40;">
+            <div class="max-w-5xl mx-auto px-4 py-5 space-y-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-bold text-gray-900"><i class="fas fa-sliders-h text-red-500 mr-2"></i>詳細フィルター</h3>
+                    <button onclick="toggleFilter()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-lg"></i></button>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div>
-                        <label class="form-label">価格帯</label>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1.5">価格帯</label>
                         <div class="flex gap-2 items-center">
-                            <input type="number" id="price-min" placeholder="最小" class="flex-1 px-3 py-2 border rounded-lg text-sm">
-                            <span class="text-sm">〜</span>
-                            <input type="number" id="price-max" placeholder="最大" class="flex-1 px-3 py-2 border rounded-lg text-sm">
+                            <input type="number" id="price-min" placeholder="¥ 下限" class="flex-1 px-3 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:border-red-500 focus:outline-none">
+                            <span class="text-gray-400 text-sm">〜</span>
+                            <input type="number" id="price-max" placeholder="¥ 上限" class="flex-1 px-3 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:border-red-500 focus:outline-none">
                         </div>
                     </div>
                     <div>
-                        <label class="form-label">商品状態</label>
-                        <select id="condition-select" class="w-full px-3 py-2 border rounded-lg">
+                        <label class="block text-xs font-semibold text-gray-600 mb-1.5">商品状態</label>
+                        <select id="condition-select" class="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:border-red-500 focus:outline-none">
                             <option value="">すべて</option>
                             <option value="new">新品</option>
                             <option value="like_new">未使用に近い</option>
                             <option value="good">良好</option>
-                            <option value="acceptable">可</option>
+                            <option value="fair">やや傷あり</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1.5">送料</label>
+                        <select id="shipping-select" class="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:border-red-500 focus:outline-none">
+                            <option value="">すべて</option>
+                            <option value="seller_paid">送料込み</option>
+                            <option value="buyer_paid">着払い</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1.5">並び替え</label>
+                        <select id="sort-select" class="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:border-red-500 focus:outline-none">
+                            <option value="newest">新着順</option>
+                            <option value="price_asc">価格が安い順</option>
+                            <option value="price_desc">価格が高い順</option>
+                            <option value="popular">人気順</option>
                         </select>
                     </div>
                 </div>
-                <div class="flex gap-2">
-                    <button onclick="applyFilters()" class="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg font-semibold">
-                        検索
+                <!-- チェックボックスフィルター -->
+                <div class="flex flex-wrap gap-4 pt-2 border-t border-gray-100">
+                    <label class="flex items-center gap-2 text-sm cursor-pointer">
+                        <input type="checkbox" id="filter-universal" class="w-4 h-4 text-red-500 rounded border-gray-300">
+                        <span><i class="fas fa-globe text-amber-500 mr-1"></i>汎用品のみ</span>
+                    </label>
+                    <label class="flex items-center gap-2 text-sm cursor-pointer">
+                        <input type="checkbox" id="filter-active-only" checked class="w-4 h-4 text-red-500 rounded border-gray-300">
+                        <span><i class="fas fa-shopping-cart text-green-500 mr-1"></i>購入可能のみ</span>
+                    </label>
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button onclick="applyFilters()" class="flex-1 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-lg font-bold text-sm transition-colors">
+                        <i class="fas fa-search mr-1"></i>この条件で検索
                     </button>
-                    <button onclick="clearFilters()" class="px-6 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 rounded-lg font-semibold">
+                    <button onclick="clearFilters()" class="px-6 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-lg font-semibold text-sm transition-colors">
                         クリア
                     </button>
                 </div>
             </div>
         </div>
 
-        <main class="max-w-6xl mx-auto px-4 py-6">
+        <!-- 車種フィルタバナー（動的挿入用） -->
+        <div id="vm-filter-banner-slot"></div>
+
+        <!-- ============================================ -->
+        <!-- メインコンテンツ -->
+        <!-- ============================================ -->
+        <main class="max-w-5xl mx-auto px-4 py-4">
+            <!-- アクティブフィルタータグ -->
+            <div id="active-filters" class="flex flex-wrap gap-2 mb-3" style="display:none;"></div>
+
             <!-- 検索結果ヘッダー -->
-            <div id="result-header" class="hidden mb-4">
-                <p class="text-gray-600"><span id="result-count" class="font-bold text-red-500">0</span> 件の商品が見つかりました</p>
+            <div id="result-header" class="hidden mb-3">
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                    <div class="flex items-center gap-3">
+                        <p class="text-gray-700 text-sm font-semibold">
+                            <i class="fas fa-box text-red-500 mr-1"></i>
+                            <span id="result-count" class="text-red-500 text-lg font-bold">0</span> 件
+                            <span id="result-label" class="text-gray-500 font-normal ml-1"></span>
+                        </p>
+                        <div class="search-stats">
+                            <span id="stat-active"><i class="fas fa-circle text-green-400" style="font-size:8px;"></i> 販売中: <b id="count-active">0</b></span>
+                            <span id="stat-sold"><i class="fas fa-circle text-gray-300" style="font-size:8px;"></i> 売切: <b id="count-sold">0</b></span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <!-- 表示切替・並び替え -->
+                        <div class="flex gap-1">
+                            <button class="view-toggle-btn active" id="view-grid" onclick="setView('grid')" title="グリッド表示">
+                                <i class="fas fa-th text-xs"></i>
+                            </button>
+                            <button class="view-toggle-btn" id="view-list" onclick="setView('list')" title="リスト表示">
+                                <i class="fas fa-list text-xs"></i>
+                            </button>
+                        </div>
+                        <select id="inline-sort" onchange="changeSort(this.value)" class="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-600 focus:outline-none focus:border-red-400">
+                            <option value="newest">新着順</option>
+                            <option value="price_asc">安い順</option>
+                            <option value="price_desc">高い順</option>
+                            <option value="popular">人気順</option>
+                        </select>
+                        <button onclick="toggleFilter()" class="text-xs text-gray-500 hover:text-red-500 border border-gray-200 rounded-lg px-2.5 py-1.5 transition-colors">
+                            <i class="fas fa-sliders-h mr-1"></i>絞込
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <!-- 商品グリッド -->
-            <div id="products-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div id="products-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                 <!-- JavaScriptで動的に生成 -->
             </div>
             
-            <!-- 初期状態 -->
-            <div id="initial-state" class="text-center py-12">
-                <div class="bg-white rounded-xl shadow-sm p-8">
-                    <i class="fas fa-search text-gray-400 text-6xl mb-4"></i>
-                    <h2 class="text-xl font-bold text-gray-900 mb-2">商品を検索</h2>
-                    <p class="text-gray-600">キーワードを入力して商品を検索してください</p>
-                </div>
+            <!-- 初期状態（新着商品ローディング） -->
+            <div id="initial-state" class="text-center py-8">
+                <i class="fas fa-spinner fa-spin text-3xl text-gray-300 mb-3"></i>
+                <p class="text-gray-400 text-sm">新着商品を読み込み中...</p>
             </div>
             
             <!-- ローディング -->
             <div id="loading" class="hidden text-center py-12">
-                <i class="fas fa-spinner fa-spin text-4xl text-gray-400 mb-4"></i>
-                <p class="text-gray-500">検索中...</p>
+                <i class="fas fa-spinner fa-spin text-4xl text-red-400 mb-4"></i>
+                <p class="text-gray-500 text-sm">検索中...</p>
             </div>
             
             <!-- 空状態 -->
             <div id="empty-state" class="hidden text-center py-12">
-                <div class="bg-white rounded-xl shadow-sm p-8">
-                    <i class="fas fa-inbox text-gray-400 text-6xl mb-4"></i>
-                    <h2 class="text-xl font-bold text-gray-900 mb-2">商品が見つかりませんでした</h2>
-                    <p class="text-gray-600">別のキーワードで検索してみてください</p>
+                <div class="bg-white rounded-xl shadow-sm p-8 max-w-md mx-auto">
+                    <i class="fas fa-search text-gray-300 text-5xl mb-4"></i>
+                    <h2 class="text-lg font-bold text-gray-900 mb-2">商品が見つかりませんでした</h2>
+                    <p class="text-gray-500 text-sm mb-4">別のキーワードやカテゴリで検索してみてください</p>
+                    <button onclick="clearAllAndReload()" class="px-6 py-2 bg-red-500 text-white rounded-lg text-sm font-semibold hover:bg-red-600 transition-colors">
+                        <i class="fas fa-redo mr-1"></i>検索条件をリセット
+                    </button>
+                </div>
+            </div>
+
+            <!-- ============================================ -->
+            <!-- 出品促進CTA（検索ページ独自） -->
+            <!-- ============================================ -->
+            <div id="listing-cta" class="hidden mt-8 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl p-6 border border-indigo-100">
+                <div class="flex flex-col sm:flex-row items-center gap-4">
+                    <div class="flex-shrink-0 w-14 h-14 bg-indigo-100 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-plus-circle text-indigo-500 text-2xl"></i>
+                    </div>
+                    <div class="flex-1 text-center sm:text-left">
+                        <h3 class="font-bold text-gray-900 mb-1">お探しのパーツが見つかりませんか？</h3>
+                        <p class="text-gray-500 text-sm">お持ちのパーツを出品して他の整備工場とつながりましょう。出品手数料は無料です。</p>
+                    </div>
+                    <a href="/listing" class="flex-shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-colors">
+                        <i class="fas fa-rocket mr-1.5"></i>無料で出品する
+                    </a>
                 </div>
             </div>
         </main>
@@ -8268,32 +8512,223 @@ app.get('/search', (c) => {
         <script src="${v('/static/notification-badge.js')}"></script>
         <script>
             let searchTimeout;
-            // URLパラメータからvm_maker/vm_modelを取得
+            let currentCategory = '';
+            let currentView = 'grid';
             const urlParams = new URLSearchParams(window.location.search);
             const vmMakerParam = urlParams.get('vm_maker') || '';
             const vmModelParam = urlParams.get('vm_model') || '';
+            const initialKeyword = urlParams.get('q') || '';
+            const initialCategory = urlParams.get('category') || '';
 
-            // 車種フィルタバナー表示
-            if (vmMakerParam || vmModelParam) {
-              document.addEventListener('DOMContentLoaded', function() {
-                const header = document.querySelector('header');
-                if (header) {
-                  const banner = document.createElement('div');
-                  banner.id = 'vm-filter-banner';
-                  banner.style.cssText = 'background:linear-gradient(135deg,#fef2f2,#fff1f2);border-bottom:1px solid #fecaca;padding:8px 16px;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;';
-                  banner.innerHTML = '<i class="fas fa-car text-red-400" style="font-size:12px;"></i>'
-                    + '<span style="font-size:13px;font-weight:600;color:#991b1b;">' + (vmMakerParam || '') + ' ' + (vmModelParam || '') + ' の適合パーツを表示中</span>'
-                    + '<a href="/search" style="font-size:11px;color:#6b7280;text-decoration:underline;margin-left:8px;">解除</a>';
-                  header.after(banner);
+            // 初期化
+            document.addEventListener('DOMContentLoaded', function() {
+                // URLのカテゴリパラメータで初期選択
+                if (initialCategory) {
+                    currentCategory = initialCategory;
+                    document.querySelectorAll('.cat-grid-item').forEach(c => {
+                        c.classList.toggle('active', c.dataset.cat === initialCategory);
+                    });
                 }
-                // vm_makerがある場合は自動検索
+                if (initialKeyword) {
+                    document.getElementById('search-input').value = initialKeyword;
+                }
+                // 車種フィルタバナー
+                if (vmMakerParam || vmModelParam) {
+                    const slot = document.getElementById('vm-filter-banner-slot');
+                    if (slot) {
+                        slot.innerHTML = '<div style="background:linear-gradient(135deg,#fef2f2,#fff1f2);border-bottom:1px solid #fecaca;padding:8px 16px;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;">'
+                            + '<i class="fas fa-car text-red-400" style="font-size:12px;"></i>'
+                            + '<span style="font-size:13px;font-weight:600;color:#991b1b;">' + (vmMakerParam || '') + ' ' + (vmModelParam || '') + ' の適合パーツを表示中</span>'
+                            + '<a href="/search" style="font-size:11px;color:#6b7280;text-decoration:underline;margin-left:8px;">解除</a>'
+                            + '</div>';
+                    }
+                }
+                // 常に自動検索（新着表示 or 条件付き）
                 performSearch();
-              });
+                updateClearBtn();
+                initStickySearch();
+            });
+
+            // スティッキー検索バーの表示制御
+            function initStickySearch() {
+                const hero = document.querySelector('.search-hero');
+                const stickyBar = document.getElementById('sticky-search-bar');
+                const stickyInput = document.getElementById('sticky-search-input');
+                const mainInput = document.getElementById('search-input');
+                
+                if (!hero || !stickyBar) return;
+                
+                // スクロール監視
+                const observer = new IntersectionObserver(function(entries) {
+                    entries.forEach(function(entry) {
+                        if (entry.isIntersecting) {
+                            stickyBar.style.display = 'none';
+                        } else {
+                            stickyBar.style.display = 'block';
+                            stickyInput.value = mainInput.value;
+                        }
+                    });
+                }, { threshold: 0 });
+                observer.observe(hero);
+                
+                // スティッキー入力の同期
+                stickyInput.addEventListener('input', function() {
+                    mainInput.value = stickyInput.value;
+                    clearTimeout(searchTimeout);
+                    updateClearBtn();
+                    searchTimeout = setTimeout(performSearch, 400);
+                });
+                stickyInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') { clearTimeout(searchTimeout); performSearch(); }
+                });
+            }
+
+            // 検索入力のクリアボタン制御
+            function updateClearBtn() {
+                const v = document.getElementById('search-input').value;
+                document.getElementById('clear-search-btn').classList.toggle('hidden', !v);
+            }
+            function clearSearchInput() {
+                document.getElementById('search-input').value = '';
+                var si = document.getElementById('sticky-search-input');
+                if (si) si.value = '';
+                updateClearBtn();
+                performSearch();
+            }
+
+            // 人気キーワード検索
+            function quickSearch(keyword) {
+                document.getElementById('search-input').value = keyword;
+                var si = document.getElementById('sticky-search-input');
+                if (si) si.value = keyword;
+                updateClearBtn();
+                performSearch();
+                // 結果エリアまでスクロール
+                document.getElementById('result-header').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+
+            // カテゴリグリッド選択
+            function selectCategoryGrid(el, cat) {
+                currentCategory = cat;
+                document.querySelectorAll('.cat-grid-item').forEach(c => c.classList.remove('active'));
+                el.classList.add('active');
+                performSearch();
+            }
+            // カテゴリグリッド展開
+            var catExpanded = false;
+            function toggleCategoryGrid() {
+                catExpanded = !catExpanded;
+                document.querySelectorAll('.extra-cat').forEach(function(el) {
+                    el.style.display = catExpanded ? '' : '';
+                });
+                document.getElementById('cat-expand-text').textContent = catExpanded ? '閉じる' : 'もっと見る';
+                document.getElementById('cat-expand-icon').classList.toggle('fa-chevron-up', catExpanded);
+                document.getElementById('cat-expand-icon').classList.toggle('fa-chevron-down', !catExpanded);
             }
 
             // フィルターパネル切り替え
             function toggleFilter() {
-                document.getElementById('filter-panel').classList.toggle('hidden');
+                const panel = document.getElementById('filter-panel');
+                panel.classList.toggle('hidden');
+            }
+
+            // 表示切替（グリッド/リスト）
+            function setView(mode) {
+                currentView = mode;
+                document.getElementById('view-grid').classList.toggle('active', mode === 'grid');
+                document.getElementById('view-list').classList.toggle('active', mode === 'list');
+                const grid = document.getElementById('products-grid');
+                if (mode === 'list') {
+                    grid.className = 'flex flex-col gap-3';
+                } else {
+                    grid.className = 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4';
+                }
+                // 現在の検索結果を再レンダリング
+                if (window._lastProducts) renderProducts(window._lastProducts);
+            }
+
+            // 並び替え変更
+            function changeSort(val) {
+                document.getElementById('sort-select').value = val;
+                performSearch();
+            }
+
+            // アクティブフィルタータグ更新
+            function updateActiveFilters() {
+                const container = document.getElementById('active-filters');
+                const tags = [];
+                if (currentCategory) tags.push({label: currentCategory, clear: function() { selectCategoryGrid(document.querySelector('.cat-grid-item[data-cat=""]'), ''); }});
+                const kw = document.getElementById('search-input').value.trim();
+                if (kw) tags.push({label: '"' + kw + '"', clear: clearSearchInput});
+                const cond = document.getElementById('condition-select');
+                if (cond.value) tags.push({label: cond.options[cond.selectedIndex].text, clear: function() { cond.value = ''; performSearch(); }});
+                const ship = document.getElementById('shipping-select');
+                if (ship.value) tags.push({label: ship.value === 'seller_paid' ? '送料込み' : '着払い', clear: function() { ship.value = ''; performSearch(); }});
+                if (document.getElementById('filter-universal').checked) tags.push({label: '汎用品', clear: function() { document.getElementById('filter-universal').checked = false; performSearch(); }});
+
+                if (tags.length === 0) { container.style.display = 'none'; return; }
+                container.style.display = 'flex';
+                container.innerHTML = tags.map(function(t, i) { return '<span class="filter-tag" onclick="window._clearFilter' + i + '()">' + t.label + '<span class="remove">&times;</span></span>'; }).join('');
+                tags.forEach(function(t, i) { window['_clearFilter' + i] = t.clear; });
+            }
+
+            // 商品カードレンダリング
+            function renderProducts(products) {
+                window._lastProducts = products;
+                const grid = document.getElementById('products-grid');
+                
+                if (currentView === 'list') {
+                    grid.innerHTML = products.map(function(product, idx) {
+                        var priceInc = Math.ceil(Number(product.price) * 1.1);
+                        var isSold = product.status === 'sold';
+                        var condMap = {new:'新品',like_new:'未使用に近い',good:'良好',fair:'やや傷あり',poor:'状態悪い'};
+                        var condLabel = condMap[product.condition] || '';
+                        var condColor = product.condition === 'new' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600';
+                        return '<a href="/products/' + product.id + '" class="product-card bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-all flex group fade-in" style="animation-delay:' + (idx*30) + 'ms">'
+                            + '<div class="relative w-28 sm:w-36 flex-shrink-0">'
+                            + '<img loading="lazy" src="' + product.image_url + '" alt="' + (product.title||'').replace(/"/g,'&quot;') + '" class="w-full h-full object-cover' + (isSold ? ' opacity-50' : '') + '">'
+                            + (isSold ? '<div class="absolute inset-0 flex items-center justify-center"><div style="background:rgba(220,38,38,0.85);transform:rotate(-15deg);padding:4px 16px;border-radius:4px;"><span style="font-size:0.8rem;font-weight:900;color:#fff;letter-spacing:0.1em;">SOLD</span></div></div>' : '')
+                            + '</div>'
+                            + '<div class="flex-1 p-3 flex flex-col justify-between">'
+                            + '<div>'
+                            + '<h3 class="text-sm font-semibold text-gray-900 mb-1 line-clamp-2 leading-tight">' + (product.title||'') + '</h3>'
+                            + '<div class="flex items-center gap-2 mb-1">'
+                            + (condLabel ? '<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded ' + condColor + '">' + condLabel + '</span>' : '')
+                            + (product.shipping_type === 'seller_paid' && !isSold ? '<span class="text-[10px] font-bold text-green-600"><i class="fas fa-truck text-[8px] mr-0.5"></i>送料込</span>' : '')
+                            + (product.is_universal ? '<span class="text-[10px] font-bold text-amber-600"><i class="fas fa-globe text-[8px] mr-0.5"></i>汎用</span>' : '')
+                            + '</div></div>'
+                            + '<div class="flex items-center justify-between">'
+                            + '<p class="text-base font-bold text-red-500">¥' + priceInc.toLocaleString() + ' <span class="text-[10px] font-normal text-gray-400">税込</span></p>'
+                            + '<div class="flex items-center gap-2 text-[10px] text-gray-400">'
+                            + '<span><i class="far fa-heart"></i> ' + (product.favorite_count||0) + '</span>'
+                            + '<span><i class="far fa-comment"></i> ' + (product.comment_count||0) + '</span>'
+                            + '</div></div></div></a>';
+                    }).join('');
+                } else {
+                    grid.innerHTML = products.map(function(product, idx) {
+                        var priceInc = Math.ceil(Number(product.price) * 1.1);
+                        var isSold = product.status === 'sold';
+                        var condMap = {new:'新品',like_new:'未使用に近い',good:'良好',fair:'やや傷あり',poor:'状態悪い'};
+                        var condLabel = condMap[product.condition] || '';
+                        var condColor = product.condition === 'new' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600';
+                        return '<a href="/products/' + product.id + '" class="product-card bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-all block group fade-in" style="animation-delay:' + (idx*30) + 'ms">'
+                            + '<div class="relative">'
+                            + '<img loading="lazy" src="' + product.image_url + '" alt="' + (product.title||'').replace(/"/g,'&quot;') + '" class="w-full aspect-square object-cover group-hover:scale-[1.02] transition-transform' + (isSold ? ' opacity-50' : '') + '">'
+                            + (isSold ? '<div class="absolute inset-0 flex items-center justify-center"><div style="background:rgba(220,38,38,0.85);transform:rotate(-15deg);padding:6px 32px;border-radius:4px;"><span style="font-size:1.1rem;font-weight:900;color:#fff;letter-spacing:0.15em;">SOLD</span></div></div>' : '')
+                            + (product.shipping_type === 'seller_paid' && !isSold ? '<span class="absolute top-2 left-2 bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">送料込</span>' : '')
+                            + (product.is_universal ? '<span class="absolute top-2 right-2 bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">汎用</span>' : '')
+                            + '</div>'
+                            + '<div class="p-3">'
+                            + '<h3 class="text-xs sm:text-sm font-semibold text-gray-900 mb-1.5 line-clamp-2 leading-tight">' + (product.title||'') + '</h3>'
+                            + '<p class="text-base sm:text-lg font-bold text-red-500 mb-1">¥' + priceInc.toLocaleString() + ' <span class="text-[10px] font-normal text-gray-400">税込</span></p>'
+                            + '<div class="flex items-center justify-between">'
+                            + (condLabel ? '<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded ' + condColor + '">' + condLabel + '</span>' : '<span></span>')
+                            + '<div class="flex items-center gap-2 text-[10px] text-gray-400">'
+                            + '<span><i class="far fa-heart"></i> ' + (product.favorite_count||0) + '</span>'
+                            + '<span><i class="far fa-comment"></i> ' + (product.comment_count||0) + '</span>'
+                            + '</div></div></div></a>';
+                    }).join('');
+                }
             }
             
             // 検索実行
@@ -8303,20 +8738,21 @@ app.get('/search', (c) => {
                 const priceMin = document.getElementById('price-min').value;
                 const priceMax = document.getElementById('price-max').value;
                 const condition = document.getElementById('condition-select').value;
-                
-                if (!keyword && !priceMin && !priceMax && !condition && !vmMakerParam && !vmModelParam) {
-                    document.getElementById('initial-state').classList.remove('hidden');
-                    document.getElementById('result-header').classList.add('hidden');
-                    document.getElementById('products-grid').innerHTML = '';
-                    return;
-                }
+                const shipping = document.getElementById('shipping-select').value;
+                const universalOnly = document.getElementById('filter-universal').checked;
+                const activeOnly = document.getElementById('filter-active-only').checked;
                 
                 // ローディング表示
                 document.getElementById('initial-state').classList.add('hidden');
                 document.getElementById('empty-state').classList.add('hidden');
                 document.getElementById('loading').classList.remove('hidden');
                 document.getElementById('result-header').classList.add('hidden');
+                document.getElementById('listing-cta').classList.add('hidden');
                 
+                updateActiveFilters();
+                // inline-sortの同期
+                document.getElementById('inline-sort').value = sort;
+
                 try {
                     const params = new URLSearchParams();
                     if (keyword) params.append('keyword', keyword);
@@ -8326,34 +8762,35 @@ app.get('/search', (c) => {
                     if (vmMakerParam) params.append('vm_maker', vmMakerParam);
                     if (vmModelParam) params.append('vm_model', vmModelParam);
                     if (condition) params.append('condition', condition);
+                    if (currentCategory) params.append('category', currentCategory);
+                    if (shipping) params.append('shipping_type', shipping);
+                    if (universalOnly) params.append('is_universal', '1');
+                    if (activeOnly) params.append('status', 'active');
                     
-                    const response = await axios.get(\`/api/products/search?\${params.toString()}\`);
+                    const response = await axios.get('/api/products/search?' + params.toString());
                     
                     document.getElementById('loading').classList.add('hidden');
                     
-                    if (response.data.success && response.data.products.length > 0) {
-                        document.getElementById('result-count').textContent = response.data.products.length;
+                    if (response.data.success && response.data.products && response.data.products.length > 0) {
+                        const products = response.data.products;
+                        const activeCount = products.filter(function(p) { return p.status === 'active'; }).length;
+                        const soldCount = products.filter(function(p) { return p.status === 'sold'; }).length;
+                        
+                        document.getElementById('result-count').textContent = products.length;
+                        document.getElementById('count-active').textContent = activeCount;
+                        document.getElementById('count-sold').textContent = soldCount;
+                        document.getElementById('result-label').textContent = currentCategory ? '（' + currentCategory + '）' : keyword ? '「' + keyword + '」の検索結果' : '新着商品';
                         document.getElementById('result-header').classList.remove('hidden');
                         
-                        const grid = document.getElementById('products-grid');
-                        grid.innerHTML = response.data.products.map(product => \`
-                            <a href="/products/\${product.id}" class="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow block">
-                                <div class="relative">
-                                    <img loading="lazy" src="\${product.image_url}" alt="\${product.title}" class="w-full aspect-square object-cover\${product.status === 'sold' ? ' opacity-60' : ''}">
-                                    \${product.status === 'sold' ? '<div class="absolute inset-0 flex items-center justify-center pointer-events-none"><div style="background:rgba(220,38,38,0.85);transform:rotate(-20deg);padding:8px 36px;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.3);"><span style="font-size:1.5rem;font-weight:900;color:#fff;letter-spacing:0.15em;text-shadow:1px 1px 2px rgba(0,0,0,0.3);">SOLD</span></div></div>' : ''}
-                                </div>
-                                <div class="p-3">
-                                    <h3 class="text-sm font-semibold text-gray-900 mb-2 line-clamp-2">\${product.title}</h3>
-                                    <p class="text-lg font-bold text-red-500 mb-2">¥\${Math.floor(Number(product.price) * 1.1).toLocaleString()} <span class="text-xs font-normal text-gray-500">税込</span></p>
-                                    <div class="flex items-center justify-between text-xs text-gray-500">
-                                        <span><i class="fas fa-heart mr-1"></i>\${product.favorite_count || 0}</span>
-                                        <span><i class="fas fa-comment mr-1"></i>\${product.comment_count || 0}</span>
-                                    </div>
-                                </div>
-                            </a>
-                        \`).join('');
+                        renderProducts(products);
+                        
+                        // 出品CTAは結果が少ないときに表示
+                        if (products.length <= 5) {
+                            document.getElementById('listing-cta').classList.remove('hidden');
+                        }
                     } else {
                         document.getElementById('empty-state').classList.remove('hidden');
+                        document.getElementById('listing-cta').classList.remove('hidden');
                     }
                 } catch (error) {
                     console.error('Search failed:', error);
@@ -8362,35 +8799,46 @@ app.get('/search', (c) => {
                 }
             }
             
-            // フィルター適用
             function applyFilters() {
+                toggleFilter();
                 performSearch();
             }
             
-            // フィルタークリア
             function clearFilters() {
                 document.getElementById('price-min').value = '';
                 document.getElementById('price-max').value = '';
                 document.getElementById('condition-select').value = '';
+                document.getElementById('shipping-select').value = '';
+                document.getElementById('filter-universal').checked = false;
+                document.getElementById('filter-active-only').checked = true;
                 performSearch();
+            }
+
+            function clearAllAndReload() {
+                document.getElementById('search-input').value = '';
+                var si = document.getElementById('sticky-search-input');
+                if (si) si.value = '';
+                currentCategory = '';
+                document.querySelectorAll('.cat-grid-item').forEach(function(c) { c.classList.toggle('active', !c.dataset.cat); });
+                clearFilters();
             }
             
             // 検索入力の監視（デバウンス）
-            document.getElementById('search-input').addEventListener('input', () => {
+            document.getElementById('search-input').addEventListener('input', function() {
                 clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(performSearch, 500);
+                updateClearBtn();
+                var si = document.getElementById('sticky-search-input');
+                if (si) si.value = this.value;
+                searchTimeout = setTimeout(performSearch, 400);
+            });
+            
+            // Enterキーで即時検索
+            document.getElementById('search-input').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') { clearTimeout(searchTimeout); performSearch(); }
             });
             
             // ソート変更時
             document.getElementById('sort-select').addEventListener('change', performSearch);
-            
-            // URLパラメータから検索キーワードを取得
-            const urlParams = new URLSearchParams(window.location.search);
-            const initialKeyword = urlParams.get('q');
-            if (initialKeyword) {
-                document.getElementById('search-input').value = initialKeyword;
-                performSearch();
-            }
         </script>
 
         ${Footer()}
