@@ -45,4 +45,14 @@
   //   ARGOS_API_KEY=your-bearer-token
   //   ARGOS_API_URL=https://api.argos-jpc.example.com
   //   ARGOS_API_ENABLED=true
+
+  // === eBay API連携設定 ===
+  // Sandboxキーの設定:
+  //   npx wrangler pages secret put EBAY_CLIENT_ID --project-name parts-hub
+  //   npx wrangler pages secret put EBAY_CLIENT_SECRET --project-name parts-hub
+  //   npx wrangler pages secret put EBAY_DEV_ID --project-name parts-hub
+  // 環境設定（Cloudflare Dashboard → Environment Variables）:
+  //   EBAY_ENVIRONMENT = "sandbox" または "production"
+  // ローカル開発:
+  //   .dev.vars に EBAY_CLIENT_ID, EBAY_CLIENT_SECRET, EBAY_DEV_ID, EBAY_ENVIRONMENT を追加
 }

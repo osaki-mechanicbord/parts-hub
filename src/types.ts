@@ -15,6 +15,11 @@ export type Bindings = {
   STRIPE_SECRET_KEY?: string
   // Resend メール送信
   RESEND_API_KEY?: string
+  // eBay API設定
+  EBAY_CLIENT_ID?: string
+  EBAY_CLIENT_SECRET?: string
+  EBAY_DEV_ID?: string
+  EBAY_ENVIRONMENT?: string // 'sandbox' or 'production'
   // JWT
   JWT_SECRET?: string
 }

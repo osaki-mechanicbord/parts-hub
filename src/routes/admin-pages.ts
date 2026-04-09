@@ -5252,4 +5252,229 @@ adminPagesRoutes.get('/banners', async (c) => {
   return c.html(AdminLayout('banners', 'バナー広告管理', content));
 });
 
+// eBay API設定・テスト管理ページ
+adminPagesRoutes.get('/ebay', async (c) => {
+  const content = `
+    <div class="space-y-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-2xl font-bold text-gray-800"><i class="fab fa-ebay mr-2 text-blue-600"></i>eBay API連携</h2>
+          <p class="text-gray-500 mt-1">eBay Browse APIを使った商品検索・価格調査機能の管理</p>
+        </div>
+      </div>
+
+      <!-- API接続ステータス -->
+      <div id="status-card" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h3 class="text-lg font-bold text-gray-800 mb-4"><i class="fas fa-plug mr-2"></i>接続ステータス</h3>
+        <div id="status-loading" class="text-center py-4">
+          <i class="fas fa-spinner fa-spin text-blue-500 text-xl"></i>
+          <p class="text-sm text-gray-500 mt-2">接続確認中...</p>
+        </div>
+        <div id="status-result" class="hidden">
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-gray-50 rounded-lg p-4">
+              <p class="text-xs text-gray-500 mb-1">環境</p>
+              <p id="s-environment" class="font-bold text-gray-900">-</p>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-4">
+              <p class="text-xs text-gray-500 mb-1">Client ID</p>
+              <p id="s-clientId" class="font-bold">-</p>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-4">
+              <p class="text-xs text-gray-500 mb-1">Client Secret</p>
+              <p id="s-clientSecret" class="font-bold">-</p>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-4">
+              <p class="text-xs text-gray-500 mb-1">OAuth Token</p>
+              <p id="s-token" class="font-bold">-</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 検索テスト -->
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h3 class="text-lg font-bold text-gray-800 mb-4"><i class="fas fa-search mr-2"></i>検索テスト</h3>
+        <div class="flex gap-3 mb-4">
+          <input type="text" id="test-query" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none" placeholder="キーワードを入力（例: brake pads toyota）">
+          <button onclick="testSearch()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+            <i class="fas fa-search mr-1"></i>検索
+          </button>
+        </div>
+        <div id="search-result" class="hidden">
+          <div id="search-loading" class="text-center py-4 hidden">
+            <i class="fas fa-spinner fa-spin text-blue-500"></i>
+          </div>
+          <div id="search-data" class="space-y-3"></div>
+        </div>
+      </div>
+
+      <!-- 価格調査テスト -->
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h3 class="text-lg font-bold text-gray-800 mb-4"><i class="fas fa-chart-line mr-2"></i>価格調査テスト</h3>
+        <div class="flex gap-3 mb-4">
+          <input type="text" id="price-query" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none" placeholder="品番 or キーワード（例: 04465-26420）">
+          <select id="price-condition" class="px-4 py-2 border border-gray-300 rounded-lg">
+            <option value="">全状態</option>
+            <option value="new">新品</option>
+            <option value="used">中古</option>
+          </select>
+          <button onclick="testPriceResearch()" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium">
+            <i class="fas fa-chart-bar mr-1"></i>調査
+          </button>
+        </div>
+        <div id="price-result" class="hidden">
+          <div id="price-loading" class="text-center py-4 hidden">
+            <i class="fas fa-spinner fa-spin text-green-500"></i>
+          </div>
+          <div id="price-data"></div>
+        </div>
+      </div>
+
+      <!-- API設定情報 -->
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h3 class="text-lg font-bold text-gray-800 mb-4"><i class="fas fa-cog mr-2"></i>設定方法</h3>
+        <div class="space-y-3 text-sm text-gray-600">
+          <p><strong>1. eBay Developer Programに登録:</strong> <a href="https://developer.ebay.com" target="_blank" class="text-blue-600 hover:underline">developer.ebay.com</a></p>
+          <p><strong>2. Application Keysを作成</strong>（Sandbox / Production）</p>
+          <p><strong>3. Cloudflare環境変数に設定:</strong></p>
+          <div class="bg-gray-900 text-green-400 rounded-lg p-4 font-mono text-xs overflow-x-auto">
+            <p>npx wrangler pages secret put EBAY_CLIENT_ID --project-name parts-hub</p>
+            <p>npx wrangler pages secret put EBAY_CLIENT_SECRET --project-name parts-hub</p>
+            <p>npx wrangler pages secret put EBAY_DEV_ID --project-name parts-hub</p>
+            <p class="text-gray-500"># Dashboard → Environment Variables:</p>
+            <p>EBAY_ENVIRONMENT = "sandbox" <span class="text-gray-500">または</span> "production"</p>
+          </div>
+          <p><strong>4. 利用可能なAPI:</strong></p>
+          <ul class="list-disc ml-6 space-y-1">
+            <li><code class="bg-gray-100 px-1 rounded">GET /api/ebay/search?q=keyword</code> - 商品検索</li>
+            <li><code class="bg-gray-100 px-1 rounded">GET /api/ebay/price-research?q=keyword</code> - 価格調査</li>
+            <li><code class="bg-gray-100 px-1 rounded">GET /api/ebay/status</code> - API接続確認</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      var token = localStorage.getItem('admin_token');
+      var headers = token ? { 'Authorization': 'Bearer ' + token } : {};
+
+      // 接続ステータス取得
+      (function() {
+        axios.get('/api/ebay/status')
+          .then(function(res) {
+            document.getElementById('status-loading').classList.add('hidden');
+            document.getElementById('status-result').classList.remove('hidden');
+            var d = res.data.data;
+            document.getElementById('s-environment').textContent = d.environment === 'production' ? '本番' : 'サンドボックス';
+            document.getElementById('s-environment').className = 'font-bold ' + (d.environment === 'production' ? 'text-green-600' : 'text-yellow-600');
+            
+            var ok = '<span class="text-green-600"><i class="fas fa-check-circle mr-1"></i>設定済み</span>';
+            var ng = '<span class="text-red-500"><i class="fas fa-times-circle mr-1"></i>未設定</span>';
+            document.getElementById('s-clientId').innerHTML = d.credentials.clientId ? ok : ng;
+            document.getElementById('s-clientSecret').innerHTML = d.credentials.clientSecret ? ok : ng;
+            document.getElementById('s-token').innerHTML = d.tokenValid 
+              ? '<span class="text-green-600"><i class="fas fa-check-circle mr-1"></i>認証成功</span>' 
+              : '<span class="text-red-500"><i class="fas fa-times-circle mr-1"></i>認証失敗</span>';
+          })
+          .catch(function(err) {
+            document.getElementById('status-loading').innerHTML = '<p class="text-red-500"><i class="fas fa-exclamation-triangle mr-1"></i>接続確認に失敗しました</p>';
+          });
+      })();
+
+      // 検索テスト
+      function testSearch() {
+        var q = document.getElementById('test-query').value.trim();
+        if (!q) return alert('キーワードを入力してください');
+        
+        var result = document.getElementById('search-result');
+        var loading = document.getElementById('search-loading');
+        var dataEl = document.getElementById('search-data');
+        result.classList.remove('hidden');
+        loading.classList.remove('hidden');
+        dataEl.innerHTML = '';
+
+        axios.get('/api/ebay/search?q=' + encodeURIComponent(q) + '&limit=10')
+          .then(function(res) {
+            loading.classList.add('hidden');
+            var d = res.data.data;
+            if (d.sandbox) {
+              dataEl.innerHTML = '<div class="bg-yellow-50 text-yellow-700 p-3 rounded-lg text-sm"><i class="fas fa-info-circle mr-1"></i>' + d.note + '</div>';
+              return;
+            }
+            if (!d.items || d.items.length === 0) {
+              dataEl.innerHTML = '<p class="text-gray-500 text-sm">結果なし (' + d.total + '件)</p>';
+              return;
+            }
+            dataEl.innerHTML = '<p class="text-sm text-gray-500 mb-2">合計 ' + d.total + '件</p>' +
+              d.items.map(function(item) {
+                var img = item.image ? '<img src="' + item.image + '" class="w-12 h-12 rounded object-cover">' : '<div class="w-12 h-12 bg-gray-200 rounded"></div>';
+                var price = item.price ? '$' + item.price.value : '-';
+                return '<div class="flex items-center gap-3 p-2 border-b border-gray-100">' + img + '<div class="flex-1 min-w-0"><p class="text-sm font-medium truncate">' + item.title + '</p><p class="text-xs text-gray-500">' + price + ' | ' + (item.condition || '-') + '</p></div>' + (item.itemWebUrl ? '<a href="' + item.itemWebUrl + '" target="_blank" class="text-blue-500 text-xs"><i class="fas fa-external-link-alt"></i></a>' : '') + '</div>';
+              }).join('');
+          })
+          .catch(function(err) {
+            loading.classList.add('hidden');
+            dataEl.innerHTML = '<p class="text-red-500 text-sm"><i class="fas fa-exclamation-triangle mr-1"></i>' + (err.response?.data?.error || 'エラーが発生しました') + '</p>';
+          });
+      }
+
+      // 価格調査テスト
+      function testPriceResearch() {
+        var q = document.getElementById('price-query').value.trim();
+        if (!q) return alert('キーワードを入力してください');
+        var cond = document.getElementById('price-condition').value;
+        
+        var result = document.getElementById('price-result');
+        var loading = document.getElementById('price-loading');
+        var dataEl = document.getElementById('price-data');
+        result.classList.remove('hidden');
+        loading.classList.remove('hidden');
+        dataEl.innerHTML = '';
+
+        var url = '/api/ebay/price-research?q=' + encodeURIComponent(q);
+        if (cond) url += '&condition=' + cond;
+
+        axios.get(url)
+          .then(function(res) {
+            loading.classList.add('hidden');
+            var d = res.data.data;
+            if (d.sandbox) {
+              dataEl.innerHTML = '<div class="bg-yellow-50 text-yellow-700 p-3 rounded-lg text-sm"><i class="fas fa-info-circle mr-1"></i>' + d.message + '</div>';
+              return;
+            }
+            if (!d.priceAnalysis) {
+              dataEl.innerHTML = '<p class="text-gray-500 text-sm">' + (d.message || '結果なし') + '</p>';
+              return;
+            }
+            var pa = d.priceAnalysis;
+            var fmt = function(v) { return '$' + Number(v).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); };
+            dataEl.innerHTML = '<div class="grid grid-cols-2 md:grid-cols-5 gap-3">' +
+              '<div class="bg-green-50 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">最安値</p><p class="text-lg font-bold text-green-600">' + fmt(pa.min) + '</p></div>' +
+              '<div class="bg-blue-50 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">平均</p><p class="text-lg font-bold text-blue-600">' + fmt(pa.average) + '</p></div>' +
+              '<div class="bg-gray-50 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">中央値</p><p class="text-lg font-bold text-gray-900">' + fmt(pa.median) + '</p></div>' +
+              '<div class="bg-orange-50 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">最高値</p><p class="text-lg font-bold text-orange-600">' + fmt(pa.max) + '</p></div>' +
+              '<div class="bg-purple-50 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">サンプル数</p><p class="text-lg font-bold text-purple-600">' + pa.sampleSize + '/' + pa.totalListings + '</p></div>' +
+              '</div>';
+            if (d.sampleItems && d.sampleItems.length > 0) {
+              dataEl.innerHTML += '<p class="text-sm text-gray-500 mt-4 mb-2">サンプル商品</p>' +
+                d.sampleItems.map(function(item) {
+                  var img = item.image ? '<img src="' + item.image + '" class="w-10 h-10 rounded object-cover">' : '';
+                  return '<div class="flex items-center gap-3 p-2 border-b border-gray-100">' + img + '<div class="flex-1"><p class="text-xs truncate">' + item.title + '</p><p class="text-xs text-gray-500">' + (item.price ? '$' + item.price.value : '-') + ' | ' + (item.condition || '-') + '</p></div></div>';
+                }).join('');
+            }
+          })
+          .catch(function(err) {
+            loading.classList.add('hidden');
+            dataEl.innerHTML = '<p class="text-red-500 text-sm"><i class="fas fa-exclamation-triangle mr-1"></i>' + (err.response?.data?.error || 'エラーが発生しました') + '</p>';
+          });
+      }
+
+      document.getElementById('test-query').addEventListener('keydown', function(e) { if (e.key === 'Enter') testSearch(); });
+      document.getElementById('price-query').addEventListener('keydown', function(e) { if (e.key === 'Enter') testPriceResearch(); });
+    </script>
+  `;
+  return c.html(AdminLayout('ebay', 'eBay API連携', content));
+});
+
 export default adminPagesRoutes

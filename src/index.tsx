@@ -32,6 +32,7 @@ import argosRoutes from './routes/argos'
 import guideApiRoutes from './routes/guide'
 import { breadcrumbHtml, BREADCRUMB_CSS } from './breadcrumb'
 import franchiseRoutes from './routes/franchise'
+import ebayRoutes from './routes/ebay'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -895,6 +896,7 @@ app.route('/api/articles', articlesRoutes)
 app.route('/api/vehicle-demo', vehicleDemoRoutes)
 app.route('/api/argos-demo', argosDemoRoutes)
 app.route('/api/argos', argosRoutes)  // 本番用ARGOS JPC API（ARGOS_API_ENABLED=true時のみ有効、公開予定: 2026年6月〜）
+app.route('/api/ebay', ebayRoutes) // eBay Browse API連携
 app.route('/api/admin/cross-border', crossBorderRoutes) // 越境EC管理API（adminRouteより先に登録）
 app.route('/api/admin', adminRoutes)
 app.route('/api/guides', guideApiRoutes) // ガイド記事自動生成API
@@ -2637,6 +2639,87 @@ function getArticleDetailBody() {
                     </div>
                 </div>
             </div>
+            <!-- eBay相場価格セクション -->
+            <div id="ebay-price-section" class="mt-12 hidden">
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-chart-line text-blue-600 text-sm"></i>
+                            </div>
+                            <div>
+                                <h2 class="font-bold text-gray-900 text-base">eBay相場価格</h2>
+                                <p class="text-xs text-gray-400">米国eBayでの類似パーツ価格帯</p>
+                            </div>
+                        </div>
+                        <span class="text-xs text-gray-400 flex items-center gap-1">
+                            <i class="fas fa-sync-alt"></i> <span id="ebay-update-time">-</span>
+                        </span>
+                    </div>
+                    <!-- ローディング状態 -->
+                    <div id="ebay-loading" class="px-6 py-8 text-center">
+                        <i class="fas fa-spinner fa-spin text-blue-500 text-xl mb-2"></i>
+                        <p class="text-sm text-gray-500">eBay相場を検索中...</p>
+                    </div>
+                    <!-- 結果表示 -->
+                    <div id="ebay-results" class="hidden">
+                        <!-- 価格サマリ -->
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-0 border-b border-gray-100">
+                            <div class="px-4 py-4 text-center border-r border-gray-100">
+                                <p class="text-xs text-gray-400 mb-1">最安値</p>
+                                <p id="ebay-min" class="text-lg font-bold text-green-600">-</p>
+                            </div>
+                            <div class="px-4 py-4 text-center sm:border-r border-gray-100">
+                                <p class="text-xs text-gray-400 mb-1">平均</p>
+                                <p id="ebay-avg" class="text-lg font-bold text-blue-600">-</p>
+                            </div>
+                            <div class="px-4 py-4 text-center border-r border-gray-100">
+                                <p class="text-xs text-gray-400 mb-1">中央値</p>
+                                <p id="ebay-median" class="text-lg font-bold text-gray-900">-</p>
+                            </div>
+                            <div class="px-4 py-4 text-center">
+                                <p class="text-xs text-gray-400 mb-1">最高値</p>
+                                <p id="ebay-max" class="text-lg font-bold text-orange-600">-</p>
+                            </div>
+                        </div>
+                        <!-- 比較バー -->
+                        <div id="ebay-comparison" class="px-6 py-4 bg-gray-50 border-b border-gray-100 hidden">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs text-gray-500">この商品の価格位置</span>
+                                <span id="ebay-verdict" class="text-xs font-semibold px-2 py-0.5 rounded-full">-</span>
+                            </div>
+                            <div class="relative h-3 bg-gray-200 rounded-full overflow-hidden">
+                                <div id="ebay-bar-range" class="absolute h-full bg-blue-100 rounded-full"></div>
+                                <div id="ebay-bar-pos" class="absolute h-full w-1 bg-red-500 rounded-full" style="left:50%"></div>
+                            </div>
+                            <div class="flex justify-between text-[10px] text-gray-400 mt-1">
+                                <span id="ebay-bar-min">$0</span>
+                                <span id="ebay-bar-max">$0</span>
+                            </div>
+                        </div>
+                        <!-- サンプル商品 -->
+                        <div id="ebay-samples" class="px-6 py-4">
+                            <p class="text-xs text-gray-400 mb-3 flex items-center gap-1">
+                                <i class="fas fa-external-link-alt"></i> eBay上の類似商品
+                            </p>
+                            <div id="ebay-items" class="space-y-3"></div>
+                        </div>
+                        <!-- フッタ -->
+                        <div class="px-6 py-3 bg-gray-50 border-t border-gray-100 text-center">
+                            <a id="ebay-search-link" href="#" target="_blank" rel="noopener" class="text-xs text-blue-600 hover:text-blue-700 font-medium">
+                                <i class="fab fa-ebay mr-1"></i>eBayで全件を見る <i class="fas fa-external-link-alt text-[10px]"></i>
+                            </a>
+                            <p class="text-[10px] text-gray-400 mt-1">※ 価格はUSD表示。為替レートにより変動します</p>
+                        </div>
+                    </div>
+                    <!-- エラー・結果なし -->
+                    <div id="ebay-empty" class="hidden px-6 py-8 text-center">
+                        <i class="fab fa-ebay text-gray-300 text-3xl mb-2"></i>
+                        <p id="ebay-empty-msg" class="text-sm text-gray-500">eBayに類似商品が見つかりませんでした</p>
+                    </div>
+                </div>
+            </div>
+
             <div id="related-articles" class="mt-12"></div>
         </main>
         <footer class="bg-gray-900 text-white py-8 mt-16">
@@ -4335,6 +4418,126 @@ app.get('/products/:id', async (c) => {
         <script src="${v('/static/notification-badge.js')}"></script>
         <script src="${v('/static/product-detail.js')}"></script>
         <script src="${v('/static/comments.js')}"></script>
+        <script>
+        // eBay相場価格取得
+        (function() {
+            const section = document.getElementById('ebay-price-section');
+            if (!section) return;
+            
+            // SSRデータから商品情報を取得
+            const titleEl = document.querySelector('h1');
+            const partNumEl = document.getElementById('spec-part-number') || document.getElementById('product-part-number');
+            const priceEl = document.querySelector('[id^="product-price"]');
+            
+            const productTitle = titleEl ? titleEl.textContent.trim() : '';
+            const partNumber = partNumEl ? partNumEl.textContent.trim() : '';
+            const rawPrice = priceEl ? priceEl.textContent.replace(/[^0-9]/g, '') : '0';
+            const productPriceJpy = parseInt(rawPrice) || 0;
+            
+            // 検索クエリを構築
+            let searchQuery = '';
+            if (partNumber && partNumber !== '-' && partNumber !== 'undefined') {
+                searchQuery = partNumber;
+            } else if (productTitle) {
+                // タイトルから英語キーワードを抽出するか、そのまま使用
+                searchQuery = productTitle.substring(0, 80);
+            }
+            
+            if (!searchQuery) return;
+            
+            section.classList.remove('hidden');
+            
+            // API呼び出し
+            axios.get('/api/ebay/price-research', {
+                params: { q: searchQuery, part_number: partNumber !== '-' ? partNumber : '' }
+            })
+            .then(function(res) {
+                document.getElementById('ebay-loading').classList.add('hidden');
+                
+                if (!res.data.success || !res.data.data.priceAnalysis) {
+                    document.getElementById('ebay-empty').classList.remove('hidden');
+                    if (res.data.data && res.data.data.message) {
+                        document.getElementById('ebay-empty-msg').textContent = res.data.data.message;
+                    }
+                    return;
+                }
+                
+                document.getElementById('ebay-results').classList.remove('hidden');
+                var d = res.data.data;
+                var pa = d.priceAnalysis;
+                var cur = d.currency || 'USD';
+                
+                // 価格を表示
+                var fmt = function(v) { return '$' + Number(v).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); };
+                document.getElementById('ebay-min').textContent = fmt(pa.min);
+                document.getElementById('ebay-avg').textContent = fmt(pa.average);
+                document.getElementById('ebay-median').textContent = fmt(pa.median);
+                document.getElementById('ebay-max').textContent = fmt(pa.max);
+                
+                // 更新時刻
+                document.getElementById('ebay-update-time').textContent = new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                
+                // 比較バー（日本円での比較 - 概算レート150円/$）
+                if (productPriceJpy > 0) {
+                    var rate = 150;
+                    var productUsd = productPriceJpy / rate;
+                    var comp = document.getElementById('ebay-comparison');
+                    comp.classList.remove('hidden');
+                    
+                    var range = pa.max - pa.min;
+                    if (range > 0) {
+                        var pos = Math.max(0, Math.min(100, ((productUsd - pa.min) / range) * 100));
+                        document.getElementById('ebay-bar-pos').style.left = pos + '%';
+                        document.getElementById('ebay-bar-min').textContent = fmt(pa.min);
+                        document.getElementById('ebay-bar-max').textContent = fmt(pa.max);
+                        
+                        var verdict = document.getElementById('ebay-verdict');
+                        if (productUsd < pa.average * 0.8) {
+                            verdict.textContent = 'お得';
+                            verdict.className = 'text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700';
+                        } else if (productUsd > pa.average * 1.2) {
+                            verdict.textContent = '高め';
+                            verdict.className = 'text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700';
+                        } else {
+                            verdict.textContent = '適正';
+                            verdict.className = 'text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700';
+                        }
+                    }
+                }
+                
+                // サンプル商品
+                var itemsEl = document.getElementById('ebay-items');
+                if (d.sampleItems && d.sampleItems.length > 0) {
+                    itemsEl.innerHTML = d.sampleItems.map(function(item) {
+                        var imgHtml = item.image 
+                            ? '<img src="' + item.image + '" class="w-12 h-12 rounded-lg object-cover flex-shrink-0" loading="lazy" onerror="this.style.display=\\'none\\'">'
+                            : '<div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0"><i class="fas fa-box text-gray-300 text-xs"></i></div>';
+                        var priceHtml = item.price ? '<span class="font-bold text-gray-900">' + fmt(item.price.value) + '</span>' : '';
+                        var condHtml = item.condition ? '<span class="text-[10px] text-gray-400 ml-1">' + item.condition + '</span>' : '';
+                        var url = item.itemWebUrl || '#';
+                        return '<a href="' + url + '" target="_blank" rel="noopener" class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors">' +
+                            imgHtml +
+                            '<div class="flex-1 min-w-0">' +
+                            '<p class="text-xs text-gray-700 truncate">' + (item.title || '').substring(0, 60) + '</p>' +
+                            '<div class="flex items-center mt-0.5">' + priceHtml + condHtml + '</div>' +
+                            '</div>' +
+                            '<i class="fas fa-external-link-alt text-gray-300 text-xs flex-shrink-0"></i>' +
+                            '</a>';
+                    }).join('');
+                }
+                
+                // eBay検索リンク
+                var searchLink = document.getElementById('ebay-search-link');
+                searchLink.href = 'https://www.ebay.com/sch/i.html?_nkw=' + encodeURIComponent(searchQuery);
+            })
+            .catch(function(err) {
+                console.error('eBay price fetch error:', err);
+                document.getElementById('ebay-loading').classList.add('hidden');
+                document.getElementById('ebay-empty').classList.remove('hidden');
+                document.getElementById('ebay-empty-msg').textContent = 'eBay相場情報を取得できませんでした';
+            });
+        })();
+        </script>
     </body>
     </html>
   `)
