@@ -3615,7 +3615,8 @@ app.get('/products/:id', async (c) => {
     `).bind(productId).first()
     if (p) {
       const pTitle = String(p.title || '').replace(/"/g, '&quot;').replace(/</g, '&lt;')
-      const pDesc = String(p.description || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').substring(0, 160)
+      // 改行・連続空白を除去した1行テキスト（meta description用の素材）
+      const pDescClean = String(p.description || '').replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').replace(/"/g, '&quot;').replace(/</g, '&lt;').trim()
       const pPrice = Number(p.price || 0)
       const pPriceTaxIncluded = Math.floor(pPrice * 1.1)
       const rawImg = String(p.main_image || '')
@@ -3630,18 +3631,29 @@ app.get('/products/:id', async (c) => {
       const titleParts: string[] = [pTitle]
       if (p.part_number && !pTitle.includes(p.part_number)) titleParts.push(p.part_number)
       if ((p.manufacturer_name || p.manufacturer) && !pTitle.includes(p.manufacturer_name || p.manufacturer)) titleParts.push(p.manufacturer_name || p.manufacturer)
-      seoTitle = `${titleParts.join(' ')} - PARTS HUB（パーツハブ）`.substring(0, 70)
-      // 品番・メーカー情報を含む詳細なmeta description
-      const descParts: string[] = []
-      descParts.push(pTitle)
+      // Google検索で全文表示されるよう60文字以内に収める
+      const titleBody = titleParts.join(' ')
+      seoTitle = titleBody.length > 45 
+        ? `${titleBody.substring(0, 45)}… - PARTS HUB`
+        : `${titleBody} - PARTS HUB（パーツハブ）`
+      // 品番・メーカー・価格・カテゴリを必ず含む構造化 meta description
+      const descParts: string[] = [pTitle]
       if (p.part_number) descParts.push(`品番:${p.part_number}`)
-      if (p.manufacturer_name || p.manufacturer) descParts.push(`メーカー:${p.manufacturer_name || p.manufacturer}`)
+      if (p.manufacturer_name || p.manufacturer) descParts.push(`${p.manufacturer_name || p.manufacturer}`)
       if (p.product_number) descParts.push(`製品番号:${p.product_number}`)
-      descParts.push(`${pCat}`)
-      descParts.push(`¥${pPriceTaxIncluded.toLocaleString()}（税込）`)
+      descParts.push(pCat)
+      descParts.push(`¥${pPriceTaxIncluded.toLocaleString()}(税込)`)
       descParts.push(pCondLabel)
-      descParts.push('PARTS HUB')
-      seoDesc = pDesc || descParts.join('｜').substring(0, 160)
+      // 構造化パートを組み立て、残り文字数で説明文の要約を追加
+      const structuredPart = descParts.join('｜')
+      const remainLen = 155 - structuredPart.length
+      if (remainLen > 15 && pDescClean) {
+        const excerpt = pDescClean.substring(0, remainLen - 1)
+        seoDesc = `${structuredPart}。${excerpt}`
+      } else {
+        seoDesc = structuredPart
+      }
+      seoDesc = seoDesc.substring(0, 160)
       seoImage = pImage
       seoPrice = String(pPriceTaxIncluded)
 
@@ -3708,11 +3720,11 @@ app.get('/products/:id', async (c) => {
         "@context": "https://schema.org",
         "@type": "Product",
         "name": p.title,
-        "description": seoDesc,
+        "description": pDescClean.substring(0, 500) || seoDesc,
         "image": allImages.length > 1 ? allImages : pImage,
         "url": seoUrl,
         "category": pCat,
-        "brand": { "@type": "Brand", "name": pCat },
+        "brand": { "@type": "Brand", "name": (p.manufacturer_name || p.manufacturer || pCat) },
         "sku": p.part_number || `PH-${p.id}`,
         "itemCondition": p.condition === 'new' ? 'https://schema.org/NewCondition' : 'https://schema.org/UsedCondition',
         "offers": {
