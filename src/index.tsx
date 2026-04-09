@@ -8181,14 +8181,111 @@ app.get('/search', (c) => {
             .product-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
             .view-toggle-btn { padding: 6px 10px; border-radius: 8px; border: 1px solid #e5e7eb; background: #fff; color: #6b7280; cursor: pointer; transition: all 0.15s; }
             .view-toggle-btn.active { background: #ef4444; color: #fff; border-color: #ef4444; }
-            .sticky-search { position: sticky; top: 0; z-index: 50; transition: all 0.3s; }
-            .sticky-search.scrolled { box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
             @keyframes fadeInUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
             @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-20px); } }
             .fade-in { animation: fadeInUp 0.3s ease forwards; }
         </style>
     </head>
     <body class="bg-gray-50 min-h-screen">
+        <!-- ヘッダー（TOPページと共通） -->
+        <header class="bg-white shadow-sm sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <div class="flex items-center">
+                        <a href="/" class="flex items-center space-x-3">
+                            <div class="w-10 h-10 flex-shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="40" height="40">
+                                  <defs>
+                                    <linearGradient id="logoGradS" x1="0%" y1="0%" x2="100%" y2="100%">
+                                      <stop offset="0%" style="stop-color:#ff4757;stop-opacity:1" />
+                                      <stop offset="100%" style="stop-color:#ff6b95;stop-opacity:1" />
+                                    </linearGradient>
+                                  </defs>
+                                  <circle cx="50" cy="50" r="48" fill="url(#logoGradS)"/>
+                                  <g fill="#ffffff">
+                                    <rect x="47" y="5" width="6" height="15" rx="1"/>
+                                    <rect x="47" y="80" width="6" height="15" rx="1"/>
+                                    <rect x="5" y="47" width="15" height="6" rx="1"/>
+                                    <rect x="80" y="47" width="15" height="6" rx="1"/>
+                                    <rect x="72" y="18" width="15" height="6" rx="1" transform="rotate(45 79.5 21)"/>
+                                    <rect x="13" y="18" width="15" height="6" rx="1" transform="rotate(-45 20.5 21)"/>
+                                    <rect x="72" y="76" width="15" height="6" rx="1" transform="rotate(-45 79.5 79)"/>
+                                    <rect x="13" y="76" width="15" height="6" rx="1" transform="rotate(45 20.5 79)"/>
+                                  </g>
+                                  <circle cx="50" cy="50" r="22" fill="#ffffff"/>
+                                  <g stroke="#ff4757" stroke-width="2" fill="none">
+                                    <line x1="50" y1="50" x2="50" y2="32"/>
+                                    <line x1="50" y1="50" x2="50" y2="68"/>
+                                    <line x1="50" y1="50" x2="32" y2="50"/>
+                                    <line x1="50" y1="50" x2="68" y2="50"/>
+                                  </g>
+                                  <g fill="#ff4757">
+                                    <circle cx="50" cy="32" r="3"/>
+                                    <circle cx="50" cy="68" r="3"/>
+                                    <circle cx="32" cy="50" r="3"/>
+                                    <circle cx="68" cy="50" r="3"/>
+                                  </g>
+                                  <circle cx="50" cy="50" r="8" fill="#ff4757"/>
+                                  <circle cx="50" cy="50" r="4" fill="#ffffff"/>
+                                </svg>
+                            </div>
+                            <div class="hidden sm:block">
+                                <div class="text-xl font-bold text-gray-900">PARTS HUB</div>
+                                <div class="text-xs text-gray-500">パーツハブ</div>
+                            </div>
+                        </a>
+                    </div>
+                    <nav class="hidden md:flex items-center space-x-6">
+                        <a href="/" class="text-gray-700 hover:text-red-500 font-medium transition-colors">
+                            <i class="fas fa-home mr-1"></i>ホーム
+                        </a>
+                        <a href="/search" class="text-red-500 font-medium transition-colors">
+                            <i class="fas fa-search mr-1"></i>検索
+                        </a>
+                        <a href="/news" class="text-gray-700 hover:text-red-500 font-medium transition-colors">
+                            <i class="fas fa-newspaper mr-1"></i>ニュース
+                        </a>
+                        <a href="/favorites" class="text-gray-700 hover:text-red-500 font-medium transition-colors">
+                            <i class="far fa-heart mr-1"></i>お気に入り
+                        </a>
+                    </nav>
+                    <div class="flex items-center space-x-3">
+                        <div class="relative" id="header-lang-switcher">
+                            <button onclick="toggleHeaderLang(event)" class="px-2 py-2 text-gray-500 hover:text-red-500 transition-all rounded-lg hover:bg-gray-100" title="Language">
+                                <i class="fas fa-globe text-lg"></i>
+                            </button>
+                            <div id="header-lang-menu" class="hidden absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 min-w-[140px] overflow-hidden">
+                            </div>
+                        </div>
+                        <button onclick="window.location.href='/listing'" 
+                                class="px-4 py-2 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition-all shadow-sm hover:shadow-md">
+                            <i class="fas fa-plus mr-1"></i>
+                            <span class="hidden sm:inline">出品する</span>
+                        </button>
+                        <div id="header-guest" class="flex items-center space-x-2">
+                            <button onclick="window.location.href='/login'" 
+                                    class="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:border-red-500 hover:text-red-500 transition-all">
+                                <i class="fas fa-sign-in-alt mr-1"></i>
+                                <span class="hidden sm:inline">ログイン</span>
+                            </button>
+                        </div>
+                        <div id="header-user" class="hidden flex items-center space-x-2">
+                            <a href="/mypage" 
+                               class="px-4 py-2 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-lg font-semibold hover:from-red-600 hover:to-pink-600 transition-all shadow-sm hover:shadow-md flex items-center">
+                                <i class="fas fa-user-circle mr-1.5"></i>
+                                <span class="hidden sm:inline" id="header-user-name">マイページ</span>
+                                <span class="sm:hidden">MY</span>
+                            </a>
+                            <button onclick="handleLogout()" 
+                                    class="px-3 py-2 border-2 border-gray-300 text-gray-500 rounded-lg hover:border-red-400 hover:text-red-500 transition-all" title="ログアウト">
+                                <i class="fas fa-sign-out-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
         <!-- ============================================ -->
         <!-- ヒーローセクション（TOPページと同じ） -->
         <!-- ============================================ -->
@@ -8369,30 +8466,7 @@ app.get('/search', (c) => {
             </div>
         </section>
 
-        <!-- ============================================ -->
-        <!-- スティッキー検索バー（スクロール時用） -->
-        <!-- ============================================ -->
-        <div id="sticky-search-bar" class="sticky-search bg-white border-b border-gray-200" style="display:none;">
-            <div class="max-w-5xl mx-auto px-4 py-2.5">
-                <div class="flex items-center gap-2">
-                    <a href="/" class="text-red-500 hover:text-red-600 transition-colors flex-shrink-0" title="TOPへ">
-                        <i class="fas fa-home text-lg"></i>
-                    </a>
-                    <div class="flex-1 relative">
-                        <input type="text" id="sticky-search-input" placeholder="商品名・品番・メーカー名で検索"
-                               class="w-full pl-9 pr-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-red-500 text-sm bg-gray-50 focus:bg-white transition-colors">
-                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-                    </div>
-                    <button onclick="toggleFilter()" id="sticky-filter-btn" class="flex items-center gap-1.5 px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm font-semibold hover:border-red-500 hover:text-red-500 transition-colors flex-shrink-0">
-                        <i class="fas fa-sliders-h"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- ============================================ -->
-        <!-- 詳細フィルターパネル -->
-        <!-- ============================================ -->
+        <!-- 車種フィルタバナー（動的挿入用） -->
         <div id="filter-panel" class="hidden bg-white border-b border-gray-200 shadow-lg" style="position:relative;z-index:40;">
             <div class="max-w-5xl mx-auto px-4 py-5 space-y-4">
                 <div class="flex items-center justify-between">
@@ -8561,6 +8635,53 @@ app.get('/search', (c) => {
         <script src="${v('/static/auth-header.js')}"></script>
         <script src="${v('/static/notification-badge.js')}"></script>
         <script>
+            // ヘッダー言語切替
+            function toggleHeaderLang(e) {
+                e.stopPropagation();
+                var menu = document.getElementById('header-lang-menu');
+                if (!menu) return;
+                menu.classList.toggle('hidden');
+            }
+            (function() {
+                var langs = [
+                    { code: 'ja', flag: '\u{1F1EF}\u{1F1F5}', name: '\u65E5\u672C\u8A9E' },
+                    { code: 'en', flag: '\u{1F1FA}\u{1F1F8}', name: 'English' },
+                    { code: 'zh', flag: '\u{1F1E8}\u{1F1F3}', name: '\u4E2D\u6587' },
+                    { code: 'ko', flag: '\u{1F1F0}\u{1F1F7}', name: '\uD55C\uAD6D\uC5B4' }
+                ];
+                var current = localStorage.getItem('parts_hub_lang') || 'ja';
+                var menu = document.getElementById('header-lang-menu');
+                if (!menu) return;
+                menu.innerHTML = langs.map(function(l) {
+                    return '<button data-lang="' + l.code + '" style="display:flex;align-items:center;gap:8px;width:100%;padding:10px 16px;border:none;background:' + (l.code === current ? '#fef2f2' : '#fff') + ';cursor:pointer;font-size:14px;color:#374151;text-align:left;">' + l.flag + ' ' + l.name + (l.code === current ? ' <span style="margin-left:auto;color:#ef4444;">\u2713</span>' : '') + '</button>';
+                }).join('');
+                menu.querySelectorAll('button').forEach(function(btn) {
+                    var origBg = btn.getAttribute('data-lang') === current ? '#fef2f2' : '#fff';
+                    btn.onmouseover = function() { this.style.background = '#f9fafb'; };
+                    btn.onmouseout = function() { this.style.background = origBg; };
+                    btn.onclick = function() {
+                        var lang = this.getAttribute('data-lang');
+                        if (lang !== current) {
+                            localStorage.setItem('parts_hub_lang', lang);
+                            location.reload();
+                        }
+                    };
+                });
+                document.addEventListener('click', function() {
+                    menu.classList.add('hidden');
+                });
+            })();
+
+            function handleLogout() {
+                var token = localStorage.getItem('token');
+                if (token) {
+                    axios.post('/api/auth/logout', {}, { headers: { Authorization: 'Bearer ' + token } }).catch(function(){});
+                }
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                window.location.href = '/';
+            }
+
             let searchTimeout;
             let currentCategory = '';
             let currentView = 'grid';
@@ -8596,42 +8717,7 @@ app.get('/search', (c) => {
                 // 常に自動検索（新着表示 or 条件付き）
                 performSearch();
                 updateClearBtn();
-                initStickySearch();
             });
-
-            // スティッキー検索バーの表示制御
-            function initStickySearch() {
-                const hero = document.querySelector('section.relative.py-20');
-                const stickyBar = document.getElementById('sticky-search-bar');
-                const stickyInput = document.getElementById('sticky-search-input');
-                const mainInput = document.getElementById('search-input');
-                
-                if (!hero || !stickyBar) return;
-                
-                // スクロール監視
-                const observer = new IntersectionObserver(function(entries) {
-                    entries.forEach(function(entry) {
-                        if (entry.isIntersecting) {
-                            stickyBar.style.display = 'none';
-                        } else {
-                            stickyBar.style.display = 'block';
-                            stickyInput.value = mainInput.value;
-                        }
-                    });
-                }, { threshold: 0 });
-                observer.observe(hero);
-                
-                // スティッキー入力の同期
-                stickyInput.addEventListener('input', function() {
-                    mainInput.value = stickyInput.value;
-                    clearTimeout(searchTimeout);
-                    updateClearBtn();
-                    searchTimeout = setTimeout(performSearch, 400);
-                });
-                stickyInput.addEventListener('keydown', function(e) {
-                    if (e.key === 'Enter') { clearTimeout(searchTimeout); performSearch(); }
-                });
-            }
 
             // 検索入力のクリアボタン制御
             function updateClearBtn() {
@@ -8642,8 +8728,6 @@ app.get('/search', (c) => {
             }
             function clearSearchInput() {
                 document.getElementById('search-input').value = '';
-                var si = document.getElementById('sticky-search-input');
-                if (si) si.value = '';
                 updateClearBtn();
                 performSearch();
             }
@@ -8651,8 +8735,6 @@ app.get('/search', (c) => {
             // 人気キーワード検索
             function quickSearch(keyword) {
                 document.getElementById('search-input').value = keyword;
-                var si = document.getElementById('sticky-search-input');
-                if (si) si.value = keyword;
                 updateClearBtn();
                 performSearch();
                 // 結果エリアまでスクロール
@@ -8868,8 +8950,6 @@ app.get('/search', (c) => {
 
             function clearAllAndReload() {
                 document.getElementById('search-input').value = '';
-                var si = document.getElementById('sticky-search-input');
-                if (si) si.value = '';
                 currentCategory = '';
                 document.querySelectorAll('.cat-grid-item').forEach(function(c) { c.classList.toggle('active', !c.dataset.cat); });
                 clearFilters();
@@ -8879,8 +8959,6 @@ app.get('/search', (c) => {
             document.getElementById('search-input').addEventListener('input', function() {
                 clearTimeout(searchTimeout);
                 updateClearBtn();
-                var si = document.getElementById('sticky-search-input');
-                if (si) si.value = this.value;
                 searchTimeout = setTimeout(performSearch, 400);
             });
             
