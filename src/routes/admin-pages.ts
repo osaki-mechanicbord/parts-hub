@@ -4246,11 +4246,6 @@ adminPagesRoutes.get('/cross-border', (c) => {
     </div>
 
     <script>
-    function escapeHtml(str) {
-      if (!str) return '';
-      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
-    }
-
     var cbCurrentRate = 150;
     var cbCandidateOffset = 0;
     var cbCurrentFilters = { maker: '', top_category: '', min_price: '', max_price: '', q: '' };
@@ -4794,7 +4789,7 @@ adminPagesRoutes.get('/cross-border', (c) => {
         '</div>' +
         '</div>' +
         '<div class="flex gap-3 mt-4">' +
-        '<button onclick="document.getElementById(\'loc-modal-overlay\').remove()" class="flex-1 px-4 py-2 border rounded-lg font-semibold">キャンセル</button>' +
+        '<button onclick="var el=document.getElementById(&quot;loc-modal-overlay&quot;);if(el)el.remove()" class="flex-1 px-4 py-2 border rounded-lg font-semibold">キャンセル</button>' +
         '<button onclick="saveLocation()" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"><i class="fas fa-save mr-1"></i>保存してeBayに同期</button>' +
         '</div></div></div>';
       document.body.insertAdjacentHTML('beforeend', html);
