@@ -46,3 +46,4 @@ pids/
 
 # Seed files (data already in production DB)
 seed_*.sql
+icons_temp
