@@ -5943,7 +5943,7 @@ adminPagesRoutes.get('/inquiries', (c) => {
           html += '    <div class="flex gap-2 flex-wrap">';
           ['new', 'in_progress', 'contacted', 'resolved', 'closed'].forEach(function(s) {
             var active = inq.status === s ? 'ring-2 ring-offset-2 ring-purple-500' : 'opacity-70 hover:opacity-100';
-            html += '      <button onclick="updateStatus(' + inq.id + ',\\'' + s + '\\',\\'' + source + '\\')" class="inq-badge inq-' + s + ' cursor-pointer ' + active + ' px-4 py-2">' + statusLabels[s] + '</button>';
+            html += '<button data-action="status" data-id="' + inq.id + '" data-status="' + s + '" data-source="' + source + '" class="inq-badge inq-' + s + ' cursor-pointer ' + active + ' px-4 py-2">' + statusLabels[s] + '</button>';
           });
           html += '    </div>';
           html += '  </div>';
@@ -5952,17 +5952,31 @@ adminPagesRoutes.get('/inquiries', (c) => {
           html += '  <div>';
           html += '    <label class="block text-sm font-medium text-gray-700 mb-2">管理メモ</label>';
           html += '    <textarea id="admin-note" rows="3" class="w-full px-3 py-2 border rounded-lg text-sm">' + escHtml(inq.admin_note || '') + '</textarea>';
-          html += '    <button onclick="saveNote(' + inq.id + ',\\'' + source + '\\')" class="mt-2 px-4 py-2 bg-purple-500 text-white text-sm rounded-lg hover:bg-purple-600"><i class="fas fa-save mr-1"></i>メモ保存</button>';
+          html += '    <button data-action="save-note" data-id="' + inq.id + '" data-source="' + source + '" class="mt-2 px-4 py-2 bg-purple-500 text-white text-sm rounded-lg hover:bg-purple-600"><i class="fas fa-save mr-1"></i>メモ保存</button>';
           html += '  </div>';
 
           // 削除
           html += '  <div class="border-t pt-4 flex justify-between">';
           html += '    <a href="mailto:' + escHtml(inq.email) + '?subject=Re: ' + encodeURIComponent(inq.subject) + '" class="px-4 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600"><i class="fas fa-reply mr-1"></i>メールで返信</a>';
-          html += '    <button onclick="deleteInquiry(' + inq.id + ',\\'' + source + '\\')" class="px-4 py-2 bg-red-100 text-red-600 text-sm rounded-lg hover:bg-red-200"><i class="fas fa-trash mr-1"></i>削除</button>';
+          html += '    <button data-action="delete" data-id="' + inq.id + '" data-source="' + source + '" class="px-4 py-2 bg-red-100 text-red-600 text-sm rounded-lg hover:bg-red-200"><i class="fas fa-trash mr-1"></i>削除</button>';
           html += '  </div>';
           html += '</div>';
 
-          document.getElementById('detail-content').innerHTML = html;
+          var detailEl = document.getElementById('detail-content');
+          detailEl.innerHTML = html;
+
+          // data-action イベント委譲
+          detailEl.querySelectorAll('[data-action]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+              var action = btn.getAttribute('data-action');
+              var aid = btn.getAttribute('data-id');
+              var asrc = btn.getAttribute('data-source');
+              if (action === 'status') updateStatus(aid, btn.getAttribute('data-status'), asrc);
+              else if (action === 'save-note') saveNote(aid, asrc);
+              else if (action === 'delete') deleteInquiry(aid, asrc);
+            });
+          });
+
           document.getElementById('detail-modal').classList.remove('hidden');
         } catch(e) {
           alert('詳細の読み込みに失敗しました');
