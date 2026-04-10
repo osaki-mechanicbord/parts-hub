@@ -5858,12 +5858,13 @@ adminPagesRoutes.get('/inquiries', (c) => {
           var html = '';
           data.inquiries.forEach(function(inq) {
             var dateStr = new Date(inq.created_at).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' });
-            html += '<div class="bg-white rounded-xl shadow-sm p-5 hover:shadow-md transition-shadow cursor-pointer" onclick="openDetail(' + inq.id + ',\'' + escHtml(inq.source) + '\')">';
+            var srcStyle = inq.source==='franchise' ? 'background:#fef3c7;color:#92400e' : 'background:#dbeafe;color:#1e40af';
+            html += '<div class="bg-white rounded-xl shadow-sm p-5 hover:shadow-md transition-shadow cursor-pointer" data-inq-id="' + inq.id + '" data-inq-source="' + escHtml(inq.source) + '">';
             html += '  <div class="flex items-start justify-between">';
             html += '    <div class="flex-1 min-w-0">';
             html += '      <div class="flex items-center gap-2 mb-1">';
             html += '        <span class="inq-badge inq-' + escHtml(inq.status) + '">' + (statusLabels[inq.status] || inq.status) + '</span>';
-            html += '        <span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:500;' + (inq.source==='franchise' ? 'background:#fef3c7;color:#92400e' : 'background:#dbeafe;color:#1e40af') + '">' + (sourceLabels[inq.source] || inq.source) + '</span>';
+            html += '        <span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:500;' + srcStyle + '">' + (sourceLabels[inq.source] || inq.source) + '</span>';
             html += '        <span class="type-badge">' + (typeLabels[inq.inquiry_type] || inq.inquiry_type) + '</span>';
             html += '      </div>';
             html += '      <h4 class="font-bold text-gray-900 truncate">' + escHtml(inq.subject) + '</h4>';
@@ -5879,6 +5880,13 @@ adminPagesRoutes.get('/inquiries', (c) => {
             html += '</div>';
           });
           container.innerHTML = html;
+
+          // カードクリックイベント委譲
+          container.querySelectorAll('[data-inq-id]').forEach(function(card) {
+            card.addEventListener('click', function() {
+              openDetail(card.getAttribute('data-inq-id'), card.getAttribute('data-inq-source'));
+            });
+          });
 
           // ページネーション
           if (data.pages > 1) {
