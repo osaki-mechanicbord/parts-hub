@@ -5727,4 +5727,270 @@ adminPagesRoutes.get('/ebay', async (c) => {
   return c.html(AdminLayout('ebay', 'eBay API連携', content));
 });
 
+// =============================================
+// 問い合わせ管理画面
+// =============================================
+adminPagesRoutes.get('/inquiries', (c) => {
+  const content = `
+    <style>
+      .inq-badge { display:inline-block; padding:2px 10px; border-radius:9999px; font-size:12px; font-weight:600; }
+      .inq-new { background:#fef2f2; color:#dc2626; }
+      .inq-in_progress { background:#fffbeb; color:#d97706; }
+      .inq-resolved { background:#f0fdf4; color:#16a34a; }
+      .inq-closed { background:#f3f4f6; color:#6b7280; }
+      .type-badge { display:inline-block; padding:2px 8px; border-radius:6px; font-size:11px; font-weight:500; background:#eff6ff; color:#2563eb; }
+    </style>
+
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h2 class="text-2xl font-bold text-gray-800"><i class="fas fa-envelope mr-2 text-purple-500"></i>問い合わせ管理</h2>
+        <p class="text-sm text-gray-500 mt-1">サイト全体のお問い合わせを一元管理</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <span id="new-badge" class="hidden bg-red-500 text-white text-sm font-bold px-3 py-1 rounded-full"></span>
+      </div>
+    </div>
+
+    <!-- フィルター -->
+    <div class="bg-white rounded-xl shadow-sm p-4 mb-4 flex flex-wrap gap-3 items-center">
+      <select id="filter-status" onchange="loadInquiries()" class="px-3 py-2 border rounded-lg text-sm">
+        <option value="">全ステータス</option>
+        <option value="new">🔴 新規</option>
+        <option value="in_progress">🟡 対応中</option>
+        <option value="resolved">🟢 解決済み</option>
+        <option value="closed">⚫ 完了</option>
+      </select>
+      <select id="filter-type" onchange="loadInquiries()" class="px-3 py-2 border rounded-lg text-sm">
+        <option value="">全種別</option>
+        <option value="general">一般</option>
+        <option value="proxy_onsite">代理出品（出張）</option>
+        <option value="proxy_shipping">代理出品（郵送）</option>
+        <option value="technical">技術的な問題</option>
+        <option value="payment">決済</option>
+        <option value="product_question">商品質問</option>
+        <option value="other">その他</option>
+      </select>
+    </div>
+
+    <!-- 一覧 -->
+    <div id="inquiries-list" class="space-y-3">
+      <div class="text-center py-8 text-gray-400"><i class="fas fa-spinner fa-spin text-2xl"></i><p class="mt-2">読み込み中...</p></div>
+    </div>
+
+    <!-- ページネーション -->
+    <div id="pagination" class="flex justify-center mt-6 gap-2 hidden"></div>
+
+    <!-- 詳細モーダル -->
+    <div id="detail-modal" class="fixed inset-0 bg-black/50 z-[100] hidden flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div class="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between rounded-t-2xl">
+          <h3 class="text-lg font-bold"><i class="fas fa-envelope-open-text mr-2 text-purple-500"></i>問い合わせ詳細</h3>
+          <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+        </div>
+        <div id="detail-content" class="p-6"></div>
+      </div>
+    </div>
+
+    <script>
+      var currentPage = 1;
+
+      function escHtml(str) {
+        if (!str) return '';
+        var d = document.createElement('div');
+        d.textContent = str;
+        return d.innerHTML;
+      }
+
+      var typeLabels = {
+        general: '一般', proxy_onsite: '代理出品（出張）', proxy_shipping: '代理出品（郵送）',
+        technical: '技術的な問題', payment: '決済', product_question: '商品質問', other: 'その他'
+      };
+      var statusLabels = { new: '🔴 新規', in_progress: '🟡 対応中', resolved: '🟢 解決済み', closed: '⚫ 完了' };
+
+      async function loadInquiries(page) {
+        currentPage = page || 1;
+        var status = document.getElementById('filter-status').value;
+        var type = document.getElementById('filter-type').value;
+        var params = 'page=' + currentPage;
+        if (status) params += '&status=' + status;
+        if (type) params += '&type=' + type;
+
+        try {
+          var res = await axios.get('/api/admin/inquiries?' + params, {
+            headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') },
+            timeout: 15000
+          });
+          var data = res.data;
+          var container = document.getElementById('inquiries-list');
+
+          // 新着バッジ
+          var badge = document.getElementById('new-badge');
+          if (data.new_count > 0) {
+            badge.textContent = data.new_count + '件の新着';
+            badge.classList.remove('hidden');
+          } else {
+            badge.classList.add('hidden');
+          }
+
+          if (!data.inquiries || data.inquiries.length === 0) {
+            container.innerHTML = '<div class="bg-white rounded-xl shadow-sm p-8 text-center text-gray-400"><i class="fas fa-inbox text-4xl mb-3"></i><p>問い合わせはまだありません</p></div>';
+            document.getElementById('pagination').classList.add('hidden');
+            return;
+          }
+
+          var html = '';
+          data.inquiries.forEach(function(inq) {
+            var dateStr = new Date(inq.created_at).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' });
+            html += '<div class="bg-white rounded-xl shadow-sm p-5 hover:shadow-md transition-shadow cursor-pointer" onclick="openDetail(' + inq.id + ')">';
+            html += '  <div class="flex items-start justify-between">';
+            html += '    <div class="flex-1 min-w-0">';
+            html += '      <div class="flex items-center gap-2 mb-1">';
+            html += '        <span class="inq-badge inq-' + escHtml(inq.status) + '">' + (statusLabels[inq.status] || inq.status) + '</span>';
+            html += '        <span class="type-badge">' + (typeLabels[inq.inquiry_type] || inq.inquiry_type) + '</span>';
+            html += '      </div>';
+            html += '      <h4 class="font-bold text-gray-900 truncate">' + escHtml(inq.subject) + '</h4>';
+            html += '      <p class="text-sm text-gray-500 mt-1 truncate">' + escHtml(inq.message) + '</p>';
+            html += '      <div class="flex items-center gap-4 mt-2 text-xs text-gray-400">';
+            html += '        <span><i class="fas fa-user mr-1"></i>' + escHtml(inq.name) + '</span>';
+            html += '        <span><i class="fas fa-envelope mr-1"></i>' + escHtml(inq.email) + '</span>';
+            html += '        <span><i class="fas fa-clock mr-1"></i>' + dateStr + '</span>';
+            html += '      </div>';
+            html += '    </div>';
+            html += '    <i class="fas fa-chevron-right text-gray-300 ml-3 mt-2"></i>';
+            html += '  </div>';
+            html += '</div>';
+          });
+          container.innerHTML = html;
+
+          // ページネーション
+          if (data.pages > 1) {
+            var pagHtml = '';
+            for (var i = 1; i <= data.pages; i++) {
+              pagHtml += '<button onclick="loadInquiries(' + i + ')" class="px-3 py-1 rounded ' + (i === currentPage ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300') + '">' + i + '</button>';
+            }
+            document.getElementById('pagination').innerHTML = pagHtml;
+            document.getElementById('pagination').classList.remove('hidden');
+          } else {
+            document.getElementById('pagination').classList.add('hidden');
+          }
+        } catch(e) {
+          document.getElementById('inquiries-list').innerHTML = '<div class="bg-white rounded-xl shadow-sm p-8 text-center text-red-400"><i class="fas fa-exclamation-triangle text-2xl mb-2"></i><p>読み込みに失敗しました</p></div>';
+        }
+      }
+
+      async function openDetail(id) {
+        try {
+          var res = await axios.get('/api/admin/inquiries/' + id, {
+            headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') }
+          });
+          var inq = res.data.inquiry;
+          var dateStr = new Date(inq.created_at).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' });
+          var repliedStr = inq.replied_at ? new Date(inq.replied_at).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }) : '';
+
+          var html = '';
+          html += '<div class="space-y-4">';
+          html += '  <div class="flex items-center gap-2">';
+          html += '    <span class="inq-badge inq-' + escHtml(inq.status) + '">' + (statusLabels[inq.status] || inq.status) + '</span>';
+          html += '    <span class="type-badge">' + (typeLabels[inq.inquiry_type] || inq.inquiry_type) + '</span>';
+          html += '  </div>';
+
+          html += '  <div class="bg-gray-50 rounded-lg p-4 space-y-2">';
+          html += '    <div class="grid grid-cols-2 gap-2 text-sm">';
+          html += '      <div><span class="text-gray-500">名前:</span> <strong>' + escHtml(inq.name) + '</strong></div>';
+          html += '      <div><span class="text-gray-500">メール:</span> <a href="mailto:' + escHtml(inq.email) + '" class="text-blue-600 hover:underline">' + escHtml(inq.email) + '</a></div>';
+          html += '      <div><span class="text-gray-500">電話:</span> ' + (inq.phone ? escHtml(inq.phone) : '<span class=text-gray-300>未入力</span>') + '</div>';
+          html += '      <div><span class="text-gray-500">受信日:</span> ' + dateStr + '</div>';
+          if (repliedStr) html += '      <div><span class="text-gray-500">対応日:</span> ' + repliedStr + '</div>';
+          if (inq.product_id) html += '      <div><span class="text-gray-500">関連商品:</span> <a href="/admin/products/' + inq.product_id + '" class="text-blue-600">#' + inq.product_id + '</a></div>';
+          html += '    </div>';
+          html += '  </div>';
+
+          html += '  <div>';
+          html += '    <h4 class="font-bold text-gray-800 mb-2">' + escHtml(inq.subject) + '</h4>';
+          html += '    <div class="bg-white border rounded-lg p-4 text-sm text-gray-700 whitespace-pre-wrap">' + escHtml(inq.message) + '</div>';
+          html += '  </div>';
+
+          // ステータス変更
+          html += '  <div class="border-t pt-4">';
+          html += '    <label class="block text-sm font-medium text-gray-700 mb-2">ステータス変更</label>';
+          html += '    <div class="flex gap-2 flex-wrap">';
+          ['new', 'in_progress', 'resolved', 'closed'].forEach(function(s) {
+            var active = inq.status === s ? 'ring-2 ring-offset-2 ring-purple-500' : 'opacity-70 hover:opacity-100';
+            html += '      <button onclick="updateStatus(' + inq.id + ',\\'' + s + '\\')" class="inq-badge inq-' + s + ' cursor-pointer ' + active + ' px-4 py-2">' + statusLabels[s] + '</button>';
+          });
+          html += '    </div>';
+          html += '  </div>';
+
+          // 管理メモ
+          html += '  <div>';
+          html += '    <label class="block text-sm font-medium text-gray-700 mb-2">管理メモ</label>';
+          html += '    <textarea id="admin-note" rows="3" class="w-full px-3 py-2 border rounded-lg text-sm">' + escHtml(inq.admin_note || '') + '</textarea>';
+          html += '    <button onclick="saveNote(' + inq.id + ')" class="mt-2 px-4 py-2 bg-purple-500 text-white text-sm rounded-lg hover:bg-purple-600"><i class="fas fa-save mr-1"></i>メモ保存</button>';
+          html += '  </div>';
+
+          // 削除
+          html += '  <div class="border-t pt-4 flex justify-between">';
+          html += '    <a href="mailto:' + escHtml(inq.email) + '?subject=Re: ' + encodeURIComponent(inq.subject) + '" class="px-4 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600"><i class="fas fa-reply mr-1"></i>メールで返信</a>';
+          html += '    <button onclick="deleteInquiry(' + inq.id + ')" class="px-4 py-2 bg-red-100 text-red-600 text-sm rounded-lg hover:bg-red-200"><i class="fas fa-trash mr-1"></i>削除</button>';
+          html += '  </div>';
+          html += '</div>';
+
+          document.getElementById('detail-content').innerHTML = html;
+          document.getElementById('detail-modal').classList.remove('hidden');
+        } catch(e) {
+          alert('詳細の読み込みに失敗しました');
+        }
+      }
+
+      function closeModal() {
+        document.getElementById('detail-modal').classList.add('hidden');
+      }
+
+      async function updateStatus(id, newStatus) {
+        try {
+          await axios.put('/api/admin/inquiries/' + id + '/status', { status: newStatus }, {
+            headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') }
+          });
+          closeModal();
+          loadInquiries(currentPage);
+        } catch(e) {
+          alert('更新に失敗しました');
+        }
+      }
+
+      async function saveNote(id) {
+        try {
+          var note = document.getElementById('admin-note').value;
+          await axios.put('/api/admin/inquiries/' + id + '/status', {
+            status: 'in_progress',
+            admin_note: note
+          }, {
+            headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') }
+          });
+          alert('メモを保存しました');
+        } catch(e) {
+          alert('保存に失敗しました');
+        }
+      }
+
+      async function deleteInquiry(id) {
+        if (!confirm('この問い合わせを削除しますか？')) return;
+        try {
+          await axios.delete('/api/admin/inquiries/' + id, {
+            headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') }
+          });
+          closeModal();
+          loadInquiries(currentPage);
+        } catch(e) {
+          alert('削除に失敗しました');
+        }
+      }
+
+      // 初期読み込み
+      loadInquiries();
+    </script>
+  `;
+  return c.html(AdminLayout('inquiries', '問い合わせ管理', content));
+});
+
 export default adminPagesRoutes

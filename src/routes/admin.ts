@@ -2789,4 +2789,92 @@ adminRoutes.put('/banners/reorder', async (c) => {
   }
 })
 
+// =============================================
+// 問い合わせ管理API
+// =============================================
+
+// 問い合わせ一覧取得
+adminRoutes.get('/inquiries', async (c) => {
+  const env = c.env as any
+  try {
+    const status = c.req.query('status') || ''
+    const type = c.req.query('type') || ''
+    const page = parseInt(c.req.query('page') || '1')
+    const limit = 20
+    const offset = (page - 1) * limit
+
+    let where = '1=1'
+    const params: any[] = []
+    if (status) { where += ' AND status = ?'; params.push(status) }
+    if (type) { where += ' AND inquiry_type = ?'; params.push(type) }
+
+    const countRow = await env.DB.prepare(`SELECT COUNT(*) as total FROM contact_inquiries WHERE ${where}`).bind(...params).first() as any
+    const total = countRow?.total || 0
+
+    const { results } = await env.DB.prepare(`
+      SELECT * FROM contact_inquiries WHERE ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?
+    `).bind(...params, limit, offset).all()
+
+    // 新着件数
+    const newCount = await env.DB.prepare("SELECT COUNT(*) as cnt FROM contact_inquiries WHERE status = 'new'").first() as any
+
+    return c.json({
+      success: true,
+      inquiries: results || [],
+      total,
+      page,
+      pages: Math.ceil(total / limit),
+      new_count: newCount?.cnt || 0
+    })
+  } catch (e: any) {
+    return c.json({ success: false, error: e.message }, 500)
+  }
+})
+
+// 問い合わせ詳細取得
+adminRoutes.get('/inquiries/:id', async (c) => {
+  const env = c.env as any
+  try {
+    const id = c.req.param('id')
+    const row = await env.DB.prepare('SELECT * FROM contact_inquiries WHERE id = ?').bind(id).first()
+    if (!row) return c.json({ success: false, error: '問い合わせが見つかりません' }, 404)
+    return c.json({ success: true, inquiry: row })
+  } catch (e: any) {
+    return c.json({ success: false, error: e.message }, 500)
+  }
+})
+
+// 問い合わせステータス更新
+adminRoutes.put('/inquiries/:id/status', async (c) => {
+  const env = c.env as any
+  try {
+    const id = c.req.param('id')
+    const { status, admin_note } = await c.req.json()
+    if (!['new', 'in_progress', 'resolved', 'closed'].includes(status)) {
+      return c.json({ success: false, error: '無効なステータスです' }, 400)
+    }
+    const updates = [`status = ?`, `updated_at = CURRENT_TIMESTAMP`]
+    const params: any[] = [status]
+    if (admin_note !== undefined) { updates.push('admin_note = ?'); params.push(admin_note) }
+    if (status === 'resolved') { updates.push('replied_at = CURRENT_TIMESTAMP') }
+
+    await env.DB.prepare(`UPDATE contact_inquiries SET ${updates.join(', ')} WHERE id = ?`).bind(...params, id).run()
+    return c.json({ success: true })
+  } catch (e: any) {
+    return c.json({ success: false, error: e.message }, 500)
+  }
+})
+
+// 問い合わせ削除
+adminRoutes.delete('/inquiries/:id', async (c) => {
+  const env = c.env as any
+  try {
+    const id = c.req.param('id')
+    await env.DB.prepare('DELETE FROM contact_inquiries WHERE id = ?').bind(id).run()
+    return c.json({ success: true })
+  } catch (e: any) {
+    return c.json({ success: false, error: e.message }, 500)
+  }
+})
+
 export default adminRoutes

@@ -906,6 +906,44 @@ app.route('/franchise', franchiseRoutes) // パートナー募集LP
 app.route('/api/franchise', franchiseRoutes) // パートナー募集API
 app.route('/admin', adminPagesRoutes)
 
+// 公開お問い合わせAPI（認証不要）
+app.post('/api/contact', async (c) => {
+  try {
+    const { DB } = (c.env as any)
+    const body = await c.req.json()
+    const { inquiry_type, name, email, phone, subject, message, product_id } = body
+
+    // バリデーション
+    if (!name || !email || !subject || !message) {
+      return c.json({ success: false, error: 'お名前・メールアドレス・件名・内容は必須です' }, 400)
+    }
+    if (!email.includes('@')) {
+      return c.json({ success: false, error: 'メールアドレスの形式が正しくありません' }, 400)
+    }
+    // スパム防止: 同一メールから1分以内の連続送信を拒否
+    const recent = await DB.prepare(
+      "SELECT COUNT(*) as cnt FROM contact_inquiries WHERE email = ? AND created_at > datetime('now', '-1 minute')"
+    ).bind(email).first() as any
+    if (recent && recent.cnt > 0) {
+      return c.json({ success: false, error: '連続送信はできません。しばらくしてから再度お試しください。' }, 429)
+    }
+
+    await DB.prepare(`
+      INSERT INTO contact_inquiries (inquiry_type, name, email, phone, subject, message, product_id, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'new')
+    `).bind(
+      inquiry_type || 'general',
+      name, email, phone || '', subject, message,
+      product_id || null
+    ).run()
+
+    return c.json({ success: true, message: 'お問い合わせを受け付けました。2営業日以内にご連絡いたします。' })
+  } catch (e: any) {
+    console.error('Contact inquiry error:', e)
+    return c.json({ success: false, error: '送信に失敗しました。もう一度お試しください。' }, 500)
+  }
+})
+
 // 公開お知らせAPI（認証不要）
 app.get('/api/announcements', async (c) => {
   try {
@@ -8351,14 +8389,14 @@ app.get('/contact', (c) => {
                         message: document.getElementById('message').value
                     }
                     
-                    // TODO: お問い合わせAPI実装
-                    // const response = await axios.post('/api/contact', formData)
+                    const response = await axios.post('/api/contact', formData)
                     
-                    // 仮の成功処理
-                    await new Promise(resolve => setTimeout(resolve, 1000))
-                    
-                    alert('お問い合わせを送信しました。\\n担当者より2営業日以内にご連絡いたします。')
-                    window.location.href = '/'
+                    if (response.data.success) {
+                        alert('✅ お問い合わせを送信しました。\\n担当者より2営業日以内にご連絡いたします。')
+                        window.location.href = '/'
+                    } else {
+                        throw new Error(response.data.error || '送信に失敗しました')
+                    }
                 } catch (error) {
                     console.error('Failed to send inquiry:', error)
                     alert('送信に失敗しました。もう一度お試しください。')
