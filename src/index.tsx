@@ -729,7 +729,7 @@ app.get('/llms-full.txt', async (c) => {
     const prods = await DB.prepare("SELECT id, title, price, condition FROM products WHERE status='active' ORDER BY created_at DESC LIMIT 20").all()
     productsSection = prods.results.map((p: any) => {
       const condMap: Record<string,string> = { new:'新品', like_new:'未使用に近い', good:'良好', fair:'やや傷あり', poor:'状態不良' }
-      return `- ${p.title}（¥${Math.floor(Number(p.price) * 1.1).toLocaleString()} 税込・${condMap[p.condition]||p.condition}）: https://parts-hub-tci.com/products/${p.id}`
+      return `- ${p.title}（¥${Math.round(Number(p.price) * 1.1).toLocaleString()} 税込・${condMap[p.condition]||p.condition}）: https://parts-hub-tci.com/products/${p.id}`
     }).join('\n')
   } catch(e) {}
   
@@ -1977,7 +1977,7 @@ app.get('/', (c) => {
                             <!-- 価格 -->
                             <div class="flex items-center justify-between mb-2">
                                 <div class="flex items-baseline">
-                                    <span class="text-xl font-bold text-gray-900">¥\${Math.floor(Number(product.price) * 1.1).toLocaleString()}</span>
+                                    <span class="text-xl font-bold text-gray-900">¥\${Math.round(Number(product.price) * 1.1).toLocaleString()}</span>
                                     <span class="text-xs text-gray-500 ml-1">税込</span>
                                 </div>
                                 \${product.shipping_type === 'seller_paid'
@@ -3843,7 +3843,7 @@ app.get('/products/:id', async (c) => {
       // 改行・連続空白を除去した1行テキスト（meta description用の素材）
       const pDescClean = String(p.description || '').replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').replace(/"/g, '&quot;').replace(/</g, '&lt;').trim()
       const pPrice = Number(p.price || 0)
-      const pPriceTaxIncluded = Math.floor(pPrice * 1.1)
+      const pPriceTaxIncluded = Math.round(pPrice * 1.1)
       const rawImg = String(p.main_image || '')
       const imgPath = rawImg.startsWith('/r2/') ? rawImg : rawImg.startsWith('r2/') ? `/${rawImg}` : `/r2/${rawImg}`
       const pImage = p.main_image ? `https://parts-hub-tci.com${imgPath}` : seoImage
@@ -4380,7 +4380,7 @@ app.get('/products/:id', async (c) => {
                     </h2>
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
                         ${ssrRelatedProducts.map((rp: any) => {
-                          const rpPrice = Math.floor(Number(rp.price || 0) * 1.1)
+                          const rpPrice = Math.round(Number(rp.price || 0) * 1.1)
                           const rpImg = rp.main_image ? (String(rp.main_image).startsWith('/r2/') ? `https://parts-hub-tci.com${rp.main_image}` : `https://parts-hub-tci.com/r2/${String(rp.main_image).replace(/^\/?(r2\/)?/, '')}`) : 'https://placehold.co/300x300/e2e8f0/64748b?text=No+Image'
                           const rpTitle = String(rp.title || '').replace(/</g, '&lt;')
                           const rpCondMap: Record<string, string> = { new: '新品', like_new: '未使用に近い', good: '目立った傷なし', fair: 'やや傷あり', poor: '状態悪い' }
@@ -5811,7 +5811,7 @@ app.get('/listing', (c) => {
                     var price = parseInt(this.value) || 0;
                     var fee = Math.floor(price * 0.1);
                     var taxAmount = Math.floor(price * 0.1);
-                    var taxIncluded = Math.floor(price * 1.1);
+                    var taxIncluded = Math.round(price * 1.1);
                     document.getElementById('fee-display').textContent =
                         '販売手数料 10%：¥' + fee.toLocaleString();
                     var taxDisplay = document.getElementById('tax-included-display');
@@ -7640,7 +7640,7 @@ app.get('/seller/:id', async (c) => {
                 const condLabels = { new:'新品', like_new:'未使用に近い', good:'目立った傷や汚れなし', fair:'やや傷や汚れあり', poor:'傷や汚れあり', junk:'ジャンク品' };
                 const html = products.map(function(p) {
                     const img = p.image_url || '/icons/icon.svg';
-                    const taxPrice = Math.floor(p.price * 1.1).toLocaleString();
+                    const taxPrice = Math.round(p.price * 1.1).toLocaleString();
                     const condLabel = condLabels[p.condition] || p.condition || '';
                     const isSold = p.status === 'sold';
                     const shippingBadge = p.shipping_type === 'seller_paid'
@@ -8494,7 +8494,7 @@ app.get('/favorites', (c) => {
                                 <div class="p-3">
                                     <a href="/products/\${item.id}" class="block">
                                         <h3 class="text-sm font-semibold text-gray-900 mb-2 line-clamp-2 hover:text-red-500">\${item.title}</h3>
-                                        <p class="text-lg font-bold text-red-500 mb-2">¥\${Math.floor(Number(item.price) * 1.1).toLocaleString()} <span class="text-xs font-normal text-gray-500">税込</span></p>
+                                        <p class="text-lg font-bold text-red-500 mb-2">¥\${Math.round(Number(item.price) * 1.1).toLocaleString()} <span class="text-xs font-normal text-gray-500">税込</span></p>
                                     </a>
                                     <div class="flex items-center justify-between text-xs text-gray-500 mb-3">
                                         <span><i class="fas fa-heart mr-1"></i>\${item.favorite_count}</span>
@@ -9247,7 +9247,7 @@ app.get('/search', (c) => {
                 
                 if (currentView === 'list') {
                     grid.innerHTML = products.map(function(product, idx) {
-                        var priceInc = Math.ceil(Number(product.price) * 1.1);
+                        var priceInc = Math.round(Number(product.price) * 1.1);
                         var isSold = product.status === 'sold';
                         var condMap = {new:'新品',like_new:'未使用に近い',good:'良好',fair:'やや傷あり',poor:'状態悪い'};
                         var condLabel = condMap[product.condition] || '';
@@ -9274,7 +9274,7 @@ app.get('/search', (c) => {
                     }).join('');
                 } else {
                     grid.innerHTML = products.map(function(product, idx) {
-                        var priceInc = Math.ceil(Number(product.price) * 1.1);
+                        var priceInc = Math.round(Number(product.price) * 1.1);
                         var isSold = product.status === 'sold';
                         var condMap = {new:'新品',like_new:'未使用に近い',good:'良好',fair:'やや傷あり',poor:'状態悪い'};
                         var condLabel = condMap[product.condition] || '';
@@ -10274,7 +10274,7 @@ app.get('/area/:pref', async (c) => {
     productsCount = prods.results.length
     const condMap: Record<string,string> = { new:'新品', like_new:'未使用に近い', good:'良好', fair:'やや傷あり', poor:'状態不良' }
     productsHtml = prods.results.map((p: any) => {
-      const priceTaxIncluded = Math.floor(Number(p.price || 0) * 1.1).toLocaleString()
+      const priceTaxIncluded = Math.round(Number(p.price || 0) * 1.1).toLocaleString()
       const cond = condMap[p.condition] || p.condition || '中古'
       const safeTitle = String(p.title || '').replace(/</g, '&lt;')
       const imgUrl = p.image_url ? '/r2/' + p.image_url : '/icons/icon.svg'
@@ -11462,7 +11462,7 @@ app.get('/vehicle/:maker/:model', async (c) => {
 
     const condMap: Record<string,string> = { new:'新品', like_new:'未使用に近い', good:'良好', fair:'やや傷あり', poor:'状態不良' }
     productsHtml = prods.results.map((p: any) => {
-      const priceTaxIncluded = Math.floor(Number(p.price || 0) * 1.1).toLocaleString()
+      const priceTaxIncluded = Math.round(Number(p.price || 0) * 1.1).toLocaleString()
       const cond = condMap[p.condition] || p.condition || '中古'
       const safeTitle = String(p.title || '').replace(/</g, '&lt;')
       const imgUrl = p.image_url ? '/r2/' + p.image_url : '/icons/icon.svg'
@@ -12380,7 +12380,7 @@ app.get('/sitemap', async (c) => {
     ).all()
     const condMap: Record<string,string> = { new:'新品', like_new:'未使用に近い', good:'良好', fair:'やや傷あり', poor:'状態不良' }
     productsHtml = prods.results.map((p: any) => {
-      const priceTaxIncluded = Math.floor(Number(p.price || 0) * 1.1).toLocaleString()
+      const priceTaxIncluded = Math.round(Number(p.price || 0) * 1.1).toLocaleString()
       const cond = condMap[p.condition] || p.condition || '中古'
       const safeTitle = String(p.title || '').replace(/</g,'&lt;')
       return '<li><a href="/products/' + p.id + '" class="sitemap-link group">' +
@@ -13410,7 +13410,7 @@ app.get('/argos-demo', (c) => {
               (p.compatible && p.compatible.length > 0 ? '<div class="text-xs text-blue-400 mt-0.5"><i class="fas fa-link mr-0.5"></i>互換: ' + p.compatible.join(', ') + '</div>' : '') +
             '</div>' +
             '<div class="text-right ml-3 flex-shrink-0">' +
-              '<div class="text-sm font-bold text-gray-800">&yen;' + Math.floor(Number(p.price) * 1.1).toLocaleString() + '</div>' +
+              '<div class="text-sm font-bold text-gray-800">&yen;' + Math.round(Number(p.price) * 1.1).toLocaleString() + '</div>' +
               '<div class="text-xs text-gray-400">参考価格</div>' +
             '</div>' +
           '</div></div>';
@@ -13465,7 +13465,7 @@ app.get('/argos-demo', (c) => {
         countEl.textContent = count + '件選択中';
 
         area.innerHTML = selectedParts.map(function(p) {
-          return '<div class="flex items-center justify-between bg-white rounded-lg px-4 py-2.5 shadow-sm border"><div class="flex items-center gap-2"><span class="font-mono text-sm font-bold text-red-600">' + p.part_number + '</span><span class="text-sm text-gray-600">' + p.name + '</span></div><span class="font-bold text-sm">&yen;' + Math.floor(Number(p.price) * 1.1).toLocaleString() + ' <span style="font-size:10px;color:#6b7280;">税込</span></span></div>';
+          return '<div class="flex items-center justify-between bg-white rounded-lg px-4 py-2.5 shadow-sm border"><div class="flex items-center gap-2"><span class="font-mono text-sm font-bold text-red-600">' + p.part_number + '</span><span class="text-sm text-gray-600">' + p.name + '</span></div><span class="font-bold text-sm">&yen;' + Math.round(Number(p.price) * 1.1).toLocaleString() + ' <span style="font-size:10px;color:#6b7280;">税込</span></span></div>';
         }).join('');
 
         // プレビュー
@@ -13479,7 +13479,7 @@ app.get('/argos-demo', (c) => {
             { label: '型式', value: v.katashiki, icon: 'fa-hashtag' },
             { label: '年式', value: v.year + '年' + v.month + '月', icon: 'fa-calendar' },
             { label: 'OEM品番', value: selectedParts.map(function(p) { return p.part_number; }).join(', '), icon: 'fa-barcode' },
-            { label: '参考新品価格', value: '&yen;' + Math.floor(selectedParts.reduce(function(s,p) { return s + p.price; }, 0) * 1.1).toLocaleString() + '（税込）', icon: 'fa-yen-sign' }
+            { label: '参考新品価格', value: '&yen;' + Math.round(selectedParts.reduce(function(s,p) { return s + p.price; }, 0) * 1.1).toLocaleString() + '（税込）', icon: 'fa-yen-sign' }
           ];
           document.getElementById('listing-preview-content').innerHTML = previewFields.map(function(f) {
             return '<div class="bg-gray-50 rounded-lg p-2.5"><p class="text-gray-400 mb-0.5 flex items-center gap-1"><i class="fas ' + f.icon + ' w-3 text-center"></i>' + f.label + '</p><p class="font-semibold text-gray-800">' + f.value + '</p></div>';
@@ -13531,10 +13531,10 @@ app.get('/argos-demo', (c) => {
       lines.push('');
       lines.push('[選択部品]');
       selectedParts.forEach(function(p) {
-        lines.push('  ' + p.part_number + ' ' + p.name + ' \\xA5' + Math.floor(Number(p.price) * 1.1).toLocaleString() + '(税込)');
+        lines.push('  ' + p.part_number + ' ' + p.name + ' \\xA5' + Math.round(Number(p.price) * 1.1).toLocaleString() + '(税込)');
       });
       lines.push('');
-      lines.push('合計参考価格: \\xA5' + Math.floor(selectedParts.reduce(function(s,p) { return s + p.price; }, 0) * 1.1).toLocaleString() + '(税込)');
+      lines.push('合計参考価格: \\xA5' + Math.round(selectedParts.reduce(function(s,p) { return s + p.price; }, 0) * 1.1).toLocaleString() + '(税込)');
       alert(lines.join('\\n'));
     }
 
@@ -13565,7 +13565,7 @@ app.get('/argos-demo', (c) => {
           return '<div class="listing-card bg-white rounded-lg p-4 shadow-sm border cursor-pointer">' +
             '<div class="flex items-center justify-between mb-2">' +
               '<div class="flex items-center gap-2"><span class="font-mono text-sm font-bold text-blue-600">' + l.part_number + '</span><span class="tag bg-' + (l.condition === '美品' ? 'green' : l.condition === '良品' ? 'yellow' : 'gray') + '-100 text-' + (l.condition === '美品' ? 'green' : l.condition === '良品' ? 'yellow' : 'gray') + '-600">' + l.condition + '</span></div>' +
-              '<span class="font-bold text-lg text-red-600">&yen;' + Math.floor(Number(l.price) * 1.1).toLocaleString() + ' <span style="font-size:10px;font-weight:400;color:#6b7280;">税込</span></span>' +
+              '<span class="font-bold text-lg text-red-600">&yen;' + Math.round(Number(l.price) * 1.1).toLocaleString() + ' <span style="font-size:10px;font-weight:400;color:#6b7280;">税込</span></span>' +
             '</div>' +
             '<p class="text-sm text-gray-700 mb-1">' + l.title + '</p>' +
             '<div class="flex items-center justify-between text-xs text-gray-400">' +

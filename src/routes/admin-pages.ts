@@ -611,7 +611,7 @@ adminPagesRoutes.get('/users/:id', (c) => {
             document.getElementById('u-products').innerHTML = products.length === 0
                 ? '<p class="text-gray-500 text-center py-4">出品商品はありません</p>'
                 : '<table class="w-full text-sm"><thead><tr class="text-left text-gray-500 border-b"><th class="pb-2">ID</th><th class="pb-2">商品名</th><th class="pb-2">価格</th><th class="pb-2">ステータス</th><th class="pb-2">出品日</th></tr></thead><tbody>' +
-                  products.map(p => '<tr class="border-b hover:bg-gray-50"><td class="py-2">' + p.id + '</td><td class="py-2"><a href="/admin/products/' + p.id + '" class="text-blue-500 hover:underline">' + p.title + '</a></td><td class="py-2">&yen;' + Math.floor(p.price * 1.1).toLocaleString() + ' <span style="font-size:10px;color:#6b7280;">税込</span></td><td class="py-2"><span class="px-2 py-0.5 text-xs rounded ' +
+                  products.map(p => '<tr class="border-b hover:bg-gray-50"><td class="py-2">' + p.id + '</td><td class="py-2"><a href="/admin/products/' + p.id + '" class="text-blue-500 hover:underline">' + p.title + '</a></td><td class="py-2">&yen;' + Math.round(p.price * 1.1).toLocaleString() + ' <span style="font-size:10px;color:#6b7280;">税込</span></td><td class="py-2"><span class="px-2 py-0.5 text-xs rounded ' +
                     (p.status === 'active' ? 'bg-green-100 text-green-700' : p.status === 'sold' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600') + '">' +
                     (p.status === 'active' ? '出品中' : p.status === 'sold' ? '売却済' : p.status) + '</span></td><td class="py-2">' + new Date(p.created_at).toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'}) + '</td></tr>').join('') +
                   '</tbody></table>';
@@ -747,7 +747,7 @@ adminPagesRoutes.get('/products', (c) => {
                 <tr class="hover:bg-gray-50">
                     <td class="px-6 py-4 text-sm text-gray-900">\${p.id}</td>
                     <td class="px-6 py-4 text-sm font-medium text-gray-900">\${p.title}</td>
-                    <td class="px-6 py-4 text-sm text-gray-900">¥\${Math.floor(p.price * 1.1).toLocaleString()} <span style="font-size:10px;color:#6b7280;">税込</span></td>
+                    <td class="px-6 py-4 text-sm text-gray-900">¥\${Math.round(p.price * 1.1).toLocaleString()} <span style="font-size:10px;color:#6b7280;">税込</span></td>
                     <td class="px-6 py-4 text-sm text-gray-600">\${p.seller_name}</td>
                     <td class="px-6 py-4">
                         <span class="px-2 py-1 text-xs rounded \${
@@ -948,7 +948,7 @@ adminPagesRoutes.get('/products/:id', (c) => {
 
             document.getElementById('p-title').textContent = p.title;
             document.getElementById('p-id').textContent = p.id;
-            document.getElementById('p-price').textContent = '¥' + Math.floor((p.price || 0) * 1.1).toLocaleString() + '（税込）';
+            document.getElementById('p-price').textContent = '¥' + Math.round((p.price || 0) * 1.1).toLocaleString() + '（税込）';
             document.getElementById('p-condition').textContent = conditionLabel(p.condition);
             document.getElementById('p-category').textContent = p.category || '-';
             document.getElementById('p-manufacturer').textContent = p.manufacturer || '-';
@@ -4356,7 +4356,7 @@ adminPagesRoutes.get('/cross-border', (c) => {
         }
 
         res.data.items.forEach(function(p) {
-          var priceJpy = Math.floor(p.price * 1.1);
+          var priceJpy = Math.round(p.price * 1.1);
           var priceUsd = (priceJpy / cbCurrentRate).toFixed(2);
           var imgSrc = p.image_url || '/icons/icon.svg';
           grid.innerHTML += '<div class="cb-card">' +
@@ -4416,7 +4416,7 @@ adminPagesRoutes.get('/cross-border', (c) => {
         document.getElementById('modal-img').src = p.main_image || p.image_url || '/icons/icon.svg';
         document.getElementById('modal-title-ja').textContent = p.title;
         document.getElementById('modal-maker').textContent = (p.vm_maker || '') + ' ' + (p.vm_model || '');
-        var costJpy = Math.floor(Number(p.price) * 1.1);
+        var costJpy = Math.round(Number(p.price) * 1.1);
         document.getElementById('modal-price-ja').textContent = '¥' + costJpy.toLocaleString();
         document.getElementById('modal-cost-jpy').textContent = '¥' + costJpy.toLocaleString();
         // USD推奨価格（仕入れの2倍をデフォルト）
@@ -4439,7 +4439,7 @@ adminPagesRoutes.get('/cross-border', (c) => {
     function calcProfit() {
       var usd = parseFloat(document.getElementById('modal-price-usd').value) || 0;
       var ship = parseFloat(document.getElementById('modal-shipping-usd').value) || 0;
-      var costJpy = cbCurrentProduct ? Math.floor(Number(cbCurrentProduct.price) * 1.1) : 0;
+      var costJpy = cbCurrentProduct ? Math.round(Number(cbCurrentProduct.price) * 1.1) : 0;
       var saleJpy = Math.floor((usd + ship) * cbCurrentRate);
       // eBay手数料約13% + PayPal約3%
       var fees = Math.floor(saleJpy * 0.16);
@@ -4692,7 +4692,7 @@ adminPagesRoutes.get('/cross-border', (c) => {
     // ===== 利益シミュレーター =====
     async function openSimulator() {
       if (!cbCurrentProduct) return;
-      var costJpy = Math.floor(Number(cbCurrentProduct.price) * 1.1);
+      var costJpy = Math.round(Number(cbCurrentProduct.price) * 1.1);
       var priceUsd = parseFloat(document.getElementById('modal-price-usd').value) || 0;
       var shipUsd = parseFloat(document.getElementById('modal-shipping-usd').value) || 0;
       document.getElementById('sim-cost').textContent = '¥' + costJpy.toLocaleString();

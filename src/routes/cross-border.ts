@@ -567,7 +567,7 @@ crossBorder.get('/category-map', async (c) => {
 crossBorder.post('/simulate-profit', async (c) => {
   try {
     const { price_jpy, price_usd, shipping_cost_usd } = await c.req.json()
-    const costJpy = Math.floor(Number(price_jpy) * 1.1) // 税込仕入れ価格
+    const costJpy = Math.round(Number(price_jpy) * 1.1) // 税込仕入れ価格
     const rates = [130, 135, 140, 145, 150, 155, 160]
 
     const simulations = rates.map(rate => {

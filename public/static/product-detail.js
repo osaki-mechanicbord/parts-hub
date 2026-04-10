@@ -5,12 +5,12 @@ const TAX_RATE = 0.10;
 
 // 税込み価格を計算（税抜き価格から）
 function calcTaxIncluded(priceExcludingTax) {
-    return Math.floor(Number(priceExcludingTax || 0) * (1 + TAX_RATE));
+    return Math.round(Number(priceExcludingTax || 0) * (1 + TAX_RATE));
 }
 
 // 消費税額を計算
 function calcTaxAmount(priceExcludingTax) {
-    return Math.floor(Number(priceExcludingTax || 0) * TAX_RATE);
+    return Math.round(Number(priceExcludingTax || 0) * TAX_RATE);
 }
 
 // 価格を税込みでフォーマット表示
