@@ -8728,37 +8728,13 @@ app.get('/search', (c) => {
                         </a>
                     </nav>
                     <div class="flex items-center space-x-3">
-                        <div class="relative" id="header-lang-switcher">
-                            <button onclick="toggleHeaderLang(event)" class="px-2 py-2 text-gray-500 hover:text-red-500 transition-all rounded-lg hover:bg-gray-100" title="Language">
-                                <i class="fas fa-globe text-lg"></i>
-                            </button>
-                            <div id="header-lang-menu" class="hidden absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 min-w-[140px] overflow-hidden">
-                            </div>
-                        </div>
                         <button onclick="window.location.href='/listing'" 
                                 class="px-4 py-2 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition-all shadow-sm hover:shadow-md">
                             <i class="fas fa-plus mr-1"></i>
                             <span class="hidden sm:inline">出品する</span>
                         </button>
-                        <div id="header-guest" class="flex items-center space-x-2">
-                            <button onclick="window.location.href='/login'" 
-                                    class="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:border-red-500 hover:text-red-500 transition-all">
-                                <i class="fas fa-sign-in-alt mr-1"></i>
-                                <span class="hidden sm:inline">ログイン</span>
-                            </button>
-                        </div>
-                        <div id="header-user" class="hidden flex items-center space-x-2">
-                            <a href="/mypage" 
-                               class="px-4 py-2 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-lg font-semibold hover:from-red-600 hover:to-pink-600 transition-all shadow-sm hover:shadow-md flex items-center">
-                                <i class="fas fa-user-circle mr-1.5"></i>
-                                <span class="hidden sm:inline" id="header-user-name">マイページ</span>
-                                <span class="sm:hidden">MY</span>
-                            </a>
-                            <button onclick="handleLogout()" 
-                                    class="px-3 py-2 border-2 border-gray-300 text-gray-500 rounded-lg hover:border-red-400 hover:text-red-500 transition-all" title="ログアウト">
-                                <i class="fas fa-sign-out-alt"></i>
-                            </button>
-                        </div>
+                        <!-- auth-header.js が言語切替+ログイン/マイページボタンを挿入 -->
+                        <div class="w-16"></div>
                     </div>
                 </div>
             </div>
@@ -9113,52 +9089,7 @@ app.get('/search', (c) => {
         <script src="${v('/static/auth-header.js')}"></script>
         <script src="${v('/static/notification-badge.js')}"></script>
         <script>
-            // ヘッダー言語切替
-            function toggleHeaderLang(e) {
-                e.stopPropagation();
-                var menu = document.getElementById('header-lang-menu');
-                if (!menu) return;
-                menu.classList.toggle('hidden');
-            }
-            (function() {
-                var langs = [
-                    { code: 'ja', flag: '\u{1F1EF}\u{1F1F5}', name: '\u65E5\u672C\u8A9E' },
-                    { code: 'en', flag: '\u{1F1FA}\u{1F1F8}', name: 'English' },
-                    { code: 'zh', flag: '\u{1F1E8}\u{1F1F3}', name: '\u4E2D\u6587' },
-                    { code: 'ko', flag: '\u{1F1F0}\u{1F1F7}', name: '\uD55C\uAD6D\uC5B4' }
-                ];
-                var current = localStorage.getItem('parts_hub_lang') || 'ja';
-                var menu = document.getElementById('header-lang-menu');
-                if (!menu) return;
-                menu.innerHTML = langs.map(function(l) {
-                    return '<button data-lang="' + l.code + '" style="display:flex;align-items:center;gap:8px;width:100%;padding:10px 16px;border:none;background:' + (l.code === current ? '#fef2f2' : '#fff') + ';cursor:pointer;font-size:14px;color:#374151;text-align:left;">' + l.flag + ' ' + l.name + (l.code === current ? ' <span style="margin-left:auto;color:#ef4444;">\u2713</span>' : '') + '</button>';
-                }).join('');
-                menu.querySelectorAll('button').forEach(function(btn) {
-                    var origBg = btn.getAttribute('data-lang') === current ? '#fef2f2' : '#fff';
-                    btn.onmouseover = function() { this.style.background = '#f9fafb'; };
-                    btn.onmouseout = function() { this.style.background = origBg; };
-                    btn.onclick = function() {
-                        var lang = this.getAttribute('data-lang');
-                        if (lang !== current) {
-                            localStorage.setItem('parts_hub_lang', lang);
-                            location.reload();
-                        }
-                    };
-                });
-                document.addEventListener('click', function() {
-                    menu.classList.add('hidden');
-                });
-            })();
-
-            function handleLogout() {
-                var token = localStorage.getItem('token');
-                if (token) {
-                    axios.post('/api/auth/logout', {}, { headers: { Authorization: 'Bearer ' + token } }).catch(function(){});
-                }
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
-                window.location.href = '/';
-            }
+            // 言語切替・ログイン/ログアウトは auth-header.js が処理
 
             let searchTimeout;
             let currentCategory = '';
