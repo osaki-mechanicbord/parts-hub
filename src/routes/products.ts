@@ -1,5 +1,7 @@
 import { Hono } from 'hono'
 import type { Bindings } from '../types'
+import { sendEmail } from '../email-config'
+import * as tpl from '../email-templates'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -369,6 +371,30 @@ app.post('/', async (c) => {
           })
         })
       } catch (e) { /* IndexNow通知エラーは無視（メイン処理に影響させない） */ }
+    }
+
+    // 出品完了メール送信（下書き以外）
+    if (body.status !== 'draft') {
+      try {
+        const apiKey = (c.env as any)?.RESEND_API_KEY
+        if (apiKey) {
+          const seller = await DB.prepare(
+            'SELECT name, nickname, company_name, email FROM users WHERE id = ?'
+          ).bind(userId).first() as any
+          if (seller?.email) {
+            const sellerName = seller.company_name || seller.nickname || seller.name || 'ユーザー'
+            const mail = tpl.listingComplete({
+              sellerName,
+              productName: body.title,
+              productId: Number(productId),
+              price: Number(body.price),
+            })
+            await sendEmail(apiKey, { to: seller.email, ...mail })
+          }
+        }
+      } catch (emailError) {
+        console.error('Listing complete email error:', emailError)
+      }
     }
 
     return c.json({

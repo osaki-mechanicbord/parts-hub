@@ -1,10 +1,13 @@
 import { Hono } from 'hono'
 import { authMiddleware } from '../auth'
 import { reviewRateLimit } from '../rate-limit'
+import { sendEmail } from '../email-config'
+import * as tpl from '../email-templates'
 
 type Bindings = {
   DB: D1Database
   R2: R2Bucket
+  RESEND_API_KEY: string
 }
 
 const reviews = new Hono<{ Bindings: Bindings }>()
@@ -245,6 +248,32 @@ reviews.post('/', authMiddleware, reviewRateLimit, async (c) => {
       reviewId,
       `/seller/${reviewed_user_id}`
     ).run()
+
+    // レビュー投稿メール通知（出品者/対象ユーザー向け）
+    try {
+      const apiKey = (c.env as any)?.RESEND_API_KEY
+      if (apiKey) {
+        const reviewedUser = await DB.prepare(
+          'SELECT name, nickname, company_name, email FROM users WHERE id = ?'
+        ).bind(reviewed_user_id).first() as any
+        const reviewer = await DB.prepare(
+          'SELECT name, nickname, company_name FROM users WHERE id = ?'
+        ).bind(reviewer_id).first() as any
+        if (reviewedUser?.email) {
+          const mail = tpl.newReviewNotification({
+            sellerName: reviewedUser.company_name || reviewedUser.nickname || reviewedUser.name || 'ユーザー',
+            reviewerName: reviewer?.company_name || reviewer?.nickname || reviewer?.name || '匿名',
+            productName: transaction.product_title || '商品',
+            rating,
+            comment,
+            sellerId: reviewed_user_id,
+          })
+          await sendEmail(apiKey, { to: reviewedUser.email, ...mail })
+        }
+      }
+    } catch (emailError) {
+      console.error('Review notification email error:', emailError)
+    }
 
     return c.json({ success: true, data: { id: reviewId } })
   } catch (error) {

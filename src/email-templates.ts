@@ -302,6 +302,180 @@ export function receiptConfirmed(p: {
 // ================================================================
 // 8. パスワードリセット
 // ================================================================
+// ================================================================
+// 9. お問い合わせフォーム送信時（管理者向け）
+// ================================================================
+export function contactInquiryAdmin(p: {
+  name: string; email: string; phone?: string;
+  subject: string; message: string; inquiryType: string
+}) {
+  const typeLabel: Record<string, string> = {
+    general: '一般', product: '商品について', support: 'サポート',
+    complaint: 'クレーム', other: 'その他',
+  }
+  const content = `
+    <h2 style="margin:0 0 16px;font-size:20px;color:#111;">📩 新しいお問い合わせが届きました</h2>
+    <p>管理者 様</p>
+    <p>以下の内容でお問い合わせがありました。2営業日以内にご対応をお願いします。</p>
+    ${infoBox([
+      infoRow('種別', typeLabel[p.inquiryType] || p.inquiryType),
+      infoRow('お名前', p.name),
+      infoRow('メール', p.email),
+      ...(p.phone ? [infoRow('電話番号', p.phone)] : []),
+      infoRow('件名', p.subject),
+    ])}
+    <div style="background:#f3f4f6;border-radius:8px;padding:16px;margin:20px 0;">
+      <p style="margin:0 0 4px;font-weight:700;font-size:13px;color:#374151;">お問い合わせ内容：</p>
+      <p style="margin:0;font-size:14px;color:#333;white-space:pre-wrap;">${p.message}</p>
+    </div>
+    ${actionButton('管理画面で確認する', `${SITE_URL}/admin/inquiries`)}
+  `
+  return {
+    subject: `【PARTS HUB】新しいお問い合わせ - ${p.subject}`,
+    html: baseTemplate('お問い合わせ通知', content),
+  }
+}
+
+// ================================================================
+// 10. フランチャイズ資料請求時（管理者向け）
+// ================================================================
+export function franchiseInquiryAdmin(p: {
+  name: string; email: string; phone?: string;
+  areaPref?: string; occupation?: string; experience?: string; message?: string
+}) {
+  const content = `
+    <h2 style="margin:0 0 16px;font-size:20px;color:#111;">🤝 フランチャイズ資料請求が届きました</h2>
+    <p>管理者 様</p>
+    <p>新しいフランチャイズ（パートナー）の資料請求がありました。</p>
+    ${infoBox([
+      infoRow('お名前', p.name),
+      infoRow('メール', p.email),
+      ...(p.phone ? [infoRow('電話番号', p.phone)] : []),
+      ...(p.areaPref ? [infoRow('希望エリア', p.areaPref)] : []),
+      ...(p.occupation ? [infoRow('ご職業', p.occupation)] : []),
+      ...(p.experience ? [infoRow('業界経験', p.experience)] : []),
+    ])}
+    ${p.message ? `<div style="background:#f3f4f6;border-radius:8px;padding:16px;margin:20px 0;">
+      <p style="margin:0 0 4px;font-weight:700;font-size:13px;color:#374151;">メッセージ：</p>
+      <p style="margin:0;font-size:14px;color:#333;white-space:pre-wrap;">${p.message}</p>
+    </div>` : ''}
+    ${actionButton('管理画面で確認する', `${SITE_URL}/admin/inquiries`)}
+  `
+  return {
+    subject: `【PARTS HUB】フランチャイズ資料請求 - ${p.name} 様`,
+    html: baseTemplate('フランチャイズ資料請求', content),
+  }
+}
+
+// ================================================================
+// 11. 出品完了時（出品者向け）
+// ================================================================
+export function listingComplete(p: {
+  sellerName: string; productName: string; productId: number; price: number
+}) {
+  const amt = p.price.toLocaleString('ja-JP')
+  const url = `${SITE_URL}/products/${p.productId}`
+  const content = `
+    <h2 style="margin:0 0 16px;font-size:20px;color:#111;">🎉 商品の出品が完了しました！</h2>
+    <p>${p.sellerName} 様</p>
+    <p>以下の商品の出品が完了しました。購入者からの問い合わせをお待ちください。</p>
+    ${infoBox([
+      infoRow('商品名', p.productName),
+      infoRow('販売価格', `¥${amt}`),
+    ])}
+    <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px;margin:20px 0;">
+      <p style="margin:0 0 8px;font-weight:700;font-size:14px;color:#166534;">💡 売れやすくするコツ</p>
+      <ul style="font-size:14px;padding-left:20px;margin:0;color:#333;">
+        <li style="margin-bottom:4px;">鮮明な写真を複数枚追加する</li>
+        <li style="margin-bottom:4px;">商品の状態や適合車種を詳しく記載する</li>
+        <li style="margin-bottom:4px;">質問には迅速に回答する</li>
+      </ul>
+    </div>
+    ${actionButton('出品商品を確認する', url)}
+    <p style="font-size:13px;color:#6b7280;">商品の編集はマイページからいつでも行えます。</p>
+  `
+  return {
+    subject: `【PARTS HUB】出品完了 - ${p.productName}`,
+    html: baseTemplate('出品完了', content),
+  }
+}
+
+// ================================================================
+// 12. レビュー投稿通知（出品者向け）
+// ================================================================
+export function newReviewNotification(p: {
+  sellerName: string; reviewerName: string;
+  productName: string; rating: number; comment: string;
+  sellerId: number
+}) {
+  const stars = '★'.repeat(p.rating) + '☆'.repeat(5 - p.rating)
+  const url = `${SITE_URL}/seller/${p.sellerId}`
+  const content = `
+    <h2 style="margin:0 0 16px;font-size:20px;color:#111;">⭐ 新しいレビューが投稿されました</h2>
+    <p>${p.sellerName} 様</p>
+    <p>あなたの取引に対してレビューが投稿されました。</p>
+    ${infoBox([
+      infoRow('商品名', p.productName),
+      infoRow('投稿者', p.reviewerName),
+      infoRow('評価', `<span style="color:#f59e0b;font-size:16px;">${stars}</span> (${p.rating}/5)`),
+    ])}
+    <div style="background:#fffbeb;border:1px solid #fbbf24;border-radius:8px;padding:16px;margin:20px 0;">
+      <p style="margin:0 0 4px;font-weight:700;font-size:13px;color:#92400e;">レビュー内容：</p>
+      <p style="margin:0;font-size:14px;color:#333;">${p.comment.length > 300 ? p.comment.substring(0, 300) + '...' : p.comment}</p>
+    </div>
+    ${actionButton('レビューを確認する', url)}
+    <p style="font-size:13px;color:#6b7280;">評価は出品者プロフィールに反映されます。</p>
+  `
+  return {
+    subject: `【PARTS HUB】新しいレビューが投稿されました（${p.rating}つ星）`,
+    html: baseTemplate('レビュー通知', content),
+  }
+}
+
+// ================================================================
+// 13. 管理者による商品承認/却下通知（出品者向け）
+// ================================================================
+export function productStatusChanged(p: {
+  sellerName: string; productName: string; productId: number;
+  newStatus: 'active' | 'suspended'; reason?: string
+}) {
+  const isApproved = p.newStatus === 'active'
+  const url = `${SITE_URL}/products/${p.productId}`
+
+  const content = isApproved
+    ? `
+      <h2 style="margin:0 0 16px;font-size:20px;color:#111;">✅ 商品が承認されました</h2>
+      <p>${p.sellerName} 様</p>
+      <p>あなたの出品商品が管理者に承認され、公開されました。</p>
+      ${infoBox([
+        infoRow('商品名', p.productName),
+        infoRow('ステータス', '<span style="color:#16a34a;font-weight:700;">✅ 公開中</span>'),
+      ])}
+      <p>購入者からの問い合わせや購入をお待ちください。</p>
+      ${actionButton('商品ページを見る', url)}
+    `
+    : `
+      <h2 style="margin:0 0 16px;font-size:20px;color:#111;">⚠️ 商品が却下されました</h2>
+      <p>${p.sellerName} 様</p>
+      <p>あなたの出品商品が管理者により却下（公開停止）されました。</p>
+      ${infoBox([
+        infoRow('商品名', p.productName),
+        infoRow('ステータス', '<span style="color:#dc2626;font-weight:700;">❌ 公開停止</span>'),
+        ...(p.reason ? [infoRow('理由', p.reason)] : []),
+      ])}
+      <p>商品情報を修正して再出品することが可能です。ご不明な場合はお問い合わせください。</p>
+      ${actionButton('商品を編集する', `${SITE_URL}/mypage`)}
+      <p style="font-size:13px;color:#6b7280;">ご不明な点がございましたら、<a href="${SITE_URL}/contact" style="color:#ef4444;">お問い合わせ</a>からご連絡ください。</p>
+    `
+
+  return {
+    subject: isApproved
+      ? `【PARTS HUB】商品が承認されました - ${p.productName}`
+      : `【PARTS HUB】商品が却下されました - ${p.productName}`,
+    html: baseTemplate(isApproved ? '商品承認' : '商品却下', content),
+  }
+}
+
 export function passwordReset(p: { userName: string; resetUrl: string }) {
   const content = `
     <h2 style="margin:0 0 16px;font-size:20px;color:#111;">🔑 パスワードリセット</h2>

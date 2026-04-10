@@ -1,6 +1,8 @@
 import { Hono } from 'hono'
 import type { Bindings } from '../types'
 import { breadcrumbHtml, BREADCRUMB_CSS } from '../breadcrumb'
+import { sendEmail, SUPPORT_EMAIL } from '../email-config'
+import * as tpl from '../email-templates'
 
 const franchise = new Hono<{ Bindings: Bindings }>()
 
@@ -702,6 +704,21 @@ franchise.post('/inquiry', async (c) => {
     await DB.prepare(
       'INSERT INTO franchise_inquiries (name, phone, email, area_pref, occupation, experience, message) VALUES (?, ?, ?, ?, ?, ?, ?)'
     ).bind(name, phone || '', email, area_pref || '', occupation || '', experience || '', message || '').run()
+
+    // 管理者へメール通知
+    try {
+      const apiKey = (c.env as any)?.RESEND_API_KEY
+      if (apiKey) {
+        const mail = tpl.franchiseInquiryAdmin({
+          name, email, phone,
+          areaPref: area_pref, occupation, experience, message,
+        })
+        await sendEmail(apiKey, { to: SUPPORT_EMAIL, ...mail })
+      }
+    } catch (emailError) {
+      console.error('Franchise admin email error:', emailError)
+    }
+
     return c.json({ success: true, message: '資料請求を受け付けました' })
   } catch (e: any) {
     console.error('Franchise inquiry error:', e)

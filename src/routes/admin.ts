@@ -2,6 +2,8 @@ import { Hono } from 'hono'
 import { sign, verify } from 'hono/jwt'
 import * as bcrypt from 'bcryptjs'
 import type { Context, Next } from 'hono'
+import { sendEmail } from '../email-config'
+import * as tpl from '../email-templates'
 
 // JST (UTC+9) ヘルパー関数
 const JST_OFFSET = 9 * 60 * 60 * 1000;
@@ -688,7 +690,7 @@ adminRoutes.get('/products/:id', async (c) => {
 adminRoutes.put('/products/:id/status', async (c) => {
   const { env } = c;
   const productId = c.req.param('id');
-  const { status } = await c.req.json();
+  const { status, reason } = await c.req.json();
 
   // バリデーション
   const validStatuses = ['active', 'sold', 'pending', 'suspended', 'deleted'];
@@ -702,6 +704,36 @@ adminRoutes.put('/products/:id/status', async (c) => {
       SET status = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).bind(status, productId).run();
+
+    // 承認(active)または却下(suspended)時に出品者へメール通知
+    if (status === 'active' || status === 'suspended') {
+      try {
+        const apiKey = (env as any)?.RESEND_API_KEY
+        if (apiKey) {
+          const product = await env.DB.prepare(
+            'SELECT title, user_id FROM products WHERE id = ?'
+          ).bind(productId).first() as any
+          if (product?.user_id) {
+            const seller = await env.DB.prepare(
+              'SELECT name, nickname, company_name, email FROM users WHERE id = ?'
+            ).bind(product.user_id).first() as any
+            if (seller?.email) {
+              const sellerName = seller.company_name || seller.nickname || seller.name || 'ユーザー'
+              const mail = tpl.productStatusChanged({
+                sellerName,
+                productName: product.title,
+                productId: Number(productId),
+                newStatus: status as 'active' | 'suspended',
+                reason: reason || undefined,
+              })
+              await sendEmail(apiKey, { to: seller.email, ...mail })
+            }
+          }
+        }
+      } catch (emailError) {
+        console.error('Product status email error:', emailError)
+      }
+    }
 
     return c.json({ success: true, message: '商品ステータスを更新しました' });
   } catch (error) {

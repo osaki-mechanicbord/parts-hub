@@ -31,6 +31,8 @@ import argosDemoRoutes from './routes/argos-demo'
 import argosRoutes from './routes/argos'
 import guideApiRoutes from './routes/guide'
 import { breadcrumbHtml, BREADCRUMB_CSS } from './breadcrumb'
+import { sendEmail, SUPPORT_EMAIL } from './email-config'
+import * as tpl from './email-templates'
 import franchiseRoutes from './routes/franchise'
 import ebayRoutes from './routes/ebay'
 import ebaySellRoutes from './routes/ebay-sell'
@@ -936,6 +938,20 @@ app.post('/api/contact', async (c) => {
       name, email, phone || '', subject, message,
       product_id || null
     ).run()
+
+    // 管理者へメール通知
+    try {
+      const apiKey = (c.env as any)?.RESEND_API_KEY
+      if (apiKey) {
+        const mail = tpl.contactInquiryAdmin({
+          name, email, phone, subject, message,
+          inquiryType: inquiry_type || 'general',
+        })
+        await sendEmail(apiKey, { to: SUPPORT_EMAIL, ...mail })
+      }
+    } catch (emailError) {
+      console.error('Contact admin email error:', emailError)
+    }
 
     return c.json({ success: true, message: 'お問い合わせを受け付けました。2営業日以内にご連絡いたします。' })
   } catch (e: any) {
