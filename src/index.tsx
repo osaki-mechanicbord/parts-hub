@@ -2095,28 +2095,24 @@ app.get('/', (c) => {
                     const categories = response.data.data || [];
                     const container = document.getElementById('categories');
                     
-                    const iconMap = {
-                        'engine': 'cog',
-                        'gear': 'gears',
-                        'car': 'car',
-                        'bolt': 'bolt',
-                        'seat': 'chair',
-                        'paint-brush': 'paint-brush',
-                        'wheel': 'circle',
-                        'wrench': 'wrench',
-                        'oil-can': 'oil-can',
-                        'box': 'box'
+                    const svgMap = {
+                        'engine': 'engine', 'brake': 'brake', 'suspension': 'suspension',
+                        'electric': 'electrical', 'exterior': 'exterior', 'interior': 'interior',
+                        'wheel': 'tire', 'exhaust': 'exhaust', 'drivetrain': 'drivetrain',
+                        'cooling': 'cooling', 'body': 'body', 'tools': 'tool',
+                        'equipment': 'equipment', 'rebuilt': 'rebuilt', 'sst': 'sst'
                     };
                     
-                    container.innerHTML = categories.slice(0, 10).map(cat => \`
-                        <button onclick="filterByCategory(\${cat.id})" 
-                                class="category-btn flex flex-col items-center p-4 bg-gradient-to-br from-gray-50 to-white rounded-xl hover:shadow-md border border-gray-100">
-                            <div class="w-12 h-12 bg-gradient-to-br from-primary/10 to-primary/5 rounded-full flex items-center justify-center mb-2">
-                                <i class="fas fa-\${iconMap[cat.icon] || 'box'} text-primary text-xl"></i>
-                            </div>
-                            <span class="text-xs font-medium text-gray-700 text-center">\${cat.name}</span>
-                        </button>
-                    \`).join('');
+                    container.innerHTML = categories.slice(0, 10).map(cat => {
+                        var svgFile = svgMap[cat.slug];
+                        var iconHtml = svgFile
+                            ? '<img src="/static/icons/' + svgFile + '.svg" alt="' + cat.name + '" class="w-6 h-6">'
+                            : '<i class="fas fa-box text-primary text-xl"></i>';
+                        return '<button onclick="filterByCategory(' + cat.id + ')" class="category-btn flex flex-col items-center p-4 bg-gradient-to-br from-gray-50 to-white rounded-xl hover:shadow-md border border-gray-100">'
+                            + '<div class="w-12 h-12 bg-gradient-to-br from-primary/10 to-primary/5 rounded-full flex items-center justify-center mb-2">' + iconHtml + '</div>'
+                            + '<span class="text-xs font-medium text-gray-700 text-center">' + cat.name + '</span>'
+                            + '</button>';
+                    }).join('');
                 } catch (error) {
                     console.error('カテゴリ読み込みエラー:', error);
                 }
@@ -8641,7 +8637,8 @@ app.get('/search', (c) => {
             .cat-grid-item { transition: all 0.2s; cursor: pointer; border: 2px solid transparent; }
             .cat-grid-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-color: #ef4444; }
             .cat-grid-item.active { border-color: #ef4444; background: #fef2f2; }
-            .cat-grid-item.active .cat-icon { color: #ef4444; }
+            .cat-grid-item.active .cat-icon img { filter: brightness(0) saturate(100%) invert(36%) sepia(93%) saturate(2832%) hue-rotate(339deg) brightness(97%) contrast(93%); }
+            .cat-grid-item:hover .cat-icon img { filter: brightness(0) saturate(100%) invert(36%) sepia(93%) saturate(2832%) hue-rotate(339deg) brightness(97%) contrast(93%); }
             .cat-grid-item.active .cat-name { color: #dc2626; font-weight: 700; }
             .cat-chip{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;font-size:13px;font-weight:600;white-space:nowrap;border:2px solid #e5e7eb;background:#fff;color:#374151;cursor:pointer;transition:all .15s;flex-shrink:0}
             .cat-chip:hover{border-color:#ef4444;color:#ef4444;background:#fef2f2}
@@ -8857,63 +8854,63 @@ app.get('/search', (c) => {
                         <div class="cat-name text-[11px] text-gray-600 leading-tight">すべて</div>
                     </div>
                     <div class="cat-grid-item rounded-xl p-2.5 text-center bg-white" data-cat="エンジンパーツ" onclick="selectCategoryGrid(this, 'エンジンパーツ')">
-                        <div class="cat-icon text-xl mb-1 text-gray-500"><i class="fas fa-cog"></i></div>
+                        <div class="cat-icon mb-1"><img src="/static/icons/engine.svg" alt="エンジン" class="w-6 h-6 mx-auto"></div>
                         <div class="cat-name text-[11px] text-gray-600 leading-tight">エンジン</div>
                     </div>
                     <div class="cat-grid-item rounded-xl p-2.5 text-center bg-white" data-cat="ブレーキパーツ" onclick="selectCategoryGrid(this, 'ブレーキパーツ')">
-                        <div class="cat-icon text-xl mb-1 text-gray-500"><i class="fas fa-circle-stop"></i></div>
+                        <div class="cat-icon mb-1"><img src="/static/icons/brake.svg" alt="ブレーキ" class="w-6 h-6 mx-auto"></div>
                         <div class="cat-name text-[11px] text-gray-600 leading-tight">ブレーキ</div>
                     </div>
                     <div class="cat-grid-item rounded-xl p-2.5 text-center bg-white" data-cat="サスペンション" onclick="selectCategoryGrid(this, 'サスペンション')">
-                        <div class="cat-icon text-xl mb-1 text-gray-500"><i class="fas fa-arrows-up-down"></i></div>
+                        <div class="cat-icon mb-1"><img src="/static/icons/suspension.svg" alt="足回り" class="w-6 h-6 mx-auto"></div>
                         <div class="cat-name text-[11px] text-gray-600 leading-tight">足回り</div>
                     </div>
                     <div class="cat-grid-item rounded-xl p-2.5 text-center bg-white" data-cat="電装パーツ" onclick="selectCategoryGrid(this, '電装パーツ')">
-                        <div class="cat-icon text-xl mb-1 text-gray-500"><i class="fas fa-bolt"></i></div>
+                        <div class="cat-icon mb-1"><img src="/static/icons/electrical.svg" alt="電装" class="w-6 h-6 mx-auto"></div>
                         <div class="cat-name text-[11px] text-gray-600 leading-tight">電装</div>
                     </div>
                     <div class="cat-grid-item rounded-xl p-2.5 text-center bg-white" data-cat="外装パーツ" onclick="selectCategoryGrid(this, '外装パーツ')">
-                        <div class="cat-icon text-xl mb-1 text-gray-500"><i class="fas fa-car"></i></div>
+                        <div class="cat-icon mb-1"><img src="/static/icons/exterior.svg" alt="外装" class="w-6 h-6 mx-auto"></div>
                         <div class="cat-name text-[11px] text-gray-600 leading-tight">外装</div>
                     </div>
                     <div class="cat-grid-item rounded-xl p-2.5 text-center bg-white" data-cat="内装パーツ" onclick="selectCategoryGrid(this, '内装パーツ')">
-                        <div class="cat-icon text-xl mb-1 text-gray-500"><i class="fas fa-couch"></i></div>
+                        <div class="cat-icon mb-1"><img src="/static/icons/interior.svg" alt="内装" class="w-6 h-6 mx-auto"></div>
                         <div class="cat-name text-[11px] text-gray-600 leading-tight">内装</div>
                     </div>
                     <div class="cat-grid-item rounded-xl p-2.5 text-center bg-white" data-cat="ホイール・タイヤ" onclick="selectCategoryGrid(this, 'ホイール・タイヤ')">
-                        <div class="cat-icon text-xl mb-1 text-gray-500"><i class="fas fa-tire"></i></div>
+                        <div class="cat-icon mb-1"><img src="/static/icons/tire.svg" alt="タイヤ" class="w-6 h-6 mx-auto"></div>
                         <div class="cat-name text-[11px] text-gray-600 leading-tight">タイヤ</div>
                     </div>
                     <div class="cat-grid-item rounded-xl p-2.5 text-center bg-white extra-cat" data-cat="排気系パーツ" onclick="selectCategoryGrid(this, '排気系パーツ')">
-                        <div class="cat-icon text-xl mb-1 text-gray-500"><i class="fas fa-wind"></i></div>
+                        <div class="cat-icon mb-1"><img src="/static/icons/exhaust.svg" alt="排気系" class="w-6 h-6 mx-auto"></div>
                         <div class="cat-name text-[11px] text-gray-600 leading-tight">排気系</div>
                     </div>
                     <div class="cat-grid-item rounded-xl p-2.5 text-center bg-white extra-cat" data-cat="駆動系パーツ" onclick="selectCategoryGrid(this, '駆動系パーツ')">
-                        <div class="cat-icon text-xl mb-1 text-gray-500"><i class="fas fa-gears"></i></div>
+                        <div class="cat-icon mb-1"><img src="/static/icons/drivetrain.svg" alt="駆動系" class="w-6 h-6 mx-auto"></div>
                         <div class="cat-name text-[11px] text-gray-600 leading-tight">駆動系</div>
                     </div>
                     <div class="cat-grid-item rounded-xl p-2.5 text-center bg-white extra-cat" data-cat="冷却系パーツ" onclick="selectCategoryGrid(this, '冷却系パーツ')">
-                        <div class="cat-icon text-xl mb-1 text-gray-500"><i class="fas fa-temperature-low"></i></div>
+                        <div class="cat-icon mb-1"><img src="/static/icons/cooling.svg" alt="冷却系" class="w-6 h-6 mx-auto"></div>
                         <div class="cat-name text-[11px] text-gray-600 leading-tight">冷却系</div>
                     </div>
                     <div class="cat-grid-item rounded-xl p-2.5 text-center bg-white extra-cat" data-cat="ボディパーツ" onclick="selectCategoryGrid(this, 'ボディパーツ')">
-                        <div class="cat-icon text-xl mb-1 text-gray-500"><i class="fas fa-car-side"></i></div>
+                        <div class="cat-icon mb-1"><img src="/static/icons/body.svg" alt="ボディ" class="w-6 h-6 mx-auto"></div>
                         <div class="cat-name text-[11px] text-gray-600 leading-tight">ボディ</div>
                     </div>
                     <div class="cat-grid-item rounded-xl p-2.5 text-center bg-white extra-cat" data-cat="工具" onclick="selectCategoryGrid(this, '工具')">
-                        <div class="cat-icon text-xl mb-1 text-gray-500"><i class="fas fa-wrench"></i></div>
+                        <div class="cat-icon mb-1"><img src="/static/icons/tool.svg" alt="工具" class="w-6 h-6 mx-auto"></div>
                         <div class="cat-name text-[11px] text-gray-600 leading-tight">工具</div>
                     </div>
                     <div class="cat-grid-item rounded-xl p-2.5 text-center bg-white extra-cat" data-cat="SST（特殊工具）" onclick="selectCategoryGrid(this, 'SST（特殊工具）')">
-                        <div class="cat-icon text-xl mb-1 text-gray-500"><i class="fas fa-screwdriver-wrench"></i></div>
+                        <div class="cat-icon mb-1"><img src="/static/icons/sst.svg" alt="SST" class="w-6 h-6 mx-auto"></div>
                         <div class="cat-name text-[11px] text-gray-600 leading-tight">SST</div>
                     </div>
                     <div class="cat-grid-item rounded-xl p-2.5 text-center bg-white extra-cat" data-cat="リビルト品" onclick="selectCategoryGrid(this, 'リビルト品')">
-                        <div class="cat-icon text-xl mb-1 text-gray-500"><i class="fas fa-recycle"></i></div>
+                        <div class="cat-icon mb-1"><img src="/static/icons/rebuilt.svg" alt="リビルト" class="w-6 h-6 mx-auto"></div>
                         <div class="cat-name text-[11px] text-gray-600 leading-tight">リビルト</div>
                     </div>
                     <div class="cat-grid-item rounded-xl p-2.5 text-center bg-white extra-cat" data-cat="設備" onclick="selectCategoryGrid(this, '設備')">
-                        <div class="cat-icon text-xl mb-1 text-gray-500"><i class="fas fa-industry"></i></div>
+                        <div class="cat-icon mb-1"><img src="/static/icons/equipment.svg" alt="設備" class="w-6 h-6 mx-auto"></div>
                         <div class="cat-name text-[11px] text-gray-600 leading-tight">設備</div>
                     </div>
                 </div>
