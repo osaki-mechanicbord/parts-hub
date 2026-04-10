@@ -2793,30 +2793,60 @@ adminRoutes.put('/banners/reorder', async (c) => {
 // 問い合わせ管理API
 // =============================================
 
-// 問い合わせ一覧取得
+// 問い合わせ一覧取得（contact_inquiries + franchise_inquiries 統合）
 adminRoutes.get('/inquiries', async (c) => {
   const env = c.env as any
   try {
     const status = c.req.query('status') || ''
     const type = c.req.query('type') || ''
+    const source = c.req.query('source') || ''  // 'contact', 'franchise', '' (all)
     const page = parseInt(c.req.query('page') || '1')
     const limit = 20
     const offset = (page - 1) * limit
 
+    // contact_inquiries と franchise_inquiries を UNION ALL で統合
+    // franchise_inquiries のカラムを contact_inquiries 形式にマッピング
+    const contactSelect = `
+      SELECT id, 'contact' as source, inquiry_type, name, email, phone, subject, message,
+             product_id, user_id, status, admin_note, replied_at, created_at, updated_at,
+             '' as area_pref, '' as occupation, '' as experience
+      FROM contact_inquiries
+    `
+    const franchiseSelect = `
+      SELECT id, 'franchise' as source, 'franchise' as inquiry_type, name, email, phone,
+             '資料請求・パートナー募集' as subject, COALESCE(message, '') as message,
+             NULL as product_id, NULL as user_id, status, '' as admin_note, NULL as replied_at,
+             created_at, created_at as updated_at,
+             COALESCE(area_pref, '') as area_pref, COALESCE(occupation, '') as occupation, COALESCE(experience, '') as experience
+      FROM franchise_inquiries
+    `
+
+    let unionQuery = ''
+    if (source === 'contact') {
+      unionQuery = contactSelect
+    } else if (source === 'franchise') {
+      unionQuery = franchiseSelect
+    } else {
+      unionQuery = `${contactSelect} UNION ALL ${franchiseSelect}`
+    }
+
+    // フィルター付き外側クエリ
     let where = '1=1'
     const params: any[] = []
     if (status) { where += ' AND status = ?'; params.push(status) }
     if (type) { where += ' AND inquiry_type = ?'; params.push(type) }
 
-    const countRow = await env.DB.prepare(`SELECT COUNT(*) as total FROM contact_inquiries WHERE ${where}`).bind(...params).first() as any
+    const countQuery = `SELECT COUNT(*) as total FROM (${unionQuery}) AS combined WHERE ${where}`
+    const countRow = await env.DB.prepare(countQuery).bind(...params).first() as any
     const total = countRow?.total || 0
 
-    const { results } = await env.DB.prepare(`
-      SELECT * FROM contact_inquiries WHERE ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?
-    `).bind(...params, limit, offset).all()
+    const dataQuery = `SELECT * FROM (${unionQuery}) AS combined WHERE ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`
+    const { results } = await env.DB.prepare(dataQuery).bind(...params, limit, offset).all()
 
-    // 新着件数
-    const newCount = await env.DB.prepare("SELECT COUNT(*) as cnt FROM contact_inquiries WHERE status = 'new'").first() as any
+    // 新着件数（両テーブル合計）
+    const newContact = await env.DB.prepare("SELECT COUNT(*) as cnt FROM contact_inquiries WHERE status = 'new'").first() as any
+    const newFranchise = await env.DB.prepare("SELECT COUNT(*) as cnt FROM franchise_inquiries WHERE status = 'new'").first() as any
+    const newCount = (newContact?.cnt || 0) + (newFranchise?.cnt || 0)
 
     return c.json({
       success: true,
@@ -2824,53 +2854,63 @@ adminRoutes.get('/inquiries', async (c) => {
       total,
       page,
       pages: Math.ceil(total / limit),
-      new_count: newCount?.cnt || 0
+      new_count: newCount
     })
   } catch (e: any) {
     return c.json({ success: false, error: e.message }, 500)
   }
 })
 
-// 問い合わせ詳細取得
+// 問い合わせ詳細取得（source=contact|franchise で区別）
 adminRoutes.get('/inquiries/:id', async (c) => {
   const env = c.env as any
   try {
     const id = c.req.param('id')
-    const row = await env.DB.prepare('SELECT * FROM contact_inquiries WHERE id = ?').bind(id).first()
+    const source = c.req.query('source') || 'contact'
+    const table = source === 'franchise' ? 'franchise_inquiries' : 'contact_inquiries'
+    const row = await env.DB.prepare(`SELECT * FROM ${table} WHERE id = ?`).bind(id).first()
     if (!row) return c.json({ success: false, error: '問い合わせが見つかりません' }, 404)
-    return c.json({ success: true, inquiry: row })
+    return c.json({ success: true, inquiry: row, source })
   } catch (e: any) {
     return c.json({ success: false, error: e.message }, 500)
   }
 })
 
-// 問い合わせステータス更新
+// 問い合わせステータス更新（source=contact|franchise で区別）
 adminRoutes.put('/inquiries/:id/status', async (c) => {
   const env = c.env as any
   try {
     const id = c.req.param('id')
-    const { status, admin_note } = await c.req.json()
-    if (!['new', 'in_progress', 'resolved', 'closed'].includes(status)) {
+    const { status, admin_note, source } = await c.req.json()
+    const validStatuses = ['new', 'in_progress', 'contacted', 'resolved', 'closed']
+    if (!validStatuses.includes(status)) {
       return c.json({ success: false, error: '無効なステータスです' }, 400)
     }
-    const updates = [`status = ?`, `updated_at = CURRENT_TIMESTAMP`]
-    const params: any[] = [status]
-    if (admin_note !== undefined) { updates.push('admin_note = ?'); params.push(admin_note) }
-    if (status === 'resolved') { updates.push('replied_at = CURRENT_TIMESTAMP') }
 
-    await env.DB.prepare(`UPDATE contact_inquiries SET ${updates.join(', ')} WHERE id = ?`).bind(...params, id).run()
+    if (source === 'franchise') {
+      // franchise_inquiries はステータスカラムのみ（admin_noteなし）
+      await env.DB.prepare('UPDATE franchise_inquiries SET status = ? WHERE id = ?').bind(status, id).run()
+    } else {
+      const updates = [`status = ?`, `updated_at = CURRENT_TIMESTAMP`]
+      const params: any[] = [status]
+      if (admin_note !== undefined) { updates.push('admin_note = ?'); params.push(admin_note) }
+      if (status === 'resolved') { updates.push('replied_at = CURRENT_TIMESTAMP') }
+      await env.DB.prepare(`UPDATE contact_inquiries SET ${updates.join(', ')} WHERE id = ?`).bind(...params, id).run()
+    }
     return c.json({ success: true })
   } catch (e: any) {
     return c.json({ success: false, error: e.message }, 500)
   }
 })
 
-// 問い合わせ削除
+// 問い合わせ削除（source=contact|franchise で区別）
 adminRoutes.delete('/inquiries/:id', async (c) => {
   const env = c.env as any
   try {
     const id = c.req.param('id')
-    await env.DB.prepare('DELETE FROM contact_inquiries WHERE id = ?').bind(id).run()
+    const source = c.req.query('source') || 'contact'
+    const table = source === 'franchise' ? 'franchise_inquiries' : 'contact_inquiries'
+    await env.DB.prepare(`DELETE FROM ${table} WHERE id = ?`).bind(id).run()
     return c.json({ success: true })
   } catch (e: any) {
     return c.json({ success: false, error: e.message }, 500)

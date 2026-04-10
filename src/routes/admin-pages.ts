@@ -2898,9 +2898,16 @@ adminPagesRoutes.get('/franchise', (c) => {
 
     <!-- ── 問い合わせ管理タブ ── -->
     <div id="panel-inquiries" class="hidden">
+      <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 flex items-center justify-between">
+        <div>
+          <p class="text-sm text-blue-800 font-medium"><i class="fas fa-info-circle mr-1"></i>全問い合わせの統合管理</p>
+          <p class="text-xs text-blue-600 mt-1">サイト全体のお問い合わせ（フォーム + パートナー資料請求）を一元管理できます</p>
+        </div>
+        <a href="/admin/inquiries" class="px-4 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 whitespace-nowrap"><i class="fas fa-external-link-alt mr-1"></i>統合管理画面</a>
+      </div>
       <div class="bg-white rounded-xl shadow-sm border p-6">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-bold text-gray-800"><i class="fas fa-envelope-open-text mr-2 text-purple-500"></i>資料請求・問い合わせ一覧</h3>
+          <h3 class="text-lg font-bold text-gray-800"><i class="fas fa-envelope-open-text mr-2 text-purple-500"></i>パートナー資料請求一覧</h3>
           <button onclick="loadInquiries()" class="text-xs bg-gray-100 px-3 py-1.5 rounded-lg hover:bg-gray-200"><i class="fas fa-sync mr-1"></i>更新</button>
         </div>
         <div id="inquiries-list" class="space-y-3">
@@ -5753,16 +5760,23 @@ adminPagesRoutes.get('/inquiries', (c) => {
 
     <!-- フィルター -->
     <div class="bg-white rounded-xl shadow-sm p-4 mb-4 flex flex-wrap gap-3 items-center">
+      <select id="filter-source" onchange="loadInquiries()" class="px-3 py-2 border rounded-lg text-sm">
+        <option value="">全送信元</option>
+        <option value="contact">📩 お問い合わせフォーム</option>
+        <option value="franchise">🤝 パートナー資料請求</option>
+      </select>
       <select id="filter-status" onchange="loadInquiries()" class="px-3 py-2 border rounded-lg text-sm">
         <option value="">全ステータス</option>
         <option value="new">🔴 新規</option>
         <option value="in_progress">🟡 対応中</option>
+        <option value="contacted">📞 連絡済み</option>
         <option value="resolved">🟢 解決済み</option>
         <option value="closed">⚫ 完了</option>
       </select>
       <select id="filter-type" onchange="loadInquiries()" class="px-3 py-2 border rounded-lg text-sm">
         <option value="">全種別</option>
         <option value="general">一般</option>
+        <option value="franchise">パートナー資料請求</option>
         <option value="proxy_onsite">代理出品（出張）</option>
         <option value="proxy_shipping">代理出品（郵送）</option>
         <option value="technical">技術的な問題</option>
@@ -5802,16 +5816,19 @@ adminPagesRoutes.get('/inquiries', (c) => {
       }
 
       var typeLabels = {
-        general: '一般', proxy_onsite: '代理出品（出張）', proxy_shipping: '代理出品（郵送）',
+        general: '一般', franchise: 'パートナー資料請求', proxy_onsite: '代理出品（出張）', proxy_shipping: '代理出品（郵送）',
         technical: '技術的な問題', payment: '決済', product_question: '商品質問', other: 'その他'
       };
-      var statusLabels = { new: '🔴 新規', in_progress: '🟡 対応中', resolved: '🟢 解決済み', closed: '⚫ 完了' };
+      var statusLabels = { new: '🔴 新規', in_progress: '🟡 対応中', contacted: '📞 連絡済み', resolved: '🟢 解決済み', closed: '⚫ 完了' };
+      var sourceLabels = { contact: '📩 フォーム', franchise: '🤝 パートナー' };
 
       async function loadInquiries(page) {
         currentPage = page || 1;
+        var source = document.getElementById('filter-source').value;
         var status = document.getElementById('filter-status').value;
         var type = document.getElementById('filter-type').value;
         var params = 'page=' + currentPage;
+        if (source) params += '&source=' + source;
         if (status) params += '&status=' + status;
         if (type) params += '&type=' + type;
 
@@ -5841,11 +5858,12 @@ adminPagesRoutes.get('/inquiries', (c) => {
           var html = '';
           data.inquiries.forEach(function(inq) {
             var dateStr = new Date(inq.created_at).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' });
-            html += '<div class="bg-white rounded-xl shadow-sm p-5 hover:shadow-md transition-shadow cursor-pointer" onclick="openDetail(' + inq.id + ')">';
+            html += '<div class="bg-white rounded-xl shadow-sm p-5 hover:shadow-md transition-shadow cursor-pointer" onclick="openDetail(' + inq.id + ',\'' + escHtml(inq.source) + '\')">';
             html += '  <div class="flex items-start justify-between">';
             html += '    <div class="flex-1 min-w-0">';
             html += '      <div class="flex items-center gap-2 mb-1">';
             html += '        <span class="inq-badge inq-' + escHtml(inq.status) + '">' + (statusLabels[inq.status] || inq.status) + '</span>';
+            html += '        <span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:500;' + (inq.source==='franchise' ? 'background:#fef3c7;color:#92400e' : 'background:#dbeafe;color:#1e40af') + '">' + (sourceLabels[inq.source] || inq.source) + '</span>';
             html += '        <span class="type-badge">' + (typeLabels[inq.inquiry_type] || inq.inquiry_type) + '</span>';
             html += '      </div>';
             html += '      <h4 class="font-bold text-gray-900 truncate">' + escHtml(inq.subject) + '</h4>';
@@ -5878,9 +5896,10 @@ adminPagesRoutes.get('/inquiries', (c) => {
         }
       }
 
-      async function openDetail(id) {
+      async function openDetail(id, source) {
+        source = source || 'contact';
         try {
-          var res = await axios.get('/api/admin/inquiries/' + id, {
+          var res = await axios.get('/api/admin/inquiries/' + id + '?source=' + source, {
             headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') }
           });
           var inq = res.data.inquiry;
@@ -5903,6 +5922,14 @@ adminPagesRoutes.get('/inquiries', (c) => {
           if (repliedStr) html += '      <div><span class="text-gray-500">対応日:</span> ' + repliedStr + '</div>';
           if (inq.product_id) html += '      <div><span class="text-gray-500">関連商品:</span> <a href="/admin/products/' + inq.product_id + '" class="text-blue-600">#' + inq.product_id + '</a></div>';
           html += '    </div>';
+          if (source === 'franchise') {
+            var occLabels = { mechanic: '整備士', dealer: '中古車販売', parts: 'パーツ販売', transport: '運送業', other: 'その他' };
+            html += '    <div class="grid grid-cols-2 gap-2 text-sm mt-2 pt-2 border-t border-gray-200">';
+            if (inq.area_pref) html += '      <div><span class="text-gray-500">希望エリア:</span> ' + escHtml(inq.area_pref) + '</div>';
+            if (inq.occupation) html += '      <div><span class="text-gray-500">職業:</span> ' + (occLabels[inq.occupation] || escHtml(inq.occupation)) + '</div>';
+            if (inq.experience) html += '      <div class="col-span-2"><span class="text-gray-500">経験:</span> ' + escHtml(inq.experience) + '</div>';
+            html += '    </div>';
+          }
           html += '  </div>';
 
           html += '  <div>';
@@ -5914,9 +5941,9 @@ adminPagesRoutes.get('/inquiries', (c) => {
           html += '  <div class="border-t pt-4">';
           html += '    <label class="block text-sm font-medium text-gray-700 mb-2">ステータス変更</label>';
           html += '    <div class="flex gap-2 flex-wrap">';
-          ['new', 'in_progress', 'resolved', 'closed'].forEach(function(s) {
+          ['new', 'in_progress', 'contacted', 'resolved', 'closed'].forEach(function(s) {
             var active = inq.status === s ? 'ring-2 ring-offset-2 ring-purple-500' : 'opacity-70 hover:opacity-100';
-            html += '      <button onclick="updateStatus(' + inq.id + ',\\'' + s + '\\')" class="inq-badge inq-' + s + ' cursor-pointer ' + active + ' px-4 py-2">' + statusLabels[s] + '</button>';
+            html += '      <button onclick="updateStatus(' + inq.id + ',\\'' + s + '\\',\\'' + source + '\\')" class="inq-badge inq-' + s + ' cursor-pointer ' + active + ' px-4 py-2">' + statusLabels[s] + '</button>';
           });
           html += '    </div>';
           html += '  </div>';
@@ -5925,13 +5952,13 @@ adminPagesRoutes.get('/inquiries', (c) => {
           html += '  <div>';
           html += '    <label class="block text-sm font-medium text-gray-700 mb-2">管理メモ</label>';
           html += '    <textarea id="admin-note" rows="3" class="w-full px-3 py-2 border rounded-lg text-sm">' + escHtml(inq.admin_note || '') + '</textarea>';
-          html += '    <button onclick="saveNote(' + inq.id + ')" class="mt-2 px-4 py-2 bg-purple-500 text-white text-sm rounded-lg hover:bg-purple-600"><i class="fas fa-save mr-1"></i>メモ保存</button>';
+          html += '    <button onclick="saveNote(' + inq.id + ',\\'' + source + '\\')" class="mt-2 px-4 py-2 bg-purple-500 text-white text-sm rounded-lg hover:bg-purple-600"><i class="fas fa-save mr-1"></i>メモ保存</button>';
           html += '  </div>';
 
           // 削除
           html += '  <div class="border-t pt-4 flex justify-between">';
           html += '    <a href="mailto:' + escHtml(inq.email) + '?subject=Re: ' + encodeURIComponent(inq.subject) + '" class="px-4 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600"><i class="fas fa-reply mr-1"></i>メールで返信</a>';
-          html += '    <button onclick="deleteInquiry(' + inq.id + ')" class="px-4 py-2 bg-red-100 text-red-600 text-sm rounded-lg hover:bg-red-200"><i class="fas fa-trash mr-1"></i>削除</button>';
+          html += '    <button onclick="deleteInquiry(' + inq.id + ',\\'' + source + '\\')" class="px-4 py-2 bg-red-100 text-red-600 text-sm rounded-lg hover:bg-red-200"><i class="fas fa-trash mr-1"></i>削除</button>';
           html += '  </div>';
           html += '</div>';
 
@@ -5946,9 +5973,10 @@ adminPagesRoutes.get('/inquiries', (c) => {
         document.getElementById('detail-modal').classList.add('hidden');
       }
 
-      async function updateStatus(id, newStatus) {
+      async function updateStatus(id, newStatus, source) {
+        source = source || 'contact';
         try {
-          await axios.put('/api/admin/inquiries/' + id + '/status', { status: newStatus }, {
+          await axios.put('/api/admin/inquiries/' + id + '/status', { status: newStatus, source: source }, {
             headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') }
           });
           closeModal();
@@ -5958,12 +5986,14 @@ adminPagesRoutes.get('/inquiries', (c) => {
         }
       }
 
-      async function saveNote(id) {
+      async function saveNote(id, source) {
+        source = source || 'contact';
         try {
           var note = document.getElementById('admin-note').value;
           await axios.put('/api/admin/inquiries/' + id + '/status', {
             status: 'in_progress',
-            admin_note: note
+            admin_note: note,
+            source: source
           }, {
             headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') }
           });
@@ -5973,10 +6003,11 @@ adminPagesRoutes.get('/inquiries', (c) => {
         }
       }
 
-      async function deleteInquiry(id) {
+      async function deleteInquiry(id, source) {
+        source = source || 'contact';
         if (!confirm('この問い合わせを削除しますか？')) return;
         try {
-          await axios.delete('/api/admin/inquiries/' + id, {
+          await axios.delete('/api/admin/inquiries/' + id + '?source=' + source, {
             headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') }
           });
           closeModal();
