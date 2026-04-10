@@ -8474,53 +8474,94 @@ app.get('/favorites', (c) => {
         <script src="${v('/static/auth-header.js')}"></script>
         <script src="${v('/static/notification-badge.js')}"></script>
         <script>
-            const currentUserId = 1; // TODO: 実際のログインユーザーID
-            
+            // ログインユーザー情報を取得
+            var currentUser = null;
+            var authToken = localStorage.getItem('token');
+            try { currentUser = JSON.parse(localStorage.getItem('user') || 'null'); } catch(e) {}
+
+            function getAuthHeaders() {
+                var t = localStorage.getItem('token');
+                return t ? { Authorization: 'Bearer ' + t } : {};
+            }
+
+            // 未ログインならログインページへ
+            if (!authToken) {
+                document.addEventListener('DOMContentLoaded', function() {
+                    var loading = document.getElementById('loading');
+                    if (loading) {
+                        loading.innerHTML = '<div class="bg-white rounded-xl shadow-sm p-8 text-center">'
+                            + '<i class="fas fa-heart text-gray-300 text-5xl mb-4"></i>'
+                            + '<p class="text-gray-900 font-semibold mb-2">お気に入りを見るにはログインが必要です</p>'
+                            + '<a href="/login" class="inline-block mt-4 px-6 py-3 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition-colors">'
+                            + '<i class="fas fa-sign-in-alt mr-2"></i>ログイン</a></div>';
+                    }
+                });
+            }
+
             // お気に入り一覧を読み込み
             async function loadFavorites() {
+                if (!authToken || !currentUser) {
+                    return;
+                }
+                var currentUserId = currentUser.id;
                 try {
-                    const response = await axios.get(\`/api/mypage/favorites/\${currentUserId}\`);
+                    const response = await axios.get('/api/mypage/favorites/' + currentUserId, {
+                        headers: getAuthHeaders(),
+                        timeout: 15000
+                    });
                     
                     document.getElementById('loading').classList.add('hidden');
                     
                     if (response.data.success && response.data.data.length > 0) {
                         const grid = document.getElementById('favorites-grid');
-                        grid.innerHTML = response.data.data.map(item => \`
-                            <div class="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-                                <a href="/products/\${item.id}" class="block relative">
-                                    <img loading="lazy" src="\${item.image_url}" alt="\${item.title}" class="w-full aspect-square object-cover\${item.status === 'sold' ? ' opacity-60' : ''}">
-                                    \${item.status === 'sold' ? '<div class="absolute inset-0 flex items-center justify-center pointer-events-none"><div style="background:rgba(220,38,38,0.85);transform:rotate(-20deg);padding:8px 36px;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.3);"><span style="font-size:1.5rem;font-weight:900;color:#fff;letter-spacing:0.15em;text-shadow:1px 1px 2px rgba(0,0,0,0.3);">SOLD</span></div></div>' : ''}
-                                </a>
-                                <div class="p-3">
-                                    <a href="/products/\${item.id}" class="block">
-                                        <h3 class="text-sm font-semibold text-gray-900 mb-2 line-clamp-2 hover:text-red-500">\${item.title}</h3>
-                                        <p class="text-lg font-bold text-red-500 mb-2">¥\${Math.round(Number(item.price) * 1.1).toLocaleString()} <span class="text-xs font-normal text-gray-500">税込</span></p>
-                                    </a>
-                                    <div class="flex items-center justify-between text-xs text-gray-500 mb-3">
-                                        <span><i class="fas fa-heart mr-1"></i>\${item.favorite_count}</span>
-                                        <span><i class="fas fa-comment mr-1"></i>\${item.comment_count}</span>
-                                    </div>
-                                    <button onclick="removeFavorite(\${item.id})" 
-                                            class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-3 rounded text-sm font-semibold transition-colors">
-                                        <i class="fas fa-heart-broken mr-1"></i>削除
-                                    </button>
-                                </div>
-                            </div>
-                        \`).join('');
+                        grid.innerHTML = response.data.data.map(function(item) {
+                            var soldOverlay = item.status === 'sold' ? '<div class="absolute inset-0 flex items-center justify-center pointer-events-none"><div style="background:rgba(220,38,38,0.85);transform:rotate(-20deg);padding:8px 36px;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.3);"><span style="font-size:1.5rem;font-weight:900;color:#fff;letter-spacing:0.15em;text-shadow:1px 1px 2px rgba(0,0,0,0.3);">SOLD</span></div></div>' : '';
+                            var imgClass = 'w-full aspect-square object-cover' + (item.status === 'sold' ? ' opacity-60' : '');
+                            var priceStr = Math.round(Number(item.price) * 1.1).toLocaleString();
+                            return '<div class="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow">'
+                                + '<a href="/products/' + item.id + '" class="block relative">'
+                                + '<img loading="lazy" src="' + (item.image_url||'') + '" alt="' + ((item.title||'').replace(/"/g,'&quot;')) + '" class="' + imgClass + '">'
+                                + soldOverlay + '</a>'
+                                + '<div class="p-3">'
+                                + '<a href="/products/' + item.id + '" class="block">'
+                                + '<h3 class="text-sm font-semibold text-gray-900 mb-2 line-clamp-2 hover:text-red-500">' + (item.title||'') + '</h3>'
+                                + '<p class="text-lg font-bold text-red-500 mb-2">¥' + priceStr + ' <span class="text-xs font-normal text-gray-500">税込</span></p>'
+                                + '</a>'
+                                + '<div class="flex items-center justify-between text-xs text-gray-500 mb-3">'
+                                + '<span><i class="far fa-heart mr-1"></i>' + (item.favorite_count||0) + '</span>'
+                                + '<span><i class="far fa-comment mr-1"></i>' + (item.comment_count||0) + '</span>'
+                                + '</div>'
+                                + '<button data-remove-id="' + item.id + '" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-3 rounded text-sm font-semibold transition-colors">'
+                                + '<i class="fas fa-heart-broken mr-1"></i>削除</button>'
+                                + '</div></div>';
+                        }).join('');
+
+                        // 削除ボタンのイベント委譲
+                        grid.querySelectorAll('[data-remove-id]').forEach(function(btn) {
+                            btn.addEventListener('click', function() {
+                                removeFavorite(btn.getAttribute('data-remove-id'));
+                            });
+                        });
                     } else {
                         document.getElementById('empty-state').classList.remove('hidden');
                     }
                 } catch (error) {
                     console.error('Failed to load favorites:', error);
-                    document.getElementById('loading').innerHTML = \`
-                        <div class="bg-white rounded-xl shadow-sm p-8">
-                            <i class="fas fa-exclamation-triangle text-red-500 text-4xl mb-4"></i>
-                            <p class="text-gray-900 font-semibold mb-2">読み込みに失敗しました</p>
-                            <button onclick="loadFavorites()" class="text-red-500 hover:text-red-600 font-semibold">
-                                <i class="fas fa-redo mr-1"></i>再試行
-                            </button>
-                        </div>
-                    \`;
+                    if (error && error.response && error.response.status === 401) {
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('user');
+                        document.getElementById('loading').innerHTML = '<div class="bg-white rounded-xl shadow-sm p-8 text-center">'
+                            + '<i class="fas fa-lock text-gray-300 text-5xl mb-4"></i>'
+                            + '<p class="text-gray-900 font-semibold mb-2">セッションが切れました。再ログインしてください</p>'
+                            + '<a href="/login" class="inline-block mt-4 px-6 py-3 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition-colors">'
+                            + '<i class="fas fa-sign-in-alt mr-2"></i>ログイン</a></div>';
+                    } else {
+                        document.getElementById('loading').innerHTML = '<div class="bg-white rounded-xl shadow-sm p-8 text-center">'
+                            + '<i class="fas fa-exclamation-triangle text-red-500 text-4xl mb-4"></i>'
+                            + '<p class="text-gray-900 font-semibold mb-2">読み込みに失敗しました</p>'
+                            + '<button onclick="loadFavorites()" class="text-red-500 hover:text-red-600 font-semibold">'
+                            + '<i class="fas fa-redo mr-1"></i>再試行</button></div>';
+                    }
                 }
             }
             
@@ -8529,8 +8570,9 @@ app.get('/favorites', (c) => {
                 if (!confirm('このお気に入りを削除しますか？')) return;
                 
                 try {
-                    await axios.delete(\`/api/mypage/favorites/\${productId}\`, {
-                        data: { user_id: currentUserId }
+                    await axios.delete('/api/mypage/favorites/' + productId, {
+                        headers: getAuthHeaders(),
+                        data: { user_id: currentUser.id }
                     });
                     
                     // 再読み込み
@@ -8544,7 +8586,9 @@ app.get('/favorites', (c) => {
             }
             
             // ページ読み込み時に実行
-            loadFavorites();
+            if (authToken && currentUser) {
+                loadFavorites();
+            }
         </script>
 
         ${Footer()}
