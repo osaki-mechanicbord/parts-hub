@@ -10844,7 +10844,6 @@ app.get('/area/:pref/:maker/:model', async (c) => {
       "name": safePref + 'の' + safeMaker + ' ' + safeModel + 'パーツガイド',
       "description": descText,
       "url": 'https://parts-hub-tci.com/area/' + prefSlug + '/' + encodeURIComponent(maker) + '/' + encodeURIComponent(model),
-      "about": { "@type": "Vehicle", "name": model, "manufacturer": { "@type": "Organization", "name": maker } },
       "breadcrumb": {
         "@type": "BreadcrumbList",
         "itemListElement": [
@@ -11538,11 +11537,9 @@ app.get('/vehicle/:maker/:model', async (c) => {
         ]
       },
       "about": {
-        "@type": "Vehicle",
-        "name": model,
-        "manufacturer": { "@type": "Organization", "name": maker },
-        "vehicleConfiguration": uniqueGrades.length + 'グレード' + (hasTireData ? ' / タイヤサイズ情報あり' : ''),
-        ...(driveTypes.length > 0 ? { "driveWheelConfiguration": driveTypes.join(' / ') } : {})
+        "@type": "Thing",
+        "name": maker + ' ' + model,
+        "description": maker + ' ' + model + ' - ' + uniqueGrades.length + 'グレード' + (hasTireData ? ' / タイヤサイズ情報あり' : '')
       },
       "mainEntity": {
         "@type": "ItemList",
