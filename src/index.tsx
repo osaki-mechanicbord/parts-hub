@@ -11557,7 +11557,7 @@ app.get('/vehicle/:maker/:model', async (c) => {
     })}</script>
     ${productCount > 0 ? '<script type="application/ld+json">' + JSON.stringify({
       "@context": "https://schema.org",
-      "@type": "OfferCatalog",
+      "@type": "ItemList",
       "name": maker + ' ' + model + '用の中古パーツ',
       "numberOfItems": productCount,
       "url": 'https://parts-hub-tci.com/search?vm_maker=' + encodeURIComponent(maker) + '&vm_model=' + encodeURIComponent(model),
