@@ -1288,9 +1288,12 @@ ebaySell.post('/fulfillment/:orderId', async (c) => {
 /**
  * POST /quick-list
  * 商品を一括でeBayに出品（Inventory登録 → Offer作成 → 公開）
+ * ※ Cloudflare Workers では内部サブリクエスト (ebaySell.request()) が動作しないため、
+ *    全ロジックをインラインで実行する
  */
 ebaySell.post('/quick-list', async (c) => {
   const { DB } = c.env as any
+  const steps: any[] = []
 
   try {
     const body = await c.req.json()
@@ -1298,6 +1301,7 @@ ebaySell.post('/quick-list', async (c) => {
 
     if (!listing_id) return c.json({ success: false, error: 'listing_id は必須です' }, 400)
 
+    // 出品データ取得（product情報含む）
     const listing = await DB.prepare(`
       SELECT cb.*, p.title, p.description, p.condition, p.price, p.part_number, p.vm_maker, p.vm_model,
         (SELECT GROUP_CONCAT(image_url) FROM product_images WHERE product_id = p.id ORDER BY display_order ASC) as images
@@ -1321,9 +1325,7 @@ ebaySell.post('/quick-list', async (c) => {
       return c.json({ success: false, error: 'USD価格が未設定です' }, 400)
     }
 
-    const steps: any[] = []
-
-    // Step 0: eBay Token 取得（事前チェック）
+    // ── Step 0: eBay Token 取得 ──
     let ebayToken: string
     try {
       ebayToken = await getUserToken(c.env)
@@ -1338,74 +1340,257 @@ ebaySell.post('/quick-list', async (c) => {
       }, 400)
     }
 
-    // Step 1: Inventory 登録
-    try {
-      const invRes = await ebaySell.request(
-        new Request('http://localhost/inventory', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': c.req.header('Authorization') || ''
-          },
-          body: JSON.stringify({ listing_id })
-        }),
-        c.env
-      )
-      const invData = await invRes.json() as any
-      steps.push({ step: 'inventory', ...invData })
+    const apiBase = getApiBase(c.env)
 
-      if (!invData.success) {
-        return c.json({
-          success: false,
-          error: 'Inventory登録に失敗: ' + (invData.error || invData.details || ''),
-          steps
-        }, 400)
+    // ── Step 1: Inventory 登録（インライン実行） ──
+    let sku: string
+    try {
+      sku = listing.ebay_sku || `PH-${listing.product_id}-${Date.now()}`
+
+      // デフォルトロケーション取得
+      const location = await DB.prepare(`
+        SELECT merchant_location_key FROM ebay_inventory_locations WHERE is_default = 1 LIMIT 1
+      `).first() as any
+
+      // 商品画像URL一覧
+      const imageUrls = (listing.images || '')
+        .split(',')
+        .filter((u: string) => u.trim())
+        .map((u: string) => {
+          if (u.startsWith('http')) return u
+          const publicUrl = c.env.R2_PUBLIC_URL || 'https://images.parts-hub-tci.com'
+          return `${publicUrl}/${u}`
+        })
+        .slice(0, 12)
+
+      // conditionマッピング
+      const conditionMap: Record<string, string> = {
+        'new': 'NEW',
+        'like_new': 'LIKE_NEW',
+        'good': 'USED_GOOD',
+        'acceptable': 'USED_ACCEPTABLE'
       }
+      const ebayCondition = listing.ebay_condition || conditionMap[listing.condition] || 'USED_GOOD'
+
+      // Inventory Item Payload
+      const inventoryPayload: any = {
+        availability: {
+          shipToLocationAvailability: { quantity: 1 }
+        },
+        condition: ebayCondition,
+        product: {
+          title: (listing.title_en || listing.title || 'Auto Part').substring(0, 80),
+          description: listing.description_en || listing.description || '',
+          imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
+          aspects: {
+            'Brand': [listing.vm_maker || 'Unbranded'],
+            'Country/Region of Manufacture': ['Japan'],
+            'Type': ['OEM']
+          }
+        }
+      }
+
+      if (listing.part_number) {
+        inventoryPayload.product.mpn = listing.part_number
+        inventoryPayload.product.brand = listing.vm_maker || 'Unbranded'
+      }
+
+      if (listing.weight_kg) {
+        inventoryPayload.packageWeightAndSize = {
+          weight: { value: listing.weight_kg, unit: 'KILOGRAM' }
+        }
+        if (listing.length_cm && listing.width_cm && listing.height_cm) {
+          inventoryPayload.packageWeightAndSize.dimensions = {
+            length: listing.length_cm, width: listing.width_cm,
+            height: listing.height_cm, unit: 'CENTIMETER'
+          }
+          inventoryPayload.packageWeightAndSize.packageType = 'PACKAGE_THICK_ENVELOPE'
+        }
+      }
+
+      if (location?.merchant_location_key) {
+        inventoryPayload.availability.shipToLocationAvailability.availabilityDistributions = [{
+          merchantLocationKey: location.merchant_location_key, quantity: 1
+        }]
+      }
+
+      // eBay Inventory API 呼び出し
+      const invRes = await fetch(`${apiBase}/sell/inventory/v1/inventory_item/${encodeURIComponent(sku)}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${ebayToken}`,
+          'Content-Type': 'application/json',
+          'Content-Language': 'en-US'
+        },
+        body: JSON.stringify(inventoryPayload)
+      })
+
+      if (!invRes.ok && invRes.status !== 204) {
+        const errText = await invRes.text()
+        console.error('[quick-list] Inventory API error:', invRes.status, errText)
+        await DB.prepare(`
+          UPDATE cross_border_listings SET ebay_last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+        `).bind(`Inventory API error ${invRes.status}: ${errText.substring(0, 500)}`, listing_id).run()
+        steps.push({ step: 'inventory', success: false, error: `eBay Inventory API error: ${invRes.status}`, details: errText.substring(0, 300) })
+        return c.json({ success: false, error: `Inventory登録に失敗 (HTTP ${invRes.status})`, steps }, 400)
+      }
+
+      // Inventory 成功 → DB更新
+      await DB.prepare(`
+        UPDATE cross_border_listings SET
+          ebay_sku = ?, ebay_condition = ?, ebay_last_error = NULL,
+          status = CASE WHEN status = 'draft' THEN 'ready' ELSE status END,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).bind(sku, ebayCondition, listing_id).run()
+
+      steps.push({ step: 'inventory', success: true, sku, message: 'eBay Inventory に商品を登録しました' })
     } catch (invErr: any) {
+      console.error('[quick-list] Inventory exception:', invErr)
       steps.push({ step: 'inventory', success: false, error: invErr.message })
       return c.json({ success: false, error: 'Inventory登録でエラー: ' + invErr.message, steps }, 500)
     }
 
-    // Step 2: Offer 作成 + 公開
+    // ── Step 2: Offer 作成 + 公開（インライン実行） ──
     try {
-      const offerRes = await ebaySell.request(
-        new Request('http://localhost/offer', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': c.req.header('Authorization') || ''
-          },
-          body: JSON.stringify({
-            listing_id,
-            category_id,
-            fulfillment_policy_id,
-            payment_policy_id,
-            return_policy_id,
-            auto_publish: true
-          })
-        }),
-        c.env
-      )
-      const offerData = await offerRes.json() as any
-      steps.push({ step: 'offer', ...offerData })
+      // listing 最新情報を再取得（SKU等が更新されているため）
+      const freshListing = await DB.prepare(`
+        SELECT * FROM cross_border_listings WHERE id = ?
+      `).bind(listing_id).first() as any
+
+      const marketplace = freshListing.ebay_marketplace_id || 'EBAY_US'
+
+      // Offer Payload
+      const offerPayload: any = {
+        sku: sku,
+        marketplaceId: marketplace,
+        format: 'FIXED_PRICE',
+        listingDescription: freshListing.description_en || listing.description_en || '',
+        pricingSummary: {
+          price: {
+            value: String(freshListing.price_usd || listing.price_usd || '0'),
+            currency: 'USD'
+          }
+        },
+        quantityLimitPerBuyer: 1,
+        includeCatalogProductDetails: true
+      }
+
+      // カテゴリID
+      const catId = category_id || freshListing.ebay_category_id
+      if (catId) offerPayload.categoryId = catId
+
+      // ビジネスポリシー
+      const fpId = fulfillment_policy_id || freshListing.ebay_fulfillment_policy_id
+      const ppId = payment_policy_id || freshListing.ebay_payment_policy_id
+      const rpId = return_policy_id || freshListing.ebay_return_policy_id
+      if (fpId) {
+        offerPayload.listingPolicies = {
+          fulfillmentPolicyId: fpId,
+          paymentPolicyId: ppId,
+          returnPolicyId: rpId
+        }
+      }
+
+      // Offer 作成
+      const createRes = await fetch(`${apiBase}/sell/inventory/v1/offer`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${ebayToken}`,
+          'Content-Type': 'application/json',
+          'Content-Language': 'en-US'
+        },
+        body: JSON.stringify(offerPayload)
+      })
+
+      if (!createRes.ok) {
+        const errText = await createRes.text()
+        console.error('[quick-list] Offer API error:', createRes.status, errText)
+        await DB.prepare(`
+          UPDATE cross_border_listings SET ebay_last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+        `).bind(`Offer API error ${createRes.status}: ${errText.substring(0, 500)}`, listing_id).run()
+        steps.push({ step: 'offer', success: false, error: `eBay Offer API error: ${createRes.status}`, details: errText.substring(0, 300) })
+        return c.json({ success: false, error: `Offer作成に失敗 (HTTP ${createRes.status})`, steps }, 400)
+      }
+
+      const offerData = await createRes.json() as any
+      const offerId = offerData.offerId
+
+      // Offer DB更新
+      await DB.prepare(`
+        UPDATE cross_border_listings SET
+          ebay_offer_id = ?,
+          ebay_category_id = COALESCE(?, ebay_category_id),
+          ebay_fulfillment_policy_id = COALESCE(?, ebay_fulfillment_policy_id),
+          ebay_payment_policy_id = COALESCE(?, ebay_payment_policy_id),
+          ebay_return_policy_id = COALESCE(?, ebay_return_policy_id),
+          ebay_last_error = NULL,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).bind(offerId, catId || null, fpId || null, ppId || null, rpId || null, listing_id).run()
+
+      steps.push({ step: 'offer', success: true, offer_id: offerId, message: 'eBay Offer を作成しました' })
+
+      // ── Step 3: Publish（公開） ──
+      const publishRes = await fetch(`${apiBase}/sell/inventory/v1/offer/${offerId}/publish`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${ebayToken}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (!publishRes.ok) {
+        const errText = await publishRes.text()
+        console.error('[quick-list] Publish error:', publishRes.status, errText)
+        await DB.prepare(`
+          UPDATE cross_border_listings SET ebay_last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+        `).bind(`Publish error ${publishRes.status}: ${errText.substring(0, 500)}`, listing_id).run()
+        steps.push({ step: 'publish', success: false, error: `Publish error: ${publishRes.status}`, details: errText.substring(0, 300) })
+        return c.json({
+          success: true,
+          steps,
+          ebay_url: null,
+          message: 'Offer作成まで完了しましたが、公開に失敗しました。eBayのビジネスポリシー設定を確認してください。エラー: ' + errText.substring(0, 200)
+        })
+      }
+
+      const publishData = await publishRes.json() as any
+      const ebayListingId = publishData.listingId
+
+      // Publish 成功 → DB更新
+      await DB.prepare(`
+        UPDATE cross_border_listings SET
+          ebay_listing_id = ?, status = 'listed', listed_at = CURRENT_TIMESTAMP,
+          external_listing_id = ?, external_url = ?,
+          ebay_last_error = NULL, ebay_synced_at = CURRENT_TIMESTAMP,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).bind(
+        ebayListingId, ebayListingId,
+        `https://www.ebay.com/itm/${ebayListingId}`,
+        listing_id
+      ).run()
+
+      steps.push({ step: 'publish', success: true, listing_id: ebayListingId, ebay_url: `https://www.ebay.com/itm/${ebayListingId}` })
 
       return c.json({
-        success: offerData.success,
+        success: true,
         steps,
-        ebay_url: offerData.ebay_url || null,
-        message: offerData.published
-          ? 'eBayへの出品が完了しました！'
-          : 'Offer作成まで完了しましたが、公開に失敗しました。' + (offerData.publish_error ? ' エラー: ' + offerData.publish_error.substring(0, 200) : '')
+        ebay_url: `https://www.ebay.com/itm/${ebayListingId}`,
+        message: 'eBayへの出品が完了しました！'
       })
     } catch (offerErr: any) {
+      console.error('[quick-list] Offer/Publish exception:', offerErr)
       steps.push({ step: 'offer', success: false, error: offerErr.message })
-      return c.json({ success: false, error: 'Offer作成でエラー: ' + offerErr.message, steps }, 500)
+      return c.json({ success: false, error: 'Offer作成/公開でエラー: ' + offerErr.message, steps }, 500)
     }
   } catch (err: any) {
     console.error('[quick-list] Unhandled error:', err)
     return c.json({
       success: false,
       error: 'eBay出品処理で予期しないエラーが発生しました: ' + (err.message || String(err)),
+      steps,
       hint: '管理画面のeBay連携ステータスを確認してください'
     }, 500)
   }
