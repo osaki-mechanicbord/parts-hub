@@ -1474,12 +1474,85 @@ ebaySell.post('/quick-list', async (c) => {
 
       const marketplace = freshListing.ebay_marketplace_id || 'EBAY_US'
 
+      // ── 既存Offerの削除（重複回避） ──
+      if (freshListing.ebay_offer_id) {
+        try {
+          console.log(`[quick-list] Deleting existing offer: ${freshListing.ebay_offer_id}`)
+          // まずwithdraw（取り下げ）してからdelete
+          await fetch(`${apiBase}/sell/inventory/v1/offer/${freshListing.ebay_offer_id}/withdraw`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${ebayToken}`, 'Content-Type': 'application/json' }
+          }).catch(() => {})
+          await fetch(`${apiBase}/sell/inventory/v1/offer/${freshListing.ebay_offer_id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${ebayToken}` }
+          }).catch(() => {})
+          // DB のoffer_idもクリア
+          await DB.prepare(`
+            UPDATE cross_border_listings SET ebay_offer_id = NULL, ebay_listing_id = NULL WHERE id = ?
+          `).bind(listing_id).run()
+        } catch (delErr: any) {
+          console.warn('[quick-list] Failed to delete existing offer:', delErr.message)
+        }
+      }
+
+      // ── ロケーション取得（merchantLocationKey → Item.Country に必要） ──
+      const offerLocation = await DB.prepare(`
+        SELECT merchant_location_key FROM ebay_inventory_locations WHERE is_default = 1 LIMIT 1
+      `).first() as any
+
+      // ── eBay ポリシーを自動取得（未指定の場合） ──
+      let fpId = fulfillment_policy_id || freshListing.ebay_fulfillment_policy_id
+      let ppId = payment_policy_id || freshListing.ebay_payment_policy_id
+      let rpId = return_policy_id || freshListing.ebay_return_policy_id
+
+      if (!fpId || !ppId || !rpId) {
+        try {
+          console.log('[quick-list] Fetching eBay business policies...')
+          const [fulfillmentRes, paymentRes, returnRes] = await Promise.all([
+            fetch(`${apiBase}/sell/account/v1/fulfillment_policy?marketplace_id=${marketplace}`, {
+              headers: { 'Authorization': `Bearer ${ebayToken}` }
+            }),
+            fetch(`${apiBase}/sell/account/v1/payment_policy?marketplace_id=${marketplace}`, {
+              headers: { 'Authorization': `Bearer ${ebayToken}` }
+            }),
+            fetch(`${apiBase}/sell/account/v1/return_policy?marketplace_id=${marketplace}`, {
+              headers: { 'Authorization': `Bearer ${ebayToken}` }
+            })
+          ])
+
+          if (fulfillmentRes.ok && !fpId) {
+            const fData = await fulfillmentRes.json() as any
+            const policies = fData.fulfillmentPolicies || []
+            if (policies.length > 0) fpId = policies[0].fulfillmentPolicyId
+          }
+          if (paymentRes.ok && !ppId) {
+            const pData = await paymentRes.json() as any
+            const policies = pData.paymentPolicies || []
+            if (policies.length > 0) ppId = policies[0].paymentPolicyId
+          }
+          if (returnRes.ok && !rpId) {
+            const rData = await returnRes.json() as any
+            const policies = rData.returnPolicies || []
+            if (policies.length > 0) rpId = policies[0].returnPolicyId
+          }
+          console.log(`[quick-list] Policies: fulfillment=${fpId}, payment=${ppId}, return=${rpId}`)
+        } catch (policyErr: any) {
+          console.error('[quick-list] Policy fetch error:', policyErr.message)
+        }
+      }
+
+      // ── カテゴリID（未指定の場合は自動車パーツのデフォルト） ──
+      // eBay カテゴリ 174016 = "Car & Truck Parts & Accessories" (Parts & Accessories > Car & Truck Parts & Accessories)
+      const catId = category_id || freshListing.ebay_category_id || '174016'
+
       // Offer Payload
       const offerPayload: any = {
         sku: sku,
         marketplaceId: marketplace,
         format: 'FIXED_PRICE',
         listingDescription: freshListing.description_en || listing.description_en || '',
+        categoryId: catId,
         pricingSummary: {
           price: {
             value: String(freshListing.price_usd || listing.price_usd || '0'),
@@ -1490,21 +1563,20 @@ ebaySell.post('/quick-list', async (c) => {
         includeCatalogProductDetails: true
       }
 
-      // カテゴリID
-      const catId = category_id || freshListing.ebay_category_id
-      if (catId) offerPayload.categoryId = catId
+      // ロケーション（Item.Country の設定に必須）
+      if (offerLocation?.merchant_location_key) {
+        offerPayload.merchantLocationKey = offerLocation.merchant_location_key
+      }
 
       // ビジネスポリシー
-      const fpId = fulfillment_policy_id || freshListing.ebay_fulfillment_policy_id
-      const ppId = payment_policy_id || freshListing.ebay_payment_policy_id
-      const rpId = return_policy_id || freshListing.ebay_return_policy_id
-      if (fpId) {
-        offerPayload.listingPolicies = {
-          fulfillmentPolicyId: fpId,
-          paymentPolicyId: ppId,
-          returnPolicyId: rpId
-        }
+      if (fpId || ppId || rpId) {
+        offerPayload.listingPolicies = {}
+        if (fpId) offerPayload.listingPolicies.fulfillmentPolicyId = fpId
+        if (ppId) offerPayload.listingPolicies.paymentPolicyId = ppId
+        if (rpId) offerPayload.listingPolicies.returnPolicyId = rpId
       }
+
+      console.log('[quick-list] Offer payload:', JSON.stringify(offerPayload).substring(0, 500))
 
       // Offer 作成
       const createRes = await fetch(`${apiBase}/sell/inventory/v1/offer`, {
@@ -1512,7 +1584,8 @@ ebaySell.post('/quick-list', async (c) => {
         headers: {
           'Authorization': `Bearer ${ebayToken}`,
           'Content-Type': 'application/json',
-          'Content-Language': 'en-US'
+          'Content-Language': 'en-US',
+          'X-EBAY-C-MARKETPLACE-ID': marketplace
         },
         body: JSON.stringify(offerPayload)
       })
@@ -1528,7 +1601,7 @@ ebaySell.post('/quick-list', async (c) => {
           success: false,
           error: `eBay Offer API error: ${createRes.status}`,
           details: errText.substring(0, 500),
-          debug: { sku, marketplace, price_usd: freshListing.price_usd, hasPolicies: !!fpId }
+          debug: { sku, marketplace, price_usd: freshListing.price_usd, catId, hasPolicies: !!(fpId && ppId && rpId), hasLocation: !!offerLocation?.merchant_location_key }
         })
         return c.json({ success: false, error: `Offer作成に失敗 (HTTP ${createRes.status})`, steps }, 400)
       }
@@ -1536,7 +1609,7 @@ ebaySell.post('/quick-list', async (c) => {
       const offerData = await createRes.json() as any
       const offerId = offerData.offerId
 
-      // Offer DB更新
+      // Offer DB更新（ポリシーIDも保存して次回以降の再取得を省略）
       await DB.prepare(`
         UPDATE cross_border_listings SET
           ebay_offer_id = ?,
