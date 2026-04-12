@@ -5286,16 +5286,33 @@ adminPagesRoutes.get('/cross-border', (c) => {
           loadListings();
         } else {
           var msg = 'eBay出品処理で問題が発生しました。\\n\\n';
-          if (ebayRes.data.steps) {
+          if (ebayRes.data.steps && ebayRes.data.steps.length > 0) {
             ebayRes.data.steps.forEach(function(s) {
-              msg += s.step + ': ' + (s.success ? '✅' : '❌ ' + (s.error || '')) + '\\n';
+              var detail = s.error || s.details || '';
+              if (detail && detail.length > 150) detail = detail.substring(0, 150) + '...';
+              msg += s.step + ': ' + (s.success ? '✅ OK' : '❌ 失敗 - ' + detail) + '\\n';
             });
           }
-          msg += '\\n' + (ebayRes.data.message || '');
+          if (ebayRes.data.error) msg += '\\nエラー: ' + ebayRes.data.error;
+          if (ebayRes.data.hint) msg += '\\n\\nヒント: ' + ebayRes.data.hint;
+          if (ebayRes.data.message) msg += '\\n' + ebayRes.data.message;
           alert(msg);
         }
       } catch(e) {
-        alert('エラーが発生しました: ' + (e.response?.data?.error || e.message));
+        var errMsg = 'eBay出品エラー:\\n\\n';
+        if (e.response && e.response.data) {
+          errMsg += e.response.data.error || '';
+          if (e.response.data.hint) errMsg += '\\n\\nヒント: ' + e.response.data.hint;
+          if (e.response.data.steps) {
+            errMsg += '\\n\\n処理ステップ:\\n';
+            e.response.data.steps.forEach(function(s) {
+              errMsg += '  ' + s.step + ': ' + (s.success ? '✅' : '❌ ' + (s.error || '').substring(0, 100)) + '\\n';
+            });
+          }
+        } else {
+          errMsg += e.message || String(e);
+        }
+        alert(errMsg);
       } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fab fa-ebay mr-1"></i>eBayに出品';

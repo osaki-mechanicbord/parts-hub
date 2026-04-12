@@ -68,6 +68,8 @@ ebaySell.use('*', async (c, next) => {
  * DB から有効なUser Access Token を取得
  * 期限切れの場合は自動リフレッシュ
  */
+const DEFAULT_EBAY_SCOPES = 'https://api.ebay.com/oauth/api_scope https://api.ebay.com/oauth/api_scope/sell.inventory https://api.ebay.com/oauth/api_scope/sell.fulfillment https://api.ebay.com/oauth/api_scope/sell.account https://api.ebay.com/oauth/api_scope/sell.marketing'
+
 async function getUserToken(env: Bindings): Promise<string> {
   const { DB } = env as any
   const environment = env.EBAY_ENVIRONMENT || 'production'
@@ -100,12 +102,15 @@ async function getUserToken(env: Bindings): Promise<string> {
   // トークンリフレッシュ
   const clientId = env.EBAY_CLIENT_ID
   const clientSecret = env.EBAY_CLIENT_SECRET
-  if (!clientId || !clientSecret) throw new Error('eBay API credentials not configured')
+  if (!clientId || !clientSecret) throw new Error('eBay API credentials not configured (EBAY_CLIENT_ID / EBAY_CLIENT_SECRET)')
 
   const apiBase = getApiBase(env)
   const credentials = btoa(`${clientId}:${clientSecret}`)
 
-  const scopes = tokenRow.scopes || 'https://api.ebay.com/oauth/api_scope https://api.ebay.com/oauth/api_scope/sell.inventory https://api.ebay.com/oauth/api_scope/sell.fulfillment https://api.ebay.com/oauth/api_scope/sell.account https://api.ebay.com/oauth/api_scope/sell.marketing'
+  // scopesが空文字・null・undefinedの場合はデフォルトスコープを使用
+  const scopes = (tokenRow.scopes && tokenRow.scopes.trim()) ? tokenRow.scopes.trim() : DEFAULT_EBAY_SCOPES
+
+  console.log(`[eBay Token Refresh] environment=${environment}, token_id=${tokenRow.id}, expires_at=${tokenRow.expires_at}, scopes_length=${scopes.length}`)
 
   const res = await fetch(`${apiBase}/identity/v1/oauth2/token`, {
     method: 'POST',
@@ -123,10 +128,20 @@ async function getUserToken(env: Bindings): Promise<string> {
   if (!res.ok) {
     const errText = await res.text()
     console.error('eBay token refresh error:', res.status, errText)
-    throw new Error(`eBay Token Refresh 失敗: ${res.status}`)
+    // エラー詳細をDBに記録
+    try {
+      await DB.prepare(`
+        UPDATE ebay_user_tokens SET updated_at = CURRENT_TIMESTAMP WHERE id = ?
+      `).bind(tokenRow.id).run()
+    } catch (_) {}
+    throw new Error(`eBay Token Refresh 失敗 (HTTP ${res.status}): ${errText.substring(0, 300)}`)
   }
 
   const data = await res.json() as any
+
+  if (!data.access_token) {
+    throw new Error('eBay Token Refresh: access_token がレスポンスに含まれていません')
+  }
 
   // DB更新
   const newExpiresAt = new Date(now + (data.expires_in || 7200) * 1000).toISOString()
@@ -134,10 +149,12 @@ async function getUserToken(env: Bindings): Promise<string> {
     UPDATE ebay_user_tokens SET
       access_token = ?,
       expires_at = ?,
+      scopes = CASE WHEN scopes IS NULL OR scopes = '' THEN ? ELSE scopes END,
       updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
-  `).bind(data.access_token, newExpiresAt, tokenRow.id).run()
+  `).bind(data.access_token, newExpiresAt, DEFAULT_EBAY_SCOPES, tokenRow.id).run()
 
+  console.log(`[eBay Token Refresh] Success! New expires_at=${newExpiresAt}`)
   return data.access_token
 }
 
@@ -1306,57 +1323,91 @@ ebaySell.post('/quick-list', async (c) => {
 
     const steps: any[] = []
 
-    // Step 1: Inventory 登録
-    const invRes = await ebaySell.request(
-      new Request('http://localhost/inventory', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': c.req.header('Authorization') || ''
-        },
-        body: JSON.stringify({ listing_id })
-      }),
-      c.env
-    )
-    const invData = await invRes.json() as any
-    steps.push({ step: 'inventory', ...invData })
+    // Step 0: eBay Token 取得（事前チェック）
+    let ebayToken: string
+    try {
+      ebayToken = await getUserToken(c.env)
+      steps.push({ step: 'token', success: true, message: 'eBayトークン取得成功' })
+    } catch (tokenErr: any) {
+      steps.push({ step: 'token', success: false, error: tokenErr.message })
+      return c.json({
+        success: false,
+        error: 'eBayトークンの取得に失敗しました: ' + tokenErr.message,
+        steps,
+        hint: 'eBay連携の再認証が必要な場合があります。管理画面のeBay連携セクションから再度認証してください。'
+      }, 400)
+    }
 
-    if (!invData.success) {
-      return c.json({ success: false, error: 'Inventory登録に失敗', steps }, 400)
+    // Step 1: Inventory 登録
+    try {
+      const invRes = await ebaySell.request(
+        new Request('http://localhost/inventory', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': c.req.header('Authorization') || ''
+          },
+          body: JSON.stringify({ listing_id })
+        }),
+        c.env
+      )
+      const invData = await invRes.json() as any
+      steps.push({ step: 'inventory', ...invData })
+
+      if (!invData.success) {
+        return c.json({
+          success: false,
+          error: 'Inventory登録に失敗: ' + (invData.error || invData.details || ''),
+          steps
+        }, 400)
+      }
+    } catch (invErr: any) {
+      steps.push({ step: 'inventory', success: false, error: invErr.message })
+      return c.json({ success: false, error: 'Inventory登録でエラー: ' + invErr.message, steps }, 500)
     }
 
     // Step 2: Offer 作成 + 公開
-    const offerRes = await ebaySell.request(
-      new Request('http://localhost/offer', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': c.req.header('Authorization') || ''
-        },
-        body: JSON.stringify({
-          listing_id,
-          category_id,
-          fulfillment_policy_id,
-          payment_policy_id,
-          return_policy_id,
-          auto_publish: true
-        })
-      }),
-      c.env
-    )
-    const offerData = await offerRes.json() as any
-    steps.push({ step: 'offer', ...offerData })
+    try {
+      const offerRes = await ebaySell.request(
+        new Request('http://localhost/offer', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': c.req.header('Authorization') || ''
+          },
+          body: JSON.stringify({
+            listing_id,
+            category_id,
+            fulfillment_policy_id,
+            payment_policy_id,
+            return_policy_id,
+            auto_publish: true
+          })
+        }),
+        c.env
+      )
+      const offerData = await offerRes.json() as any
+      steps.push({ step: 'offer', ...offerData })
 
-    return c.json({
-      success: offerData.success,
-      steps,
-      ebay_url: offerData.ebay_url || null,
-      message: offerData.published
-        ? 'eBayへの出品が完了しました！'
-        : 'Offer作成まで完了しましたが、公開に失敗しました。'
-    })
+      return c.json({
+        success: offerData.success,
+        steps,
+        ebay_url: offerData.ebay_url || null,
+        message: offerData.published
+          ? 'eBayへの出品が完了しました！'
+          : 'Offer作成まで完了しましたが、公開に失敗しました。' + (offerData.publish_error ? ' エラー: ' + offerData.publish_error.substring(0, 200) : '')
+      })
+    } catch (offerErr: any) {
+      steps.push({ step: 'offer', success: false, error: offerErr.message })
+      return c.json({ success: false, error: 'Offer作成でエラー: ' + offerErr.message, steps }, 500)
+    }
   } catch (err: any) {
-    return c.json({ success: false, error: err.message }, 500)
+    console.error('[quick-list] Unhandled error:', err)
+    return c.json({
+      success: false,
+      error: 'eBay出品処理で予期しないエラーが発生しました: ' + (err.message || String(err)),
+      hint: '管理画面のeBay連携ステータスを確認してください'
+    }, 500)
   }
 })
 
