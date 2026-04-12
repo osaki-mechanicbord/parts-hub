@@ -562,27 +562,323 @@ crossBorder.get('/category-map', async (c) => {
 })
 
 // ============================================================
+// 国際送料テーブル（日本発・USD建て）
+// ============================================================
+const SHIPPING_TABLE = {
+  // EMS（日本郵便 国際スピード郵便）- 主要国
+  ems: {
+    name: 'EMS（国際スピード郵便）',
+    days: '3〜5営業日',
+    zones: {
+      us: [ // アメリカ（第3地帯）
+        { maxKg: 0.5, jpy: 3200 }, { maxKg: 1, jpy: 4600 }, { maxKg: 1.5, jpy: 5800 },
+        { maxKg: 2, jpy: 7000 }, { maxKg: 3, jpy: 9400 }, { maxKg: 4, jpy: 11800 },
+        { maxKg: 5, jpy: 14200 }, { maxKg: 6, jpy: 16200 }, { maxKg: 8, jpy: 20200 },
+        { maxKg: 10, jpy: 24200 }, { maxKg: 15, jpy: 34200 }, { maxKg: 20, jpy: 44200 },
+        { maxKg: 25, jpy: 52700 }, { maxKg: 30, jpy: 60000 }
+      ],
+      eu: [ // ヨーロッパ（第3地帯）
+        { maxKg: 0.5, jpy: 3200 }, { maxKg: 1, jpy: 4600 }, { maxKg: 1.5, jpy: 5800 },
+        { maxKg: 2, jpy: 7000 }, { maxKg: 3, jpy: 9400 }, { maxKg: 4, jpy: 11800 },
+        { maxKg: 5, jpy: 14200 }, { maxKg: 6, jpy: 16200 }, { maxKg: 8, jpy: 20200 },
+        { maxKg: 10, jpy: 24200 }, { maxKg: 15, jpy: 34200 }, { maxKg: 20, jpy: 44200 },
+        { maxKg: 25, jpy: 52700 }, { maxKg: 30, jpy: 60000 }
+      ],
+      asia: [ // アジア（第1地帯）
+        { maxKg: 0.5, jpy: 2000 }, { maxKg: 1, jpy: 2900 }, { maxKg: 1.5, jpy: 3700 },
+        { maxKg: 2, jpy: 4500 }, { maxKg: 3, jpy: 5900 }, { maxKg: 4, jpy: 7300 },
+        { maxKg: 5, jpy: 8700 }, { maxKg: 6, jpy: 9900 }, { maxKg: 8, jpy: 12300 },
+        { maxKg: 10, jpy: 14700 }, { maxKg: 15, jpy: 20700 }, { maxKg: 20, jpy: 26700 },
+        { maxKg: 25, jpy: 31700 }, { maxKg: 30, jpy: 36700 }
+      ]
+    }
+  },
+  // eパケット（小型包装物） - 2kgまで
+  epacket: {
+    name: 'eパケット',
+    days: '7〜14営業日',
+    zones: {
+      us: [
+        { maxKg: 0.1, jpy: 685 }, { maxKg: 0.2, jpy: 745 }, { maxKg: 0.3, jpy: 830 },
+        { maxKg: 0.5, jpy: 1000 }, { maxKg: 0.75, jpy: 1255 }, { maxKg: 1, jpy: 1510 },
+        { maxKg: 1.5, jpy: 2020 }, { maxKg: 2, jpy: 2530 }
+      ],
+      eu: [
+        { maxKg: 0.1, jpy: 685 }, { maxKg: 0.2, jpy: 745 }, { maxKg: 0.3, jpy: 830 },
+        { maxKg: 0.5, jpy: 1000 }, { maxKg: 0.75, jpy: 1255 }, { maxKg: 1, jpy: 1510 },
+        { maxKg: 1.5, jpy: 2020 }, { maxKg: 2, jpy: 2530 }
+      ],
+      asia: [
+        { maxKg: 0.1, jpy: 510 }, { maxKg: 0.2, jpy: 570 }, { maxKg: 0.3, jpy: 655 },
+        { maxKg: 0.5, jpy: 825 }, { maxKg: 0.75, jpy: 1040 }, { maxKg: 1, jpy: 1255 },
+        { maxKg: 1.5, jpy: 1685 }, { maxKg: 2, jpy: 2115 }
+      ]
+    }
+  },
+  // SAL（エコノミー航空便）
+  sal: {
+    name: 'SAL（エコノミー航空便）',
+    days: '2〜4週間',
+    zones: {
+      us: [
+        { maxKg: 0.5, jpy: 1080 }, { maxKg: 1, jpy: 1560 }, { maxKg: 1.5, jpy: 2040 },
+        { maxKg: 2, jpy: 2520 }, { maxKg: 3, jpy: 3480 }, { maxKg: 5, jpy: 5400 },
+        { maxKg: 10, jpy: 10200 }, { maxKg: 15, jpy: 15000 }, { maxKg: 20, jpy: 19800 }
+      ],
+      eu: [
+        { maxKg: 0.5, jpy: 1080 }, { maxKg: 1, jpy: 1560 }, { maxKg: 1.5, jpy: 2040 },
+        { maxKg: 2, jpy: 2520 }, { maxKg: 3, jpy: 3480 }, { maxKg: 5, jpy: 5400 },
+        { maxKg: 10, jpy: 10200 }, { maxKg: 15, jpy: 15000 }, { maxKg: 20, jpy: 19800 }
+      ],
+      asia: [
+        { maxKg: 0.5, jpy: 780 }, { maxKg: 1, jpy: 1080 }, { maxKg: 1.5, jpy: 1380 },
+        { maxKg: 2, jpy: 1680 }, { maxKg: 3, jpy: 2280 }, { maxKg: 5, jpy: 3480 },
+        { maxKg: 10, jpy: 6480 }, { maxKg: 15, jpy: 9480 }, { maxKg: 20, jpy: 12480 }
+      ]
+    }
+  }
+}
+
+// eBay手数料定数
+const EBAY_FEES = {
+  finalValueFeeRate: 0.129,    // 落札手数料 12.9%
+  internationalFeeRate: 0.0165, // 海外取引手数料 1.65%
+  fixedFeeUsd: 0.30,            // 固定手数料 $0.30/件
+  payoneerFeeRate: 0.02,        // Payoneer出金手数料 ~2%
+  packagingCostJpy: 800,        // 梱包材概算 ¥800
+}
+
+// 送料計算ヘルパー
+function calcShippingCost(weightKg: number, method: string, zone: string): { jpy: number; usd: number; rate: number } | null {
+  const carrier = (SHIPPING_TABLE as any)[method]
+  if (!carrier) return null
+  const rates = carrier.zones[zone]
+  if (!rates) return null
+  const tier = rates.find((t: any) => weightKg <= t.maxKg)
+  if (!tier) {
+    // 最大重量超過 → 最後のティアを使用
+    const last = rates[rates.length - 1]
+    return { jpy: last.jpy, usd: 0, rate: 0 }
+  }
+  return { jpy: tier.jpy, usd: 0, rate: 0 }
+}
+
+// ============================================================
+// 国際送料計算API
+// ============================================================
+crossBorder.post('/calc-shipping', async (c) => {
+  try {
+    const { weight_kg, zone } = await c.req.json()
+    const w = Number(weight_kg) || 1
+    const z = zone || 'us'
+
+    const results: any[] = []
+    for (const [key, carrier] of Object.entries(SHIPPING_TABLE)) {
+      const cost = calcShippingCost(w, key, z)
+      if (cost) {
+        const maxWeight = (carrier.zones as any)[z]?.[(carrier.zones as any)[z].length - 1]?.maxKg || 0
+        results.push({
+          method: key,
+          name: carrier.name,
+          days: carrier.days,
+          cost_jpy: cost.jpy,
+          max_weight_kg: maxWeight,
+          available: w <= maxWeight
+        })
+      }
+    }
+
+    return c.json({ success: true, weight_kg: w, zone: z, options: results })
+  } catch (error) {
+    return c.json({ success: false, error: '送料計算に失敗しました' }, 500)
+  }
+})
+
+// ============================================================
+// 自動価格計算API（推奨価格 + コスト内訳）
+// ============================================================
+crossBorder.post('/calc-price', async (c) => {
+  try {
+    const body = await c.req.json()
+    const priceJpy = Number(body.price_jpy) || 0
+    const weightKg = Number(body.weight_kg) || 1
+    const shippingMethod = body.shipping_method || 'ems'
+    const zone = body.zone || 'us'
+    const exchangeRate = Number(body.exchange_rate) || 150
+    const targetMargin = Number(body.target_margin) || 0.25 // デフォルト25%利益率
+
+    // 1. 仕入原価（税込）
+    const costJpy = Math.round(priceJpy * 1.1)
+
+    // 2. 国際送料（JPY）
+    const shippingResult = calcShippingCost(weightKg, shippingMethod, zone)
+    const shippingCostJpy = shippingResult?.jpy || 5000
+
+    // 3. 梱包材
+    const packagingJpy = EBAY_FEES.packagingCostJpy
+
+    // 4. 総コスト（JPY）
+    const totalCostJpy = costJpy + shippingCostJpy + packagingJpy
+
+    // 5. 総コスト（USD）
+    const totalCostUsd = totalCostJpy / exchangeRate
+
+    // 6. eBay手数料を逆算して推奨販売価格を計算
+    // 販売価格 = 総コスト / (1 - eBay手数料率 - Payoneer手数料率 - 目標利益率) + 固定手数料
+    const totalFeeRate = EBAY_FEES.finalValueFeeRate + EBAY_FEES.internationalFeeRate + EBAY_FEES.payoneerFeeRate
+    const recommendedPriceUsd = Math.ceil((totalCostUsd / (1 - totalFeeRate - targetMargin)) + EBAY_FEES.fixedFeeUsd)
+
+    // 7. 推奨価格での利益シミュレーション
+    const ebayFinalValueFee = recommendedPriceUsd * EBAY_FEES.finalValueFeeRate
+    const ebayInternationalFee = recommendedPriceUsd * EBAY_FEES.internationalFeeRate
+    const ebayFixedFee = EBAY_FEES.fixedFeeUsd
+    const totalEbayFees = ebayFinalValueFee + ebayInternationalFee + ebayFixedFee
+    const payoneerPayout = recommendedPriceUsd - totalEbayFees
+    const payoneerFee = payoneerPayout * EBAY_FEES.payoneerFeeRate
+    const netPayoutUsd = payoneerPayout - payoneerFee
+    const netPayoutJpy = Math.floor(netPayoutUsd * exchangeRate)
+    const shippingCostUsd = shippingCostJpy / exchangeRate
+    const profitJpy = netPayoutJpy - costJpy - shippingCostJpy - packagingJpy
+    const profitMargin = netPayoutJpy > 0 ? Math.round((profitJpy / netPayoutJpy) * 100) : 0
+
+    // 8. 複数利益率での推奨価格テーブル
+    const marginOptions = [0.15, 0.20, 0.25, 0.30, 0.40, 0.50]
+    const priceTable = marginOptions.map(m => {
+      const price = Math.ceil((totalCostUsd / (1 - totalFeeRate - m)) + EBAY_FEES.fixedFeeUsd)
+      const eFees = price * (EBAY_FEES.finalValueFeeRate + EBAY_FEES.internationalFeeRate) + EBAY_FEES.fixedFeeUsd
+      const pPayout = price - eFees
+      const pFee = pPayout * EBAY_FEES.payoneerFeeRate
+      const net = pPayout - pFee
+      const netJpy = Math.floor(net * exchangeRate)
+      const profit = netJpy - costJpy - shippingCostJpy - packagingJpy
+      return {
+        target_margin: Math.round(m * 100),
+        price_usd: price,
+        profit_jpy: profit,
+        actual_margin: netJpy > 0 ? Math.round((profit / netJpy) * 100) : 0
+      }
+    })
+
+    return c.json({
+      success: true,
+      input: { price_jpy: priceJpy, weight_kg: weightKg, shipping_method: shippingMethod, zone, exchange_rate: exchangeRate, target_margin: Math.round(targetMargin * 100) },
+      cost_breakdown: {
+        product_cost_jpy: costJpy,
+        shipping_cost_jpy: shippingCostJpy,
+        shipping_cost_usd: Math.round(shippingCostUsd * 100) / 100,
+        packaging_jpy: packagingJpy,
+        total_cost_jpy: totalCostJpy,
+        total_cost_usd: Math.round(totalCostUsd * 100) / 100
+      },
+      recommended: {
+        price_usd: recommendedPriceUsd,
+        shipping_charge_usd: Math.ceil(shippingCostUsd),
+      },
+      fee_breakdown: {
+        ebay_final_value_fee: Math.round(ebayFinalValueFee * 100) / 100,
+        ebay_international_fee: Math.round(ebayInternationalFee * 100) / 100,
+        ebay_fixed_fee: ebayFixedFee,
+        total_ebay_fees: Math.round(totalEbayFees * 100) / 100,
+        payoneer_fee: Math.round(payoneerFee * 100) / 100,
+        total_fees_usd: Math.round((totalEbayFees + payoneerFee) * 100) / 100
+      },
+      profit: {
+        net_payout_usd: Math.round(netPayoutUsd * 100) / 100,
+        net_payout_jpy: netPayoutJpy,
+        profit_jpy: profitJpy,
+        profit_margin: profitMargin
+      },
+      price_table: priceTable,
+      fee_rates: {
+        ebay_final_value: '12.9%',
+        ebay_international: '1.65%',
+        ebay_fixed: '$0.30/件',
+        payoneer: '〜2%',
+        total_effective: Math.round(totalFeeRate * 1000) / 10 + '%'
+      }
+    })
+  } catch (error) {
+    console.error('Price calc error:', error)
+    return c.json({ success: false, error: '価格計算に失敗しました' }, 500)
+  }
+})
+
+// ============================================================
 // 利益シミュレーション（複数為替レートで計算）
 // ============================================================
 crossBorder.post('/simulate-profit', async (c) => {
   try {
-    const { price_jpy, price_usd, shipping_cost_usd } = await c.req.json()
-    const costJpy = Math.round(Number(price_jpy) * 1.1) // 税込仕入れ価格
-    const rates = [130, 135, 140, 145, 150, 155, 160]
+    const { price_jpy, price_usd, shipping_cost_usd, weight_kg, shipping_method, zone } = await c.req.json()
+    const costJpy = Math.round(Number(price_jpy) * 1.1)
+    const packagingJpy = EBAY_FEES.packagingCostJpy
+
+    // 送料（JPY）
+    const w = Number(weight_kg) || 1
+    const shippingResult = calcShippingCost(w, shipping_method || 'ems', zone || 'us')
+    const shippingCostJpy = shippingResult?.jpy || Math.round((shipping_cost_usd || 30) * 150)
+
+    const rates = [120, 130, 140, 145, 150, 155, 160, 170]
+    const totalFeeRate = EBAY_FEES.finalValueFeeRate + EBAY_FEES.internationalFeeRate
 
     const simulations = rates.map(rate => {
-      const saleJpy = Math.floor((price_usd + shipping_cost_usd) * rate)
-      const fees = Math.floor(saleJpy * 0.16) // eBay 13% + PayPal 3%
-      const shippingJpy = Math.floor(shipping_cost_usd * rate)
-      const profit = saleJpy - costJpy - fees - shippingJpy
-      const margin = saleJpy > 0 ? Math.round((profit / saleJpy) * 100) : 0
-      return { rate, saleJpy, fees, shippingJpy, profit, margin }
+      // eBay手数料
+      const ebayFees = price_usd * totalFeeRate + EBAY_FEES.fixedFeeUsd
+      const payoneerPayout = price_usd - ebayFees
+      const payoneerFee = payoneerPayout * EBAY_FEES.payoneerFeeRate
+      const netUsd = payoneerPayout - payoneerFee
+      const netJpy = Math.floor(netUsd * rate)
+      const profit = netJpy - costJpy - shippingCostJpy - packagingJpy
+      const margin = netJpy > 0 ? Math.round((profit / netJpy) * 100) : 0
+      return {
+        rate,
+        sale_usd: price_usd,
+        net_payout_jpy: netJpy,
+        fees_usd: Math.round((ebayFees + payoneerFee) * 100) / 100,
+        fees_jpy: Math.floor((ebayFees + payoneerFee) * rate),
+        shipping_jpy: shippingCostJpy,
+        profit,
+        margin
+      }
     })
 
-    return c.json({ success: true, costJpy, simulations })
+    return c.json({
+      success: true,
+      costJpy,
+      shipping_cost_jpy: shippingCostJpy,
+      packaging_jpy: packagingJpy,
+      simulations
+    })
   } catch (error) {
     return c.json({ success: false, error: 'シミュレーション失敗' }, 500)
   }
+})
+
+// ============================================================
+// 送料テーブル情報取得
+// ============================================================
+crossBorder.get('/shipping-table', (c) => {
+  const table: any = {}
+  for (const [key, carrier] of Object.entries(SHIPPING_TABLE)) {
+    table[key] = {
+      name: carrier.name,
+      days: carrier.days,
+      zones: Object.keys(carrier.zones),
+      max_weights: {} as any
+    }
+    for (const [zone, rates] of Object.entries(carrier.zones)) {
+      table[key].max_weights[zone] = (rates as any)[(rates as any).length - 1]?.maxKg || 0
+    }
+  }
+  return c.json({
+    success: true,
+    methods: table,
+    fee_rates: EBAY_FEES,
+    zones: {
+      us: 'アメリカ・カナダ・メキシコ',
+      eu: 'ヨーロッパ',
+      asia: 'アジア・オセアニア'
+    }
+  })
 })
 
 export default crossBorder

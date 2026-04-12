@@ -4171,7 +4171,7 @@ adminPagesRoutes.get('/cross-border', (c) => {
           <p class="text-sm text-gray-600">販売価格: <strong id="sim-usd">$0</strong> / 送料: <strong id="sim-ship">$0</strong></p>
         </div>
         <div class="sim-row font-bold text-xs text-gray-500 mb-1">
-          <span>レート</span><span>売上(¥)</span><span>手数料</span><span>利益</span><span>利益率</span>
+          <span>為替レート</span><span>手取(¥)</span><span>手数料</span><span>利益</span><span>利益率</span>
         </div>
         <div id="sim-results"></div>
       </div>
@@ -4211,31 +4211,118 @@ adminPagesRoutes.get('/cross-border', (c) => {
           <textarea id="modal-desc-en" rows="5" class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="English description for eBay listing..."></textarea>
         </div>
 
-        <!-- 価格設定 -->
-        <div class="bg-blue-50 rounded-xl p-4 mb-4">
-          <p class="font-bold text-sm text-blue-800 mb-3"><i class="fas fa-dollar-sign mr-1"></i>価格設定</p>
+        <!-- 配送・重量設定 -->
+        <div class="bg-gray-50 rounded-xl p-4 mb-4">
+          <p class="font-bold text-sm text-gray-700 mb-3"><i class="fas fa-shipping-fast mr-1 text-indigo-500"></i>配送設定</p>
           <div class="grid grid-cols-3 gap-3">
             <div>
-              <label class="text-xs text-gray-500">仕入原価(税込)</label>
-              <p class="font-bold text-gray-800" id="modal-cost-jpy">¥0</p>
+              <label class="text-xs text-gray-500">重量(kg)</label>
+              <input type="number" id="modal-weight-kg" step="0.1" value="2" min="0.1" class="w-full px-2 py-1.5 border rounded-lg text-sm" onchange="autoCalcPrice()">
             </div>
             <div>
-              <label class="text-xs text-gray-500">販売価格(USD)</label>
-              <input type="number" id="modal-price-usd" step="0.01" class="w-full px-2 py-1.5 border rounded-lg text-sm font-bold" onchange="calcProfit()">
+              <label class="text-xs text-gray-500">配送方法</label>
+              <select id="modal-ship-method" class="w-full px-2 py-1.5 border rounded-lg text-sm" onchange="autoCalcPrice()">
+                <option value="ems">EMS（3〜5日）</option>
+                <option value="epacket">eパケット（7〜14日）</option>
+                <option value="sal">SAL（2〜4週間）</option>
+              </select>
             </div>
             <div>
-              <label class="text-xs text-gray-500">送料(USD)</label>
-              <input type="number" id="modal-shipping-usd" step="0.01" value="30" class="w-full px-2 py-1.5 border rounded-lg text-sm" onchange="calcProfit()">
+              <label class="text-xs text-gray-500">配送先</label>
+              <select id="modal-ship-zone" class="w-full px-2 py-1.5 border rounded-lg text-sm" onchange="autoCalcPrice()">
+                <option value="us">アメリカ</option>
+                <option value="eu">ヨーロッパ</option>
+                <option value="asia">アジア</option>
+              </select>
             </div>
           </div>
-          <div class="mt-3 pt-3 border-t border-blue-200 flex items-center justify-between">
-            <div>
-              <span class="text-sm text-blue-700">予想利益:</span>
-              <span class="text-xl font-bold" id="modal-profit">-</span>
+          <p class="text-xs text-gray-400 mt-2" id="modal-ship-info"></p>
+        </div>
+
+        <!-- 自動価格計算 -->
+        <div class="bg-blue-50 rounded-xl p-4 mb-4">
+          <div class="flex items-center justify-between mb-3">
+            <p class="font-bold text-sm text-blue-800"><i class="fas fa-calculator mr-1"></i>自動価格計算</p>
+            <div class="flex items-center gap-2">
+              <label class="text-xs text-gray-500">目標利益率</label>
+              <select id="modal-target-margin" class="px-2 py-1 border rounded-lg text-sm font-bold text-blue-800" onchange="autoCalcPrice()">
+                <option value="15">15%</option>
+                <option value="20">20%</option>
+                <option value="25" selected>25%</option>
+                <option value="30">30%</option>
+                <option value="40">40%</option>
+                <option value="50">50%</option>
+              </select>
             </div>
-            <button onclick="openSimulator()" class="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-lg hover:bg-blue-200 font-semibold">
-              <i class="fas fa-calculator mr-1"></i>為替別シミュレーション
-            </button>
+          </div>
+
+          <!-- コスト内訳 -->
+          <div class="bg-white rounded-lg p-3 mb-3 text-sm" id="cost-breakdown-area">
+            <div class="flex justify-between mb-1"><span class="text-gray-500">仕入原価（税込）</span><span class="font-bold" id="cb-product-cost">-</span></div>
+            <div class="flex justify-between mb-1"><span class="text-gray-500">国際送料</span><span class="font-bold" id="cb-shipping-cost">-</span></div>
+            <div class="flex justify-between mb-1"><span class="text-gray-500">梱包材</span><span class="font-bold" id="cb-packaging-cost">-</span></div>
+            <div class="flex justify-between pt-1 border-t border-gray-200"><span class="text-gray-700 font-bold">総コスト</span><span class="font-bold text-red-600" id="cb-total-cost">-</span></div>
+          </div>
+
+          <!-- 価格入力 -->
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <label class="text-xs text-gray-500">eBay販売価格(USD)</label>
+              <div class="flex gap-1">
+                <input type="number" id="modal-price-usd" step="1" class="flex-1 px-2 py-1.5 border rounded-lg text-sm font-bold text-lg" oninput="calcProfit()">
+                <button onclick="applyRecommendedPrice()" class="px-2 py-1.5 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600 whitespace-nowrap" title="推奨価格を適用">推奨</button>
+              </div>
+              <p class="text-xs text-blue-600 mt-1">推奨: <strong id="recommended-price-usd">-</strong></p>
+            </div>
+            <div>
+              <label class="text-xs text-gray-500">送料チャージ(USD)</label>
+              <input type="number" id="modal-shipping-usd" step="1" value="30" class="w-full px-2 py-1.5 border rounded-lg text-sm" oninput="calcProfit()">
+              <p class="text-xs text-gray-400 mt-1">推奨: <strong id="recommended-shipping-usd">-</strong></p>
+            </div>
+          </div>
+
+          <!-- 手数料内訳 -->
+          <div class="bg-white rounded-lg p-3 mb-3 text-xs" id="fee-breakdown-area">
+            <p class="font-bold text-gray-600 mb-2">手数料内訳</p>
+            <div class="flex justify-between mb-0.5"><span class="text-gray-400">eBay落札手数料 (12.9%)</span><span id="fee-final-value">-</span></div>
+            <div class="flex justify-between mb-0.5"><span class="text-gray-400">海外取引手数料 (1.65%)</span><span id="fee-international">-</span></div>
+            <div class="flex justify-between mb-0.5"><span class="text-gray-400">固定手数料</span><span>$0.30</span></div>
+            <div class="flex justify-between mb-0.5"><span class="text-gray-400">Payoneer出金手数料 (~2%)</span><span id="fee-payoneer">-</span></div>
+            <div class="flex justify-between pt-1 border-t border-gray-100"><span class="text-gray-500 font-bold">手数料合計</span><span class="font-bold text-red-500" id="fee-total">-</span></div>
+          </div>
+
+          <!-- 利益表示 -->
+          <div class="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-3 flex items-center justify-between">
+            <div>
+              <span class="text-sm text-gray-600">予想利益:</span>
+              <span class="text-2xl font-bold ml-1" id="modal-profit">-</span>
+              <span class="text-sm ml-2" id="modal-profit-margin"></span>
+            </div>
+            <div class="flex gap-2">
+              <button onclick="openSimulator()" class="text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg hover:bg-blue-200 font-semibold">
+                <i class="fas fa-chart-line mr-1"></i>為替別シミュレーション
+              </button>
+              <button onclick="openPriceTableModal()" class="text-xs bg-green-100 text-green-700 px-3 py-1.5 rounded-lg hover:bg-green-200 font-semibold">
+                <i class="fas fa-table mr-1"></i>利益率別一覧
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 利益率別価格テーブルモーダル -->
+        <div id="price-table-modal" class="modal-overlay">
+          <div class="modal-content" style="max-width:550px;">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-bold text-gray-800"><i class="fas fa-table mr-2 text-green-500"></i>利益率別 推奨価格テーブル</h3>
+              <button onclick="document.getElementById('price-table-modal').classList.remove('show')" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+            </div>
+            <div class="bg-gray-50 rounded-xl p-3 mb-4 text-sm">
+              <p class="text-gray-600">仕入原価: <strong id="pt-cost">-</strong> / 送料: <strong id="pt-ship">-</strong> / レート: <strong id="pt-rate">-</strong></p>
+            </div>
+            <div class="text-xs font-bold text-gray-500 grid grid-cols-4 gap-2 mb-2 px-2">
+              <span>目標利益率</span><span>eBay価格</span><span>利益</span><span>実質利益率</span>
+            </div>
+            <div id="price-table-body"></div>
           </div>
         </div>
 
@@ -4404,6 +4491,9 @@ adminPagesRoutes.get('/cross-border', (c) => {
       loadCandidates(true);
     }
 
+    // ===== 自動価格計算データ =====
+    var cbCalcData = null; // APIからの計算結果
+
     // ===== 出品モーダル =====
     async function openListingModal(productId) {
       try {
@@ -4418,13 +4508,17 @@ adminPagesRoutes.get('/cross-border', (c) => {
         document.getElementById('modal-maker').textContent = (p.vm_maker || '') + ' ' + (p.vm_model || '');
         var costJpy = Math.round(Number(p.price) * 1.1);
         document.getElementById('modal-price-ja').textContent = '¥' + costJpy.toLocaleString();
-        document.getElementById('modal-cost-jpy').textContent = '¥' + costJpy.toLocaleString();
-        // USD推奨価格（仕入れの2倍をデフォルト）
-        var suggestUsd = Math.ceil(costJpy / cbCurrentRate * 2);
-        document.getElementById('modal-price-usd').value = suggestUsd;
         document.getElementById('modal-title-en').value = '';
         document.getElementById('modal-desc-en').value = '';
-        calcProfit();
+
+        // 重量初期値（あれば）
+        if (p.weight_kg) {
+          document.getElementById('modal-weight-kg').value = p.weight_kg;
+        }
+
+        // 自動価格計算を実行
+        await autoCalcPrice();
+
         document.getElementById('listing-modal').classList.add('show');
       } catch(e) {
         alert('商品情報の取得に失敗しました');
@@ -4434,20 +4528,143 @@ adminPagesRoutes.get('/cross-border', (c) => {
     function closeListingModal() {
       document.getElementById('listing-modal').classList.remove('show');
       cbCurrentProduct = null;
+      cbCalcData = null;
     }
 
+    // ===== 自動価格計算 =====
+    async function autoCalcPrice() {
+      if (!cbCurrentProduct) return;
+      var weightKg = parseFloat(document.getElementById('modal-weight-kg').value) || 2;
+      var method = document.getElementById('modal-ship-method').value;
+      var zone = document.getElementById('modal-ship-zone').value;
+      var margin = parseInt(document.getElementById('modal-target-margin').value) || 25;
+
+      try {
+        var res = await axios.post('/api/admin/cross-border/calc-price', {
+          price_jpy: cbCurrentProduct.price,
+          weight_kg: weightKg,
+          shipping_method: method,
+          zone: zone,
+          exchange_rate: cbCurrentRate,
+          target_margin: margin / 100
+        }, { headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') } });
+
+        if (res.data.success) {
+          cbCalcData = res.data;
+          var cb = res.data.cost_breakdown;
+          var rec = res.data.recommended;
+
+          // コスト内訳表示
+          document.getElementById('cb-product-cost').textContent = '¥' + cb.product_cost_jpy.toLocaleString();
+          document.getElementById('cb-shipping-cost').textContent = '¥' + cb.shipping_cost_jpy.toLocaleString() + ' ($' + cb.shipping_cost_usd + ')';
+          document.getElementById('cb-packaging-cost').textContent = '¥' + cb.packaging_jpy.toLocaleString();
+          document.getElementById('cb-total-cost').textContent = '¥' + cb.total_cost_jpy.toLocaleString() + ' ($' + cb.total_cost_usd + ')';
+
+          // 推奨価格表示
+          document.getElementById('recommended-price-usd').textContent = '$' + rec.price_usd;
+          document.getElementById('recommended-shipping-usd').textContent = '$' + rec.shipping_charge_usd;
+
+          // 配送情報
+          var methods = { ems: 'EMS 3〜5日', epacket: 'eパケット 7〜14日', sal: 'SAL 2〜4週間' };
+          document.getElementById('modal-ship-info').textContent =
+            '送料: ¥' + cb.shipping_cost_jpy.toLocaleString() + ' (' + (methods[method] || method) + ' / ' + weightKg + 'kg)';
+
+          // 推奨価格を自動入力（初回のみ、ユーザーが変更していなければ）
+          var currentUsd = parseFloat(document.getElementById('modal-price-usd').value) || 0;
+          if (currentUsd === 0 || !document.getElementById('modal-price-usd')._userEdited) {
+            document.getElementById('modal-price-usd').value = rec.price_usd;
+            document.getElementById('modal-shipping-usd').value = rec.shipping_charge_usd;
+          }
+
+          calcProfit();
+        }
+      } catch(e) {
+        console.error('Auto calc price error:', e);
+      }
+    }
+
+    function applyRecommendedPrice() {
+      if (!cbCalcData) return;
+      document.getElementById('modal-price-usd').value = cbCalcData.recommended.price_usd;
+      document.getElementById('modal-shipping-usd').value = cbCalcData.recommended.shipping_charge_usd;
+      document.getElementById('modal-price-usd')._userEdited = false;
+      calcProfit();
+    }
+
+    // ===== 利益計算（リアルタイム） =====
     function calcProfit() {
       var usd = parseFloat(document.getElementById('modal-price-usd').value) || 0;
-      var ship = parseFloat(document.getElementById('modal-shipping-usd').value) || 0;
+      var shipCharge = parseFloat(document.getElementById('modal-shipping-usd').value) || 0;
       var costJpy = cbCurrentProduct ? Math.round(Number(cbCurrentProduct.price) * 1.1) : 0;
-      var saleJpy = Math.floor((usd + ship) * cbCurrentRate);
-      // eBay手数料約13% + PayPal約3%
-      var fees = Math.floor(saleJpy * 0.16);
-      var shippingCostJpy = Math.floor(ship * cbCurrentRate);
-      var profit = saleJpy - costJpy - fees - shippingCostJpy;
+
+      // 送料コスト（JPY） - APIの計算結果がある場合はそれを使用
+      var shippingCostJpy = cbCalcData ? cbCalcData.cost_breakdown.shipping_cost_jpy : Math.floor(shipCharge * cbCurrentRate);
+      var packagingJpy = cbCalcData ? cbCalcData.cost_breakdown.packaging_jpy : 800;
+
+      // eBay手数料計算
+      var ebayFinalValue = usd * 0.129;
+      var ebayIntl = usd * 0.0165;
+      var ebayFixed = 0.30;
+      var totalEbayFees = ebayFinalValue + ebayIntl + ebayFixed;
+      var payoneerPayout = usd - totalEbayFees;
+      var payoneerFee = payoneerPayout * 0.02;
+      var netUsd = payoneerPayout - payoneerFee;
+      var netJpy = Math.floor(netUsd * cbCurrentRate);
+
+      var profit = netJpy - costJpy - shippingCostJpy - packagingJpy;
+      var margin = netJpy > 0 ? Math.round((profit / netJpy) * 100) : 0;
+
+      // 手数料内訳表示
+      document.getElementById('fee-final-value').textContent = '-$' + ebayFinalValue.toFixed(2);
+      document.getElementById('fee-international').textContent = '-$' + ebayIntl.toFixed(2);
+      document.getElementById('fee-payoneer').textContent = '-$' + payoneerFee.toFixed(2);
+      document.getElementById('fee-total').textContent = '-$' + (totalEbayFees + payoneerFee).toFixed(2) + ' (-¥' + Math.floor((totalEbayFees + payoneerFee) * cbCurrentRate).toLocaleString() + ')';
+
+      // 利益表示
       var el = document.getElementById('modal-profit');
       el.textContent = '¥' + profit.toLocaleString();
-      el.className = 'text-xl font-bold ' + (profit > 0 ? 'text-green-600' : 'text-red-600');
+      el.className = 'text-2xl font-bold ml-1 ' + (profit > 0 ? 'text-green-600' : 'text-red-600');
+
+      var marginEl = document.getElementById('modal-profit-margin');
+      marginEl.textContent = '(' + margin + '%)';
+      marginEl.className = 'text-sm ml-2 font-bold ' + (profit > 0 ? 'text-green-500' : 'text-red-500');
+
+      // ユーザー編集フラグ
+      document.getElementById('modal-price-usd')._userEdited = true;
+    }
+
+    // ===== 利益率別テーブルモーダル =====
+    function openPriceTableModal() {
+      if (!cbCalcData || !cbCalcData.price_table) {
+        alert('先に価格計算を実行してください');
+        return;
+      }
+      var cb = cbCalcData.cost_breakdown;
+      document.getElementById('pt-cost').textContent = '¥' + cb.product_cost_jpy.toLocaleString();
+      document.getElementById('pt-ship').textContent = '¥' + cb.shipping_cost_jpy.toLocaleString();
+      document.getElementById('pt-rate').textContent = '¥' + cbCurrentRate + '/USD';
+
+      var html = '';
+      cbCalcData.price_table.forEach(function(row) {
+        var color = row.profit_jpy > 0 ? 'text-green-600' : 'text-red-600';
+        var current = parseFloat(document.getElementById('modal-price-usd').value) || 0;
+        var highlight = row.price_usd === current ? 'background:#dbeafe;' : '';
+        html += '<div class="grid grid-cols-4 gap-2 py-2 px-2 rounded-lg text-sm" style="' + highlight + '">' +
+          '<span class="font-bold">' + row.target_margin + '%</span>' +
+          '<span class="font-bold text-blue-700 cursor-pointer hover:underline" onclick="setPriceFromTable(' + row.price_usd + ')">$' + row.price_usd + '</span>' +
+          '<span class="font-bold ' + color + '">¥' + row.profit_jpy.toLocaleString() + '</span>' +
+          '<span class="' + color + '">' + row.actual_margin + '%</span>' +
+        '</div>';
+      });
+      document.getElementById('price-table-body').innerHTML = html;
+      document.getElementById('price-table-modal').classList.add('show');
+    }
+
+    function setPriceFromTable(price) {
+      document.getElementById('modal-price-usd').value = price;
+      document.getElementById('modal-price-usd')._userEdited = true;
+      calcProfit();
+      document.getElementById('price-table-modal').classList.remove('show');
     }
 
     // ===== AI翻訳 =====
@@ -4485,14 +4702,19 @@ adminPagesRoutes.get('/cross-border', (c) => {
       var titleEn = document.getElementById('modal-title-en').value.trim();
       if (!titleEn) { alert('英語タイトルを入力してください'); return; }
 
+      var priceUsd = parseFloat(document.getElementById('modal-price-usd').value) || 0;
+      var shippingUsd = parseFloat(document.getElementById('modal-shipping-usd').value) || 0;
+
+      if (priceUsd <= 0) { alert('販売価格を入力してください'); return; }
+
       try {
         await axios.post('/api/admin/cross-border/listings', {
           product_id: cbCurrentProduct.id,
           title_en: titleEn,
           description_en: document.getElementById('modal-desc-en').value,
-          price_usd: parseFloat(document.getElementById('modal-price-usd').value) || 0,
+          price_usd: priceUsd,
           exchange_rate: cbCurrentRate,
-          shipping_cost_usd: parseFloat(document.getElementById('modal-shipping-usd').value) || 0,
+          shipping_cost_usd: shippingUsd,
           status: status
         }, { headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') } });
 
@@ -4695,13 +4917,17 @@ adminPagesRoutes.get('/cross-border', (c) => {
       var costJpy = Math.round(Number(cbCurrentProduct.price) * 1.1);
       var priceUsd = parseFloat(document.getElementById('modal-price-usd').value) || 0;
       var shipUsd = parseFloat(document.getElementById('modal-shipping-usd').value) || 0;
+      var weightKg = parseFloat(document.getElementById('modal-weight-kg').value) || 2;
+      var method = document.getElementById('modal-ship-method').value;
+      var zone = document.getElementById('modal-ship-zone').value;
       document.getElementById('sim-cost').textContent = '¥' + costJpy.toLocaleString();
       document.getElementById('sim-usd').textContent = '$' + priceUsd.toFixed(2);
       document.getElementById('sim-ship').textContent = '$' + shipUsd.toFixed(2);
 
       try {
         var res = await axios.post('/api/admin/cross-border/simulate-profit', {
-          price_jpy: cbCurrentProduct.price, price_usd: priceUsd, shipping_cost_usd: shipUsd
+          price_jpy: cbCurrentProduct.price, price_usd: priceUsd, shipping_cost_usd: shipUsd,
+          weight_kg: weightKg, shipping_method: method, zone: zone
         }, { headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') } });
 
         if (res.data.success) {
@@ -4711,8 +4937,8 @@ adminPagesRoutes.get('/cross-border', (c) => {
             var highlight = Math.abs(s.rate - cbCurrentRate) < 3 ? 'background:#eff6ff;font-weight:700;' : '';
             html += '<div class="sim-row" style="' + highlight + '">' +
               '<span>¥' + s.rate + '</span>' +
-              '<span>¥' + s.saleJpy.toLocaleString() + '</span>' +
-              '<span class="text-gray-500">-¥' + s.fees.toLocaleString() + '</span>' +
+              '<span>¥' + s.net_payout_jpy.toLocaleString() + '</span>' +
+              '<span class="text-gray-500">-$' + s.fees_usd + '</span>' +
               '<span class="font-bold ' + color + '">¥' + s.profit.toLocaleString() + '</span>' +
               '<span class="' + color + '">' + s.margin + '%</span>' +
             '</div>';
