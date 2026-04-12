@@ -1363,31 +1363,27 @@ ebaySell.post('/quick-list', async (c) => {
         })
         .slice(0, 12)
 
-      // conditionマッピング
-      // 重要: eBay Motors系カテゴリでは USED_GOOD 等が使えるが、
-      // 一般カテゴリ（Consumer Electronics等）では使用不可。
-      // 安全のため一般カテゴリ互換のenum値を使用:
-      //   NEW, LIKE_NEW, USED, FOR_PARTS_OR_NOT_WORKING
-      const conditionMap: Record<string, string> = {
-        'new': 'NEW',
-        'like_new': 'LIKE_NEW',
-        'good': 'USED',
-        'acceptable': 'USED',
-        'used': 'USED',
+      // conditionマッピング → conditionId（数値）を使用
+      // eBay Inventory API の condition(enum) は "USED" が無効値のため使用不可
+      // conditionId（数値）なら全カテゴリ共通で使える
+      //   1000 = New, 1500 = New other, 3000 = Used, 7000 = For parts
+      const conditionIdMap: Record<string, string> = {
+        'new': '1000',
+        'like_new': '1500',
+        'good': '3000',
+        'acceptable': '3000',
+        'used': '3000',
       }
       const internalCondition = listing.condition || 'good'
-      const ebayCondition = listing.ebay_condition === 'USED_GOOD' ? 'USED' 
-        : listing.ebay_condition === 'USED_ACCEPTABLE' ? 'USED'
-        : listing.ebay_condition || conditionMap[internalCondition] || 'USED'
+      const ebayConditionId = conditionIdMap[internalCondition] || '3000'
 
       // Inventory Item Payload
-      // NOTE: eBay Inventory APIでは condition(enum) と conditionId(数値) の両方を設定
-      // conditionId が優先される。カテゴリ別の許可condition問題を回避
+      // conditionId（数値）のみ使用。condition(enum)は設定しない
       const inventoryPayload: any = {
         availability: {
           shipToLocationAvailability: { quantity: 1 }
         },
-        condition: ebayCondition,
+        conditionId: ebayConditionId,
         product: {
           title: (listing.title_en || listing.title || 'Auto Part').substring(0, 80),
           description: listing.description_en || listing.description || '',
@@ -1452,7 +1448,7 @@ ebaySell.post('/quick-list', async (c) => {
             title: inventoryPayload.product?.title,
             imageCount: imageUrls.length,
             hasLocation: !!location?.merchant_location_key,
-            condition: ebayCondition,
+            conditionId: ebayConditionId,
             firstImage: imageUrls[0] || 'none'
           }
         })
@@ -1466,7 +1462,7 @@ ebaySell.post('/quick-list', async (c) => {
           status = CASE WHEN status = 'draft' THEN 'ready' ELSE status END,
           updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
-      `).bind(sku, ebayCondition, listing_id).run()
+      `).bind(sku, ebayConditionId, listing_id).run()
 
       steps.push({ step: 'inventory', success: true, sku, message: 'eBay Inventory に商品を登録しました' })
     } catch (invErr: any) {
