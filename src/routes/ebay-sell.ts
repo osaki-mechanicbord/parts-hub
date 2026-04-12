@@ -1543,8 +1543,9 @@ ebaySell.post('/quick-list', async (c) => {
       }
 
       // ── カテゴリID（未指定の場合は自動車パーツのデフォルト） ──
-      // eBay カテゴリ 174016 = "Car & Truck Parts & Accessories" (Parts & Accessories > Car & Truck Parts & Accessories)
-      const catId = category_id || freshListing.ebay_category_id || '174016'
+      // eBay Motors カテゴリ 9886 = "Other Car & Truck Parts & Accessories" (leaf category)
+      // 6030 = "Car & Truck Parts & Accessories" は親カテゴリなので出品不可
+      const catId = category_id || freshListing.ebay_category_id || '9886'
 
       // Offer Payload
       const offerPayload: any = {
@@ -1639,7 +1640,7 @@ ebaySell.post('/quick-list', async (c) => {
         await DB.prepare(`
           UPDATE cross_border_listings SET ebay_last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
         `).bind(`Publish error ${publishRes.status}: ${errText.substring(0, 500)}`, listing_id).run()
-        steps.push({ step: 'publish', success: false, error: `Publish error: ${publishRes.status}`, details: errText.substring(0, 300) })
+        steps.push({ step: 'publish', success: false, error: `Publish error: ${publishRes.status}`, details: errText.substring(0, 500) })
         return c.json({
           success: true,
           steps,
