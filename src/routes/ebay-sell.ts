@@ -1363,27 +1363,26 @@ ebaySell.post('/quick-list', async (c) => {
         })
         .slice(0, 12)
 
-      // conditionマッピング → conditionId（数値）を使用
-      // eBay Inventory API の condition(enum) は "USED" が無効値のため使用不可
-      // conditionId（数値）なら全カテゴリ共通で使える
-      //   1000 = New, 1500 = New other, 3000 = Used, 7000 = For parts
-      const conditionIdMap: Record<string, string> = {
-        'new': '1000',
-        'like_new': '1500',
-        'good': '3000',
-        'acceptable': '3000',
-        'used': '3000',
+      // eBay Motors カテゴリで出品するため、Motors専用の condition enum を使用
+      // Motors カテゴリ (tree 100) では USED_GOOD, USED_EXCELLENT 等が有効
+      // 一般カテゴリ (tree 0) では USED_GOOD は無効だが、Motors なら OK
+      const conditionMap: Record<string, string> = {
+        'new': 'NEW',
+        'like_new': 'LIKE_NEW',
+        'good': 'USED_GOOD',
+        'acceptable': 'USED_ACCEPTABLE',
+        'used': 'USED_GOOD',
       }
       const internalCondition = listing.condition || 'good'
-      const ebayConditionId = conditionIdMap[internalCondition] || '3000'
+      const ebayCondition = conditionMap[internalCondition] || 'USED_GOOD'
 
       // Inventory Item Payload
-      // conditionId（数値）のみ使用。condition(enum)は設定しない
+      // eBay Motors カテゴリでは condition enum (USED_GOOD等) を使用
       const inventoryPayload: any = {
         availability: {
           shipToLocationAvailability: { quantity: 1 }
         },
-        conditionId: ebayConditionId,
+        condition: ebayCondition,
         product: {
           title: (listing.title_en || listing.title || 'Auto Part').substring(0, 80),
           description: listing.description_en || listing.description || '',
@@ -1448,7 +1447,7 @@ ebaySell.post('/quick-list', async (c) => {
             title: inventoryPayload.product?.title,
             imageCount: imageUrls.length,
             hasLocation: !!location?.merchant_location_key,
-            conditionId: ebayConditionId,
+            condition: ebayCondition,
             firstImage: imageUrls[0] || 'none'
           }
         })
@@ -1462,7 +1461,7 @@ ebaySell.post('/quick-list', async (c) => {
           status = CASE WHEN status = 'draft' THEN 'ready' ELSE status END,
           updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
-      `).bind(sku, ebayConditionId, listing_id).run()
+      `).bind(sku, ebayCondition, listing_id).run()
 
       steps.push({ step: 'inventory', success: true, sku, message: 'eBay Inventory に商品を登録しました' })
     } catch (invErr: any) {
@@ -1548,31 +1547,47 @@ ebaySell.post('/quick-list', async (c) => {
         }
       }
 
-      // ── カテゴリID（Taxonomy APIで動的取得） ──
+      // ── カテゴリID（eBay Motors カテゴリツリー 100 を使用） ──
+      // 自動車パーツは eBay Motors カテゴリで出品する必要がある
+      // 一般カテゴリ (tree 0) だと配送料上限$20制限などの問題が発生するため
+      // eBay Motors カテゴリツリー (ID=100) から商品タイトルで動的取得
       let catId = category_id || freshListing.ebay_category_id
       if (!catId) {
         try {
           const productTitle = encodeURIComponent(
             (listing.title_en || listing.title || 'auto parts').substring(0, 100)
           )
-          console.log(`[quick-list] Fetching category suggestion for: ${listing.title_en}`)
+          console.log(`[quick-list] Fetching eBay Motors category suggestion for: ${listing.title_en}`)
+          // eBay Motors カテゴリツリー (ID=100) を使用
           const catRes = await fetch(
-            `${apiBase}/commerce/taxonomy/v1/category_tree/0/get_category_suggestions?q=${productTitle}`,
+            `${apiBase}/commerce/taxonomy/v1/category_tree/100/get_category_suggestions?q=${productTitle}`,
             { headers: { 'Authorization': `Bearer ${ebayToken}`, 'Accept': 'application/json' } }
           )
           if (catRes.ok) {
             const catData = await catRes.json() as any
             const suggestions = catData.categorySuggestions || []
             if (suggestions.length > 0) {
-              catId = suggestions[0].category.categoryId
-              console.log(`[quick-list] Auto category: ${catId} - ${suggestions[0].category.categoryName}`)
+              // リーフカテゴリを優先（出品に必須）
+              for (const suggestion of suggestions) {
+                if (suggestion.categoryTreeNodeLevel && suggestion.category) {
+                  catId = suggestion.category.categoryId
+                  console.log(`[quick-list] eBay Motors category: ${catId} - ${suggestion.category.categoryName}`)
+                  break
+                }
+              }
+              // リーフが見つからなければ最初の提案を使用
+              if (!catId && suggestions[0]?.category) {
+                catId = suggestions[0].category.categoryId
+                console.log(`[quick-list] eBay Motors category (first): ${catId} - ${suggestions[0].category.categoryName}`)
+              }
             }
           }
         } catch (catErr: any) {
           console.error('[quick-list] Category suggestion error:', catErr.message)
         }
-        // フォールバック: Consumer Electronics > Vehicle Electronics > Car Lighting
-        if (!catId) catId = '71536'
+        // フォールバック: eBay Motors > Car & Truck Parts > Other Car & Truck Parts & Accessories
+        // これはリーフカテゴリ(leaf=true)で、自動車パーツ全般に使用可能
+        if (!catId) catId = '9886'
       }
 
       // Offer Payload
