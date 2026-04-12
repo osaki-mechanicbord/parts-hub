@@ -1477,7 +1477,10 @@ ebaySell.post('/quick-list', async (c) => {
         SELECT * FROM cross_border_listings WHERE id = ?
       `).bind(listing_id).first() as any
 
-      const marketplace = freshListing.ebay_marketplace_id || 'EBAY_US'
+      // 自動車パーツは EBAY_MOTORS マーケットプレイスで出品する
+      // EBAY_US だと eBay Motors カテゴリ（tree 100）のカテゴリIDが無効になる
+      // eBay Motors のカテゴリ + ポリシーは EBAY_MOTORS マーケットプレイスで使用する
+      const marketplace = freshListing.ebay_marketplace_id || 'EBAY_MOTORS'
 
       // ── 既存Offerの削除（重複回避） ──
       if (freshListing.ebay_offer_id) {
@@ -1507,21 +1510,25 @@ ebaySell.post('/quick-list', async (c) => {
       `).first() as any
 
       // ── eBay ポリシーを自動取得（未指定の場合） ──
+      // ポリシーは EBAY_US で作成されているため、EBAY_US で取得する
+      // （EBAY_MOTORS のポリシーは EBAY_US と共有される）
       let fpId = fulfillment_policy_id || freshListing.ebay_fulfillment_policy_id
       let ppId = payment_policy_id || freshListing.ebay_payment_policy_id
       let rpId = return_policy_id || freshListing.ebay_return_policy_id
 
       if (!fpId || !ppId || !rpId) {
         try {
-          console.log('[quick-list] Fetching eBay business policies...')
+          // ポリシーは EBAY_US で取得（EBAY_MOTORS はポリシーを EBAY_US から継承）
+          const policyMarketplace = 'EBAY_US'
+          console.log(`[quick-list] Fetching eBay business policies for ${policyMarketplace}...`)
           const [fulfillmentRes, paymentRes, returnRes] = await Promise.all([
-            fetch(`${apiBase}/sell/account/v1/fulfillment_policy?marketplace_id=${marketplace}`, {
+            fetch(`${apiBase}/sell/account/v1/fulfillment_policy?marketplace_id=${policyMarketplace}`, {
               headers: { 'Authorization': `Bearer ${ebayToken}` }
             }),
-            fetch(`${apiBase}/sell/account/v1/payment_policy?marketplace_id=${marketplace}`, {
+            fetch(`${apiBase}/sell/account/v1/payment_policy?marketplace_id=${policyMarketplace}`, {
               headers: { 'Authorization': `Bearer ${ebayToken}` }
             }),
-            fetch(`${apiBase}/sell/account/v1/return_policy?marketplace_id=${marketplace}`, {
+            fetch(`${apiBase}/sell/account/v1/return_policy?marketplace_id=${policyMarketplace}`, {
               headers: { 'Authorization': `Bearer ${ebayToken}` }
             })
           ])
