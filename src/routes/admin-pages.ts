@@ -3968,6 +3968,13 @@ adminPagesRoutes.get('/cross-border', (c) => {
       .sim-row:nth-child(even) { background:#f9fafb; }
       .listing-actions { display:flex; gap:4px; margin-top:8px; }
       .listing-actions button { font-size:11px; padding:3px 8px; border-radius:6px; font-weight:600; border:1px solid transparent; cursor:pointer; transition:all .15s; }
+      @media print {
+        body > *:not(.modal-overlay.show) { display:none !important; }
+        .modal-overlay.show { position:static !important; background:none !important; display:block !important; }
+        .modal-overlay.show > .modal-content { max-height:none !important; max-width:none !important; width:100% !important; padding:0 !important; box-shadow:none !important; }
+        .no-print { display:none !important; }
+        #shipping-doc-content { font-size:12px; }
+      }
     </style>
 
     <!-- eBay連携ステータス -->
@@ -4211,20 +4218,43 @@ adminPagesRoutes.get('/cross-border', (c) => {
           <textarea id="modal-desc-en" rows="5" class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="English description for eBay listing..."></textarea>
         </div>
 
-        <!-- 配送・重量設定 -->
+        <!-- 配送・重量設定（拡張版） -->
         <div class="bg-gray-50 rounded-xl p-4 mb-4">
-          <p class="font-bold text-sm text-gray-700 mb-3"><i class="fas fa-shipping-fast mr-1 text-indigo-500"></i>配送設定</p>
+          <div class="flex items-center justify-between mb-3">
+            <p class="font-bold text-sm text-gray-700"><i class="fas fa-shipping-fast mr-1 text-indigo-500"></i>配送設定</p>
+            <button onclick="openCarrierCompare()" class="text-xs bg-indigo-100 text-indigo-700 px-3 py-1 rounded-lg hover:bg-indigo-200 font-semibold">
+              <i class="fas fa-balance-scale mr-1"></i>全業者比較
+            </button>
+          </div>
           <div class="grid grid-cols-3 gap-3">
             <div>
               <label class="text-xs text-gray-500">重量(kg)</label>
-              <input type="number" id="modal-weight-kg" step="0.1" value="2" min="0.1" class="w-full px-2 py-1.5 border rounded-lg text-sm" onchange="autoCalcPrice()">
+              <input type="number" id="modal-weight-kg" step="0.1" value="2" min="0.1" max="70" class="w-full px-2 py-1.5 border rounded-lg text-sm" onchange="autoCalcPrice()">
             </div>
             <div>
               <label class="text-xs text-gray-500">配送方法</label>
               <select id="modal-ship-method" class="w-full px-2 py-1.5 border rounded-lg text-sm" onchange="autoCalcPrice()">
-                <option value="ems">EMS（3〜5日）</option>
-                <option value="epacket">eパケット（7〜14日）</option>
-                <option value="sal">SAL（2〜4週間）</option>
+                <optgroup label="📮 日本郵便">
+                  <option value="ems">EMS（3〜5日）⭐推奨</option>
+                  <option value="epacket_light">eパケットライト（7〜14日）</option>
+                  <option value="jp_air_parcel">国際小包 航空便（7〜14日）</option>
+                </optgroup>
+                <optgroup label="🚀 FedEx">
+                  <option value="fedex_priority">FedEx Priority（1〜3日）</option>
+                  <option value="fedex_economy">FedEx Economy（4〜6日）</option>
+                </optgroup>
+                <optgroup label="🟡 DHL">
+                  <option value="dhl_express">DHL Express（1〜3日）</option>
+                </optgroup>
+                <optgroup label="🟤 UPS">
+                  <option value="ups_express">UPS Express（1〜3日）</option>
+                </optgroup>
+                <optgroup label="🐈 ヤマト運輸">
+                  <option value="yamato_intl">国際宅急便（3〜6日）</option>
+                </optgroup>
+                <optgroup label="🔵 佐川急便">
+                  <option value="sagawa_intl">飛脚国際宅配便（2〜5日）</option>
+                </optgroup>
               </select>
             </div>
             <div>
@@ -4235,6 +4265,11 @@ adminPagesRoutes.get('/cross-border', (c) => {
                 <option value="asia">アジア</option>
               </select>
             </div>
+          </div>
+          <!-- おすすめ表示 -->
+          <div id="shipping-recommend-bar" class="mt-2 p-2 rounded-lg bg-blue-50 border border-blue-100 hidden">
+            <p class="text-xs font-bold text-blue-700"><i class="fas fa-lightbulb mr-1 text-yellow-500"></i><span id="shipping-recommend-label"></span></p>
+            <p class="text-xs text-blue-600 mt-0.5" id="shipping-recommend-reason"></p>
           </div>
           <p class="text-xs text-gray-400 mt-2" id="modal-ship-info"></p>
         </div>
@@ -4336,6 +4371,80 @@ adminPagesRoutes.get('/cross-border', (c) => {
             <i class="fab fa-ebay mr-1"></i>eBayに出品
           </button>
         </div>
+      </div>
+    </div>
+
+    <!-- ===== 全業者送料比較モーダル ===== -->
+    <div id="carrier-compare-modal" class="modal-overlay">
+      <div class="modal-content" style="max-width:900px;">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-bold text-gray-800"><i class="fas fa-balance-scale mr-2 text-indigo-500"></i>全配送業者 送料比較</h3>
+          <button onclick="document.getElementById('carrier-compare-modal').classList.remove('show')" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+        </div>
+        <div class="bg-indigo-50 rounded-lg p-3 mb-4">
+          <p class="text-sm text-indigo-800"><strong id="cc-weight">-</strong> / <strong id="cc-zone">-</strong> / レート: <strong id="cc-rate">-</strong></p>
+          <p class="text-xs text-indigo-600 mt-1" id="cc-recommend-text"></p>
+        </div>
+        <!-- 業者グループ別フィルタ -->
+        <div class="flex gap-2 mb-3 flex-wrap">
+          <button onclick="filterCarrierGroup('all')" class="filter-chip active" data-cg="all">すべて</button>
+          <button onclick="filterCarrierGroup('japan_post')" class="filter-chip" data-cg="japan_post">📮 日本郵便</button>
+          <button onclick="filterCarrierGroup('fedex')" class="filter-chip" data-cg="fedex">🚀 FedEx</button>
+          <button onclick="filterCarrierGroup('dhl')" class="filter-chip" data-cg="dhl">🟡 DHL</button>
+          <button onclick="filterCarrierGroup('ups')" class="filter-chip" data-cg="ups">🟤 UPS</button>
+          <button onclick="filterCarrierGroup('yamato')" class="filter-chip" data-cg="yamato">🐈 ヤマト</button>
+          <button onclick="filterCarrierGroup('sagawa')" class="filter-chip" data-cg="sagawa">🔵 佐川</button>
+        </div>
+        <!-- ヘッダー -->
+        <div class="grid grid-cols-8 gap-2 text-xs font-bold text-gray-500 mb-1 px-2">
+          <span class="col-span-2">配送業者</span>
+          <span>日数</span>
+          <span>送料(JPY)</span>
+          <span>送料(USD)</span>
+          <span>追跡</span>
+          <span>補償</span>
+          <span></span>
+        </div>
+        <div id="carrier-compare-body" class="max-h-96 overflow-y-auto"></div>
+        <!-- 法人割引設定リンク -->
+        <div class="mt-3 pt-3 border-t border-gray-200 flex items-center justify-between">
+          <p class="text-xs text-gray-400"><i class="fas fa-info-circle mr-1"></i>概算マークの業者は法人契約で割引が可能です</p>
+          <button onclick="openDiscountSettings()" class="text-xs bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-200 font-semibold">
+            <i class="fas fa-percentage mr-1"></i>法人割引率設定
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 法人割引率設定モーダル ===== -->
+    <div id="discount-settings-modal" class="modal-overlay">
+      <div class="modal-content" style="max-width:600px;">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-bold text-gray-800"><i class="fas fa-percentage mr-2 text-green-500"></i>法人割引率設定</h3>
+          <button onclick="document.getElementById('discount-settings-modal').classList.remove('show')" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+        </div>
+        <p class="text-xs text-gray-500 mb-4">FedEx / DHL / UPS / ヤマト / 佐川など民間業者の法人契約割引率を設定します。<br>0%=定価のまま。50%=定価の半額。</p>
+        <div id="discount-settings-body"></div>
+        <div class="flex gap-3 mt-4">
+          <button onclick="document.getElementById('discount-settings-modal').classList.remove('show')" class="flex-1 px-4 py-2.5 border rounded-lg font-semibold">閉じる</button>
+          <button onclick="saveAllDiscounts()" class="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700">
+            <i class="fas fa-save mr-1"></i>割引率を保存
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 発送手配書モーダル ===== -->
+    <div id="shipping-doc-modal" class="modal-overlay">
+      <div class="modal-content" style="max-width:800px;">
+        <div class="flex items-center justify-between mb-4 no-print">
+          <h3 class="text-lg font-bold text-gray-800"><i class="fas fa-file-alt mr-2 text-orange-500"></i>発送手配書</h3>
+          <div class="flex gap-2">
+            <button onclick="window.print()" class="text-sm bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 font-semibold"><i class="fas fa-print mr-1"></i>印刷 / PDF保存</button>
+            <button onclick="document.getElementById('shipping-doc-modal').classList.remove('show')" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+          </div>
+        </div>
+        <div id="shipping-doc-content"></div>
       </div>
     </div>
 
@@ -4565,9 +4674,13 @@ adminPagesRoutes.get('/cross-border', (c) => {
           document.getElementById('recommended-shipping-usd').textContent = '$' + rec.shipping_charge_usd;
 
           // 配送情報
-          var methods = { ems: 'EMS 3〜5日', epacket: 'eパケット 7〜14日', sal: 'SAL 2〜4週間' };
+          var selOpt = document.getElementById('modal-ship-method');
+          var methodLabel = selOpt.options[selOpt.selectedIndex] ? selOpt.options[selOpt.selectedIndex].text : method;
           document.getElementById('modal-ship-info').textContent =
-            '送料: ¥' + cb.shipping_cost_jpy.toLocaleString() + ' (' + (methods[method] || method) + ' / ' + weightKg + 'kg)';
+            '送料: ¥' + cb.shipping_cost_jpy.toLocaleString() + ' ($' + cb.shipping_cost_usd + ') / ' + methodLabel + ' / ' + weightKg + 'kg';
+
+          // おすすめ表示
+          loadShippingRecommendation(weightKg, zone);
 
           // 推奨価格を自動入力（初回のみ、ユーザーが変更していなければ）
           var currentUsd = parseFloat(document.getElementById('modal-price-usd').value) || 0;
@@ -4704,11 +4817,14 @@ adminPagesRoutes.get('/cross-border', (c) => {
 
       var priceUsd = parseFloat(document.getElementById('modal-price-usd').value) || 0;
       var shippingUsd = parseFloat(document.getElementById('modal-shipping-usd').value) || 0;
+      var weightKg = parseFloat(document.getElementById('modal-weight-kg').value) || 2;
+      var carrierCode = document.getElementById('modal-ship-method').value;
+      var shippingZone = document.getElementById('modal-ship-zone').value;
 
       if (priceUsd <= 0) { alert('販売価格を入力してください'); return; }
 
       try {
-        await axios.post('/api/admin/cross-border/listings', {
+        var res = await axios.post('/api/admin/cross-border/listings', {
           product_id: cbCurrentProduct.id,
           title_en: titleEn,
           description_en: document.getElementById('modal-desc-en').value,
@@ -4717,6 +4833,18 @@ adminPagesRoutes.get('/cross-border', (c) => {
           shipping_cost_usd: shippingUsd,
           status: status
         }, { headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') } });
+
+        // 配送設定も保存
+        if (res.data.success && res.data.id) {
+          try {
+            await axios.put('/api/admin/cross-border/listings/' + res.data.id + '/shipping', {
+              carrier_code: carrierCode,
+              shipping_zone: shippingZone,
+              weight_kg: weightKg,
+              shipping_cost_usd: shippingUsd
+            }, { headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') } });
+          } catch(e) { console.warn('配送設定の保存に失敗:', e); }
+        }
 
         alert(status === 'ready' ? '出品準備完了しました！' : '下書き保存しました');
         closeListingModal();
@@ -4877,11 +5005,12 @@ adminPagesRoutes.get('/cross-border', (c) => {
                   (o.buyer_name ? '<p class="text-xs text-gray-400 mt-0.5"><i class="fas fa-user mr-1"></i>' + escapeHtml(o.buyer_name) + '</p>' : '') +
                 '</div>' +
               '</div>' +
-              (next ? '<div class="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2">' +
-                (o.status === 'preparing' ? '<input type="text" id="tracking-' + o.id + '" placeholder="追跡番号を入力" class="px-2 py-1 border rounded text-xs flex-1">' +
-                '<select id="shipmethod-' + o.id + '" class="px-2 py-1 border rounded text-xs"><option value="EMS">EMS</option><option value="DHL">DHL</option><option value="FedEx">FedEx</option><option value="船便">船便</option></select>' : '') +
-                '<button onclick="advanceOrder(' + o.id + ',\\'' + next + '\\')" class="px-3 py-1.5 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600 font-semibold ml-auto"><i class="fas fa-arrow-right mr-1"></i>' + nextLabel + 'へ</button>' +
-              '</div>' : '') +
+              '<div class="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2 flex-wrap">' +
+                (o.tracking_number && o.tracking_url ? '<a href="' + escapeHtml(o.tracking_url) + '" target="_blank" class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-lg hover:bg-green-200"><i class="fas fa-external-link-alt mr-1"></i>追跡ページ</a>' : '') +
+                '<button onclick="openShippingDoc(' + o.id + ')" class="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-lg hover:bg-orange-200"><i class="fas fa-file-alt mr-1"></i>手配書</button>' +
+                (o.status === 'preparing' && !o.tracking_number ? '<button onclick="openTrackingModal(' + o.id + ')" class="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-lg hover:bg-indigo-200"><i class="fas fa-barcode mr-1"></i>追跡番号登録</button>' : '') +
+                (next ? '<button onclick="advanceOrder(' + o.id + ',\\'' + next + '\\')" class="px-3 py-1.5 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600 font-semibold ml-auto"><i class="fas fa-arrow-right mr-1"></i>' + nextLabel + 'へ</button>' : '') +
+              '</div>' +
             '</div>';
           }).join('');
       } catch(e) {
@@ -4891,14 +5020,12 @@ adminPagesRoutes.get('/cross-border', (c) => {
 
     // ===== 注文ステータス進行 =====
     async function advanceOrder(orderId, newStatus) {
-      var data = { status: newStatus };
+      // shipped に進める場合は追跡番号モーダルを表示
       if (newStatus === 'shipped') {
-        var tn = document.getElementById('tracking-' + orderId);
-        var sm = document.getElementById('shipmethod-' + orderId);
-        if (tn) data.tracking_number = tn.value;
-        if (sm) data.shipping_method = sm.value;
-        if (!data.tracking_number) { alert('追跡番号を入力してください'); return; }
+        openTrackingModal(orderId);
+        return;
       }
+      var data = { status: newStatus };
       if (!confirm((newStatus === 'cancelled' ? 'キャンセルしますか？' : 'ステータスを進めますか？'))) return;
       try {
         await axios.put('/api/admin/cross-border/orders/' + orderId + '/status', data, {
@@ -5114,6 +5241,10 @@ adminPagesRoutes.get('/cross-border', (c) => {
       btn.disabled = true;
       btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>eBay出品中...';
 
+      var weightKg = parseFloat(document.getElementById('modal-weight-kg').value) || 2;
+      var carrierCode = document.getElementById('modal-ship-method').value;
+      var shippingZone = document.getElementById('modal-ship-zone').value;
+
       try {
         // まず出品データを保存
         var saveRes = await axios.post('/api/admin/cross-border/listings', {
@@ -5131,6 +5262,16 @@ adminPagesRoutes.get('/cross-border', (c) => {
         }
 
         var listingId = saveRes.data.id;
+
+        // 配送設定も保存
+        try {
+          await axios.put('/api/admin/cross-border/listings/' + listingId + '/shipping', {
+            carrier_code: carrierCode,
+            shipping_zone: shippingZone,
+            weight_kg: weightKg,
+            shipping_cost_usd: shipUsd
+          }, { headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') } });
+        } catch(e) { console.warn('配送設定の保存に失敗:', e); }
 
         // eBay Quick List
         var ebayRes = await axios.post('/api/admin/ebay-sell/quick-list', {
@@ -5158,6 +5299,319 @@ adminPagesRoutes.get('/cross-border', (c) => {
       } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fab fa-ebay mr-1"></i>eBayに出品';
+      }
+    }
+
+    // ===== おすすめ配送方法表示 =====
+    function loadShippingRecommendation(weightKg, zone) {
+      var bar = document.getElementById('shipping-recommend-bar');
+      var label, reason;
+      if (weightKg <= 2) {
+        label = '小型パーツ（〜2kg）: EMS または eパケットライトがおすすめ';
+        reason = 'コスパ最良。eパケットライトが最安、EMSが最速';
+      } else if (weightKg <= 10) {
+        label = '中型パーツ（2〜10kg）: EMS がおすすめ';
+        reason = '追跡・補償あり。EMSがコスト合理的';
+      } else if (weightKg <= 30) {
+        label = '大型パーツ（10〜30kg）: EMS または FedEx Economy';
+        reason = 'EMSは30kgまで対応。超えたらFedEx/DHLを検討';
+      } else {
+        label = '超大型/高額品（30kg超）: FedEx/DHL/UPS';
+        reason = '補償充実＆最速配送。法人割引で大幅コスト削減可能';
+      }
+      document.getElementById('shipping-recommend-label').textContent = label;
+      document.getElementById('shipping-recommend-reason').textContent = reason;
+      bar.classList.remove('hidden');
+    }
+
+    // ===== 全業者送料比較 =====
+    var carrierCompareData = [];
+    var carrierGroupFilter = 'all';
+
+    async function openCarrierCompare() {
+      var weightKg = parseFloat(document.getElementById('modal-weight-kg').value) || 2;
+      var zone = document.getElementById('modal-ship-zone').value;
+      var zoneNames = { us:'アメリカ', eu:'ヨーロッパ', asia:'アジア' };
+
+      document.getElementById('cc-weight').textContent = weightKg + 'kg';
+      document.getElementById('cc-zone').textContent = zoneNames[zone] || zone;
+      document.getElementById('cc-rate').textContent = '¥' + cbCurrentRate + '/USD';
+
+      try {
+        var res = await axios.post('/api/admin/cross-border/compare-shipping', {
+          weight_kg: weightKg,
+          zone: zone,
+          exchange_rate: cbCurrentRate
+        }, { headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') } });
+
+        if (res.data.success) {
+          carrierCompareData = res.data.carriers;
+          var rec = res.data.recommendation;
+          document.getElementById('cc-recommend-text').innerHTML =
+            '<i class="fas fa-lightbulb text-yellow-500 mr-1"></i><strong>' + rec.label + '</strong>: ' + rec.reason;
+          carrierGroupFilter = 'all';
+          document.querySelectorAll('[data-cg]').forEach(function(el) {
+            el.classList.toggle('active', el.getAttribute('data-cg') === 'all');
+          });
+          renderCarrierCompare();
+        }
+      } catch(e) {
+        document.getElementById('carrier-compare-body').innerHTML = '<p class="text-red-400 text-center py-4">比較データの取得に失敗しました</p>';
+      }
+      document.getElementById('carrier-compare-modal').classList.add('show');
+    }
+
+    function filterCarrierGroup(group) {
+      carrierGroupFilter = group;
+      document.querySelectorAll('[data-cg]').forEach(function(el) {
+        el.classList.toggle('active', el.getAttribute('data-cg') === group);
+      });
+      renderCarrierCompare();
+    }
+
+    function renderCarrierCompare() {
+      var filtered = carrierCompareData;
+      if (carrierGroupFilter !== 'all') {
+        filtered = carrierCompareData.filter(function(c) { return c.carrier_group === carrierGroupFilter; });
+      }
+      var html = '';
+      filtered.forEach(function(c) {
+        var rowClass = !c.available ? 'opacity-40' : c.is_recommended ? 'bg-blue-50 border-l-4 border-blue-400' : '';
+        var discountBadge = c.discount_applied > 0 ? '<span class="text-green-600 text-xs font-bold ml-1">-' + Math.round(c.discount_applied * 100) + '%</span>' : '';
+        var estimateBadge = c.is_estimate ? '<span class="text-orange-500 text-xs ml-1" title="概算（法人契約で変動）">概算</span>' : '';
+        var recommendBadge = c.is_recommended ? '<span class="bg-blue-500 text-white text-xs px-1.5 py-0.5 rounded ml-1">おすすめ</span>' : '';
+        html += '<div class="grid grid-cols-8 gap-2 text-sm py-2 px-2 rounded-lg items-center ' + rowClass + '" style="border-bottom:1px solid #f3f4f6;">' +
+          '<span class="col-span-2 font-semibold text-gray-800">' + escapeHtml(c.name) + recommendBadge + estimateBadge + discountBadge + '</span>' +
+          '<span class="text-gray-600">' + c.days + '</span>' +
+          '<span class="font-bold ' + (c.available ? 'text-gray-900' : 'text-gray-400') + '">¥' + (c.available ? c.cost_jpy.toLocaleString() : '-') + '</span>' +
+          '<span class="' + (c.available ? 'text-blue-600 font-bold' : 'text-gray-400') + '">$' + (c.available ? c.cost_usd : '-') + '</span>' +
+          '<span>' + (c.tracking ? '<i class="fas fa-check text-green-500"></i>' : '<i class="fas fa-times text-gray-300"></i>') + '</span>' +
+          '<span>' + (c.insurance ? '<i class="fas fa-check text-green-500"></i>' : '<i class="fas fa-times text-gray-300"></i>') + '</span>' +
+          '<span>' + (c.available ? '<button onclick="selectCarrier(\\'' + c.carrier_code + '\\')" class="text-xs bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600">選択</button>' : '<span class="text-xs text-gray-400">対象外</span>') + '</span>' +
+        '</div>';
+      });
+      if (!html) html = '<p class="text-center text-gray-400 py-4">該当する配送業者がありません</p>';
+      document.getElementById('carrier-compare-body').innerHTML = html;
+    }
+
+    function selectCarrier(code) {
+      document.getElementById('modal-ship-method').value = code;
+      document.getElementById('carrier-compare-modal').classList.remove('show');
+      autoCalcPrice();
+    }
+
+    // ===== 法人割引率設定 =====
+    var discountData = [];
+
+    async function openDiscountSettings() {
+      try {
+        var res = await axios.get('/api/admin/cross-border/carrier-discounts', {
+          headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') }
+        });
+        discountData = res.data.discounts || [];
+      } catch(e) { discountData = []; }
+
+      // 全業者（割引適用可能なもの）のリストを作成
+      var discountableCarriers = [
+        { code:'fedex_priority', name:'FedEx International Priority' },
+        { code:'fedex_economy', name:'FedEx International Economy' },
+        { code:'dhl_express', name:'DHL Express Worldwide' },
+        { code:'ups_express', name:'UPS Worldwide Express' },
+        { code:'yamato_intl', name:'ヤマト運輸 国際宅急便' },
+        { code:'sagawa_intl', name:'佐川急便 飛脚国際宅配便' }
+      ];
+
+      var html = '';
+      discountableCarriers.forEach(function(carrier) {
+        var existing = discountData.find(function(d) { return d.carrier_code === carrier.code; });
+        var rate = existing ? Math.round(existing.discount_rate * 100) : 0;
+        var notes = existing ? (existing.notes || '') : '';
+        html += '<div class="flex items-center gap-3 py-3 border-b border-gray-100">' +
+          '<div class="flex-1">' +
+            '<p class="font-semibold text-sm text-gray-800">' + carrier.name + '</p>' +
+            '<p class="text-xs text-gray-400">' + carrier.code + '</p>' +
+          '</div>' +
+          '<div class="flex items-center gap-2">' +
+            '<input type="number" id="discount-' + carrier.code + '" min="0" max="80" step="5" value="' + rate + '" class="w-16 px-2 py-1 border rounded-lg text-sm text-center font-bold">' +
+            '<span class="text-sm text-gray-500">%OFF</span>' +
+          '</div>' +
+        '</div>';
+      });
+      document.getElementById('discount-settings-body').innerHTML = html;
+      document.getElementById('discount-settings-modal').classList.add('show');
+    }
+
+    async function saveAllDiscounts() {
+      var codes = ['fedex_priority','fedex_economy','dhl_express','ups_express','yamato_intl','sagawa_intl'];
+      var failed = [];
+      for (var i = 0; i < codes.length; i++) {
+        var input = document.getElementById('discount-' + codes[i]);
+        if (!input) continue;
+        var rate = parseInt(input.value) || 0;
+        try {
+          await axios.put('/api/admin/cross-border/carrier-discounts/' + codes[i], {
+            discount_rate: rate / 100
+          }, { headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') } });
+        } catch(e) {
+          failed.push(codes[i]);
+        }
+      }
+      if (failed.length === 0) {
+        alert('✅ 法人割引率を保存しました！送料計算に反映されます。');
+        document.getElementById('discount-settings-modal').classList.remove('show');
+        // 再計算
+        if (cbCurrentProduct) autoCalcPrice();
+      } else {
+        alert('一部の保存に失敗しました: ' + failed.join(', '));
+      }
+    }
+
+    // ===== 発送手配書 =====
+    async function openShippingDoc(orderId) {
+      try {
+        var res = await axios.get('/api/admin/cross-border/orders/' + orderId + '/shipping-document', {
+          headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') }
+        });
+        if (!res.data.success) { alert(res.data.error || '手配書の取得に失敗'); return; }
+        var doc = res.data.document;
+        var trackingLink = doc.tracking_url ? '<a href="' + escapeHtml(doc.tracking_url) + '" target="_blank" class="text-blue-600 hover:underline">' + escapeHtml(doc.tracking_number) + '</a>' : escapeHtml(doc.tracking_number || '未登録');
+        var checklist = doc.checklist.map(function(item, i) {
+          return '<label class="flex items-center gap-2 py-1"><input type="checkbox" class="w-4 h-4 rounded border-gray-300"><span class="text-sm text-gray-700">' + escapeHtml(item.item) + '</span></label>';
+        }).join('');
+
+        var html = '<div class="border-2 border-gray-800 rounded-lg p-6" style="font-family:sans-serif;">' +
+          '<div class="text-center mb-6">' +
+            '<h2 class="text-2xl font-bold text-gray-900">発送手配書 / Shipping Arrangement</h2>' +
+            '<p class="text-sm text-gray-500">Order #' + doc.order_id + (doc.ebay_order_id ? ' / eBay: ' + escapeHtml(doc.ebay_order_id) : '') + '</p>' +
+            '<p class="text-xs text-gray-400">発行日: ' + new Date().toLocaleDateString('ja-JP') + '</p>' +
+          '</div>' +
+          '<div class="grid grid-cols-2 gap-4 mb-4">' +
+            '<div class="border rounded-lg p-3">' +
+              '<p class="text-xs font-bold text-gray-500 mb-2 uppercase">送り元 / From</p>' +
+              '<p class="font-bold text-sm">' + escapeHtml(doc.sender_name) + '</p>' +
+              '<p class="text-xs text-gray-600">' + escapeHtml(doc.sender_address) + '</p>' +
+            '</div>' +
+            '<div class="border rounded-lg p-3">' +
+              '<p class="text-xs font-bold text-gray-500 mb-2 uppercase">送り先 / To</p>' +
+              '<p class="font-bold text-sm">' + escapeHtml(doc.buyer_name || '未設定') + '</p>' +
+              '<p class="text-xs text-gray-600">' + escapeHtml(doc.buyer_address || '') + '</p>' +
+              '<p class="text-xs text-gray-600">' + escapeHtml(doc.buyer_country || '') + '</p>' +
+              (doc.buyer_email ? '<p class="text-xs text-gray-400">' + escapeHtml(doc.buyer_email) + '</p>' : '') +
+            '</div>' +
+          '</div>' +
+          '<div class="border rounded-lg p-3 mb-4">' +
+            '<p class="text-xs font-bold text-gray-500 mb-2 uppercase">商品情報 / Product</p>' +
+            '<div class="flex gap-3">' +
+              (doc.main_image ? '<img src="' + escapeHtml(doc.main_image) + '" class="w-16 h-16 object-cover rounded" onerror="this.style.display=\\'none\\'">' : '') +
+              '<div>' +
+                '<p class="font-bold text-sm">' + escapeHtml(doc.product_title_en || doc.product_title_ja) + '</p>' +
+                '<p class="text-xs text-gray-500">' + escapeHtml(doc.product_title_ja) + '</p>' +
+                '<p class="text-xs text-gray-400">' + escapeHtml(doc.vm_maker || '') + ' ' + escapeHtml(doc.vm_model || '') + ' / ' + escapeHtml(doc.condition || '') + '</p>' +
+                (doc.ebay_sku ? '<p class="text-xs text-gray-400">SKU: ' + escapeHtml(doc.ebay_sku) + '</p>' : '') +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="grid grid-cols-2 gap-4 mb-4">' +
+            '<div class="border rounded-lg p-3">' +
+              '<p class="text-xs font-bold text-gray-500 mb-2 uppercase">配送情報 / Shipping</p>' +
+              '<div class="space-y-1 text-sm">' +
+                '<p><span class="text-gray-500">配送業者:</span> <strong>' + escapeHtml(doc.carrier_name) + '</strong></p>' +
+                '<p><span class="text-gray-500">追跡番号:</span> <strong>' + trackingLink + '</strong></p>' +
+                '<p><span class="text-gray-500">重量:</span> ' + (doc.package_weight_kg || doc.weight_kg || '-') + ' kg</p>' +
+              '</div>' +
+            '</div>' +
+            '<div class="border rounded-lg p-3">' +
+              '<p class="text-xs font-bold text-gray-500 mb-2 uppercase">金額情報 / Invoice</p>' +
+              '<div class="space-y-1 text-sm">' +
+                '<p><span class="text-gray-500">販売価格:</span> <strong>$' + Number(doc.sale_price_usd || 0).toFixed(2) + '</strong> (¥' + Number(doc.sale_price_jpy || 0).toLocaleString() + ')</p>' +
+                '<p><span class="text-gray-500">送料:</span> $' + Number(doc.shipping_cost_usd || 0).toFixed(2) + '</p>' +
+                '<p class="text-xs text-gray-400 mt-1">※通関用インボイスに記載する金額</p>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="border rounded-lg p-3 mb-4">' +
+            '<p class="text-xs font-bold text-gray-500 mb-2 uppercase">チェックリスト</p>' +
+            '<div class="grid grid-cols-2 gap-1">' + checklist + '</div>' +
+          '</div>' +
+          '<div class="border-t-2 border-gray-800 pt-3 text-center">' +
+            '<p class="text-xs text-gray-400">PARTS HUB / TCI inc - 越境EC発送手配書</p>' +
+          '</div>' +
+        '</div>';
+        document.getElementById('shipping-doc-content').innerHTML = html;
+        document.getElementById('shipping-doc-modal').classList.add('show');
+      } catch(e) {
+        alert('発送手配書の取得に失敗しました');
+      }
+    }
+
+    // ===== 追跡番号登録モーダル =====
+    function openTrackingModal(orderId) {
+      var carrierOptions = [
+        { code:'ems', name:'EMS（国際スピード郵便）', group:'日本郵便' },
+        { code:'epacket_light', name:'eパケットライト', group:'日本郵便' },
+        { code:'jp_air_parcel', name:'国際小包（航空便）', group:'日本郵便' },
+        { code:'fedex_priority', name:'FedEx International Priority', group:'FedEx' },
+        { code:'fedex_economy', name:'FedEx International Economy', group:'FedEx' },
+        { code:'dhl_express', name:'DHL Express Worldwide', group:'DHL' },
+        { code:'ups_express', name:'UPS Worldwide Express', group:'UPS' },
+        { code:'yamato_intl', name:'ヤマト運輸 国際宅急便', group:'ヤマト' },
+        { code:'sagawa_intl', name:'佐川急便 飛脚国際宅配便', group:'佐川' }
+      ];
+      var optionsHtml = '<option value="">-- 業者を選択 --</option>';
+      var currentGroup = '';
+      carrierOptions.forEach(function(c) {
+        if (c.group !== currentGroup) {
+          if (currentGroup) optionsHtml += '</optgroup>';
+          optionsHtml += '<optgroup label="' + c.group + '">';
+          currentGroup = c.group;
+        }
+        optionsHtml += '<option value="' + c.code + '">' + c.name + '</option>';
+      });
+      optionsHtml += '</optgroup>';
+
+      var html = '<div style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center;" id="tracking-modal-overlay" onclick="if(event.target===this)this.remove()">' +
+        '<div style="background:white;border-radius:16px;max-width:500px;width:95%;padding:24px;" onclick="event.stopPropagation()">' +
+        '<h3 class="text-lg font-bold mb-4"><i class="fas fa-shipping-fast mr-2 text-indigo-500"></i>追跡番号登録 #' + orderId + '</h3>' +
+        '<div class="space-y-3">' +
+        '<div><label class="text-xs text-gray-500 block mb-1">配送業者</label>' +
+          '<select id="track-carrier-' + orderId + '" class="w-full px-3 py-2 border rounded-lg text-sm">' + optionsHtml + '</select></div>' +
+        '<div><label class="text-xs text-gray-500 block mb-1">追跡番号</label>' +
+          '<input type="text" id="track-number-' + orderId + '" class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="EJ123456789JP"></div>' +
+        '<div class="bg-blue-50 rounded-lg p-2">' +
+          '<p class="text-xs text-blue-600"><i class="fas fa-info-circle mr-1"></i>追跡番号を登録すると追跡URLが自動生成され、注文ステータスが「発送済」に更新されます。</p>' +
+        '</div>' +
+        '</div>' +
+        '<div class="flex gap-3 mt-4">' +
+        '<button onclick="document.getElementById(\\'tracking-modal-overlay\\').remove()" class="flex-1 px-4 py-2 border rounded-lg font-semibold">キャンセル</button>' +
+        '<button onclick="saveTracking(' + orderId + ')" class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700"><i class="fas fa-save mr-1"></i>登録して発送済みに</button>' +
+        '</div></div></div>';
+      document.body.insertAdjacentHTML('beforeend', html);
+    }
+
+    async function saveTracking(orderId) {
+      var carrier = document.getElementById('track-carrier-' + orderId);
+      var number = document.getElementById('track-number-' + orderId);
+      if (!carrier || !number) return;
+      if (!number.value.trim()) { alert('追跡番号を入力してください'); return; }
+      if (!carrier.value) { alert('配送業者を選択してください'); return; }
+
+      try {
+        var res = await axios.put('/api/admin/cross-border/orders/' + orderId + '/tracking', {
+          tracking_number: number.value.trim(),
+          carrier_code: carrier.value
+        }, { headers: { Authorization: 'Bearer ' + localStorage.getItem('admin_token') } });
+
+        if (res.data.success) {
+          alert('✅ 追跡番号を登録しました！\\n\\n業者: ' + res.data.carrier_name + '\\n番号: ' + res.data.tracking_number +
+            (res.data.tracking_url ? '\\n追跡URL: ' + res.data.tracking_url : ''));
+          var overlay = document.getElementById('tracking-modal-overlay');
+          if (overlay) overlay.remove();
+          loadOrders();
+        } else {
+          alert('登録失敗: ' + (res.data.error || ''));
+        }
+      } catch(e) {
+        alert('エラー: ' + (e.response?.data?.error || e.message));
       }
     }
 
