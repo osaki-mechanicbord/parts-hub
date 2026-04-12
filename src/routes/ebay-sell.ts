@@ -1364,15 +1364,25 @@ ebaySell.post('/quick-list', async (c) => {
         .slice(0, 12)
 
       // conditionマッピング
+      // 重要: eBay Motors系カテゴリでは USED_GOOD 等が使えるが、
+      // 一般カテゴリ（Consumer Electronics等）では使用不可。
+      // 安全のため一般カテゴリ互換のenum値を使用:
+      //   NEW, LIKE_NEW, USED, FOR_PARTS_OR_NOT_WORKING
       const conditionMap: Record<string, string> = {
         'new': 'NEW',
         'like_new': 'LIKE_NEW',
-        'good': 'USED_GOOD',
-        'acceptable': 'USED_ACCEPTABLE'
+        'good': 'USED',
+        'acceptable': 'USED',
+        'used': 'USED',
       }
-      const ebayCondition = listing.ebay_condition || conditionMap[listing.condition] || 'USED_GOOD'
+      const internalCondition = listing.condition || 'good'
+      const ebayCondition = listing.ebay_condition === 'USED_GOOD' ? 'USED' 
+        : listing.ebay_condition === 'USED_ACCEPTABLE' ? 'USED'
+        : listing.ebay_condition || conditionMap[internalCondition] || 'USED'
 
       // Inventory Item Payload
+      // NOTE: eBay Inventory APIでは condition(enum) と conditionId(数値) の両方を設定
+      // conditionId が優先される。カテゴリ別の許可condition問題を回避
       const inventoryPayload: any = {
         availability: {
           shipToLocationAvailability: { quantity: 1 }
