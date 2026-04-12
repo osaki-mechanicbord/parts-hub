@@ -1542,10 +1542,32 @@ ebaySell.post('/quick-list', async (c) => {
         }
       }
 
-      // ── カテゴリID（未指定の場合は自動車パーツのデフォルト） ──
-      // eBay Motors カテゴリ 9886 = "Other Car & Truck Parts & Accessories" (leaf category)
-      // 6030 = "Car & Truck Parts & Accessories" は親カテゴリなので出品不可
-      const catId = category_id || freshListing.ebay_category_id || '9886'
+      // ── カテゴリID（Taxonomy APIで動的取得） ──
+      let catId = category_id || freshListing.ebay_category_id
+      if (!catId) {
+        try {
+          const productTitle = encodeURIComponent(
+            (listing.title_en || listing.title || 'auto parts').substring(0, 100)
+          )
+          console.log(`[quick-list] Fetching category suggestion for: ${listing.title_en}`)
+          const catRes = await fetch(
+            `${apiBase}/commerce/taxonomy/v1/category_tree/0/get_category_suggestions?q=${productTitle}`,
+            { headers: { 'Authorization': `Bearer ${ebayToken}`, 'Accept': 'application/json' } }
+          )
+          if (catRes.ok) {
+            const catData = await catRes.json() as any
+            const suggestions = catData.categorySuggestions || []
+            if (suggestions.length > 0) {
+              catId = suggestions[0].category.categoryId
+              console.log(`[quick-list] Auto category: ${catId} - ${suggestions[0].category.categoryName}`)
+            }
+          }
+        } catch (catErr: any) {
+          console.error('[quick-list] Category suggestion error:', catErr.message)
+        }
+        // フォールバック: Consumer Electronics > Vehicle Electronics > Car Lighting
+        if (!catId) catId = '71536'
+      }
 
       // Offer Payload
       const offerPayload: any = {
