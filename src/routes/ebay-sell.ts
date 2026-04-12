@@ -1363,21 +1363,28 @@ ebaySell.post('/quick-list', async (c) => {
         })
         .slice(0, 12)
 
-      // eBay Motors カテゴリで出品するため、Motors専用の condition enum を使用
-      // Motors カテゴリ (tree 100) では USED_GOOD, USED_EXCELLENT 等が有効
-      // 一般カテゴリ (tree 0) では USED_GOOD は無効だが、Motors なら OK
+      // 画像が必須（eBay 25002エラー防止）
+      if (imageUrls.length === 0) {
+        steps.push({ step: 'inventory', success: false, error: '商品画像が必要です。最低1枚の画像を登録してください。' })
+        return c.json({ success: false, error: '商品画像が登録されていません。eBay出品には最低1枚の画像が必要です。', steps }, 400)
+      }
+
+      // eBay Motors カテゴリ 172517 (Light Bulbs & LEDs) で許可されている condition:
+      //   1000=New, 1500=New other, 2500=Remanufactured/Seller refurbished, 3000=Used, 7000=For parts
+      // USED_GOOD, LIKE_NEW, USED_EXCELLENT 等はこのカテゴリでは無効
+      // NEW_OTHER (1500相当) または USED (3000相当) のみ使用可能
       const conditionMap: Record<string, string> = {
         'new': 'NEW',
-        'like_new': 'LIKE_NEW',
-        'good': 'USED_GOOD',
-        'acceptable': 'USED_ACCEPTABLE',
-        'used': 'USED_GOOD',
+        'like_new': 'NEW_OTHER',
+        'good': 'NEW_OTHER',
+        'acceptable': 'USED',
+        'used': 'USED',
       }
       const internalCondition = listing.condition || 'good'
-      const ebayCondition = conditionMap[internalCondition] || 'USED_GOOD'
+      const ebayCondition = conditionMap[internalCondition] || 'NEW_OTHER'
 
       // Inventory Item Payload
-      // eBay Motors カテゴリでは condition enum (USED_GOOD等) を使用
+      // eBay Motors カテゴリでは NEW_OTHER または USED を使用
       const inventoryPayload: any = {
         availability: {
           shipToLocationAvailability: { quantity: 1 }
@@ -1592,9 +1599,9 @@ ebaySell.post('/quick-list', async (c) => {
         } catch (catErr: any) {
           console.error('[quick-list] Category suggestion error:', catErr.message)
         }
-        // フォールバック: eBay Motors > Car & Truck Parts > Other Car & Truck Parts & Accessories
-        // これはリーフカテゴリ(leaf=true)で、自動車パーツ全般に使用可能
-        if (!catId) catId = '9886'
+        // フォールバック: eBay Motors > Car & Truck Parts > Lighting & Lamps > Light Bulbs & LEDs
+        // APIテストで EBAY_MOTORS + 172517 の組み合わせが動作確認済み
+        if (!catId) catId = '172517'
       }
 
       // Offer Payload
@@ -1604,6 +1611,7 @@ ebaySell.post('/quick-list', async (c) => {
         format: 'FIXED_PRICE',
         listingDescription: freshListing.description_en || listing.description_en || '',
         categoryId: catId,
+        listingDuration: 'GTC',
         pricingSummary: {
           price: {
             value: String(freshListing.price_usd || listing.price_usd || '0'),
@@ -1690,12 +1698,28 @@ ebaySell.post('/quick-list', async (c) => {
         await DB.prepare(`
           UPDATE cross_border_listings SET ebay_last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
         `).bind(`Publish error ${publishRes.status}: ${errText.substring(0, 500)}`, listing_id).run()
+
+        // Payoneer KYC未完了エラーの検出
+        let userMessage = 'Offer作成まで完了しましたが、公開に失敗しました。'
+        if (errText.includes('Payoneer') || errText.includes('payoneer') || errText.includes('KYC') || errText.includes('1192182')) {
+          userMessage += '\n\n⚠️ Payoneer（決済パートナー）の本人確認（KYC）が未完了です。\n' +
+            'eBayから送られたPayoneer登録メールを確認し、本人確認を完了してください。\n' +
+            '完了後に再度出品をお試しください。\n' +
+            'https://www.payoneer.com/solutions/marketplaces-networks/ebay-payout/'
+        } else if (errText.includes('25005')) {
+          userMessage += '\nカテゴリIDが無効です。別のカテゴリを選択してください。'
+        } else if (errText.includes('25021')) {
+          userMessage += '\n商品コンディションがカテゴリに対応していません。'
+        } else {
+          userMessage += '\neBayのビジネスポリシー設定を確認してください。エラー: ' + errText.substring(0, 200)
+        }
+
         steps.push({ step: 'publish', success: false, error: `Publish error: ${publishRes.status}`, details: errText.substring(0, 500) })
         return c.json({
           success: true,
           steps,
           ebay_url: null,
-          message: 'Offer作成まで完了しましたが、公開に失敗しました。eBayのビジネスポリシー設定を確認してください。エラー: ' + errText.substring(0, 200)
+          message: userMessage
         })
       }
 
