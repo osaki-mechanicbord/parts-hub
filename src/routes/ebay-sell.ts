@@ -1428,10 +1428,24 @@ ebaySell.post('/quick-list', async (c) => {
       if (!invRes.ok && invRes.status !== 204) {
         const errText = await invRes.text()
         console.error('[quick-list] Inventory API error:', invRes.status, errText)
+        console.error('[quick-list] Inventory payload was:', JSON.stringify(inventoryPayload).substring(0, 1000))
         await DB.prepare(`
           UPDATE cross_border_listings SET ebay_last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
         `).bind(`Inventory API error ${invRes.status}: ${errText.substring(0, 500)}`, listing_id).run()
-        steps.push({ step: 'inventory', success: false, error: `eBay Inventory API error: ${invRes.status}`, details: errText.substring(0, 300) })
+        steps.push({
+          step: 'inventory',
+          success: false,
+          error: `eBay Inventory API error: ${invRes.status}`,
+          details: errText.substring(0, 500),
+          debug: {
+            sku,
+            title: inventoryPayload.product?.title,
+            imageCount: imageUrls.length,
+            hasLocation: !!location?.merchant_location_key,
+            condition: ebayCondition,
+            firstImage: imageUrls[0] || 'none'
+          }
+        })
         return c.json({ success: false, error: `Inventory登録に失敗 (HTTP ${invRes.status})`, steps }, 400)
       }
 
@@ -1509,7 +1523,13 @@ ebaySell.post('/quick-list', async (c) => {
         await DB.prepare(`
           UPDATE cross_border_listings SET ebay_last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
         `).bind(`Offer API error ${createRes.status}: ${errText.substring(0, 500)}`, listing_id).run()
-        steps.push({ step: 'offer', success: false, error: `eBay Offer API error: ${createRes.status}`, details: errText.substring(0, 300) })
+        steps.push({
+          step: 'offer',
+          success: false,
+          error: `eBay Offer API error: ${createRes.status}`,
+          details: errText.substring(0, 500),
+          debug: { sku, marketplace, price_usd: freshListing.price_usd, hasPolicies: !!fpId }
+        })
         return c.json({ success: false, error: `Offer作成に失敗 (HTTP ${createRes.status})`, steps }, 400)
       }
 

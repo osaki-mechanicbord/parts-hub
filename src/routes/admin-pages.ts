@@ -5288,9 +5288,9 @@ adminPagesRoutes.get('/cross-border', (c) => {
           var msg = 'eBay出品処理で問題が発生しました。\\n\\n';
           if (ebayRes.data.steps && ebayRes.data.steps.length > 0) {
             ebayRes.data.steps.forEach(function(s) {
-              var detail = s.error || s.details || '';
-              if (detail && detail.length > 150) detail = detail.substring(0, 150) + '...';
-              msg += s.step + ': ' + (s.success ? '✅ OK' : '❌ 失敗 - ' + detail) + '\\n';
+              msg += s.step + ': ' + (s.success ? '✅ OK' : '❌ 失敗 - ' + (s.error || '')) + '\\n';
+              if (s.details) msg += '  詳細: ' + String(s.details).substring(0, 300) + '\\n';
+              if (s.debug) msg += '  デバッグ: ' + JSON.stringify(s.debug) + '\\n';
             });
           }
           if (ebayRes.data.error) msg += '\\nエラー: ' + ebayRes.data.error;
@@ -5306,7 +5306,9 @@ adminPagesRoutes.get('/cross-border', (c) => {
           if (e.response.data.steps) {
             errMsg += '\\n\\n処理ステップ:\\n';
             e.response.data.steps.forEach(function(s) {
-              errMsg += '  ' + s.step + ': ' + (s.success ? '✅' : '❌ ' + (s.error || '').substring(0, 100)) + '\\n';
+              errMsg += '  ' + s.step + ': ' + (s.success ? '✅' : '❌ ' + (s.error || '')) + '\\n';
+              if (s.details) errMsg += '    詳細: ' + String(s.details).substring(0, 300) + '\\n';
+              if (s.debug) errMsg += '    デバッグ: ' + JSON.stringify(s.debug) + '\\n';
             });
           }
         } else {
