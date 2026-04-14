@@ -1043,7 +1043,7 @@ payment.post('/create-invoice-order', authMiddleware, async (c) => {
     await createNotification(
       c.env.DB, userId, 'purchase',
       '銀行振込の注文を受け付けました',
-      `「${product.title}」の注文を受け付けました。振込先: PayPay銀行 ビジネス営業部(005) 普通 1460031。請求書番号: ${invoiceNumber}。振込期限: ${dueDate.toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'})}`,
+      `「${product.title}」の注文を受け付けました。振込先: PayPay銀行 ビジネス営業部(005) 普通 1460031 カ）ティーシーアイ。請求書番号: ${invoiceNumber}。振込期限: ${dueDate.toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'})}`,
       transactionId, 'transaction', `/transactions/${transactionId}`
     )
 
