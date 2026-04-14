@@ -2268,9 +2268,106 @@ adminRoutes.post('/invoice-orders/:id/confirm-transfer', async (c) => {
       WHERE id = ?
     `).bind(note || '', orderId).run();
     
+    // 商品ステータスを sold に（念のため）
+    if (order.product_id) {
+      await env.DB.prepare(`
+        UPDATE products SET status = 'sold', updated_at = datetime('now')
+        WHERE id = ?
+      `).bind(order.product_id).run();
+    }
+
+    // 購入者・出品者へメール送信
+    const resendApiKey = (env as any).RESEND_API_KEY;
+    if (resendApiKey) {
+      const txDetail = await env.DB.prepare(`
+        SELECT 
+          t.amount, t.invoice_number,
+          buyer.name as buyer_name, buyer.email as buyer_email,
+          COALESCE(buyer.company_name, buyer.nickname, buyer.name) as buyer_display_name,
+          buyer.postal_code as buyer_postal_code,
+          buyer.prefecture as buyer_prefecture,
+          buyer.city as buyer_city,
+          buyer.address as buyer_address,
+          buyer.phone as buyer_phone,
+          seller.name as seller_name, seller.email as seller_email,
+          COALESCE(seller.company_name, seller.nickname, seller.name) as seller_display_name
+        FROM transactions t
+        JOIN users buyer ON t.buyer_id = buyer.id
+        JOIN users seller ON t.seller_id = seller.id
+        WHERE t.id = ?
+      `).bind(orderId).first();
+
+      if (txDetail) {
+        // 購入者向け: 入金確認メール
+        try {
+          const buyerMail = tpl.transferConfirmedBuyer({
+            buyerName: txDetail.buyer_display_name as string || txDetail.buyer_name as string,
+            productName: order.product_title as string,
+            amount: txDetail.amount as number,
+            invoiceNumber: txDetail.invoice_number as string,
+            transactionId: parseInt(orderId),
+          });
+          await sendEmail(resendApiKey, { to: txDetail.buyer_email as string, ...buyerMail });
+          console.log(`Transfer confirmed email sent to buyer: ${txDetail.buyer_email}`);
+        } catch (emailErr) {
+          console.error('Failed to send transfer confirmed email to buyer:', emailErr);
+        }
+
+        // 出品者向け: 発送依頼メール
+        try {
+          const fullAddress = [txDetail.buyer_prefecture, txDetail.buyer_city, txDetail.buyer_address].filter(Boolean).join('');
+          const sellerMail = tpl.shippingRequestSeller({
+            sellerName: txDetail.seller_display_name as string || txDetail.seller_name as string,
+            productName: order.product_title as string,
+            amount: txDetail.amount as number,
+            buyerName: txDetail.buyer_display_name as string || txDetail.buyer_name as string,
+            invoiceNumber: txDetail.invoice_number as string,
+            transactionId: parseInt(orderId),
+            buyerPostalCode: txDetail.buyer_postal_code as string || undefined,
+            buyerAddress: fullAddress || undefined,
+            buyerPhone: txDetail.buyer_phone as string || undefined,
+          });
+          await sendEmail(resendApiKey, { to: txDetail.seller_email as string, ...sellerMail });
+          console.log(`Shipping request email sent to seller: ${txDetail.seller_email}`);
+        } catch (emailErr) {
+          console.error('Failed to send shipping request email to seller:', emailErr);
+        }
+      }
+    }
+
+    // 出品者・購入者にアプリ内通知も送信
+    try {
+      await env.DB.prepare(`
+        INSERT INTO notifications (user_id, type, title, message, related_id, related_type, action_url)
+        VALUES (?, 'shipping_request', ?, ?, ?, 'transaction', ?)
+      `).bind(
+        order.seller_user_id,
+        '【発送依頼】振込が確認されました',
+        `「${order.product_title}」の振込が確認されました（請求書番号: ${order.invoice_number}）。商品の発送をお願いいたします。`,
+        orderId,
+        `/transactions/${orderId}`
+      ).run();
+    } catch (e) {
+      console.error('Seller notification insert error:', e);
+    }
+    try {
+      await env.DB.prepare(`
+        INSERT INTO notifications (user_id, type, title, message, related_id, related_type, action_url)
+        VALUES (?, 'payment_confirmed', ?, ?, ?, 'transaction', ?)
+      `).bind(
+        order.buyer_id,
+        '振込確認完了 — 出品者に発送依頼済み',
+        `「${order.product_title}」のお振込を確認いたしました（請求書番号: ${order.invoice_number}）。出品者に発送依頼を送信しました。発送をお待ちください。`,
+        orderId,
+        `/transactions/${orderId}`
+      ).run();
+    } catch (e) {
+      console.error('Buyer notification insert error:', e);
+    }
+    
     return c.json({ 
       success: true, 
-      message: `注文 ${order.invoice_number} の振込を確認しました。` 
+      message: `注文 ${order.invoice_number} の振込を確認しました。購入者・出品者にメール・アプリ内通知を送信しました。` 
     });
   } catch (error: any) {
     console.error('Confirm transfer error:', error);
@@ -2278,7 +2375,7 @@ adminRoutes.post('/invoice-orders/:id/confirm-transfer', async (c) => {
   }
 });
 
-// 出品者へ発送依頼通知を送信
+// 出品者へ発送依頼通知を送信（手動再送信用）
 adminRoutes.post('/invoice-orders/:id/notify-seller', async (c) => {
   const { env } = c;
   const orderId = c.req.param('id');
@@ -2286,9 +2383,15 @@ adminRoutes.post('/invoice-orders/:id/notify-seller', async (c) => {
   try {
     const order = await env.DB.prepare(`
       SELECT t.*, p.title as product_title,
-        buyer.name as buyer_name,
+        buyer.name as buyer_name, buyer.email as buyer_email,
         COALESCE(buyer.company_name, buyer.nickname, buyer.name) as buyer_display_name,
-        seller.name as seller_name, seller.id as seller_user_id
+        buyer.postal_code as buyer_postal_code,
+        buyer.prefecture as buyer_prefecture,
+        buyer.city as buyer_city,
+        buyer.address as buyer_address,
+        buyer.phone as buyer_phone,
+        seller.name as seller_name, seller.email as seller_email, seller.id as seller_user_id,
+        COALESCE(seller.company_name, seller.nickname, seller.name) as seller_display_name
       FROM transactions t
       LEFT JOIN products p ON t.product_id = p.id
       LEFT JOIN users buyer ON t.buyer_id = buyer.id
@@ -2336,9 +2439,32 @@ adminRoutes.post('/invoice-orders/:id/notify-seller', async (c) => {
       console.error('Notification insert error:', e);
     }
     
+    // メール通知も送信
+    const resendApiKey = (env as any).RESEND_API_KEY;
+    if (resendApiKey && order.seller_email) {
+      try {
+        const fullAddress = [order.buyer_prefecture, order.buyer_city, order.buyer_address].filter(Boolean).join('');
+        const sellerMail = tpl.shippingRequestSeller({
+          sellerName: order.seller_display_name as string || order.seller_name as string,
+          productName: order.product_title as string,
+          amount: order.amount as number,
+          buyerName: order.buyer_display_name as string || order.buyer_name as string,
+          invoiceNumber: order.invoice_number as string,
+          transactionId: parseInt(orderId),
+          buyerPostalCode: order.buyer_postal_code as string || undefined,
+          buyerAddress: fullAddress || undefined,
+          buyerPhone: order.buyer_phone as string || undefined,
+        });
+        await sendEmail(resendApiKey, { to: order.seller_email as string, ...sellerMail });
+        console.log(`Shipping request email re-sent to seller: ${order.seller_email}`);
+      } catch (emailErr) {
+        console.error('Failed to re-send shipping request email:', emailErr);
+      }
+    }
+    
     return c.json({ 
       success: true, 
-      message: `出品者「${order.seller_name}」と購入者に通知を送信しました。` 
+      message: `出品者「${order.seller_name}」と購入者に通知（メール含む）を送信しました。` 
     });
   } catch (error: any) {
     console.error('Notify seller error:', error);

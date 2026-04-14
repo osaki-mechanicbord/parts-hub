@@ -768,7 +768,14 @@ function showPaymentMethodModal(priceExTax, taxAmount, priceIncTax, platformFee,
                         </div>
                     </div>
                     <div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:12px;margin-top:12px;">
-                        <p style="font-size:12px;color:#92400e;"><i class="fas fa-info-circle" style="margin-right:6px;"></i>振込先はPARTS HUB指定口座です。振込期限は注文後7日間です。振込確認後に出品者へ発送依頼が送信されます。振込手数料はお客様負担となります。</p>
+                        <p style="font-size:12px;color:#92400e;margin:0 0 8px;"><i class="fas fa-info-circle" style="margin-right:6px;"></i><strong>振込先情報</strong></p>
+                        <p style="font-size:12px;color:#92400e;margin:0;line-height:1.8;">
+                            PayPay銀行　ビジネス営業部　店番号 005<br>
+                            普通　口座番号 1460031<br>
+                            振込期限：注文後7日間<br>
+                            入金が確認され次第、商品を発送いたします。<br>
+                            ※ 振込手数料はお客様負担となります。
+                        </p>
                     </div>
                 </div>
             </div>
@@ -932,21 +939,51 @@ function showInvoiceOrderComplete(data) {
     overlay.id = 'invoice-complete-overlay';
     overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);';
     overlay.innerHTML = `
-        <div style="background:#fff;border-radius:16px;max-width:480px;width:90%;padding:32px;text-align:center;box-shadow:0 25px 50px rgba(0,0,0,0.25);">
+        <div style="background:#fff;border-radius:16px;max-width:520px;width:90%;max-height:90vh;overflow-y:auto;padding:32px;text-align:center;box-shadow:0 25px 50px rgba(0,0,0,0.25);">
             <div style="width:64px;height:64px;background:#ecfdf5;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
                 <i class="fas fa-check" style="font-size:28px;color:#10b981;"></i>
             </div>
             <h2 style="font-size:20px;font-weight:bold;color:#111;margin-bottom:8px;">注文を受け付けました</h2>
-            <p style="color:#666;margin-bottom:20px;">請求書払い（銀行振込）でのご注文ありがとうございます。</p>
+            <p style="color:#666;margin-bottom:20px;">銀行振込を選択されましたので、こちらにお振込をお願いします。</p>
             
-            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px;text-align:left;margin-bottom:20px;">
+            <!-- 振込先口座情報 -->
+            <div style="background:#eff6ff;border:2px solid #3b82f6;border-radius:12px;padding:20px;text-align:left;margin-bottom:20px;">
+                <h3 style="font-size:16px;font-weight:bold;color:#1e40af;margin:0 0 16px;text-align:center;">
+                    <i class="fas fa-university" style="margin-right:8px;"></i>振込先口座情報
+                </h3>
+                <table style="width:100%;border-collapse:collapse;">
+                    <tr style="border-bottom:1px solid #bfdbfe;">
+                        <td style="padding:8px 0;color:#64748b;font-size:13px;width:40%;">金融機関名</td>
+                        <td style="padding:8px 0;font-weight:bold;color:#111;font-size:15px;">PayPay銀行</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #bfdbfe;">
+                        <td style="padding:8px 0;color:#64748b;font-size:13px;">支店名</td>
+                        <td style="padding:8px 0;font-weight:bold;color:#111;font-size:15px;">ビジネス営業部</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #bfdbfe;">
+                        <td style="padding:8px 0;color:#64748b;font-size:13px;">店番号</td>
+                        <td style="padding:8px 0;font-weight:bold;color:#111;font-size:15px;">005</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #bfdbfe;">
+                        <td style="padding:8px 0;color:#64748b;font-size:13px;">口座種別</td>
+                        <td style="padding:8px 0;font-weight:bold;color:#111;font-size:15px;">普通</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:8px 0;color:#64748b;font-size:13px;">口座番号</td>
+                        <td style="padding:8px 0;font-weight:bold;color:#111;font-size:18px;letter-spacing:2px;">1460031</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <!-- 注文情報 -->
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px;text-align:left;margin-bottom:16px;">
                 <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
                     <span style="color:#666;font-size:14px;">請求書番号</span>
                     <span style="font-weight:bold;color:#111;">${data.invoice_number}</span>
                 </div>
                 <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-                    <span style="color:#666;font-size:14px;">お支払い合計</span>
-                    <span style="font-weight:bold;color:#ef4444;">¥${data.fees?.total?.toLocaleString() || '-'}</span>
+                    <span style="color:#666;font-size:14px;">お振込金額</span>
+                    <span style="font-weight:bold;color:#ef4444;font-size:18px;">¥${data.fees?.total?.toLocaleString() || '-'}</span>
                 </div>
                 <div style="display:flex;justify-content:space-between;">
                     <span style="color:#666;font-size:14px;">振込期限</span>
@@ -955,10 +992,11 @@ function showInvoiceOrderComplete(data) {
             </div>
             
             <div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:12px;margin-bottom:20px;text-align:left;">
-                <p style="font-size:13px;color:#92400e;line-height:1.6;">
+                <p style="font-size:13px;color:#92400e;line-height:1.6;margin:0;">
                     <i class="fas fa-info-circle" style="margin-right:4px;"></i>
-                    PARTS HUB運営より請求書をお送りいたします。<br>
-                    振込確認後、出品者に発送依頼が送信されます。
+                    入金が確認され次第、商品を発送いたします。<br>
+                    振込先情報はご登録メールアドレスにもお送りしております。<br>
+                    ※ 振込手数料はお客様のご負担となります。
                 </p>
             </div>
             

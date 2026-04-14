@@ -476,6 +476,178 @@ export function productStatusChanged(p: {
   }
 }
 
+// ================================================================
+// 14. 銀行振込注文受付（購入者向け）— 振込先口座情報を通知
+// ================================================================
+export function bankTransferOrderBuyer(p: {
+  buyerName: string; productName: string; amount: number;
+  invoiceNumber: string; dueDate: string; transactionId: number
+}) {
+  const amt = p.amount.toLocaleString('ja-JP')
+  const url = `${SITE_URL}/transactions/${p.transactionId}`
+  const content = `
+    <h2 style="margin:0 0 16px;font-size:20px;color:#111;">ご注文ありがとうございます</h2>
+    <p>${p.buyerName} 様</p>
+    <p>銀行振込を選択されましたので、下記口座にお振込をお願いいたします。</p>
+
+    <div style="background:#eff6ff;border:2px solid #3b82f6;border-radius:12px;padding:20px;margin:20px 0;">
+      <h3 style="font-size:16px;font-weight:bold;color:#1e40af;margin:0 0 16px;text-align:center;">振込先口座情報</h3>
+      <table style="width:100%;border-collapse:collapse;">
+        <tr style="border-bottom:1px solid #bfdbfe;">
+          <td style="padding:8px 0;color:#64748b;font-size:13px;width:40%;">金融機関名</td>
+          <td style="padding:8px 0;font-weight:bold;color:#111;font-size:15px;">PayPay銀行</td>
+        </tr>
+        <tr style="border-bottom:1px solid #bfdbfe;">
+          <td style="padding:8px 0;color:#64748b;font-size:13px;">支店名</td>
+          <td style="padding:8px 0;font-weight:bold;color:#111;font-size:15px;">ビジネス営業部</td>
+        </tr>
+        <tr style="border-bottom:1px solid #bfdbfe;">
+          <td style="padding:8px 0;color:#64748b;font-size:13px;">店番号</td>
+          <td style="padding:8px 0;font-weight:bold;color:#111;font-size:15px;">005</td>
+        </tr>
+        <tr style="border-bottom:1px solid #bfdbfe;">
+          <td style="padding:8px 0;color:#64748b;font-size:13px;">口座種別</td>
+          <td style="padding:8px 0;font-weight:bold;color:#111;font-size:15px;">普通</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;color:#64748b;font-size:13px;">口座番号</td>
+          <td style="padding:8px 0;font-weight:bold;color:#111;font-size:18px;letter-spacing:2px;">1460031</td>
+        </tr>
+      </table>
+    </div>
+
+    ${infoBox([
+      infoRow('商品名', p.productName),
+      infoRow('お振込金額', `<span style="color:#ef4444;font-weight:800;font-size:16px;">¥${amt}</span>`),
+      infoRow('請求書番号', p.invoiceNumber),
+      infoRow('振込期限', `<span style="color:#f59e0b;font-weight:700;">${p.dueDate}</span>`),
+    ])}
+
+    <div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:12px;margin:20px 0;">
+      <p style="font-size:13px;color:#92400e;line-height:1.6;margin:0;">
+        <strong>入金が確認され次第、商品を発送いたします。</strong><br>
+        ※ 振込手数料はお客様のご負担となります。<br>
+        ※ 振込期限を過ぎますと注文がキャンセルとなる場合があります。
+      </p>
+    </div>
+    ${actionButton('注文詳細を見る', url)}
+    <p style="font-size:13px;color:#6b7280;">ご不明な点がございましたら、取引ページからお問い合わせください。</p>
+  `
+  return {
+    subject: `【PARTS HUB】お振込のお願い - ${p.productName}（${p.invoiceNumber}）`,
+    html: baseTemplate('お振込のお願い', content),
+  }
+}
+
+// ================================================================
+// 15. 銀行振込注文通知（出品者向け）
+// ================================================================
+export function bankTransferOrderSeller(p: {
+  sellerName: string; productName: string; amount: number;
+  buyerName: string; invoiceNumber: string; transactionId: number
+}) {
+  const amt = p.amount.toLocaleString('ja-JP')
+  const url = `${SITE_URL}/transactions/${p.transactionId}`
+  const content = `
+    <h2 style="margin:0 0 16px;font-size:20px;color:#111;">銀行振込の注文がありました</h2>
+    <p>${p.sellerName} 様</p>
+    <p>あなたの商品に銀行振込での注文が入りました。<br>
+    <strong style="color:#b45309;">振込確認後に発送依頼をお送りしますので、しばらくお待ちください。</strong></p>
+    ${infoBox([
+      infoRow('商品名', p.productName),
+      infoRow('販売価格', `¥${amt}`),
+      infoRow('購入者', p.buyerName),
+      infoRow('請求書番号', p.invoiceNumber),
+      infoRow('決済方法', '銀行振込（入金待ち）'),
+    ])}
+    <p style="font-size:13px;color:#6b7280;">入金が確認され次第、発送依頼の通知をお送りいたします。</p>
+    ${actionButton('取引詳細を見る', url)}
+  `
+  return {
+    subject: `【PARTS HUB】銀行振込の注文がありました - ${p.productName}`,
+    html: baseTemplate('銀行振込注文通知', content),
+  }
+}
+
+// ================================================================
+// 16. 入金確認完了（購入者向け）
+// ================================================================
+export function transferConfirmedBuyer(p: {
+  buyerName: string; productName: string; amount: number;
+  invoiceNumber: string; transactionId: number
+}) {
+  const amt = p.amount.toLocaleString('ja-JP')
+  const url = `${SITE_URL}/transactions/${p.transactionId}`
+  const content = `
+    <h2 style="margin:0 0 16px;font-size:20px;color:#111;">お振込を確認いたしました</h2>
+    <p>${p.buyerName} 様</p>
+    <p>以下の商品のお振込を確認いたしました。ありがとうございます！<br>
+    出品者に発送依頼を送信しました。発送をお待ちください。</p>
+    ${infoBox([
+      infoRow('商品名', p.productName),
+      infoRow('お支払い金額', `¥${amt}`),
+      infoRow('請求書番号', p.invoiceNumber),
+      infoRow('ステータス', '<span style="color:#16a34a;font-weight:700;">入金確認済み</span>'),
+    ])}
+    <p>出品者が発送準備を進めます。発送されましたらメールでお知らせいたします。</p>
+    ${actionButton('注文詳細を見る', url)}
+  `
+  return {
+    subject: `【PARTS HUB】お振込確認完了 - ${p.productName}（${p.invoiceNumber}）`,
+    html: baseTemplate('入金確認', content),
+  }
+}
+
+// ================================================================
+// 17. 発送依頼（出品者向け）— 銀行振込の入金確認後
+// ================================================================
+export function shippingRequestSeller(p: {
+  sellerName: string; productName: string; amount: number;
+  buyerName: string; invoiceNumber: string; transactionId: number;
+  buyerPostalCode?: string; buyerAddress?: string; buyerPhone?: string
+}) {
+  const amt = p.amount.toLocaleString('ja-JP')
+  const url = `${SITE_URL}/transactions/${p.transactionId}`
+  const shippingRows: string[] = []
+  if (p.buyerName) shippingRows.push(infoRow('お届け先名', p.buyerName))
+  if (p.buyerPostalCode) shippingRows.push(infoRow('郵便番号', `〒${p.buyerPostalCode}`))
+  if (p.buyerAddress) shippingRows.push(infoRow('住所', p.buyerAddress))
+  if (p.buyerPhone) shippingRows.push(infoRow('電話番号', p.buyerPhone))
+
+  const content = `
+    <h2 style="margin:0 0 16px;font-size:20px;color:#111;">発送をお願いします</h2>
+    <p>${p.sellerName} 様</p>
+    <p>以下の注文のお振込が確認されました。<br>
+    <strong style="color:#dc2626;">できるだけ早く発送準備をお願いします。</strong></p>
+    ${infoBox([
+      infoRow('商品名', p.productName),
+      infoRow('販売価格', `¥${amt}`),
+      infoRow('購入者', p.buyerName),
+      infoRow('請求書番号', p.invoiceNumber),
+      infoRow('決済状況', '<span style="color:#16a34a;font-weight:700;">入金確認済み</span>'),
+    ])}
+    ${shippingRows.length > 0 ? `
+    <div style="background:#f8f9fa;border-left:4px solid #3b82f6;border-radius:0 8px 8px 0;padding:16px 20px;margin:20px 0;">
+      <p style="margin:0 0 8px;font-weight:700;color:#1e40af;"><i class="fas fa-truck" style="margin-right:6px;"></i>配送先情報</p>
+      ${shippingRows.join('')}
+    </div>` : ''}
+    <div style="background:#fff7ed;border:2px solid #fb923c;border-radius:8px;padding:16px 20px;margin:20px 0;">
+      <p style="margin:0 0 8px;font-weight:800;font-size:15px;color:#c2410c;">発送手順</p>
+      <ol style="font-size:14px;padding-left:20px;margin:0;color:#333;">
+        <li style="margin-bottom:4px;">商品の梱包を行ってください</li>
+        <li style="margin-bottom:4px;">配送業者に依頼して発送してください</li>
+        <li style="margin-bottom:4px;">発送完了後、<a href="${url}" style="color:#ef4444;font-weight:600;">取引ページ</a>で「発送済み」に更新してください</li>
+      </ol>
+      <p style="margin:8px 0 0;font-size:13px;color:#9a3412;">※ 追跡番号がある場合は取引ページに入力してください。購入者に自動通知されます。</p>
+    </div>
+    ${actionButton('取引ページで発送手続きをする', url)}
+  `
+  return {
+    subject: `【PARTS HUB】【発送依頼】入金確認済み - ${p.productName}（${p.invoiceNumber}）`,
+    html: baseTemplate('発送依頼', content),
+  }
+}
+
 export function passwordReset(p: { userName: string; resetUrl: string }) {
   const content = `
     <h2 style="margin:0 0 16px;font-size:20px;color:#111;">🔑 パスワードリセット</h2>

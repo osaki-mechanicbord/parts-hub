@@ -1042,18 +1042,69 @@ payment.post('/create-invoice-order', authMiddleware, async (c) => {
     // 購入者に通知
     await createNotification(
       c.env.DB, userId, 'purchase',
-      '請求書払い注文を受け付けました',
-      `「${product.title}」の注文を受け付けました。請求書番号: ${invoiceNumber}。振込期限: ${dueDate.toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'})}`,
+      '銀行振込の注文を受け付けました',
+      `「${product.title}」の注文を受け付けました。振込先: PayPay銀行 ビジネス営業部(005) 普通 1460031。請求書番号: ${invoiceNumber}。振込期限: ${dueDate.toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'})}`,
       transactionId, 'transaction', `/transactions/${transactionId}`
     )
 
     // 出品者に通知（振込待ちである旨）
     await createNotification(
       c.env.DB, product.seller_id as number, 'sale',
-      '請求書払いの注文がありました',
-      `「${product.title}」に請求書払いの注文が入りました。振込確認後に発送依頼をお送りします。`,
+      '銀行振込の注文がありました',
+      `「${product.title}」に銀行振込の注文が入りました。振込確認後に発送依頼をお送りします。`,
       transactionId, 'transaction', `/transactions/${transactionId}`
     )
+
+    // メール送信（購入者・出品者）
+    const resendApiKey = (c.env as any).RESEND_API_KEY
+    if (resendApiKey) {
+      // 購入者・出品者の情報を取得
+      const txInfo = await c.env.DB.prepare(`
+        SELECT 
+          buyer.name as buyer_name, buyer.email as buyer_email,
+          COALESCE(buyer.company_name, buyer.nickname, buyer.name) as buyer_display_name,
+          seller.name as seller_name, seller.email as seller_email,
+          COALESCE(seller.company_name, seller.nickname, seller.name) as seller_display_name
+        FROM users buyer, users seller
+        WHERE buyer.id = ? AND seller.id = ?
+      `).bind(userId, product.seller_id).first()
+
+      if (txInfo) {
+        const dueDateFormatted = dueDate.toLocaleDateString('ja-JP', {timeZone: 'Asia/Tokyo'})
+        
+        // 購入者向け: 振込先口座情報メール
+        try {
+          const buyerMail = tpl.bankTransferOrderBuyer({
+            buyerName: txInfo.buyer_display_name as string || txInfo.buyer_name as string,
+            productName: product.title as string,
+            amount: product.price as number,
+            invoiceNumber,
+            dueDate: dueDateFormatted,
+            transactionId,
+          })
+          await sendEmail(resendApiKey, { to: txInfo.buyer_email as string, ...buyerMail })
+          console.log(`Bank transfer order email sent to buyer: ${txInfo.buyer_email}`)
+        } catch (emailErr) {
+          console.error('Failed to send bank transfer email to buyer:', emailErr)
+        }
+
+        // 出品者向け: 銀行振込注文通知メール
+        try {
+          const sellerMail = tpl.bankTransferOrderSeller({
+            sellerName: txInfo.seller_display_name as string || txInfo.seller_name as string,
+            productName: product.title as string,
+            amount: product.price as number,
+            buyerName: txInfo.buyer_display_name as string || txInfo.buyer_name as string,
+            invoiceNumber,
+            transactionId,
+          })
+          await sendEmail(resendApiKey, { to: txInfo.seller_email as string, ...sellerMail })
+          console.log(`Bank transfer order email sent to seller: ${txInfo.seller_email}`)
+        } catch (emailErr) {
+          console.error('Failed to send bank transfer email to seller:', emailErr)
+        }
+      }
+    }
 
     return c.json({
       success: true,
