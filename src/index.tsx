@@ -9826,18 +9826,19 @@ app.get('/password-reset', (c) => {
 
             <!-- フォーム -->
             <div class="bg-white rounded-2xl shadow-xl p-8">
+                <!-- ステップ1: メールアドレス入力 -->
                 <div id="step1">
                     <div class="text-center mb-6">
                         <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <i class="fas fa-key text-red-500 text-2xl"></i>
                         </div>
                         <h2 class="text-xl font-bold text-gray-900 mb-2">パスワードをお忘れですか？</h2>
-                        <p class="text-sm text-gray-600">登録済みのメールアドレスを入力してください。<br>パスワード再設定用のリンクをお送りします。</p>
+                        <p class="text-sm text-gray-600">登録済みのメールアドレスを入力してください。<br>6桁のリセットコードをメールでお送りします。</p>
                     </div>
 
                     <form id="reset-form" class="space-y-4">
                         <div>
-                            <label class="form-label">メールアドレス</label>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">メールアドレス</label>
                             <div class="relative">
                                 <input type="email" id="email" required
                                        class="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-500"
@@ -9848,9 +9849,11 @@ app.get('/password-reset', (c) => {
 
                         <button type="submit" id="submit-btn"
                                 class="w-full bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white py-3 px-6 rounded-lg font-bold transition-all shadow-lg">
-                            再設定リンクを送信
+                            リセットコードを送信
                         </button>
                     </form>
+
+                    <div id="step1-error" class="hidden mt-4 bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700 text-center"></div>
 
                     <div class="mt-6 text-center">
                         <a href="/login" class="text-red-500 hover:text-red-600 font-semibold text-sm">
@@ -9859,19 +9862,91 @@ app.get('/password-reset', (c) => {
                     </div>
                 </div>
 
-                <div id="step2" class="hidden text-center">
+                <!-- ステップ2: リセットコード入力 + 新パスワード設定 -->
+                <div id="step2" class="hidden">
+                    <div class="text-center mb-6">
+                        <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-shield-alt text-blue-500 text-2xl"></i>
+                        </div>
+                        <h2 class="text-xl font-bold text-gray-900 mb-2">リセットコードを入力</h2>
+                        <p class="text-sm text-gray-600">
+                            <span id="sent-email-display" class="font-semibold text-gray-800"></span> 宛に<br>6桁のリセットコードを送信しました。
+                        </p>
+                        <p class="text-xs text-gray-500 mt-2">※メールが届かない場合は迷惑メールフォルダをご確認ください。</p>
+                    </div>
+
+                    <form id="verify-form" class="space-y-4">
+                        <!-- リセットコード入力（6桁） -->
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">リセットコード（6桁）</label>
+                            <div class="flex gap-2 justify-center" id="code-inputs">
+                                <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" class="w-12 h-14 text-center text-2xl font-bold border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-500" data-code-index="0">
+                                <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" class="w-12 h-14 text-center text-2xl font-bold border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-500" data-code-index="1">
+                                <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" class="w-12 h-14 text-center text-2xl font-bold border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-500" data-code-index="2">
+                                <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" class="w-12 h-14 text-center text-2xl font-bold border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-500" data-code-index="3">
+                                <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" class="w-12 h-14 text-center text-2xl font-bold border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-500" data-code-index="4">
+                                <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" class="w-12 h-14 text-center text-2xl font-bold border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-500" data-code-index="5">
+                            </div>
+                            <p class="text-xs text-gray-500 mt-2 text-center">有効期限：30分</p>
+                        </div>
+
+                        <!-- 新しいパスワード -->
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">新しいパスワード</label>
+                            <div class="relative">
+                                <input type="password" id="new-password" required minlength="8"
+                                       class="w-full pl-10 pr-12 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-500"
+                                       placeholder="8文字以上の英数字">
+                                <i class="fas fa-lock absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                <button type="button" onclick="togglePw('new-password', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- パスワード確認 -->
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">新しいパスワード（確認）</label>
+                            <div class="relative">
+                                <input type="password" id="confirm-password" required minlength="8"
+                                       class="w-full pl-10 pr-12 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-500"
+                                       placeholder="もう一度入力してください">
+                                <i class="fas fa-lock absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                <button type="button" onclick="togglePw('confirm-password', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <button type="submit" id="verify-btn"
+                                class="w-full bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white py-3 px-6 rounded-lg font-bold transition-all shadow-lg">
+                            パスワードを再設定する
+                        </button>
+                    </form>
+
+                    <div id="step2-error" class="hidden mt-4 bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700 text-center"></div>
+
+                    <div class="mt-4 flex items-center justify-between">
+                        <button type="button" id="resend-btn" onclick="resendCode()" class="text-red-500 hover:text-red-600 font-semibold text-sm">
+                            <i class="fas fa-redo mr-1"></i>コードを再送信
+                        </button>
+                        <button type="button" onclick="backToStep1()" class="text-gray-500 hover:text-gray-700 text-sm">
+                            <i class="fas fa-arrow-left mr-1"></i>メールアドレスを変更
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ステップ3: 完了 -->
+                <div id="step3" class="hidden text-center">
                     <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <i class="fas fa-check text-green-500 text-2xl"></i>
                     </div>
-                    <h2 class="text-xl font-bold text-gray-900 mb-2">送信完了</h2>
+                    <h2 class="text-xl font-bold text-gray-900 mb-2">パスワード再設定完了</h2>
                     <p class="text-sm text-gray-600 mb-6">
-                        入力されたメールアドレス宛に、パスワード再設定用のリンクを送信しました。<br>
-                        メールをご確認ください。
+                        パスワードが正常に再設定されました。<br>
+                        新しいパスワードでログインしてください。
                     </p>
-                    <p class="text-xs text-gray-500 mb-6">
-                        ※メールが届かない場合は、迷惑メールフォルダをご確認ください。
-                    </p>
-                    <a href="/login" class="inline-block bg-red-500 hover:bg-red-600 text-white py-3 px-6 rounded-lg font-bold transition-colors">
+                    <a href="/login" class="inline-block bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white py-3 px-8 rounded-lg font-bold transition-all shadow-lg">
                         ログインページへ
                     </a>
                 </div>
@@ -9886,28 +9961,181 @@ app.get('/password-reset', (c) => {
         <script src="${v('/static/auth-header.js')}"></script>
         <script src="${v('/static/notification-badge.js')}"></script>
         <script>
+            let resetEmail = '';
+
+            // URLパラメータからメールアドレスを取得
+            (function() {
+                const params = new URLSearchParams(window.location.search);
+                const emailParam = params.get('email');
+                if (emailParam) {
+                    document.getElementById('email').value = emailParam;
+                }
+            })();
+
+            // パスワード表示切り替え
+            function togglePw(id, btn) {
+                const input = document.getElementById(id);
+                const icon = btn.querySelector('i');
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.classList.replace('fa-eye', 'fa-eye-slash');
+                } else {
+                    input.type = 'password';
+                    icon.classList.replace('fa-eye-slash', 'fa-eye');
+                }
+            }
+
+            // コード入力フィールドの自動フォーカス移動
+            const codeInputs = document.querySelectorAll('#code-inputs input');
+            codeInputs.forEach((input, idx) => {
+                input.addEventListener('input', (e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    e.target.value = val;
+                    if (val && idx < 5) {
+                        codeInputs[idx + 1].focus();
+                    }
+                });
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Backspace' && !e.target.value && idx > 0) {
+                        codeInputs[idx - 1].focus();
+                    }
+                });
+                // ペースト対応
+                input.addEventListener('paste', (e) => {
+                    e.preventDefault();
+                    const paste = (e.clipboardData || window.clipboardData).getData('text').replace(/[^0-9]/g, '');
+                    for (let i = 0; i < 6 && i < paste.length; i++) {
+                        codeInputs[i].value = paste[i];
+                    }
+                    const focusIdx = Math.min(paste.length, 5);
+                    codeInputs[focusIdx].focus();
+                });
+            });
+
+            function getResetCode() {
+                return Array.from(codeInputs).map(i => i.value).join('');
+            }
+
+            function showError(stepId, msg) {
+                const el = document.getElementById(stepId + '-error');
+                el.textContent = msg;
+                el.classList.remove('hidden');
+                setTimeout(() => el.classList.add('hidden'), 5000);
+            }
+
+            // ステップ1: リセットコード送信
             document.getElementById('reset-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
-                
                 const submitBtn = document.getElementById('submit-btn');
-                const email = document.getElementById('email').value;
+                const email = document.getElementById('email').value.trim();
                 
+                if (!email) return;
+
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>送信中...';
-                
+                document.getElementById('step1-error')?.classList.add('hidden');
+
                 try {
-                    // TODO: 実際のAPI呼び出し
-                    await new Promise(resolve => setTimeout(resolve, 1500));
+                    const res = await axios.post('/api/auth/password-reset-request', { email });
                     
-                    // ステップ2を表示
-                    document.getElementById('step1').classList.add('hidden');
-                    document.getElementById('step2').classList.remove('hidden');
+                    if (res.data.success) {
+                        resetEmail = email;
+                        document.getElementById('sent-email-display').textContent = email;
+                        document.getElementById('step1').classList.add('hidden');
+                        document.getElementById('step2').classList.remove('hidden');
+                        // 最初のコード入力にフォーカス
+                        codeInputs[0].focus();
+                    } else {
+                        showError('step1', res.data.error || '送信に失敗しました');
+                    }
                 } catch (error) {
-                    alert('送信に失敗しました。もう一度お試しください。');
+                    const msg = error.response?.data?.error || '送信に失敗しました。もう一度お試しください。';
+                    showError('step1', msg);
+                } finally {
                     submitBtn.disabled = false;
-                    submitBtn.innerHTML = '再設定リンクを送信';
+                    submitBtn.innerHTML = 'リセットコードを送信';
                 }
             });
+
+            // ステップ2: パスワードリセット実行
+            document.getElementById('verify-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const verifyBtn = document.getElementById('verify-btn');
+                const code = getResetCode();
+                const newPw = document.getElementById('new-password').value;
+                const confirmPw = document.getElementById('confirm-password').value;
+
+                document.getElementById('step2-error')?.classList.add('hidden');
+
+                if (code.length !== 6) {
+                    showError('step2', '6桁のリセットコードを入力してください');
+                    return;
+                }
+                if (newPw.length < 8) {
+                    showError('step2', 'パスワードは8文字以上で入力してください');
+                    return;
+                }
+                if (newPw !== confirmPw) {
+                    showError('step2', 'パスワードが一致しません');
+                    return;
+                }
+
+                verifyBtn.disabled = true;
+                verifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>設定中...';
+
+                try {
+                    const res = await axios.post('/api/auth/password-reset', {
+                        email: resetEmail,
+                        reset_token: code,
+                        new_password: newPw
+                    });
+
+                    if (res.data.success) {
+                        document.getElementById('step2').classList.add('hidden');
+                        document.getElementById('step3').classList.remove('hidden');
+                    } else {
+                        showError('step2', res.data.error || 'リセットに失敗しました');
+                    }
+                } catch (error) {
+                    const msg = error.response?.data?.error || 'リセットに失敗しました。もう一度お試しください。';
+                    showError('step2', msg);
+                } finally {
+                    verifyBtn.disabled = false;
+                    verifyBtn.innerHTML = 'パスワードを再設定する';
+                }
+            });
+
+            // コード再送信
+            async function resendCode() {
+                const btn = document.getElementById('resend-btn');
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>再送信中...';
+
+                try {
+                    await axios.post('/api/auth/password-reset-request', { email: resetEmail });
+                    btn.innerHTML = '<i class="fas fa-check mr-1"></i>送信しました';
+                    // コード入力をクリア
+                    codeInputs.forEach(i => i.value = '');
+                    codeInputs[0].focus();
+                    setTimeout(() => {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-redo mr-1"></i>コードを再送信';
+                    }, 3000);
+                } catch (error) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-redo mr-1"></i>コードを再送信';
+                    showError('step2', '再送信に失敗しました');
+                }
+            }
+
+            // ステップ1に戻る
+            function backToStep1() {
+                document.getElementById('step2').classList.add('hidden');
+                document.getElementById('step1').classList.remove('hidden');
+                codeInputs.forEach(i => i.value = '');
+                document.getElementById('new-password').value = '';
+                document.getElementById('confirm-password').value = '';
+            }
         </script>
     </body>
     </html>

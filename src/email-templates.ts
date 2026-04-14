@@ -648,17 +648,25 @@ export function shippingRequestSeller(p: {
   }
 }
 
-export function passwordReset(p: { userName: string; resetUrl: string }) {
+export function passwordReset(p: { userName: string; resetCode: string; resetUrl: string }) {
   const content = `
-    <h2 style="margin:0 0 16px;font-size:20px;color:#111;">🔑 パスワードリセット</h2>
+    <h2 style="margin:0 0 16px;font-size:20px;color:#111;">パスワードリセット</h2>
     <p>${p.userName} 様</p>
-    <p>パスワードのリセットが要求されました。以下のボタンをクリックして、新しいパスワードを設定してください。</p>
-    ${infoBox([infoRow('有効期限', '1時間')])}
+    <p>パスワードのリセットが要求されました。<br>以下のリセットコードを入力して、新しいパスワードを設定してください。</p>
+    
+    <div style="text-align:center;margin:24px 0;">
+      <div style="display:inline-block;background:#f8f9fa;border:2px dashed #ef4444;border-radius:12px;padding:20px 40px;">
+        <p style="margin:0 0 4px;font-size:12px;color:#6b7280;font-weight:600;">リセットコード</p>
+        <p style="margin:0;font-size:36px;font-weight:800;color:#ef4444;letter-spacing:8px;">${p.resetCode}</p>
+      </div>
+    </div>
+
+    ${infoBox([infoRow('有効期限', '30分')])}
     ${actionButton('パスワードをリセットする', p.resetUrl)}
     <p style="font-size:13px;color:#6b7280;">このリクエストに心当たりがない場合は、このメールを無視してください。</p>
   `
   return {
-    subject: '【PARTS HUB】パスワードリセット',
+    subject: '【PARTS HUB】パスワードリセットコード',
     html: baseTemplate('パスワードリセット', content),
   }
 }
