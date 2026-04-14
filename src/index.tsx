@@ -62,7 +62,109 @@ const hreflang = (path: string) => `<link rel="alternate" hreflang="ja" href="ht
 <link rel="alternate" hreflang="x-default" href="https://parts-hub-tci.com${path}">`
 
 // 共通フッターコンポーネント
+const FooterBlogSection = () => `
+<!-- フッター上ブログ記事セクション（全ページ共通） -->
+<section id="footer-blog-section" class="hidden py-12 bg-gradient-to-b from-gray-50 to-white border-t border-gray-100">
+    <div class="max-w-7xl mx-auto px-4">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h2 class="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
+                    <i class="fas fa-book-open text-red-500"></i>カーパーツお役立ちガイド
+                </h2>
+                <p class="text-gray-500 text-xs sm:text-sm mt-1">メンテナンス・選び方・お得な情報をお届け</p>
+            </div>
+            <a href="/news" class="hidden sm:inline-flex items-center gap-1.5 text-red-500 hover:text-red-600 font-semibold text-sm whitespace-nowrap">
+                すべて見る<i class="fas fa-arrow-right text-xs"></i>
+            </a>
+        </div>
+
+        <!-- PC: 4列グリッド -->
+        <div id="footer-blog-grid" class="hidden md:grid md:grid-cols-4 gap-5"></div>
+
+        <!-- スマホ: 横スクロールスライダー -->
+        <div id="footer-blog-slider" class="md:hidden overflow-x-auto scroll-smooth" style="-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none;">
+            <style>#footer-blog-slider::-webkit-scrollbar{display:none;}</style>
+            <div id="footer-blog-slider-inner" class="flex gap-3.5 pb-3" style="min-width:min-content;"></div>
+        </div>
+        <!-- スライダードットインジケーター -->
+        <div id="footer-blog-dots" class="md:hidden flex justify-center gap-1.5 mt-3"></div>
+
+        <!-- スマホ「すべて見る」ボタン -->
+        <div class="sm:hidden mt-5 text-center">
+            <a href="/news" class="inline-flex items-center gap-2 text-red-500 hover:text-red-600 font-semibold text-sm bg-white px-5 py-2.5 rounded-full shadow-sm border border-gray-200">
+                すべての記事を見る<i class="fas fa-arrow-right text-xs"></i>
+            </a>
+        </div>
+    </div>
+</section>
+<script>
+(function(){
+  // TOPページ（既にブログセクションがある）ではフッターブログを非表示
+  if(document.getElementById('articles-container'))return;
+  var sec=document.getElementById('footer-blog-section');
+  if(!sec)return;
+  fetch('/api/articles/featured?limit=8').then(function(r){return r.json()}).then(function(data){
+    var articles=data.articles||[];
+    if(!articles.length)return;
+    sec.classList.remove('hidden');
+    // ブログセクション表示時はフッターの上マージンを詰める
+    var ft=sec.nextElementSibling;
+    if(ft&&ft.tagName==='FOOTER')ft.classList.replace('mt-16','mt-0');
+
+    // PC用カード生成
+    var grid=document.getElementById('footer-blog-grid');
+    grid.innerHTML=articles.slice(0,4).map(function(a){
+      var date=new Date(a.published_at).toLocaleDateString('ja-JP',{timeZone:'Asia/Tokyo'});
+      var thumb=a.thumbnail_url||'https://placehold.co/600x400/e2e8f0/64748b?text=PARTS+HUB';
+      return '<a href="/news/'+a.slug+'" class="group bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100">'
+        +'<div class="relative overflow-hidden"><img loading="lazy" src="'+thumb+'" alt="'+a.title+'" class="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-300">'
+        +'<span class="absolute top-2 left-2 px-2 py-0.5 bg-red-500 text-white rounded text-xs font-bold">'+(a.category||'記事')+'</span></div>'
+        +'<div class="p-3.5"><p class="text-xs text-gray-400 mb-1.5">'+date+'</p>'
+        +'<h3 class="font-bold text-gray-900 text-sm leading-snug line-clamp-2 group-hover:text-red-500 transition-colors">'+a.title+'</h3>'
+        +'<p class="text-gray-500 text-xs mt-1.5 line-clamp-2">'+(a.summary||'')+'</p></div></a>';
+    }).join('');
+
+    // スマホ用スライダーカード生成
+    var slider=document.getElementById('footer-blog-slider');
+    var inner=document.getElementById('footer-blog-slider-inner');
+    var mobileArticles=articles.slice(0,8);
+    inner.innerHTML=mobileArticles.map(function(a){
+      var date=new Date(a.published_at).toLocaleDateString('ja-JP',{timeZone:'Asia/Tokyo'});
+      var thumb=a.thumbnail_url||'https://placehold.co/600x400/e2e8f0/64748b?text=PARTS+HUB';
+      return '<a href="/news/'+a.slug+'" class="flex-shrink-0 bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100" style="width:260px;">'
+        +'<img loading="lazy" src="'+thumb+'" alt="'+a.title+'" class="w-full h-36 object-cover">'
+        +'<div class="p-3"><div class="flex items-center gap-1.5 text-xs text-gray-400 mb-1.5">'
+        +'<span class="px-1.5 py-0.5 bg-red-100 text-red-600 rounded text-xs font-medium">'+(a.category||'記事')+'</span>'
+        +'<span>'+date+'</span></div>'
+        +'<h3 class="font-bold text-gray-900 text-sm leading-snug line-clamp-2">'+a.title+'</h3></div></a>';
+    }).join('');
+
+    // ドットインジケーター
+    var dots=document.getElementById('footer-blog-dots');
+    if(mobileArticles.length>1){
+      dots.innerHTML=mobileArticles.map(function(_,i){
+        return '<div class="footer-blog-dot rounded-full transition-all duration-300 '+(i===0?'bg-red-500 w-5 h-1.5':'bg-gray-300 w-1.5 h-1.5')+'" data-idx="'+i+'"></div>';
+      }).join('');
+      dots.querySelectorAll('.footer-blog-dot').forEach(function(d){
+        d.addEventListener('click',function(){
+          var idx=parseInt(d.getAttribute('data-idx'));
+          slider.scrollTo({left:idx*(260+14),behavior:'smooth'});
+        });
+      });
+      slider.addEventListener('scroll',function(){
+        var active=Math.round(slider.scrollLeft/(260+14));
+        dots.querySelectorAll('.footer-blog-dot').forEach(function(d,i){
+          d.className='footer-blog-dot rounded-full transition-all duration-300 '+(i===active?'bg-red-500 w-5 h-1.5':'bg-gray-300 w-1.5 h-1.5');
+        });
+      });
+    }
+  }).catch(function(e){console.error('Footer blog load error:',e)});
+})();
+</script>
+`
+
 const Footer = () => `
+${FooterBlogSection()}
 <footer class="bg-gray-900 text-white mt-16">
     <div class="max-w-6xl mx-auto px-4 py-8">
         <!-- ロゴ＆説明 -->
