@@ -319,7 +319,7 @@ payment.post('/create-checkout-session', authMiddleware, async (c) => {
     const stripe = getStripeClient(c)
     
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
+      payment_method_types: ['card', 'paypay'],
       line_items: [
         {
           price_data: {
@@ -550,7 +550,7 @@ payment.post('/retry-checkout', authMiddleware, async (c) => {
     const stripe = getStripeClient(c)
     
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
+      payment_method_types: ['card', 'paypay'],
       line_items: [
         {
           price_data: {
