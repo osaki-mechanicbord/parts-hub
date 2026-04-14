@@ -1551,6 +1551,7 @@ adminRoutes.post('/articles/generate', async (c) => {
 });
 
 // 自動投稿API（画像生成付き）- AI検知回避・高品質版
+// 方法B: topic/keyword/category をリクエストボディで指定可能（指定なしなら従来通りランダム）
 adminRoutes.post('/articles/auto-generate-with-image', async (c) => {
   const { env } = c;
   
@@ -1559,6 +1560,21 @@ adminRoutes.post('/articles/auto-generate-with-image', async (c) => {
     const openaiApiKey = env.OPENAI_API_KEY;
     if (!openaiApiKey) {
       return c.json({ error: 'OpenAI APIキーが設定されていません' }, 500);
+    }
+
+    // リクエストボディから指定パラメータを取得（なければ空）
+    let reqTopic = '';
+    let reqKeyword = '';
+    let reqCategory = '';
+    let reqArticleType = '';
+    try {
+      const body = await c.req.json();
+      reqTopic = body.topic || '';
+      reqKeyword = body.keyword || '';
+      reqCategory = body.category || '';
+      reqArticleType = body.article_type || '';
+    } catch (e) {
+      // ボディなし（従来互換）- 無視
     }
 
     // ===================================================
@@ -1695,18 +1711,30 @@ adminRoutes.post('/articles/auto-generate-with-image', async (c) => {
       { id: 'deadstock', name: 'デッドストック活用', description: '在庫処分・倉庫整理・デッドストック販売のノウハウ' },
     ];
     
-    // 季節トピック（60%） or 通年トピック（40%）をランダム選択
-    const useSeasonalTopic = Math.random() < 0.6;
-    const monthTopics = seasonalTopics[currentMonth] || [];
-    
+    // === トピック・カテゴリ選定（指定あれば使用、なければランダム） ===
     let topic: string;
-    if (useSeasonalTopic && monthTopics.length > 0) {
-      topic = monthTopics[Math.floor(Math.random() * monthTopics.length)];
+    if (reqTopic) {
+      // リクエストで指定されたトピックを使用
+      topic = reqTopic;
     } else {
-      topic = evergreenTopics[Math.floor(Math.random() * evergreenTopics.length)];
+      // 従来通りランダム選定
+      const useSeasonalTopic = Math.random() < 0.6;
+      const monthTopics = seasonalTopics[currentMonth] || [];
+      if (useSeasonalTopic && monthTopics.length > 0) {
+        topic = monthTopics[Math.floor(Math.random() * monthTopics.length)];
+      } else {
+        topic = evergreenTopics[Math.floor(Math.random() * evergreenTopics.length)];
+      }
     }
     
-    const category = categories[Math.floor(Math.random() * categories.length)];
+    let category: { id: string; name: string; description: string };
+    if (reqCategory) {
+      // リクエストで指定されたカテゴリを使用
+      category = categories.find(cat => cat.id === reqCategory) || categories[0];
+    } else {
+      // 従来通りランダム選定
+      category = categories[Math.floor(Math.random() * categories.length)];
+    }
 
     // ===================================================
     // 記事テンプレート多様化（AI検知回避）
@@ -1783,12 +1811,18 @@ adminRoutes.post('/articles/auto-generate-with-image', async (c) => {
 
 トピック: ${topic}
 カテゴリ: ${category.name}（${category.description}）
+${reqKeyword ? `\n主要SEOキーワード: 「${reqKeyword}」（このキーワードをタイトル・見出し・本文に自然に含めてください。キーワードの月間検索ボリュームが大きいので、検索上位を狙う構成にしてください）` : ''}
+${reqArticleType ? `\n記事の型: ${reqArticleType}（この型に沿った構成で執筆してください。例：ランキング型なら順位付きリスト、ハウツー型ならステップ解説、比較型なら比較表を含める）` : ''}
 
 【記事の要件】
 - 本文は2000〜3000文字程度（読了時間5〜8分）
-- HTMLタグを使用（h2, h3, p, ul, li, strong, em）
+- HTMLタグを使用（h2, h3, p, ul, li, strong, em, table）
 - h2見出しは3〜5個、h3は必要に応じて使用
 - 段落（p）は適度な長さで、1段落が長くなりすぎない
+${reqKeyword ? `- SEOキーワード「${reqKeyword}」を本文中に5〜10回程度自然に散りばめる` : ''}
+${reqArticleType && reqArticleType.includes('ランキング') ? '- ランキング形式で商品を紹介し、各商品のメリット・デメリットを明記する' : ''}
+${reqArticleType && reqArticleType.includes('比較') ? '- 比較表（HTMLのtable）を含めて視覚的に分かりやすくする' : ''}
+${reqArticleType && reqArticleType.includes('ハウツー') ? '- ステップ形式（Step1, Step2...）で手順を分かりやすく解説する' : ''}
 - 最後に自然な形でPARTS HUBへの誘導を入れる（押し売りにならない程度）
 - 記事の途中でも関連する箇所があれば自然にPARTS HUBに触れてOK
 

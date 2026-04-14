@@ -1544,6 +1544,9 @@ adminPagesRoutes.get('/articles', (c) => {
             <button onclick="autoGenerateWithImage(event)" class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600">
                 <i class="fas fa-image mr-2"></i>自動生成（画像付き）
             </button>
+            <button onclick="showSeoGenerateModal()" class="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-2 rounded-lg hover:from-purple-600 hover:to-pink-600">
+                <i class="fas fa-bullseye mr-2"></i>SEO記事生成
+            </button>
         </div>
     </div>
 
@@ -1606,6 +1609,124 @@ adminPagesRoutes.get('/articles', (c) => {
                     <i class="fas fa-magic mr-2"></i>生成する
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- SEO記事生成モーダル -->
+    <div id="seo-generate-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center overflow-y-auto">
+        <div class="bg-white rounded-2xl p-8 max-w-3xl w-full mx-4 my-8 shadow-2xl">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-bullseye text-purple-600"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-gray-900">SEO記事生成</h3>
+                    <p class="text-xs text-gray-500">キーワード・記事タイプを指定して検索上位を狙う記事を生成</p>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">記事タイトル案 <span class="text-red-500">*</span></label>
+                    <input type="text" id="seo-topic" class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none" 
+                           placeholder="例: 【2026年最新】タイヤおすすめ人気ランキング15選｜サイズ別の選び方と交換時期の目安">
+                    <p class="text-xs text-gray-400 mt-1">GPTがこのタイトル案をベースに最適化した記事を生成します</p>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">主要SEOキーワード <span class="text-red-500">*</span></label>
+                        <input type="text" id="seo-keyword" class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none" 
+                               placeholder="例: タイヤ">
+                        <p class="text-xs text-gray-400 mt-1">検索で狙うメインキーワード</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">月間検索数（参考）</label>
+                        <input type="text" id="seo-volume" class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none" 
+                               placeholder="例: 301,000">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">記事の型</label>
+                        <select id="seo-article-type" class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none">
+                            <option value="">自動判定</option>
+                            <option value="ランキング型">ランキング型</option>
+                            <option value="ハウツー比較型">ハウツー比較型</option>
+                            <option value="選び方ガイド型">選び方ガイド型</option>
+                            <option value="ランキング比較型">ランキング比較型</option>
+                            <option value="専門家推薦型">専門家推薦型</option>
+                            <option value="ガイド＋ランキング型">ガイド＋ランキング型</option>
+                            <option value="解説＋商品紹介型">解説＋商品紹介型</option>
+                            <option value="比較解説型">比較解説型</option>
+                            <option value="悩み解決＋商品紹介型">悩み解決＋商品紹介型</option>
+                            <option value="DIYハウツー型">DIYハウツー型</option>
+                            <option value="比較ランキング型">比較ランキング型</option>
+                            <option value="入門ガイド型">入門ガイド型</option>
+                            <option value="用途別ガイド型">用途別ガイド型</option>
+                            <option value="効果解説＋商品紹介型">効果解説＋商品紹介型</option>
+                            <option value="DIY＋商品紹介型">DIY＋商品紹介型</option>
+                            <option value="コスト訴求型">コスト訴求型</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">カテゴリ</label>
+                        <select id="seo-category" class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none">
+                            <option value="parts-guide">パーツガイド</option>
+                            <option value="maintenance">メンテナンス</option>
+                            <option value="tips">お役立ち情報</option>
+                            <option value="deadstock">デッドストック活用</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- プリセット（Tier一覧から選択） -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">
+                        <i class="fas fa-list-ol mr-1 text-purple-500"></i>プリセットから選択（オプション）
+                    </label>
+                    <select id="seo-preset" onchange="applySeoPreset()" class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none text-sm">
+                        <option value="">-- 手動入力 --</option>
+                        <optgroup label="🔴 Tier 1: ビッグKW（月間10万超）">
+                            <option value="t1-1">タイヤおすすめ人気ランキング15選｜サイズ別の選び方と交換時期の目安 [タイヤ / 301K]</option>
+                            <option value="t1-2">タイヤ交換の費用相場はいくら？自分でやる方法と店舗依頼の比較ガイド [タイヤ交換 / 135K]</option>
+                            <option value="t1-3">スタッドレスタイヤおすすめ12選｜性能比較と安く買うコツ [スタッドレスタイヤ / 135K]</option>
+                            <option value="t1-4">チャイルドシートの選び方完全ガイド｜年齢別おすすめ10選 [チャイルドシート / 165K]</option>
+                            <option value="t1-5">ドライブレコーダーおすすめ人気ランキング20選 [ドライブレコーダー / 110K]</option>
+                            <option value="t1-6">ドラレコの選び方と最強コスパモデル10選 [ドラレコ / 90.5K]</option>
+                        </optgroup>
+                        <optgroup label="🟠 Tier 2: ミドルKW（月間4〜6万）">
+                            <option value="t2-7">カーナビおすすめ人気ランキング15選 [カーナビ / 60.5K]</option>
+                            <option value="t2-8">ホイール交換ガイド｜インチ別おすすめ10選 [ホイール / 60.5K]</option>
+                            <option value="t2-9">エンジンオイルの選び方｜粘度・規格の違いをプロが解説 [エンジンオイル / 49.5K]</option>
+                            <option value="t2-10">タイヤチェーンおすすめ10選 [タイヤチェーン / 49.5K]</option>
+                            <option value="t2-11">ヘッドライトの黄ばみ除去＆LEDバルブ交換おすすめ8選 [ヘッドライト / 49.5K]</option>
+                        </optgroup>
+                        <optgroup label="🟡 Tier 3: ロングテール（月間2〜4万）">
+                            <option value="t3-12">ワイパー交換は自分でできる！ [ワイパー / 40.5K]</option>
+                            <option value="t3-13">車用スマホホルダーおすすめ12選 [スマホホルダー / 40.5K]</option>
+                            <option value="t3-14">おしゃれなハンドルカバーおすすめ10選 [ハンドルカバー / 40.5K]</option>
+                            <option value="t3-15">車のフロアマットおすすめ人気ランキング [フロアマット / 33.1K]</option>
+                            <option value="t3-16">カーオーディオ入門ガイド [カーオーディオ / 33.1K]</option>
+                        </optgroup>
+                        <optgroup label="🟢 Tier 4: CVR重視（月間1〜2万）">
+                            <option value="t4-17">ルーフキャリアの選び方｜用途別おすすめ10選 [ルーフキャリア / 27.1K]</option>
+                            <option value="t4-18">車高調・サスペンション交換の効果とは？ [サスペンション / 22.2K]</option>
+                            <option value="t4-19">フォグランプをLEDに交換する方法 [フォグランプ / 22.2K]</option>
+                            <option value="t4-20">ブレーキパッドの交換時期と費用の目安 [ブレーキパッド / 18.1K]</option>
+                        </optgroup>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mt-6 flex gap-3">
+                <button onclick="closeSeoGenerateModal()" class="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold">
+                    キャンセル
+                </button>
+                <button onclick="executeSeoGenerate()" id="seo-generate-btn" class="flex-1 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 font-semibold">
+                    <i class="fas fa-rocket mr-2"></i>生成して公開
+                </button>
+            </div>
+            <p class="text-xs text-gray-400 mt-3 text-center">※ OpenAI API使用 約$0.05/記事（記事生成 + 画像生成）</p>
         </div>
     </div>
 
@@ -1948,6 +2069,91 @@ adminPagesRoutes.get('/articles', (c) => {
             } finally {
                 button.disabled = false;
                 button.innerHTML = originalText;
+            }
+        }
+
+        // ===== SEO記事生成 =====
+        const SEO_PRESETS = {
+            't1-1':  { topic: '【2026年最新】タイヤおすすめ人気ランキング15選｜サイズ別の選び方と交換時期の目安', keyword: 'タイヤ', type: 'ランキング型', category: 'parts-guide' },
+            't1-2':  { topic: 'タイヤ交換の費用相場はいくら？自分でやる方法と店舗依頼の比較ガイド', keyword: 'タイヤ交換', type: 'ハウツー比較型', category: 'maintenance' },
+            't1-3':  { topic: '【2026年版】スタッドレスタイヤおすすめ12選｜性能比較と安く買うコツ', keyword: 'スタッドレスタイヤ', type: 'ランキング型', category: 'parts-guide' },
+            't1-4':  { topic: 'チャイルドシートの選び方完全ガイド｜年齢別おすすめ10選と取付けの注意点', keyword: 'チャイルドシート', type: '選び方ガイド型', category: 'parts-guide' },
+            't1-5':  { topic: 'ドライブレコーダーおすすめ人気ランキング20選｜前後2カメラ・360度を徹底比較', keyword: 'ドライブレコーダー', type: 'ランキング比較型', category: 'parts-guide' },
+            't1-6':  { topic: '【プロが厳選】ドラレコの選び方と最強コスパモデル10選｜初心者でも失敗しない', keyword: 'ドラレコ', type: '専門家推薦型', category: 'parts-guide' },
+            't2-7':  { topic: 'カーナビおすすめ人気ランキング15選｜ポータブル・大画面・コスパ別に徹底比較【2026年】', keyword: 'カーナビ', type: 'ランキング型', category: 'parts-guide' },
+            't2-8':  { topic: 'ホイール交換ガイド｜インチ別おすすめ10選とサイズの見方・選び方の基本', keyword: 'ホイール', type: 'ガイド＋ランキング型', category: 'parts-guide' },
+            't2-9':  { topic: 'エンジンオイルの選び方｜粘度・規格の違いをプロが解説＋おすすめオイル8選', keyword: 'エンジンオイル', type: '解説＋商品紹介型', category: 'maintenance' },
+            't2-10': { topic: 'タイヤチェーンおすすめ10選｜金属・非金属・布製の違いと取り付け方まで完全解説', keyword: 'タイヤチェーン', type: '比較解説型', category: 'parts-guide' },
+            't2-11': { topic: '【車検対応】ヘッドライトの黄ばみ除去＆LEDバルブ交換おすすめ8選', keyword: 'ヘッドライト', type: '悩み解決＋商品紹介型', category: 'maintenance' },
+            't3-12': { topic: 'ワイパー交換は自分でできる！サイズの調べ方とおすすめ替えゴム・ブレード7選', keyword: 'ワイパー', type: 'DIYハウツー型', category: 'maintenance' },
+            't3-13': { topic: '車用スマホホルダーおすすめ12選｜吸盤式・マグネット式・エアコン式を徹底比較', keyword: 'スマホホルダー', type: '比較ランキング型', category: 'parts-guide' },
+            't3-14': { topic: 'おしゃれなハンドルカバーおすすめ10選｜サイズの測り方と夏冬で使い分けるコツ', keyword: 'ハンドルカバー', type: '比較ランキング型', category: 'parts-guide' },
+            't3-15': { topic: '車のフロアマットおすすめ人気ランキング｜純正vs社外品の違いと車種別の選び方', keyword: 'フロアマット', type: '比較ランキング型', category: 'parts-guide' },
+            't3-16': { topic: 'カーオーディオ入門ガイド｜音質を劇的に上げるスピーカー＆ヘッドユニットおすすめ8選', keyword: 'カーオーディオ', type: '入門ガイド型', category: 'parts-guide' },
+            't4-17': { topic: 'ルーフキャリアの選び方｜キャンプ・スキー・サーフィン用途別おすすめ10選と取付け方法', keyword: 'ルーフキャリア', type: '用途別ガイド型', category: 'parts-guide' },
+            't4-18': { topic: '車高調・サスペンション交換の効果とは？乗り心地とコスパで選ぶおすすめ7選', keyword: 'サスペンション', type: '効果解説＋商品紹介型', category: 'parts-guide' },
+            't4-19': { topic: 'フォグランプをLEDに交換する方法｜車検対応おすすめバルブ8選と色温度の選び方', keyword: 'フォグランプ', type: 'DIY＋商品紹介型', category: 'maintenance' },
+            't4-20': { topic: 'ブレーキパッドの交換時期と費用の目安｜純正同等品おすすめ6選で安く抑えるコツ', keyword: 'ブレーキパッド', type: 'コスト訴求型', category: 'maintenance' },
+        };
+
+        function showSeoGenerateModal() {
+            document.getElementById('seo-generate-modal').classList.remove('hidden');
+        }
+        function closeSeoGenerateModal() {
+            document.getElementById('seo-generate-modal').classList.add('hidden');
+        }
+
+        function applySeoPreset() {
+            const sel = document.getElementById('seo-preset').value;
+            if (!sel) return;
+            const p = SEO_PRESETS[sel];
+            if (!p) return;
+            document.getElementById('seo-topic').value = p.topic;
+            document.getElementById('seo-keyword').value = p.keyword;
+            document.getElementById('seo-article-type').value = p.type;
+            document.getElementById('seo-category').value = p.category;
+        }
+
+        async function executeSeoGenerate() {
+            const topic = document.getElementById('seo-topic').value.trim();
+            const keyword = document.getElementById('seo-keyword').value.trim();
+            if (!topic || !keyword) {
+                alert('記事タイトル案と主要SEOキーワードは必須です');
+                return;
+            }
+            const articleType = document.getElementById('seo-article-type').value;
+            const category = document.getElementById('seo-category').value;
+            const volume = document.getElementById('seo-volume').value;
+
+            if (!confirm('以下の内容でSEO記事を生成・公開します。\\n\\nタイトル案: ' + topic + '\\nキーワード: ' + keyword + (articleType ? '\\n記事の型: ' + articleType : '') + '\\nカテゴリ: ' + category + (volume ? '\\n月間検索数: ' + volume : '') + '\\n\\n※ OpenAI API約$0.05のコストがかかります。')) {
+                return;
+            }
+
+            const btn = document.getElementById('seo-generate-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>AI生成中（30〜60秒）...';
+
+            try {
+                const res = await axios.post('/api/admin/articles/auto-generate-with-image', {
+                    topic: topic,
+                    keyword: keyword,
+                    article_type: articleType,
+                    category: category
+                });
+                if (res.data.success) {
+                    const a = res.data.article;
+                    alert('SEO記事が生成・公開されました！\\n\\nタイトル: ' + a.title + '\\nカテゴリ: ' + a.category + '\\nスラッグ: ' + a.slug);
+                    closeSeoGenerateModal();
+                    loadArticles(currentPage);
+                } else {
+                    alert('生成に失敗しました: ' + (res.data.error || ''));
+                }
+            } catch (error) {
+                console.error('SEO生成エラー:', error);
+                alert('生成に失敗しました: ' + (error.response?.data?.error || error.message));
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-rocket mr-2"></i>生成して公開';
             }
         }
 
