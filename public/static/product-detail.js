@@ -772,6 +772,7 @@ function showPaymentMethodModal(priceExTax, taxAmount, priceIncTax, platformFee,
                         <p style="font-size:12px;color:#92400e;margin:0;line-height:1.8;">
                             PayPay銀行　ビジネス営業部　店番号 005<br>
                             普通　口座番号 1460031<br>
+                            口座名義　カ）ティーシーアイ<br>
                             振込期限：注文後7日間<br>
                             入金が確認され次第、商品を発送いたします。<br>
                             ※ 振込手数料はお客様負担となります。
@@ -968,9 +969,13 @@ function showInvoiceOrderComplete(data) {
                         <td style="padding:8px 0;color:#64748b;font-size:13px;">口座種別</td>
                         <td style="padding:8px 0;font-weight:bold;color:#111;font-size:15px;">普通</td>
                     </tr>
-                    <tr>
+                    <tr style="border-bottom:1px solid #bfdbfe;">
                         <td style="padding:8px 0;color:#64748b;font-size:13px;">口座番号</td>
                         <td style="padding:8px 0;font-weight:bold;color:#111;font-size:18px;letter-spacing:2px;">1460031</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:8px 0;color:#64748b;font-size:13px;">口座名義</td>
+                        <td style="padding:8px 0;font-weight:bold;color:#111;font-size:15px;">カ）ティーシーアイ</td>
                     </tr>
                 </table>
             </div>
