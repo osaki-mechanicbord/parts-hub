@@ -233,16 +233,16 @@ franchise.get('/', async (c) => {
         .region-section { margin-bottom: 20px; }
         .region-label { font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 8px; padding-left: 4px; display: flex; align-items: center; gap: 6px; }
         .region-label i { color: #94a3b8; }
-        .pref-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+        .pref-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; }
         .pref-chip { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 12px; background: white; border: 1px solid #e2e8f0; text-decoration: none; color: inherit; transition: all 0.2s; }
         .pref-chip:hover { border-color: #ff4757; box-shadow: 0 2px 8px rgba(255,71,87,0.1); transform: translateY(-1px); }
         .pref-chip .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
         .pref-chip .dot.recruiting { background: #ef4444; }
         .pref-chip .dot.planned { background: #eab308; }
         .pref-chip .dot.closed { background: #22c55e; }
-        .pref-chip .chip-name { font-size: 0.8rem; font-weight: 600; flex: 1; }
-        .pref-chip .chip-count { font-size: 0.65rem; color: #059669; font-weight: 700; }
-        .pref-chip .chip-badge { font-size: 0.6rem; padding: 1px 6px; border-radius: 4px; font-weight: 600; }
+        .pref-chip .chip-name { font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
+        .pref-chip .chip-count { font-size: 0.65rem; color: #059669; font-weight: 700; flex-shrink: 0; white-space: nowrap; }
+        .pref-chip .chip-badge { font-size: 0.6rem; padding: 1px 6px; border-radius: 4px; font-weight: 600; flex-shrink: 0; white-space: nowrap; margin-left: auto; }
         .pref-chip .chip-badge.recruiting { background: #fef2f2; color: #ef4444; }
         .pref-chip .chip-badge.planned { background: #fefce8; color: #ca8a04; }
         .pref-chip .chip-badge.closed { background: #f0fdf4; color: #16a34a; }
