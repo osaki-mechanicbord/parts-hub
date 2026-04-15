@@ -11115,6 +11115,13 @@ app.get('/area/:pref/:maker/:model', async (c) => {
 
   const maker = decodeURIComponent(c.req.param('maker'))
   const model = decodeURIComponent(c.req.param('model'))
+
+  // コロン正規化: 半角 ":" → 全角 "：" への301リダイレクト
+  if (model.includes(':')) {
+    const normalizedModel = model.replace(/:/g, '：')
+    return c.redirect('/area/' + prefSlug + '/' + encodeURIComponent(maker) + '/' + encodeURIComponent(normalizedModel), 301)
+  }
+
   const { DB } = c.env as any
 
   try {
@@ -11292,7 +11299,7 @@ const VEHICLES: Record<string, { maker: string; name: string; nameEn: string; ye
   'daihatsu-move': { maker: 'ダイハツ', name: 'ムーヴ', nameEn: 'Move', years: '2006-2023', type: '軽自動車', desc: 'ダイハツの主力軽自動車。長い販売歴から多数の現役車両が存在し、年式を問わず安定したパーツ需要があります。ムーヴキャンバスなど派生モデルとのパーツ共通性も高い車種です。', keywords: ['CVTフルード','ターボチャージャー','ブレーキパッド','パワーウィンドウレギュレーター','エアコンフィルター'] },
   'subaru-forester': { maker: 'スバル', name: 'フォレスター', nameEn: 'Forester', years: '2007-2023', type: 'SUV', desc: 'スバルのAWD技術を結集したSUV。水平対向エンジン特有の整備性から、オイル漏れ修理やヘッドガスケット交換の需要があります。雪国での使用率が高く、防錆・下回りパーツの需要も強い車種です。', keywords: ['ヘッドガスケット','CVTフルード','ブレーキローター','マフラー遮熱板','フロントハブベアリング'] },
   'mazda-cx5': { maker: 'マツダ', name: 'CX-5', nameEn: 'CX-5', years: '2012-2023', type: 'SUV', desc: 'マツダのクリーンディーゼルSUV。SKYACTIV-Dエンジンの煤（すす）詰まり対策としてDPF関連パーツの需要が高い車種です。デザイン性の高い外装パーツも中古市場で人気があります。', keywords: ['DPFフィルター','ディーゼルインジェクター','フロントグリル','ブレーキキャリパー','エアコンコンプレッサー'] },
-  'mitsubishi-delica': { maker: '三菱', name: 'デリカD:5', nameEn: 'Delica D:5', years: '2007-2023', type: 'ミニバンSUV', desc: '唯一無二のオールラウンドミニバン。オフロード走行にも対応する足回りの頑丈さが特徴ですが、ディーゼルモデルのDPFやターボの整備需要が高い車種です。アウトドアユーザーからの根強い人気があります。', keywords: ['ディーゼルターボ','DPFフィルター','4WDトランスファー','サスペンションアーム','フロントバンパー'] },
+  'mitsubishi-delica': { maker: '三菱', name: 'デリカD：5', nameEn: 'Delica D:5', years: '2007-2023', type: 'ミニバンSUV', desc: '唯一無二のオールラウンドミニバン。オフロード走行にも対応する足回りの頑丈さが特徴ですが、ディーゼルモデルのDPFやターボの整備需要が高い車種です。アウトドアユーザーからの根強い人気があります。', keywords: ['ディーゼルターボ','DPFフィルター','4WDトランスファー','サスペンションアーム','フロントバンパー'] },
   'isuzu-elf': { maker: 'いすゞ', name: 'エルフ', nameEn: 'Elf', years: '2006-2023', type: '小型トラック', desc: '小型トラック市場シェアNo.1。物流を支える主力車種として全国の整備工場で日常的に入庫します。ディーゼルエンジンの耐久性が高い一方、DPF・尿素SCR系の定期メンテナンスが必須の車種です。', keywords: ['DPFフィルター','尿素SCRシステム','クラッチディスク','ブレーキライニング','オルタネーター'] },
   'hino-dutro': { maker: '日野', name: 'デュトロ', nameEn: 'Dutro', years: '2011-2023', type: '小型トラック', desc: '日野自動車の主力小型トラック。トヨタグループの品質管理のもと高い信頼性を誇りますが、商用車ゆえの高稼働により消耗品の定期交換が不可欠です。エルフとともにパーツ需要が安定した車種です。', keywords: ['ディーゼルインジェクター','DPFフィルター','ブレーキシュー','エアドライヤー','ファンベルト'] }
 }
@@ -11717,8 +11724,14 @@ app.get('/vehicle/:makerOrSlug', async (c) => {
 // 車種別詳細ページ（DB動的取得：メーカー/車種名）
 app.get('/vehicle/:maker/:model', async (c) => {
   const maker = decodeURIComponent(c.req.param('maker'))
-  const model = decodeURIComponent(c.req.param('model'))
+  let model = decodeURIComponent(c.req.param('model'))
   const { DB } = c.env as any
+
+  // コロン正規化: 半角 ":" → 全角 "：" への301リダイレクト（Google検索インデックス対策）
+  if (model.includes(':')) {
+    const normalizedModel = model.replace(/:/g, '：')
+    return c.redirect('/vehicle/' + encodeURIComponent(maker) + '/' + encodeURIComponent(normalizedModel), 301)
+  }
 
   // vehicle_masterからグレード・タイヤサイズ一覧取得
   let grades: any[] = []
