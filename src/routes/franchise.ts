@@ -222,10 +222,10 @@ franchise.get('/', async (c) => {
     <style>
         ${BREADCRUMB_CSS}
         body { font-family: 'Noto Sans JP', sans-serif; }
-        .hero-gradient { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); }
-        .stat-card { background: rgba(255,255,255,0.08); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.12); border-radius: 16px; padding: 20px; text-align: center; }
+        .hero-gradient { background: url('/static/franchise-hero-bg.png') center top / cover no-repeat; background-color: #ffffff; }
+        .stat-card { background: rgba(255,255,255,0.85); backdrop-filter: blur(10px); border: 1px solid rgba(0,0,0,0.08); border-radius: 16px; padding: 20px; text-align: center; }
         .stat-number { font-size: 1.8rem; font-weight: 900; background: linear-gradient(135deg, #ff4757, #ff6b81); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .stat-label { font-size: 0.75rem; color: #94a3b8; margin-top: 4px; }
+        .stat-label { font-size: 0.75rem; color: #64748b; margin-top: 4px; }
         .section-heading { font-size: 1.25rem; font-weight: 700; color: #1e293b; position: relative; padding-left: 16px; }
         .section-heading::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 4px; height: 24px; background: linear-gradient(to bottom, #ff4757, #ff6b81); border-radius: 2px; }
 
@@ -286,16 +286,13 @@ franchise.get('/', async (c) => {
     ${breadcrumbHtml([{name:'PARTS HUB',url:'/'},{name:'パートナー募集'}])}
 
     <!-- ヒーロー -->
-    <section class="hero-gradient text-white py-16 sm:py-24 lg:py-32 relative overflow-hidden">
-        <div class="absolute inset-0 opacity-10">
-            <div style="background:radial-gradient(circle at 20% 50%, rgba(255,71,87,0.4) 0%, transparent 60%);width:100%;height:100%;"></div>
-        </div>
+    <section class="hero-gradient py-16 sm:py-24 lg:py-32 relative overflow-hidden">
         <div class="max-w-4xl mx-auto px-4 text-center relative z-10">
-            <div class="inline-flex items-center gap-2 bg-red-500/20 text-red-300 px-4 py-1.5 rounded-full text-xs font-semibold mb-6">
+            <div class="inline-flex items-center gap-2 bg-red-500/15 text-red-600 px-4 py-1.5 rounded-full text-xs font-semibold mb-6">
                 <i class="fas fa-fire"></i>全国${recruitingCount}都道府県で募集中
             </div>
-            <h1 class="text-2xl sm:text-3xl lg:text-4xl font-black leading-tight mb-6">${heroTitle}</h1>
-            <p class="text-slate-300 text-sm sm:text-base lg:text-lg max-w-2xl mx-auto mb-8 leading-relaxed">${heroSubtitle}</p>
+            <h1 class="text-2xl sm:text-3xl lg:text-4xl font-black leading-tight mb-6 text-gray-900">${heroTitle}</h1>
+            <p class="text-gray-600 text-sm sm:text-base lg:text-lg max-w-2xl mx-auto mb-8 leading-relaxed">${heroSubtitle}</p>
 
             <!-- 統計カード -->
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-8">
@@ -321,7 +318,7 @@ franchise.get('/', async (c) => {
                 <a href="#inquiry-form" class="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-colors shadow-lg shadow-red-500/30 text-sm sm:text-base">
                     <i class="fas fa-envelope"></i>資料請求する
                 </a>
-                <a href="#revenue-simulation" class="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl transition-colors border border-white/20 text-sm sm:text-base">
+                <a href="#revenue-simulation" class="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-gray-900 hover:bg-gray-800 text-white font-bold rounded-xl transition-colors border border-gray-700 text-sm sm:text-base">
                     <i class="fas fa-calculator"></i>収益シミュレーション
                 </a>
             </div>
