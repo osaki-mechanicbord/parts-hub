@@ -2005,6 +2005,212 @@ ${reqArticleType && reqArticleType.includes('ハウツー') ? '- ステップ形
   }
 });
 
+// =============================================
+// バッチ記事生成API（ロングテールSEOキーワード自動戦略）
+// =============================================
+adminRoutes.post('/articles/batch-generate', async (c) => {
+  const { env } = c;
+  
+  try {
+    const openaiApiKey = env.OPENAI_API_KEY;
+    if (!openaiApiKey) {
+      return c.json({ error: 'OpenAI APIキーが設定されていません' }, 500);
+    }
+
+    const body = await c.req.json().catch(() => ({}));
+    const count = Math.min(body.count || 3, 5); // 最大5件/バッチ
+    const strategy = body.strategy || 'auto'; // auto, vehicle, maintenance, cost, seasonal
+
+    // 既存記事のスラッグ一覧を取得（重複防止）
+    const existingSlugs = await env.DB.prepare(
+      'SELECT slug FROM articles ORDER BY created_at DESC LIMIT 200'
+    ).all();
+    const existingSet = new Set((existingSlugs.results || []).map((r: any) => r.slug));
+
+    // ロングテールキーワード戦略（車種×パーツ×アクションの掛け算）
+    const vehicleKeywords = [
+      'N-BOX', 'プリウス', 'ハイエース', 'アルファード', 'フィット',
+      'タント', 'スペーシア', 'ヴォクシー', 'セレナ', 'CX-5',
+      'ジムニー', 'ノート', 'フォレスター', 'デリカD:5', 'RAV4',
+      'ヤリス', 'カローラ', 'クラウン', 'レヴォーグ', 'インプレッサ',
+      'ワゴンR', 'ムーヴ', 'ハスラー', 'ロッキー', 'ライズ'
+    ];
+    const partsKeywords = [
+      'ブレーキパッド', 'ヘッドライト', 'バンパー', 'ドアミラー',
+      'エアコンコンプレッサー', 'ラジエーター', 'オルタネーター',
+      'マフラー', 'サスペンション', 'ステアリングラック',
+      'パワーウィンドウモーター', 'ウォーターポンプ', 'クラッチ',
+      'テールランプ', 'フェンダー', 'ボンネット', 'シート',
+      'メーター', 'ECU', 'ATミッション'
+    ];
+    const actionKeywords = [
+      '交換費用', '中古 相場', '交換時期', '適合表', '純正品番',
+      '交換方法 DIY', '異音 原因', '故障 前兆', '社外品 比較'
+    ];
+    const costKeywords = [
+      '車検 費用 相場', '修理代 安くする方法', '部品代 節約',
+      '整備工場 選び方', 'ディーラー 見積もり 高い',
+      '中古パーツ メリット デメリット', '純正品 社外品 違い',
+      'リビルト品 とは', 'デッドストック 純正部品',
+      '整備工場 廃業 パーツ', '部品商 在庫処分'
+    ];
+    const maintenanceKeywords = [
+      'オイル交換 頻度', 'タイヤ交換 時期', 'バッテリー 寿命',
+      'ブレーキフルード 交換', 'クーラント 交換', 'ATF 交換 必要',
+      'タイミングベルト 交換時期', 'プラグ 交換 費用',
+      'エアフィルター 交換', 'ワイパーゴム 交換'
+    ];
+
+    // 戦略に応じたキーワード生成
+    const generateTopics = (): { topic: string; keyword: string; category: string; articleType: string }[] => {
+      const topics: { topic: string; keyword: string; category: string; articleType: string }[] = [];
+      
+      if (strategy === 'vehicle' || strategy === 'auto') {
+        // 車種×パーツの掛け算
+        for (let i = 0; i < Math.ceil(count / 2); i++) {
+          const v = vehicleKeywords[Math.floor(Math.random() * vehicleKeywords.length)];
+          const p = partsKeywords[Math.floor(Math.random() * partsKeywords.length)];
+          const a = actionKeywords[Math.floor(Math.random() * actionKeywords.length)];
+          topics.push({
+            topic: `${v} ${p} ${a}`,
+            keyword: `${v} ${p} ${a}`,
+            category: 'parts-guide',
+            articleType: a.includes('比較') ? '比較型' : a.includes('方法') ? 'ハウツー型' : 'ガイド型'
+          });
+        }
+      }
+      
+      if (strategy === 'maintenance' || strategy === 'auto') {
+        for (let i = 0; i < Math.ceil(count / 3); i++) {
+          const m = maintenanceKeywords[Math.floor(Math.random() * maintenanceKeywords.length)];
+          topics.push({
+            topic: m,
+            keyword: m,
+            category: 'maintenance',
+            articleType: 'ハウツー型'
+          });
+        }
+      }
+      
+      if (strategy === 'cost' || strategy === 'auto') {
+        for (let i = 0; i < Math.ceil(count / 3); i++) {
+          const ck = costKeywords[Math.floor(Math.random() * costKeywords.length)];
+          topics.push({
+            topic: ck,
+            keyword: ck,
+            category: 'tips',
+            articleType: 'ガイド型'
+          });
+        }
+      }
+
+      // count件に切り詰め
+      return topics.slice(0, count);
+    };
+
+    const topicsToGenerate = generateTopics();
+    const results: any[] = [];
+    const errors: any[] = [];
+
+    for (const item of topicsToGenerate) {
+      try {
+        // 既存の auto-generate-with-image と同じAPIを内部呼び出し
+        const res = await fetch(new URL('/api/admin/articles/auto-generate-with-image', c.req.url).toString(), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cookie': c.req.header('Cookie') || '',
+            'Authorization': c.req.header('Authorization') || ''
+          },
+          body: JSON.stringify({
+            topic: item.topic,
+            keyword: item.keyword,
+            category: item.category,
+            article_type: item.articleType
+          })
+        });
+        
+        const data = await res.json() as any;
+        if (data.success) {
+          results.push(data.article);
+        } else {
+          errors.push({ topic: item.topic, error: data.error });
+        }
+        
+        // レート制限対策: 記事間に2秒の遅延
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      } catch (e) {
+        errors.push({ topic: item.topic, error: (e as Error).message });
+      }
+    }
+
+    return c.json({
+      success: true,
+      generated: results.length,
+      failed: errors.length,
+      articles: results,
+      errors: errors.length > 0 ? errors : undefined,
+      message: `${results.length}件の記事を生成しました${errors.length > 0 ? `（${errors.length}件失敗）` : ''}`
+    });
+
+  } catch (error) {
+    console.error('バッチ生成エラー:', error);
+    return c.json({ error: 'バッチ生成に失敗しました: ' + (error as Error).message }, 500);
+  }
+});
+
+// SEOキーワード提案API（車種×パーツの組み合わせを自動提案）
+adminRoutes.get('/articles/keyword-suggestions', async (c) => {
+  const { env } = c;
+  
+  try {
+    // 人気車種をDBから取得
+    const popularVehicles = await env.DB.prepare(`
+      SELECT DISTINCT maker, model, COUNT(*) as cnt
+      FROM vehicle_master 
+      GROUP BY maker, model 
+      ORDER BY cnt DESC LIMIT 30
+    `).all();
+
+    // 既存記事のキーワードを取得（重複防止）
+    const existing = await env.DB.prepare(
+      "SELECT tags FROM articles WHERE status = 'published' ORDER BY created_at DESC LIMIT 100"
+    ).all();
+    const existingTags = new Set(
+      (existing.results || []).flatMap((r: any) => (r.tags || '').split(',').map((t: string) => t.trim().toLowerCase()))
+    );
+
+    const parts = ['ブレーキパッド','ヘッドライト','バンパー','ドアミラー','エアコン','ラジエーター','オルタネーター','マフラー','サスペンション','ワイパー'];
+    const actions = ['交換費用','中古 相場','交換方法','故障 原因','純正品番'];
+
+    const suggestions: { keyword: string; estimatedVolume: string; difficulty: string; category: string }[] = [];
+    
+    for (const v of (popularVehicles.results || []).slice(0, 15)) {
+      for (const p of parts.slice(0, 5)) {
+        const a = actions[Math.floor(Math.random() * actions.length)];
+        const kw = `${(v as any).maker} ${(v as any).model} ${p} ${a}`;
+        const kwLower = kw.toLowerCase();
+        if (!existingTags.has(kwLower)) {
+          suggestions.push({
+            keyword: kw,
+            estimatedVolume: Math.random() > 0.5 ? '100-500' : '50-100',
+            difficulty: Math.random() > 0.7 ? '中' : '低',
+            category: 'parts-guide'
+          });
+        }
+      }
+    }
+
+    return c.json({
+      success: true,
+      suggestions: suggestions.slice(0, 50),
+      total: suggestions.length
+    });
+  } catch (error) {
+    return c.json({ error: 'キーワード提案の取得に失敗しました' }, 500);
+  }
+});
+
 // 古い記事の画像をR2に再アップロード
 adminRoutes.post('/articles/:id/fix-image', async (c) => {
   const { env } = c;

@@ -49,10 +49,11 @@ const v = (path: string) => `${path}?v=${BUILD_VERSION}`
 const PERF_HINTS = `<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">`
+<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+<link rel="dns-prefetch" href="https://images.parts-hub-tci.com">`
 
-// Tailwind CSS（ビルド済み本番用CSS）
-const TAILWIND_CSS = `<link rel="stylesheet" href="/static/tailwind.css?v=${BUILD_VERSION}">`
+// Tailwind CSS（ビルド済み本番用CSS）- fetchpriority=high でLCP改善
+const TAILWIND_CSS = `<link rel="stylesheet" href="/static/tailwind.css?v=${BUILD_VERSION}" fetchpriority="high">`
 
 // 多言語SEO: hreflangタグ生成ヘルパー
 const hreflang = (path: string) => `<link rel="alternate" hreflang="ja" href="https://parts-hub-tci.com${path}">
@@ -256,6 +257,11 @@ app.use('*', async (c, next) => {
   c.header('X-XSS-Protection', '1; mode=block')
   c.header('Referrer-Policy', 'strict-origin-when-cross-origin')
   c.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  // HTMLページのエッジキャッシュ（stale-while-revalidateで高速配信 + 鮮度維持）
+  const ct = c.res.headers.get('Content-Type') || ''
+  if (ct.includes('text/html') && !c.req.path.startsWith('/api/') && !c.req.path.startsWith('/admin')) {
+    c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600')
+  }
   c.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
 })
 
@@ -2875,6 +2881,29 @@ function getArticleDetailBody() {
             </div>
 
             <div id="related-articles" class="mt-12"></div>
+
+            <!-- 人気車種パーツ検索 -->
+            <div class="mt-12">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-1 h-8 bg-red-500 rounded-full"></div>
+                    <h2 class="text-2xl font-bold text-gray-900">人気車種のパーツを探す</h2>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <a href="/vehicle/トヨタ/プリウス" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-all">プリウス</a>
+                    <a href="/vehicle/トヨタ/ハイエースバン" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-all">ハイエース</a>
+                    <a href="/vehicle/ホンダ/N-BOX" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-all">N-BOX</a>
+                    <a href="/vehicle/トヨタ/アルファード" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-all">アルファード</a>
+                    <a href="/vehicle/スズキ/ジムニー" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-all">ジムニー</a>
+                    <a href="/vehicle/日産/セレナ" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-all">セレナ</a>
+                    <a href="/vehicle/マツダ/CX-5" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-all">CX-5</a>
+                    <a href="/vehicle/スバル/フォレスター" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-all">フォレスター</a>
+                    <a href="/vehicle/ダイハツ/タント" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-all">タント</a>
+                    <a href="/vehicle/トヨタ/ヴォクシー" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-all">ヴォクシー</a>
+                </div>
+                <div class="text-center mt-4">
+                    <a href="/vehicle" class="text-sm text-red-500 font-semibold hover:underline">全車種一覧を見る <i class="fas fa-chevron-right text-xs"></i></a>
+                </div>
+            </div>
         </main>
         <footer class="bg-gray-900 text-white py-8 mt-16">
             <div class="max-w-5xl mx-auto px-4">
@@ -11876,6 +11905,37 @@ app.get('/vehicle/:maker/:model', async (c) => {
     ).join('')
   } catch(e) {}
 
+  // 関連記事を取得（車種名・メーカー名に関連する記事 + メンテナンス系記事）
+  let relatedArticlesHtml = ''
+  try {
+    const { results: relArticles } = await DB.prepare(`
+      SELECT id, title, slug, summary, thumbnail_url, category, published_at
+      FROM articles
+      WHERE status = 'published'
+        AND (title LIKE ? OR title LIKE ? OR tags LIKE ? OR tags LIKE ? OR category IN ('parts-guide', 'maintenance'))
+      ORDER BY 
+        CASE WHEN title LIKE ? OR title LIKE ? THEN 0 ELSE 1 END,
+        published_at DESC
+      LIMIT 4
+    `).bind(
+      '%' + maker + '%', '%' + model + '%',
+      '%' + maker + '%', '%' + model + '%',
+      '%' + maker + '%', '%' + model + '%'
+    ).all()
+    
+    if (relArticles && relArticles.length > 0) {
+      relatedArticlesHtml = relArticles.map((a: any) => {
+        const thumb = a.thumbnail_url || 'https://placehold.co/400x200/f3f4f6/9ca3af?text=PARTS+HUB'
+        const safeTitle = String(a.title || '').replace(/</g, '&lt;')
+        const safeSummary = String(a.summary || '').replace(/</g, '&lt;').substring(0, 60) + '...'
+        return '<a href="/news/' + a.slug + '" class="block bg-white rounded-xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-shadow">' +
+          '<img src="' + thumb + '" alt="' + safeTitle + '" class="w-full h-32 object-cover" loading="lazy">' +
+          '<div class="p-3"><p class="text-xs font-bold text-gray-900 line-clamp-2 mb-1">' + safeTitle + '</p>' +
+          '<p class="text-xs text-gray-400 line-clamp-2">' + safeSummary + '</p></div></a>'
+      }).join('')
+    }
+  } catch(e) { console.error('Related articles error:', e) }
+
   // グレード・タイヤサイズテーブル
   const uniqueGrades = grades.filter((g: any) => g.grade_name)
   const hasTireData = grades.some((g: any) => g.tire_size)
@@ -12045,6 +12105,49 @@ app.get('/vehicle/:maker/:model', async (c) => {
                 <div class="info-card text-center"><div class="text-2xl font-black text-red-500 mb-2">0円</div><p class="text-xs text-gray-500">出品手数料</p></div>
                 <div class="info-card text-center"><div class="text-2xl font-black text-red-500 mb-2">10%</div><p class="text-xs text-gray-500">販売手数料（出品者負担）</p></div>
                 <div class="info-card text-center"><div class="text-2xl font-black text-red-500 mb-2">Stripe</div><p class="text-xs text-gray-500">安全なエスクロー決済</p></div>
+            </div>
+        </section>
+
+        ${relatedArticlesHtml ? `
+        <section class="mb-12">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="section-heading">${safeMaker}に関連する整備コラム</h2>
+                <a href="/news" class="text-sm text-red-500 font-semibold hover:underline">すべて見る<i class="fas fa-chevron-right ml-1 text-xs"></i></a>
+            </div>
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">${relatedArticlesHtml}</div>
+        </section>` : ''}
+
+        <!-- パーツ交換費用の相場ガイド -->
+        <section class="mb-12">
+            <h2 class="section-heading mb-6">${safeModel}の主要パーツ交換費用の目安</h2>
+            <div class="info-card p-0 sm:p-0" style="padding:0;overflow:hidden;">
+                <div class="overflow-x-auto">
+                    <table class="grade-table">
+                        <thead>
+                            <tr>
+                                <th>パーツ名</th>
+                                <th class="text-right">ディーラー相場</th>
+                                <th class="text-right" style="color:#dc2626;">PARTS HUB</th>
+                                <th class="text-right">削減率</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td class="grade-cell">ブレーキパッド（フロント）</td><td class="text-right">¥15,000〜30,000</td><td class="text-right font-bold" style="color:#dc2626;">¥5,000〜15,000</td><td class="text-right"><span class="inline-block px-2 py-0.5 bg-green-50 text-green-700 rounded-full text-xs font-bold">50〜67%OFF</span></td></tr>
+                            <tr><td class="grade-cell">ヘッドライトユニット</td><td class="text-right">¥50,000〜120,000</td><td class="text-right font-bold" style="color:#dc2626;">¥15,000〜60,000</td><td class="text-right"><span class="inline-block px-2 py-0.5 bg-green-50 text-green-700 rounded-full text-xs font-bold">50〜70%OFF</span></td></tr>
+                            <tr><td class="grade-cell">ドアミラーASSY</td><td class="text-right">¥20,000〜45,000</td><td class="text-right font-bold" style="color:#dc2626;">¥8,000〜25,000</td><td class="text-right"><span class="inline-block px-2 py-0.5 bg-green-50 text-green-700 rounded-full text-xs font-bold">44〜60%OFF</span></td></tr>
+                            <tr><td class="grade-cell">エアコンコンプレッサー</td><td class="text-right">¥60,000〜150,000</td><td class="text-right font-bold" style="color:#dc2626;">¥20,000〜70,000</td><td class="text-right"><span class="inline-block px-2 py-0.5 bg-green-50 text-green-700 rounded-full text-xs font-bold">53〜67%OFF</span></td></tr>
+                            <tr><td class="grade-cell">ラジエーター</td><td class="text-right">¥30,000〜80,000</td><td class="text-right font-bold" style="color:#dc2626;">¥10,000〜40,000</td><td class="text-right"><span class="inline-block px-2 py-0.5 bg-green-50 text-green-700 rounded-full text-xs font-bold">50〜67%OFF</span></td></tr>
+                            <tr><td class="grade-cell">オルタネーター</td><td class="text-right">¥40,000〜100,000</td><td class="text-right font-bold" style="color:#dc2626;">¥15,000〜50,000</td><td class="text-right"><span class="inline-block px-2 py-0.5 bg-green-50 text-green-700 rounded-full text-xs font-bold">50〜63%OFF</span></td></tr>
+                            <tr><td class="grade-cell">フロントバンパー</td><td class="text-right">¥40,000〜90,000</td><td class="text-right font-bold" style="color:#dc2626;">¥10,000〜45,000</td><td class="text-right"><span class="inline-block px-2 py-0.5 bg-green-50 text-green-700 rounded-full text-xs font-bold">50〜75%OFF</span></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <p class="text-xs text-gray-400 mt-3">※ 上記は一般的な相場の目安です。実際の価格は車種・年式・グレードにより異なります。PARTS HUBでは純正デッドストック品・中古品・リビルト品を取り扱っており、ディーラー価格より大幅にお得です。</p>
+            <div class="mt-4">
+                <a href="${searchUrl}" class="inline-flex items-center text-sm text-red-500 font-semibold hover:underline">
+                    ${safeModel}の適合パーツを検索する<i class="fas fa-chevron-right ml-1 text-xs"></i>
+                </a>
             </div>
         </section>
 

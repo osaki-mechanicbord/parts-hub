@@ -1552,6 +1552,9 @@ adminPagesRoutes.get('/articles', (c) => {
             <button onclick="showSeoGenerateModal()" class="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-2 rounded-lg hover:from-purple-600 hover:to-pink-600">
                 <i class="fas fa-bullseye mr-2"></i>SEO記事生成
             </button>
+            <button onclick="showBatchGenerateModal()" class="bg-gradient-to-r from-green-500 to-teal-500 text-white px-6 py-2 rounded-lg hover:from-green-600 hover:to-teal-600">
+                <i class="fas fa-layer-group mr-2"></i>バッチ生成（最大5件）
+            </button>
         </div>
     </div>
 
@@ -1613,6 +1616,57 @@ adminPagesRoutes.get('/articles', (c) => {
                 <button onclick="generateArticle()" class="flex-1 px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600">
                     <i class="fas fa-magic mr-2"></i>生成する
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- バッチ記事生成モーダル -->
+    <div id="batch-generate-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full mx-4 my-8 max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900">バッチ記事生成</h3>
+                        <p class="text-xs text-gray-500">ロングテールSEOキーワードで複数記事を一括生成</p>
+                    </div>
+                    <button onclick="closeBatchModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-lg"></i></button>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">生成件数</label>
+                        <select id="batch-count" class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-sm">
+                            <option value="2">2件</option>
+                            <option value="3" selected>3件（推奨）</option>
+                            <option value="5">5件（最大）</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">戦略</label>
+                        <select id="batch-strategy" class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-sm">
+                            <option value="auto">自動（バランス良くミックス）</option>
+                            <option value="vehicle">車種×パーツ特化（検索ボリューム大）</option>
+                            <option value="maintenance">メンテナンス特化（初心者向け）</option>
+                            <option value="cost">コスト・節約特化（整備工場向け）</option>
+                        </select>
+                    </div>
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-3">
+                        <p class="text-xs text-green-700"><i class="fas fa-info-circle mr-1"></i><strong>仕組み:</strong> 車種名×パーツ名×アクション（交換費用・相場等）の組み合わせでロングテールキーワードを自動生成し、各キーワードに最適化された記事をAIが作成します。</p>
+                    </div>
+                    <p class="text-xs text-gray-400 text-center">※ 約$0.05×件数のOpenAI APIコスト + 画像生成コスト</p>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button onclick="closeBatchModal()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">キャンセル</button>
+                    <button onclick="executeBatchGenerate()" id="batch-generate-btn" class="flex-1 px-4 py-2 bg-gradient-to-r from-green-500 to-teal-500 text-white rounded-lg font-semibold hover:from-green-600 hover:to-teal-600">
+                        <i class="fas fa-layer-group mr-1"></i>バッチ生成開始
+                    </button>
+                </div>
+                <div id="batch-progress" class="hidden mt-4 p-3 bg-gray-50 rounded-lg">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i class="fas fa-spinner fa-spin text-green-500"></i>
+                        <span id="batch-status" class="text-sm text-gray-600">生成中...</span>
+                    </div>
+                    <div id="batch-results" class="space-y-2 mt-2"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -2100,6 +2154,45 @@ adminPagesRoutes.get('/articles', (c) => {
             't4-19': { topic: 'フォグランプをLEDに交換する方法｜車検対応おすすめバルブ8選と色温度の選び方', keyword: 'フォグランプ', type: 'DIY＋商品紹介型', category: 'maintenance' },
             't4-20': { topic: 'ブレーキパッドの交換時期と費用の目安｜純正同等品おすすめ6選で安く抑えるコツ', keyword: 'ブレーキパッド', type: 'コスト訴求型', category: 'maintenance' },
         };
+
+        // ===== バッチ生成 =====
+        function showBatchGenerateModal() {
+            document.getElementById('batch-generate-modal').classList.remove('hidden');
+        }
+        function closeBatchModal() {
+            document.getElementById('batch-generate-modal').classList.add('hidden');
+        }
+        async function executeBatchGenerate() {
+            var cnt = document.getElementById('batch-count').value;
+            var strat = document.getElementById('batch-strategy').value;
+            if (!confirm(cnt + '件の記事をバッチ生成します。\\n戦略: ' + strat + '\\n\\n※ OpenAI APIコスト約$' + (0.05 * cnt).toFixed(2) + 'がかかります。')) return;
+            
+            var btn = document.getElementById('batch-generate-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>生成中...';
+            document.getElementById('batch-progress').classList.remove('hidden');
+            document.getElementById('batch-status').textContent = '記事を生成中... (約' + (cnt * 30) + '秒かかります)';
+            
+            try {
+                var token = localStorage.getItem('admin_token');
+                var res = await axios.post('/api/admin/articles/batch-generate', {
+                    count: parseInt(cnt),
+                    strategy: strat
+                }, { headers: { Authorization: 'Bearer ' + token }, timeout: 300000 });
+                
+                document.getElementById('batch-status').innerHTML = '<i class="fas fa-check-circle text-green-500 mr-1"></i>' + res.data.message;
+                var resultsDiv = document.getElementById('batch-results');
+                resultsDiv.innerHTML = (res.data.articles || []).map(function(a) {
+                    return '<div class="text-xs p-2 bg-white rounded border"><strong>' + a.title + '</strong><br><span class="text-gray-400">' + a.category + ' / ' + a.slug + '</span></div>';
+                }).join('');
+                
+                setTimeout(function() { location.reload(); }, 3000);
+            } catch (err) {
+                document.getElementById('batch-status').innerHTML = '<i class="fas fa-exclamation-circle text-red-500 mr-1"></i>エラー: ' + (err.response?.data?.error || err.message);
+            }
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-layer-group mr-1"></i>バッチ生成開始';
+        }
 
         function showSeoGenerateModal() {
             document.getElementById('seo-generate-modal').classList.remove('hidden');
