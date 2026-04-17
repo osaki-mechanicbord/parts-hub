@@ -209,6 +209,7 @@ class ProductListingForm {
         stock_quantity: getIntVal('stock-quantity') || 1,
         shipping_type: getVal('shipping-type') || 'buyer_paid',
         is_universal: document.getElementById('is-universal') && document.getElementById('is-universal').checked ? 1 : 0,
+        overseas_ok: parseInt(getVal('overseas-ok')) || 0,
         top_category: getVal('top-category') || 'other',
         prefecture: getVal('prefecture') || 'all',
         jan_code: getVal('jan-code') || null,
@@ -364,6 +365,7 @@ class ProductListingForm {
         stock_quantity: getIntVal('stock-quantity') || 1,
         shipping_type: getVal('shipping-type') || 'buyer_paid',
         is_universal: document.getElementById('is-universal') && document.getElementById('is-universal').checked ? 1 : 0,
+        overseas_ok: parseInt(getVal('overseas-ok')) || 0,
         top_category: getVal('top-category') || 'other',
         prefecture: getVal('prefecture') || 'all',
         jan_code: getVal('jan-code') || null,
@@ -829,7 +831,7 @@ async function loadProductForEdit(productId) {
 
       // 編集モードでshipping_typeをチップ選択に反映
       if (product.shipping_type) {
-        var shippingChips = document.querySelectorAll('.shipping-chip')
+        var shippingChips = document.querySelectorAll('#shipping-chips .shipping-chip')
         shippingChips.forEach(function(chip) {
           chip.classList.remove('active')
           if (chip.getAttribute('data-value') === product.shipping_type) {
@@ -839,6 +841,18 @@ async function loadProductForEdit(productId) {
         var shippingInput = document.getElementById('shipping-type')
         if (shippingInput) shippingInput.value = product.shipping_type
       }
+
+      // 編集モードでoverseas_okをチップ選択に反映
+      var overseasVal = product.overseas_ok ? '1' : '0'
+      var overseasChips = document.querySelectorAll('#overseas-chips .shipping-chip')
+      overseasChips.forEach(function(chip) {
+        chip.classList.remove('active')
+        if (chip.getAttribute('data-value') === overseasVal) {
+          chip.classList.add('active')
+        }
+      })
+      var overseasInput = document.getElementById('overseas-ok')
+      if (overseasInput) overseasInput.value = overseasVal
 
       // 編集モードでtop_categoryをチップ選択に反映（複数選択対応）
       if (product.top_category) {

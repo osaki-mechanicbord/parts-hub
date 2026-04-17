@@ -759,6 +759,7 @@ adminPagesRoutes.get('/products', (c) => {
                         }">
                             \${p.status === 'active' ? '出品中' : p.status === 'sold' ? '売却済み' : p.status === 'pending' ? '承認待ち' : p.status === 'deleted' ? '削除済み' : '停止中'}
                         </span>
+                        \${p.overseas_ok ? '<span class="ml-1 px-1.5 py-0.5 text-xs bg-blue-50 text-blue-600 rounded font-semibold"><i class="fas fa-globe-americas"></i></span>' : ''}
                     </td>
                     <td class="px-6 py-4 text-sm text-gray-900">\${p.favorites_count || 0}</td>
                     <td class="px-6 py-4 text-sm text-gray-900">\${p.comments_count || 0}</td>
@@ -868,6 +869,7 @@ adminPagesRoutes.get('/products/:id', (c) => {
                 <div><span class="text-gray-500">お気に入り:</span> <span id="p-favs" class="font-medium"></span></div>
                 <div><span class="text-gray-500">出品日:</span> <span id="p-created" class="font-medium"></span></div>
                 <div><span class="text-gray-500">更新日:</span> <span id="p-updated" class="font-medium"></span></div>
+                <div><span class="text-gray-500">海外販売:</span> <span id="p-overseas" class="font-medium"></span></div>
             </div>
             <div id="p-desc-section" class="mt-4">
                 <span class="text-gray-500 text-sm">説明:</span>
@@ -958,6 +960,9 @@ adminPagesRoutes.get('/products/:id', (c) => {
             document.getElementById('p-favs').textContent = (data.favorite_count || 0) + '件';
             document.getElementById('p-created').textContent = new Date(p.created_at).toLocaleString('ja-JP', {timeZone: 'Asia/Tokyo'});
             document.getElementById('p-updated').textContent = new Date(p.updated_at).toLocaleString('ja-JP', {timeZone: 'Asia/Tokyo'});
+            document.getElementById('p-overseas').innerHTML = p.overseas_ok
+                ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs font-semibold"><i class="fas fa-globe-americas"></i>OK</span>'
+                : '<span class="text-gray-400">国内のみ</span>';
             document.getElementById('p-desc').textContent = p.description || '（説明なし）';
 
             const sb = statusBadge(p.status);

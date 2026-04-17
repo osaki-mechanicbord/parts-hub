@@ -166,6 +166,9 @@ crossBorder.get('/candidates', async (c) => {
     let conditions = ["p.status = 'active'"]
     let params: any[] = []
 
+    // overseas_ok = 1 の商品のみ候補に
+    conditions.push("p.overseas_ok = 1")
+
     // 既に海外出品済みの商品を除外
     conditions.push("p.id NOT IN (SELECT product_id FROM cross_border_listings WHERE status NOT IN ('cancelled','error'))")
 

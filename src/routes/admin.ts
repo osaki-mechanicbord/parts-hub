@@ -539,6 +539,7 @@ adminRoutes.get('/products', async (c) => {
         p.title,
         p.price,
         p.status,
+        p.overseas_ok,
         p.created_at,
         u.name as seller_name,
         COUNT(DISTINCT f.id) as favorites_count,

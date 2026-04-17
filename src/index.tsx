@@ -3939,6 +3939,7 @@ app.get('/products/:id', async (c) => {
   let ssrJanCode = ''
   let ssrManufacturerUrl = ''
   let ssrIsUniversal = false
+  let ssrOverseasOk = false
   let ssrRelatedProducts: any[] = []
   let productNotFound = false
   try {
@@ -4012,6 +4013,7 @@ app.get('/products/:id', async (c) => {
       ssrJanCode = String(p.jan_code || '')
       ssrManufacturerUrl = String(p.manufacturer_url || '')
       ssrIsUniversal = !!p.is_universal
+      ssrOverseasOk = !!p.overseas_ok
       ssrShippingType = p.shipping_type === 'seller_paid' 
         ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-700 rounded-full text-xs font-semibold"><i class="fas fa-check-circle"></i>送料込み（出品者負担）</span>'
         : '<span class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs font-semibold"><i class="fas fa-box"></i>着払い（購入者負担）</span>'
@@ -4324,6 +4326,10 @@ app.get('/products/:id', async (c) => {
                                 <tr id="product-universal-row" style="${ssrIsUniversal ? '' : 'display:none;'}">
                                     <td class="py-3 text-gray-600 font-medium">適合範囲</td>
                                     <td class="py-3 text-right"><span class="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs font-semibold"><i class="fas fa-globe"></i>全車種対応（汎用品）</span></td>
+                                </tr>
+                                <tr id="product-overseas-row" style="${ssrOverseasOk ? '' : 'display:none;'}">
+                                    <td class="py-3 text-gray-600 font-medium">海外販売</td>
+                                    <td class="py-3 text-right"><span class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs font-semibold"><i class="fas fa-globe-americas"></i>海外販売OK</span></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -5334,6 +5340,52 @@ app.get('/listing', (c) => {
                     </div>
                 </div>
 
+                <!-- ===== 海外販売設定 ===== -->
+                <div class="section-card">
+                    <div class="section-header">
+                        <div class="section-header-icon bg-blue-50 text-blue-500">
+                            <i class="fas fa-globe-americas"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-sm text-gray-900">海外販売設定</div>
+                            <div class="text-xs text-gray-400">運営が海外マーケットへ代理出品してもよいか選択してください</div>
+                        </div>
+                    </div>
+                    <div class="section-body">
+                        <input type="hidden" id="overseas-ok" value="0">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="overseas-chips">
+                            <div class="shipping-chip active" data-value="0" onclick="selectOverseas(this)">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                        <i class="fas fa-map-marker-alt text-gray-400"></i>
+                                    </div>
+                                    <div>
+                                        <div class="font-bold text-sm text-gray-900">国内のみ</div>
+                                        <div class="text-xs text-gray-500 mt-0.5">日本国内での販売のみ</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="shipping-chip" data-value="1" onclick="selectOverseas(this)">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+                                        <i class="fas fa-globe-americas text-blue-500"></i>
+                                    </div>
+                                    <div>
+                                        <div class="font-bold text-sm text-gray-900">海外販売OK</div>
+                                        <div class="text-xs text-gray-500 mt-0.5">運営による海外出品を許可</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3 bg-blue-50 border border-blue-200 rounded-xl p-3">
+                            <p class="text-xs text-blue-700 leading-relaxed">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                <strong>海外販売について：</strong>「海外販売OK」を選択すると、運営がeBay等の海外マーケットプレイスに代理出品する場合があります。手数料・価格は通常出品と同じです。海外で売れた場合もSOLD扱いとなり、通常通り出品者様へお振込みいたします。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- ===== VIN自動入力（ARGOS JPC連携・2026年6月公開予定） ===== -->
                 <div class="section-card" id="argos-vin-section" style="display:none;">
                     <div class="section-header" style="background: linear-gradient(135deg, #fef2f2, #fff1f2); border-bottom: 2px solid #fecdd3;">
@@ -5875,11 +5927,19 @@ app.get('/listing', (c) => {
 
             // 送料タイプ選択
             function selectShippingType(el) {
-                document.querySelectorAll('.shipping-chip').forEach(function(c) {
+                document.querySelectorAll('#shipping-chips .shipping-chip').forEach(function(c) {
                     c.classList.remove('active');
                 });
                 el.classList.add('active');
                 document.getElementById('shipping-type').value = el.getAttribute('data-value');
+            }
+
+            function selectOverseas(el) {
+                document.querySelectorAll('#overseas-chips .shipping-chip').forEach(function(c) {
+                    c.classList.remove('active');
+                });
+                el.classList.add('active');
+                document.getElementById('overseas-ok').value = el.getAttribute('data-value');
             }
 
             // 全車種対応（汎用品）トグル

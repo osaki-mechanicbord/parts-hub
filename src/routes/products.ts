@@ -100,7 +100,7 @@ app.get('/search', async (c) => {
 
     const { results } = await c.env.DB.prepare(`
       SELECT DISTINCT p.id, p.title, p.price, p.condition, p.status,
-        p.favorite_count, p.view_count, p.shipping_type, p.is_universal, p.user_id,
+        p.favorite_count, p.view_count, p.shipping_type, p.is_universal, p.overseas_ok, p.user_id,
         (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order LIMIT 1) as image_url,
         (SELECT COUNT(*) FROM product_comments WHERE product_id = p.id) as comment_count
       FROM products p
@@ -277,8 +277,9 @@ app.post('/', async (c) => {
         stock_quantity, status, is_proxy,
         vm_maker, vm_model, vm_grade, vm_tire_size, shipping_type, is_universal,
         top_category, prefecture,
-        jan_code, manufacturer, product_number, manufacturer_url
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        jan_code, manufacturer, product_number, manufacturer_url,
+        overseas_ok
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       userId,
       userId,
@@ -306,7 +307,8 @@ app.post('/', async (c) => {
       body.jan_code || null,
       body.manufacturer_name || null,
       body.product_number || null,
-      body.manufacturer_url || null
+      body.manufacturer_url || null,
+      body.overseas_ok ? 1 : 0
     ).run()
 
     const productId = result.meta.last_row_id
@@ -446,6 +448,7 @@ app.put('/:id', async (c) => {
         manufacturer = ?,
         product_number = ?,
         manufacturer_url = ?,
+        overseas_ok = ?,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).bind(
@@ -473,6 +476,7 @@ app.put('/:id', async (c) => {
       body.manufacturer_name !== undefined ? (body.manufacturer_name || null) : null,
       body.product_number !== undefined ? (body.product_number || null) : null,
       body.manufacturer_url !== undefined ? (body.manufacturer_url || null) : null,
+      body.overseas_ok ? 1 : 0,
       productId
     ).run()
 
